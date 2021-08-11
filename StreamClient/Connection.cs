@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
-    public class Connection
+    public class Connection : IDisposable
     {
         private readonly Socket socket;
         private readonly PipeWriter writer;
@@ -117,8 +117,20 @@ namespace RabbitMQ.Stream.Client
                     offset = DeclarePublisherResponse.Read(frame, out command);
                     commandCallback(command);
                     break;
+                case DeletePublisherResponse.Key:
+                    offset = DeletePublisherResponse.Read(frame, out command);
+                    commandCallback(command);
+                    break;
+                case QueryPublisherResponse.Key:
+                    offset =  QueryPublisherResponse.Read(frame, out command);
+                    commandCallback(command);
+                    break;
                 case PublishConfirm.Key:
                     offset = PublishConfirm.Read(frame, out command);
+                    commandCallback(command);
+                    break;
+                case PublishError.Key:
+                    offset = PublishError.Read(frame, out command);
                     commandCallback(command);
                     break;
                 case SubscribeResponse.Key:
@@ -129,15 +141,35 @@ namespace RabbitMQ.Stream.Client
                     offset = Deliver.Read(frame, out command);
                     commandCallback(command);
                     break;
+                case CloseResponse.Key:
+                    offset = CloseResponse.Read(frame, out command);
+                    commandCallback(command);
+                    break;
+                case CreateResponse.Key:
+                    offset = CreateResponse.Read(frame, out command);
+                    commandCallback(command);
+                    break;
+                case DeleteResponse.Key:
+                    offset = DeleteResponse.Read(frame, out command);
+                    commandCallback(command);
+                    break;
+                case MetaDataResponse.Key:
+                    offset = MetaDataResponse.Read(frame, out command);
+                    commandCallback(command);
+                    break;
+                case MetaDataUpdate.Key:
+                    offset = MetaDataUpdate.Read(frame, out command);
+                    commandCallback(command);
+                    break;
             }
             return offset;
         }
 
-        internal void MarkAsConsumed(SequencePosition end)
+        public void Dispose()
         {
-            //TODO should we call reader.AdvanceTo here or leave it to the frame processing thread?
-            // this.consumedPos = end;
-            // reader.AdvanceTo(consumedPos);
+            writer.Complete();
+            reader.Complete();
+            socket.Dispose();
         }
     }
 }

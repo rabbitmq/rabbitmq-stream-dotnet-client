@@ -82,9 +82,9 @@ namespace RabbitMQ.Stream.Client
     {
         public const ushort Key = 7;
         private readonly uint correlationId;
-        private readonly ushort responseCode;
+        private readonly ResponseCode responseCode;
 
-        public SubscribeResponse(uint correlationId, ushort responseCode)
+        private SubscribeResponse(uint correlationId, ResponseCode responseCode)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
@@ -94,6 +94,8 @@ namespace RabbitMQ.Stream.Client
 
         public uint CorrelationId => correlationId;
 
+        public ResponseCode Code => responseCode;
+
         public int Write(Span<byte> span)
         {
             throw new NotImplementedException();
@@ -101,15 +103,11 @@ namespace RabbitMQ.Stream.Client
         }
         internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
         {
-            ushort tag;
-            ushort version;
-            uint correlation;
-            ushort responseCode;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
-            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
-            command = new SubscribeResponse(correlation, responseCode);
+            var offset = WireFormatting.ReadUInt16(frame, out var tag);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
+            command = new SubscribeResponse(correlation, (ResponseCode) responseCode);
             return offset;
         }
     }
@@ -138,11 +136,11 @@ namespace RabbitMQ.Stream.Client
         {
             get
             {
-                int size = 9 + 2 + WireFormatting.StringSize(stream) + offsetType.Size + 2 + 4;
+                int size = 9 + WireFormatting.StringSize(stream) + offsetType.Size + 2 + 4;
                 foreach (var (k, v) in properties)
                 {
                     // TODO: unnecessary conversion work here to work out the correct size of the frame
-                    size += WireFormatting.StringSize(k) + WireFormatting.StringSize(v) + 4; //
+                    size += WireFormatting.StringSize(k) + WireFormatting.StringSize(v); //
                 }
 
                 return size;
@@ -166,10 +164,6 @@ namespace RabbitMQ.Stream.Client
             }
 
             return offset;
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

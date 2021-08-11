@@ -24,11 +24,15 @@ namespace RabbitMQ.Stream.Client
             {
                 numConfirmed = numConfirmed + pubIds.Length;
             };
+            Action<(ulong, ushort)[]> errored = (errors) =>
+            {
+            };
 
-            await client.DeclarePublisher("my-publisher", "s1", confirmed);
+            await client.DeclarePublisher("my-publisher", "s1", confirmed, errored);
             for (ulong i = 0; i < 10000; i++)
             {
-                var msgData = new ReadOnlySequence<byte>(UTF8Encoding.UTF8.GetBytes("asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
+                var msgData = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(
+                    "asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
                 client.Publish(new OutgoingMsg(0, i, msgData));
                 if((int)i - numConfirmed > 1000)
                     await Task.Delay(10);
@@ -36,7 +40,9 @@ namespace RabbitMQ.Stream.Client
             await Task.Delay(1000);
             Console.WriteLine($"num confirmed {numConfirmed}");
 
-            await Task.Delay(10000);
+            var closeResponse = await client.Close("finished");
+            await Task.Delay(2000);
+
             // var _subResult = await client.Write(new SubscribeRequest(10, 0, "s1", new OffsetTypeFirst(), 3, new Dictionary<string, string>()));
             // while (true)
             // {

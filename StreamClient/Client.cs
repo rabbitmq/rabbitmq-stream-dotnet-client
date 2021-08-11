@@ -1,6 +1,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO.Pipelines;
@@ -8,16 +9,33 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
+    internal static class TaskExtensions
+    {
+        public static async Task TimeoutAfter(this Task task, TimeSpan timeout)
+        {
+            if (task == await Task.WhenAny(task, Task.Delay(timeout)).ConfigureAwait(false))
+            {
+                await task.ConfigureAwait(false);
+            }
+            else
+            {
+                var supressErrorTask = task.ContinueWith((t, s) => t.Exception.Handle(e => true), null, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                throw new TimeoutException();
+            }
+        }
+    }
     public class ClientParameters
     {
         public IDictionary<string, string> Properties { get; set; } = new Dictionary<string, string>{{"key", "value"}};
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
+        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
     }
 
     public readonly struct OutgoingMsg
@@ -41,30 +59,37 @@ namespace RabbitMQ.Stream.Client
     }
     public class Client
     {
-        private uint correlationId = 0;
+        private uint correlationId = 100; // allow for some pre-amble
         private byte nextPublisherId = 0;
         private readonly ClientParameters parameters;
-        private Connection connection;
-        private Channel<ICommand> incoming;
-        private Channel<Object> outgoing;
-        private IDictionary<byte, Action<ulong[]>> publishers = new ConcurrentDictionary<byte, Action<ulong[]>>();
-        private IDictionary<uint, TaskCompletionSource<ICommand>> requests = new ConcurrentDictionary<uint, TaskCompletionSource<ICommand>>();
+        private readonly Connection connection;
+        private readonly Channel<ICommand> incoming;
+        private readonly Channel<Object> outgoing;
+        private readonly IDictionary<byte, (Action<ulong[]>, Action<(ulong, ushort)[]>)> publishers =
+            new ConcurrentDictionary<byte, (Action<ulong[]>, Action<(ulong, ushort)[]>)>();
+        private readonly IDictionary<uint, TaskCompletionSource<ICommand>> requests =
+            new ConcurrentDictionary<uint, TaskCompletionSource<ICommand>>();
+
+        private byte nextSubscriptionId;
+        private readonly IDictionary<byte, Action<Deliver>> consumers = new ConcurrentDictionary<byte, Action<Deliver>>();
+
+        public bool IsClosed { get; private set; } = false;
 
         private Client(ClientParameters parameters, Connection connection, Channel<ICommand> channel)
         {
             this.connection = connection;
             this.incoming = channel;
-            this.outgoing = Channel.CreateUnbounded<Object>();
+            this.outgoing = Channel.CreateUnbounded<object>();
             this.parameters = parameters;
             //authenticate
             var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.AttachedToParent);
             _ = ts.StartNew(ProcessOutgoing);
-            _ = ts.StartNew(ProcessIncoming);
+            _ = ts.StartNew(() => ProcessIncoming(parameters.MetadataHandler));
         }
         // channels and message publish aggregation
         public static async Task<Client> Create(ClientParameters parameters)
         {
-           uint correlationId = 0;
+            uint correlationId = 0;
             var channel = Channel.CreateUnbounded<ICommand>();
             Action<ICommand> callback = (command) =>
             {
@@ -106,78 +131,158 @@ namespace RabbitMQ.Stream.Client
             return this.outgoing.Writer.TryWrite(msg);
         }
 
-        public async Task<DeclarePublisherResponse> DeclarePublisher(string publisherRef, string stream, Action<ulong[]> confirmCallback)
+        public async Task<(byte, DeclarePublisherResponse)> DeclarePublisher(string publisherRef,
+        string stream, Action<ulong[]> confirmCallback, Action<(ulong, ushort)[]> errorCallback)
         {
-            var corr = ++correlationId; //TODO: use interlocked here
+            var publisherId = nextPublisherId++;
+            publishers.Add(publisherId, (confirmCallback, errorCallback));
+            return (publisherId, (DeclarePublisherResponse)await Request(corr =>
+            new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)));
+        }
+
+        public async Task<(byte, SubscribeResponse)> Subscribe(string stream, OffsetTypeFirst offsetType, ushort initialCredit,
+            Dictionary<string, string> properties, Action<Deliver> deliverHandler)
+        {
+            var subscriptionId = nextSubscriptionId++;
+            consumers.Add(subscriptionId, deliverHandler);
+            return (subscriptionId,
+                (SubscribeResponse) await Request(corr =>
+                    new SubscribeRequest(corr, subscriptionId, stream, offsetType, initialCredit, properties)));
+        }
+        private async Task<ICommand> Request(Func<uint, ICommand> request)
+        {
+            var corr = NextCorrelationId();
             var tcs = new TaskCompletionSource<ICommand>();
             requests.Add(corr, tcs);
-            var publisherId = nextPublisherId++;
-            publishers.Add(publisherId, confirmCallback);
-            outgoing.Writer.TryWrite(new DeclarePublisherRequest(corr, publisherId, publisherRef, stream));
-            var res = (DeclarePublisherResponse)await tcs.Task;
-            return res;
+            outgoing.Writer.TryWrite(request(corr));
+            await tcs.Task.TimeoutAfter(TimeSpan.FromMilliseconds(10000));
+            return tcs.Task.Result;
+        }
+
+        private uint NextCorrelationId()
+        {
+            return Interlocked.Increment(ref correlationId);
         }
 
         private async Task ProcessOutgoing()
         {
-            var msgs = new List<OutgoingMsg>();
+            var msgs = new List<(ulong, ReadOnlySequence<byte>)>();
             while (true)
             {
-                var cmd = await outgoing.Reader.ReadAsync();
+                var command = await outgoing.Reader.ReadAsync();
                 var readerCount = outgoing.Reader.Count;
-                if(cmd is ICommand) 
-                    await this.connection.Write((ICommand) cmd);
-                else if(cmd is OutgoingMsg)
+                switch(command)
                 {
-                    var msg = (OutgoingMsg) cmd;
-                    msgs.Add(msg);
-                    // if the channel is empty or we've reached some num msgs limit
-                    // send the publish frame
-                    if(readerCount == 0 || msgs.Count >= 1000)
-                    {
-                        var outMsgs = msgs.Select(o => (o.PublishingId, o.Data)).ToList();
-                        msgs.Clear();
-                        var p = new Publish(msg.PublisherId, outMsgs);
-                        Console.WriteLine($"publishing {outMsgs.Count} message batch {readerCount}");
-                        await this.connection.Write(p);
-                    }
+                    case ICommand cmd:
+                        await this.connection.Write((ICommand) cmd);
+                        break;
+                    case OutgoingMsg msg:
+                        msgs.Add((msg.PublishingId, msg.Data));
+                        // if the channel is empty or we've reached some num msgs limit
+                        // send the publish frame
+                        if(readerCount == 0 || msgs.Count >= 1000)
+                        {
+                            var publish = new Publish(msg.PublisherId, msgs);
+                            // Console.WriteLine($"publishing {msgs.Count} message batch {readerCount}");
+                            await this.connection.Write(publish);
+                            msgs.Clear();
+                        }
+                        break;
                 }
             }
         }
 
-        private async Task ProcessIncoming()
+        private async Task ProcessIncoming(Action<MetaDataUpdate> metadataHandler)
         {
             while (true)
             {
                 var cmd = await incoming.Reader.ReadAsync();
                 // Console.WriteLine($"incoming command {cmd}");
-                HandleIncoming(cmd);
+                HandleIncoming(cmd, metadataHandler);
             }
         }
 
-        private bool HandleIncoming(ICommand command)
+        private bool HandleIncoming(ICommand command, Action<MetaDataUpdate> metadataHandler)
         {
             switch (command)
             {
-                case DeclarePublisherResponse response:
-                    HandleCorrelatedResponse(command, response.CorrelationId);
-                    break;
                 case PublishConfirm confirm:
-                    var confirmCallback = publishers[confirm.PublisherId];
+                    var (confirmCallback, _) = publishers[confirm.PublisherId];
                     confirmCallback(confirm.PublishingIds);
                     break;
+                case PublishError error:
+                    var (_, errorCallback) = publishers[error.PublisherId];
+                    errorCallback(error.PublishingErrors);
+                    break;
+                case MetaDataUpdate metaDataUpdate:
+                    metadataHandler(metaDataUpdate);
+                    break;
+                case Deliver deliver:
+                    var deliverHandler = consumers[deliver.SubscriptionId];
+                    deliverHandler(deliver);
+                    break;
+                default:
+                    if(command.CorrelationId == uint.MaxValue)
+                        throw new Exception($"unhandled incoming command {command.GetType()}");
+                    else
+                        HandleCorrelatedResponse(command);
+                    break;
+                
             };
+
             return true;
         }
 
-        private void HandleCorrelatedResponse(ICommand command, uint correlationId)
+        private void HandleCorrelatedResponse(ICommand command)
         {
-            if (requests.ContainsKey(correlationId))
+            if (requests.ContainsKey(command.CorrelationId))
             {
                 var tsc = requests[correlationId];
                 requests.Remove(correlationId);
                 tsc.SetResult(command);
             }
+        }
+
+        public async Task<CloseResponse> Close(string reason)
+        {
+            if(IsClosed)
+            {
+                throw new Exception("already closed");
+            }
+            var result = (CloseResponse)await Request(corr => new CloseRequest(corr, reason)); 
+            connection.Dispose();
+            this.IsClosed = true;
+            return result;
+        }
+
+        public async Task<QueryPublisherResponse> QueryPublisherSequence(string publisherRef, string stream)
+        {
+            return (QueryPublisherResponse) await Request(corr => new QueryPublisherRequest(corr, publisherRef, stream)) ;
+        }
+
+        public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
+        {
+            return (DeletePublisherResponse) await Request(corr => new DeletePublisherRequest(corr, publisherId)) ;
+        }
+
+        public async Task<MetaDataResponse> QueryMetadata(string[] streams)
+        {
+            return (MetaDataResponse) await Request(corr => new MetaDataQuery(corr, streams.ToList())) ;
+        }
+
+        public async Task<CreateResponse> CreateStream(string stream, IDictionary<string, string> args)
+        {
+            return (CreateResponse) await Request(corr => new CreateRequest(corr, stream, args)) ;
+        }
+
+        public async Task<DeleteResponse> DeleteStream(string stream)
+        {
+            return (DeleteResponse) await Request(corr => new DeleteRequest(corr, stream)) ;
+        }
+
+        public bool Credit(byte subscriptionId, ushort credit)
+        {
+            return outgoing.Writer.TryWrite(new CreditRequest(subscriptionId, credit));
         }
     }
 }

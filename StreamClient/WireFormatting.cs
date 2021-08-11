@@ -11,9 +11,9 @@ namespace RabbitMQ.Stream.Client
         internal static int StringSize(string s)
         {
             if(String.IsNullOrEmpty(s))
-                return 0;
+                return 2;
             //TODO: can this be done without allocation?
-            return UTF8Encoding.UTF8.GetBytes(s).Length;
+            return 2 + UTF8Encoding.UTF8.GetBytes(s).Length;
         }
         internal static int WriteByte(Span<byte> span, byte value)
         {

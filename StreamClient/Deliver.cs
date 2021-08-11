@@ -38,6 +38,8 @@ namespace RabbitMQ.Stream.Client
 
         public Chunk Chunk => chunk;
 
+        public byte SubscriptionId => subscriptionId;
+
         public int Write(Span<byte> span)
         {
             throw new NotImplementedException();
@@ -109,27 +111,18 @@ namespace RabbitMQ.Stream.Client
         //   Data => bytes
         internal static int Read(ReadOnlySequence<byte> seq, out Chunk chunk)
         {
-            byte magicVersion;
-            byte chunkType;
-            ushort numEntries;
-            uint numRecords;
-            long timestamp;
-            ulong epoch;
-            ulong chunkId;
-            int crc;
-            uint dataLen;
-            uint trailerLen;
-            var offset = WireFormatting.ReadByte(seq, out magicVersion);
-            offset += WireFormatting.ReadByte(seq.Slice(offset), out chunkType);
-            offset += WireFormatting.ReadUInt16(seq.Slice(offset), out numEntries);
-            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out numRecords);
-            offset += WireFormatting.ReadInt64(seq.Slice(offset), out timestamp);
-            offset += WireFormatting.ReadUInt64(seq.Slice(offset), out epoch);
-            offset += WireFormatting.ReadUInt64(seq.Slice(offset), out chunkId);
-            offset += WireFormatting.ReadInt32(seq.Slice(offset), out crc);
-            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out dataLen);
-            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out trailerLen);
+            var offset = WireFormatting.ReadByte(seq, out var magicVersion);
+            offset += WireFormatting.ReadByte(seq.Slice(offset), out var chunkType);
+            offset += WireFormatting.ReadUInt16(seq.Slice(offset), out var numEntries);
+            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var numRecords);
+            offset += WireFormatting.ReadInt64(seq.Slice(offset), out var timestamp);
+            offset += WireFormatting.ReadUInt64(seq.Slice(offset), out var epoch);
+            offset += WireFormatting.ReadUInt64(seq.Slice(offset), out var chunkId);
+            offset += WireFormatting.ReadInt32(seq.Slice(offset), out var crc);
+            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var dataLen);
+            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var trailerLen);
             offset += 4; // reserved
+            //TODO: rather than copying at this point we may want to do codec / message parsing here
             var data = seq.Slice(offset, dataLen).ToArray();
             offset += (int)dataLen;
             chunk = new Chunk(magicVersion, numEntries, numRecords, epoch, chunkId, crc, new ReadOnlySequence<byte>(data));

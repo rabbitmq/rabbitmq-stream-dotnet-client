@@ -4,15 +4,18 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct DeclarePublisherResponse : ICommand
+    public readonly struct QueryPublisherResponse : ICommand
     {
-        public const ushort Key = 1;
         private readonly uint correlationId;
         private readonly ushort responseCode;
-        public DeclarePublisherResponse(uint correlationId, ushort responseCode)
+        private readonly ulong sequence ;
+        public const ushort Key = 5;
+
+        public QueryPublisherResponse(uint correlationId, ushort responseCode, ulong sequence)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
+            this.sequence = sequence;
         }
 
         public int SizeNeeded => throw new NotImplementedException();
@@ -20,7 +23,9 @@ namespace RabbitMQ.Stream.Client
         public uint CorrelationId => correlationId;
 
         public ushort ResponseCode => responseCode;
-        
+
+        public ulong Sequence => sequence;
+
         public int Write(Span<byte> span)
         {
             throw new NotImplementedException();
@@ -31,11 +36,13 @@ namespace RabbitMQ.Stream.Client
             ushort version;
             uint correlation;
             ushort responseCode;
+            ulong sequence;
             var offset = WireFormatting.ReadUInt16(frame, out tag);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
-            command = new DeclarePublisherResponse(correlation, responseCode);
+            offset += WireFormatting.ReadUInt64(frame.Slice(offset), out sequence);
+            command = new QueryPublisherResponse(correlation, responseCode, sequence);
             return offset;
         }
     }

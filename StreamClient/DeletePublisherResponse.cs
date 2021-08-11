@@ -4,12 +4,12 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct DeclarePublisherResponse : ICommand
+    public readonly struct DeletePublisherResponse : ICommand
     {
-        public const ushort Key = 1;
+        public const ushort Key = 6;
         private readonly uint correlationId;
         private readonly ushort responseCode;
-        public DeclarePublisherResponse(uint correlationId, ushort responseCode)
+        public DeletePublisherResponse(uint correlationId, ushort responseCode)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
@@ -35,7 +35,7 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
-            command = new DeclarePublisherResponse(correlation, responseCode);
+            command = new DeletePublisherResponse(correlation, responseCode);
             return offset;
         }
     }
