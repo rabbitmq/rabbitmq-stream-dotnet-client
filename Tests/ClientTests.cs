@@ -16,7 +16,6 @@ namespace Tests
 {
     public class ClientTests
     {
-
         [Fact]
         public async void CreateDeleteStream()
         {
@@ -24,13 +23,13 @@ namespace Tests
             var clientParameters = new ClientParameters{};
             var client = await Client.Create(clientParameters);
             var args = new Dictionary<string, string>();
-            CreateResponse response = await client.CreateStream(stream, args);
+            var response = await client.CreateStream(stream, args);
             Assert.Equal(ResponseCode.Ok, response.ResponseCode);
-            CreateResponse response2 = await client.CreateStream(stream, args);
+            var response2 = await client.CreateStream(stream, args);
             Assert.Equal(ResponseCode.StreamAlreadyExists, response2.ResponseCode); //stream already exists
-            DeleteResponse deleteResponse = await client.DeleteStream(stream);
+            var deleteResponse = await client.DeleteStream(stream);
             Assert.Equal(ResponseCode.Ok, deleteResponse.ResponseCode);
-            DeleteResponse deleteResponse2 = await client.DeleteStream(stream);
+            var deleteResponse2 = await client.DeleteStream(stream);
             Assert.Equal(ResponseCode.StreamDoesNotExist, deleteResponse2.ResponseCode);
             await client.Close("done");
         }

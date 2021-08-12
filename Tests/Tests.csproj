@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\StreamClient\StreamClient.csproj" />
+    <ProjectReference Include="..\RabbitMQ.Stream.Client\RabbitMQ.Stream.Client.csproj" />
   </ItemGroup>
 
 </Project>
