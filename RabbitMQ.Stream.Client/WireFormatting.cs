@@ -6,15 +6,20 @@ using System.Linq;
 
 namespace RabbitMQ.Stream.Client
 {
-    internal class WireFormatting
+    internal static class WireFormatting
     {
+        static WireFormatting()
+        {
+        }
+
         internal static int StringSize(string s)
         {
             if(String.IsNullOrEmpty(s))
                 return 2;
             //TODO: can this be done without allocation?
-            return 2 + UTF8Encoding.UTF8.GetBytes(s).Length;
+            return 2 + Encoding.UTF8.GetBytes(s).Length;
         }
+        
         internal static int WriteByte(Span<byte> span, byte value)
         {
             span[0] = value;
@@ -56,16 +61,11 @@ namespace RabbitMQ.Stream.Client
         
         internal static int WriteBytes(Span<byte> span, ReadOnlySequence<byte> msg)
         {
-                WireFormatting.WriteUInt32(span, (uint) msg.Length);
-                WireFormatting.Write(span.Slice(4), msg);
+                WriteUInt32(span, (uint) msg.Length);
+                Write(span.Slice(4), msg);
                 return 4 + (int) msg.Length;
         }
-
-        internal static int Write(Span<byte> span, Span<byte> msg)
-        {
-            msg.CopyTo(span);
-            return (int)msg.Length;
-        }
+        
         internal static int WriteString(Span<byte> span, string s)
         {
             // I'm sure there are better ways
@@ -74,6 +74,7 @@ namespace RabbitMQ.Stream.Client
             stringBytes.CopyTo(span.Slice(2));
             return stringBytes.Length + 2;
         }
+        
         internal static int ReadUInt32(ReadOnlySequence<byte> seq, out uint value)
         {
             value = BinaryPrimitives.ReadUInt32BigEndian(AsSpan(seq, 4));
@@ -98,17 +99,7 @@ namespace RabbitMQ.Stream.Client
         private static ReadOnlySpan<byte> AsSpan(ReadOnlySequence<byte> seq, int len)
         {
             var s = seq.Slice(0, len);   
-            {
-                
-            }
-            if(s.IsSingleSegment)
-            {
-                return s.FirstSpan;
-            }
-            else
-            {
-                return s.ToArray();
-            }
+            return s.IsSingleSegment ? s.FirstSpan : s.ToArray();
         }
         internal static int ReadByte(ReadOnlySequence<byte> seq, out byte b)
         {
@@ -118,8 +109,7 @@ namespace RabbitMQ.Stream.Client
 
         internal static int ReadString(ReadOnlySequence<byte> s, out string k)
         {
-            ushort len;
-            WireFormatting.ReadUInt16(s, out len);
+            ReadUInt16(s, out var len);
             k = Encoding.UTF8.GetString(s.Slice(2, len));
             return len + 2;
         }

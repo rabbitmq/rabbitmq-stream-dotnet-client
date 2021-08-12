@@ -80,35 +80,34 @@ namespace RabbitMQ.Stream.Client
 
     public readonly struct Chunk
     {
-        public Chunk(byte magicVersion, ushort numEntries, uint numRecords, ulong epoch, ulong chunkId, int crc, ReadOnlySequence<byte> data)
+        private Chunk(byte magicVersion,
+            ushort numEntries,
+            uint numRecords,
+            long timestamp,
+            ulong epoch,
+            ulong chunkId,
+            int crc,
+            ReadOnlySequence<byte> data)
         {
             MagicVersion = magicVersion;
             NumEntries = numEntries;
             NumRecords = numRecords;
+            Timestamp = timestamp;
             Epoch = epoch;
             ChunkId = chunkId;
             Crc = crc;
             Data = data;
         }
+        
         public byte MagicVersion { get; }
         public ushort NumEntries { get; }
         public uint NumRecords { get; }
+        public long Timestamp { get; }
         public ulong Epoch { get; }
         public ulong ChunkId { get; }
         public int Crc { get; }
         public ReadOnlySequence<byte> Data { get; }
 
-        //   OsirisChunk => MagicVersion NumEntries NumRecords Epoch ChunkFirstOffset ChunkCrc DataLength Messages
-        //   MagicVersion => int8
-        //   NumEntries => uint16
-        //   NumRecords => uint32
-        //   Epoch => uint64
-        //   ChunkFirstOffset => uint64
-        //   ChunkCrc => int32
-        //   DataLength => uint32
-        //   Messages => [Message] // no int32 for the size for this array
-        //   Message => EntryTypeAndSize
-        //   Data => bytes
         internal static int Read(ReadOnlySequence<byte> seq, out Chunk chunk)
         {
             var offset = WireFormatting.ReadByte(seq, out var magicVersion);
@@ -125,7 +124,8 @@ namespace RabbitMQ.Stream.Client
             //TODO: rather than copying at this point we may want to do codec / message parsing here
             var data = seq.Slice(offset, dataLen).ToArray();
             offset += (int)dataLen;
-            chunk = new Chunk(magicVersion, numEntries, numRecords, epoch, chunkId, crc, new ReadOnlySequence<byte>(data));
+            chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc,
+                new ReadOnlySequence<byte>(data));
             return offset;
         }
     }

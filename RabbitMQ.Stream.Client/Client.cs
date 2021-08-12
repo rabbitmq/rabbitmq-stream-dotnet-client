@@ -25,14 +25,29 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                var supressErrorTask = task.ContinueWith((t, s) => t.Exception.Handle(e => true), null, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                var supressErrorTask = task.ContinueWith((t, s) =>
+                {
+                    if (t.Exception != null) t.Exception.Handle(e => true);
+                },
+                    null,
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
                 throw new TimeoutException();
             }
         }
     }
     public class ClientParameters
     {
-        public IDictionary<string, string> Properties { get; set; } = new Dictionary<string, string>{{"key", "value"}};
+        public IDictionary<string, string> Properties { get; } =
+            new Dictionary<string, string>
+            {
+                {"product", "RabbitMQ Stream"},
+                {"version", "0.1.0"},
+                {"platform", ".NET"},
+                {"copyright", "Copyright (c) 2020-2021 VMware, Inc. or its affiliates."},
+                {"information", "Licensed under the MPL 2.0. See https://www.rabbitmq.com/"}
+            };
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
@@ -95,7 +110,9 @@ namespace RabbitMQ.Stream.Client
             {
                 channel.Writer.TryWrite(command);
             };
-            var connection = new Connection(callback);
+            
+            var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 5552);
+            var connection = await Connection.Create(ipEndPoint, callback);
             // exchange properties
             var peerProperties = new PeerPropertiesRequest(correlationId, parameters.Properties);
             await connection.Write(peerProperties);
@@ -283,6 +300,11 @@ namespace RabbitMQ.Stream.Client
         public bool Credit(byte subscriptionId, ushort credit)
         {
             return outgoing.Writer.TryWrite(new CreditRequest(subscriptionId, credit));
+        }
+
+        public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
+        {
+            return (UnsubscribeResponse) await Request(corr => new UnsubscribeRequest(corr, subscriptionId)) ;
         }
     }
 }

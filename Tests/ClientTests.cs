@@ -204,5 +204,30 @@ namespace Tests
             var delivery = testPassed.Task.Result;
             Assert.Single(delivery.Messages);
         }
+        
+        [Fact]
+        public async void UnsubscribedConsumerShouldNotReceiveDelivery()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var clientParameters = new ClientParameters{};
+            var client = await Client.Create(clientParameters);
+            var testPassed = new TaskCompletionSource<Deliver>();
+            await client.CreateStream(stream, new Dictionary<string, string>());
+            var initialCredit = 1;
+            var offsetType = new OffsetTypeFirst();
+            Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); };
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort) initialCredit,
+                new Dictionary<string, string>(), deliverHandler);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+            
+            var unsubscribeResponse = await client.Unsubscribe(subId);
+            
+            Assert.Equal(ResponseCode.Ok, unsubscribeResponse.Code);
+            var publisherRef = Guid.NewGuid().ToString();
+            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
+            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
+            // 1s should be enough to catch this at least some of the time
+            Assert.False(testPassed.Task.Wait(1000));
+        }
     }
 }

@@ -15,49 +15,51 @@ namespace RabbitMQ.Stream.Client
         private readonly Task readerTask;
         private Action<ICommand> commandCallback;
 
-        public Connection(Action<ICommand> callback)
+        private Connection(Socket socket, Action<ICommand> callback)
         {
             this.commandCallback = callback;
-            socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            socket.Connect(new IPEndPoint(IPAddress.Loopback, 5552));
+            //TODO make async using static factory
             var stream = new NetworkStream(socket);
             writer = PipeWriter.Create(stream);
             reader = PipeReader.Create(stream);
-            readerTask = Task.Run(() => ProcessIncomingFrames(stream, callback));
+            readerTask = Task.Run(ProcessIncomingFrames);
+        }
+
+        public static async Task<Connection> Create(IPEndPoint ipEndpoint, Action<ICommand> commandCallback)
+        {
+            var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            await socket.ConnectAsync(ipEndpoint);
+            return new Connection(socket, commandCallback);
         }
 
         public async Task<bool> Write(ICommand command)
         {
             var size = command.SizeNeeded;
-            // Console.WriteLine($"need memory {size + 4}");
             var mem = writer.GetMemory(size + 4); // + 4 to write the size
-            // Console.WriteLine($"got memory {mem.Length}");
             WireFormatting.WriteUInt32(mem.Span, (uint) size);
             var written = command.Write(mem.Span.Slice(4));
             writer.Advance(written + 4);
             var result = await writer.FlushAsync();
             return result.IsCompleted;
         }
-        private async Task ProcessIncomingFrames(NetworkStream stream, Action<ICommand> commandCallback)
+        private async Task ProcessIncomingFrames()
         {
             while (true)
             {
-                ReadResult result = await reader.ReadAsync();
+                var result = await reader.ReadAsync();
 
                 if(result.IsCompleted)
                 {
                     Console.WriteLine($"return ");
                     return;
                 }
-                ReadOnlySequence<byte> buffer = result.Buffer;
-                UInt32 length;
-                var offset = WireFormatting.ReadUInt32(buffer, out length);
+                var buffer = result.Buffer;
+                var offset = WireFormatting.ReadUInt32(buffer, out var length);
                 if(buffer.Length >= length + 4)
                 {
                     // there is enough data in the buffer to process the a frame
                     var frame = buffer.Slice(offset, length);
-                    ushort tag;
-                    WireFormatting.ReadUInt16(buffer.Slice(offset, 2), out tag);
+                    WireFormatting.ReadUInt16(buffer.Slice(offset, 2), out var tag);
                     var isResponse = (tag & 0x8000) != 0;
                     // Console.WriteLine($"tag [{tag}]{tag ^ 0x8000} {tag & 0x8000} {isResponse}");
                     if (isResponse)
@@ -135,6 +137,10 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case SubscribeResponse.Key:
                     offset = SubscribeResponse.Read(frame, out command);
+                    commandCallback(command);
+                    break;
+                case UnsubscribeResponse.Key:
+                    offset = UnsubscribeResponse.Read(frame, out command);
                     commandCallback(command);
                     break;
                 case Deliver.Key:

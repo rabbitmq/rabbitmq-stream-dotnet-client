@@ -23,21 +23,17 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
         {
-            ushort tag;
-            ushort version;
-            byte publisherId;
-            int numIds;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
-            offset += WireFormatting.ReadByte(frame.Slice(offset), out publisherId);
-            offset += WireFormatting.ReadInt32(frame.Slice(offset), out numIds);
-            ulong[] publishingIds = new ulong[numIds];
-            for (int i = 0; i < numIds; i++)
+            var offset = WireFormatting.ReadUInt16(frame, out var tag);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            offset += WireFormatting.ReadByte(frame.Slice(offset), out var publisherId);
+            offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numIds);
+            var publishingIds = new ulong[numIds];
+            for (var i = 0; i < numIds; i++)
             {
                 offset += WireFormatting.ReadUInt64(frame.Slice(offset), out publishingIds[i]);
-                
             }
             command = new PublishConfirm(publisherId, publishingIds);
+            
             return offset;
         }
 

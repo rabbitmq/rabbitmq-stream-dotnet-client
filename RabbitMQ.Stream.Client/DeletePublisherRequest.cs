@@ -18,7 +18,7 @@ namespace RabbitMQ.Stream.Client
 
         public int Write(Span<byte> span)
         {
-            int offset = WireFormatting.WriteUInt16(span, Key);
+            var offset = WireFormatting.WriteUInt16(span, Key);
             offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand) this).Version);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
             offset += WireFormatting.WriteByte(span.Slice(offset), publisherId);
