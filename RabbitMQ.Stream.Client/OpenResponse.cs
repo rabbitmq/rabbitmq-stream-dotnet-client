@@ -11,7 +11,7 @@ namespace RabbitMQ.Stream.Client
         private readonly IDictionary<string, string> connectionProperties;
         public const ushort Key = 21;
 
-        public OpenResponse(uint correlationId, ushort responseCode, IDictionary<string, string> connectionProperties)
+        private OpenResponse(uint correlationId, ushort responseCode, IDictionary<string, string> connectionProperties)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
@@ -34,21 +34,16 @@ namespace RabbitMQ.Stream.Client
         {
             ushort tag;
             ushort version;
-            uint correlation;
-            ushort responseCode;
             var offset = WireFormatting.ReadUInt16(frame, out tag);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
-            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
-            int numProps;
-            offset += WireFormatting.ReadInt32(frame.Slice(offset), out numProps);
+            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
+            offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numProps);
             var props = new Dictionary<string, string>();
-            for (int i = 0; i < numProps; i++)
+            for (var i = 0; i < numProps; i++)
             {
-                string k;
-                string v;
-                offset += WireFormatting.ReadString(frame.Slice(offset), out k);
-                offset += WireFormatting.ReadString(frame.Slice(offset), out v);
+                offset += WireFormatting.ReadString(frame.Slice(offset), out var k);
+                offset += WireFormatting.ReadString(frame.Slice(offset), out var v);
                 props.Add(k, v);
             }
             command = new OpenResponse(correlation, responseCode, props);

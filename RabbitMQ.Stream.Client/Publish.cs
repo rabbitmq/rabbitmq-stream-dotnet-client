@@ -12,7 +12,7 @@ namespace RabbitMQ.Stream.Client
         {
             get
             {
-                int size = 9; // pre amble 
+                var size = 9; // pre amble 
                 foreach (var (_, msg) in messages)
                 {
                     size += 8 + 4 + (int)msg.Length;
@@ -48,20 +48,6 @@ namespace RabbitMQ.Stream.Client
             }
 
             return offset;
-        }
-
-        internal static ICommand Read(ReadOnlySequence<byte> frame)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

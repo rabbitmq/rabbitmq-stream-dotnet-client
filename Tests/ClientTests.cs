@@ -37,17 +37,19 @@ namespace Tests
         [Fact]
         public async void MetaDataShouldReturn()
         {
-            var stream = Guid.NewGuid();
+            var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters{};
             var client = await Client.Create(clientParameters);
-            var metaDataResponse = await client.QueryMetadata(new []{"s1"});
+            var response = await client.CreateStream(stream, new Dictionary<string, string>());
+            Assert.Equal(ResponseCode.Ok, response.ResponseCode);
+            var metaDataResponse = await client.QueryMetadata(new []{stream});
             Assert.Equal(1, metaDataResponse.StreamInfos.Count);
-            var streamInfo = metaDataResponse.StreamInfos.First();
-            Assert.Equal("s1", streamInfo.Key);
-            var s1 = streamInfo.Value;
-            Assert.Equal(1, s1.Code);
-            Assert.Equal(5552, (int)s1.Leader.Port);
-            Assert.Empty(s1.Replicas);
+            var streamInfoPair = metaDataResponse.StreamInfos.First();
+            Assert.Equal(stream, streamInfoPair.Key);
+            var streamInfo = streamInfoPair.Value;
+            Assert.Equal(1, streamInfo.Code);
+            Assert.Equal(5552, (int)streamInfo.Leader.Port);
+            Assert.Empty(streamInfo.Replicas);
             await client.Close("done");
         }
 
@@ -88,8 +90,10 @@ namespace Tests
         [Fact]
         public async void PublishShouldError()
         {
+            var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters{};
             var client = await Client.Create(clientParameters);
+            await client.CreateStream(stream, new Dictionary<string, string>());
             var testPassed = new TaskCompletionSource<bool>();
 
             Action<ulong[]> confirmed = (pubIds) =>
@@ -103,7 +107,7 @@ namespace Tests
             };
             var publisherRef = Guid.NewGuid().ToString();
 
-            var (publisherId, result) = await client.DeclarePublisher(publisherRef, "s1", confirmed, errored);
+            var (publisherId, result) = await client.DeclarePublisher(publisherRef, stream, confirmed, errored);
             var dpr = await client.DeletePublisher(publisherId);
             Assert.Equal(1, dpr.ResponseCode);
 
@@ -117,8 +121,10 @@ namespace Tests
         [Fact]
         public async void PublishShouldConfirm()
         {
+            var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters{};
             var client = await Client.Create(clientParameters);
+            await client.CreateStream(stream, new Dictionary<string, string>());
             var numConfirmed = 0;
             var testPassed = new TaskCompletionSource<bool>();
 
@@ -135,8 +141,8 @@ namespace Tests
                 throw new Exception($"unexpected errors {errors}");
             };
 
-            var (publisherId, declarePubResp) = await client.DeclarePublisher("my-publisher", "s1", confirmed, errored);
-            var queryPublisherResponse = await client.QueryPublisherSequence("my-publisher", "s1");
+            var (publisherId, declarePubResp) = await client.DeclarePublisher("my-publisher", stream, confirmed, errored);
+            var queryPublisherResponse = await client.QueryPublisherSequence("my-publisher", stream);
             // Assert.Equal(9999, (int)queryPublisherResponse.Sequence);
             var from = queryPublisherResponse.Sequence + 1;
             var to = from + 10000;
@@ -151,6 +157,7 @@ namespace Tests
             Assert.True(testPassed.Task.Wait(10000));
             Debug.WriteLine($"num confirmed {numConfirmed}");
             Assert.True(testPassed.Task.Result);
+            await client.DeleteStream(stream);
             var closeResponse = await client.Close("finished");
             Assert.Equal(1, closeResponse.ResponseCode);
             Assert.True(client.IsClosed);

@@ -14,7 +14,8 @@ namespace RabbitMQ.Stream.Client
         private readonly Chunk chunk;
         public const ushort Key = 8;
         public int SizeNeeded => throw new NotImplementedException();
-        public Deliver(byte subscriptionId, Chunk chunk)
+
+        private Deliver(byte subscriptionId, Chunk chunk)
         {
             this.subscriptionId = subscriptionId;
             this.chunk = chunk;
@@ -24,12 +25,11 @@ namespace RabbitMQ.Stream.Client
         {
             get
             {
-                int offset = 0;
+                var offset = 0;
                 var data = chunk.Data;
                 for (ulong i = 0; i < chunk.NumEntries; i++)
                 {
-                    uint len;
-                    offset += WireFormatting.ReadUInt32(data.Slice(offset), out len);
+                    offset += WireFormatting.ReadUInt32(data.Slice(offset), out var len);
                     //TODO: assuming only simple entries for now
                     yield return new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
                 }
@@ -46,14 +46,10 @@ namespace RabbitMQ.Stream.Client
         }
         internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
         {
-            ushort tag;
-            ushort version;
-            byte subscriptionId;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
-            offset += WireFormatting.ReadByte(frame.Slice(offset), out subscriptionId);
-            Chunk chunk;
-            offset += Chunk.Read(frame.Slice(offset), out chunk);
+            var offset = WireFormatting.ReadUInt16(frame, out var tag);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            offset += WireFormatting.ReadByte(frame.Slice(offset), out var subscriptionId);
+            offset += Chunk.Read(frame.Slice(offset), out var chunk);
             command = new Deliver(subscriptionId, chunk);
             return offset;
         }

@@ -17,6 +17,7 @@ namespace RabbitMQ.Stream.Client
 
         private Connection(Socket socket, Action<ICommand> callback)
         {
+            this.socket = socket;
             this.commandCallback = callback;
             //TODO make async using static factory
             var stream = new NetworkStream(socket);
