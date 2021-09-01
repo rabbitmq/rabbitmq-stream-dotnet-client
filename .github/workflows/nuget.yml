@@ -23,7 +23,7 @@ jobs:
       run: dotnet build RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj --no-restore
     - name: Test
       run: dotnet test Tests/Tests.csproj --no-build --verbosity normal
-    - name: Publish TestRabbitMQ.StreamClient
+    - name: Publish RabbitMQ.Stream.Client
       uses: brandedoutcast/publish-nuget@v2.5.2
       with:
           PROJECT_FILE_PATH: RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj
