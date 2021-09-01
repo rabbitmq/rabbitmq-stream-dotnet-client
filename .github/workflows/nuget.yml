@@ -21,8 +21,8 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+#     - name: Test
+#       run: dotnet test --no-build --verbosity normal
     - name: Publish TestRabbitMQ.StreamClient
       uses: brandedoutcast/publish-nuget@v2.5.2
       with:
