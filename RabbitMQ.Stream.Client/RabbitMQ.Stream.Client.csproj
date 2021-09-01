@@ -4,13 +4,10 @@
     <TargetFramework>net5.0</TargetFramework>
     <AssemblyName>RabbitMQ.Stream.Client</AssemblyName>
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
+    <Version>0.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Nerdbank.GitVersioning" Version="3.4.231">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="system.io.pipelines" Version="5.0.1" />
   </ItemGroup>
 </Project>
