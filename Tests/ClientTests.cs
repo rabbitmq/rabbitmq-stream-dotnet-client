@@ -222,6 +222,8 @@ namespace Tests
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
             client.Publish(new OutgoingMsg(publisherId, 1, new ReadOnlySequence<byte>()));
             Assert.True(testPassed.Task.Wait(10000));
+
+            Assert.Equal(messageCount, 2);
         }
         
         [Fact]
