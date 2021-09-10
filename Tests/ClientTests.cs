@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using NuGet.Frameworks;
@@ -20,7 +21,7 @@ namespace Tests
         public async void CreateDeleteStream()
         {
             var stream = Guid.NewGuid().ToString();
-            var clientParameters = new ClientParameters{};
+            var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
             var args = new Dictionary<string, string>();
             var response = await client.CreateStream(stream, args);
@@ -38,11 +39,11 @@ namespace Tests
         public async void MetaDataShouldReturn()
         {
             var stream = Guid.NewGuid().ToString();
-            var clientParameters = new ClientParameters{};
+            var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
             var response = await client.CreateStream(stream, new Dictionary<string, string>());
             Assert.Equal(ResponseCode.Ok, response.ResponseCode);
-            var metaDataResponse = await client.QueryMetadata(new []{stream});
+            var metaDataResponse = await client.QueryMetadata(new[] { stream });
             Assert.Equal(1, metaDataResponse.StreamInfos.Count);
             var streamInfoPair = metaDataResponse.StreamInfos.First();
             Assert.Equal(stream, streamInfoPair.Key);
@@ -72,7 +73,7 @@ namespace Tests
             Assert.Equal(stream, mdu.Stream);
             Assert.Equal(ResponseCode.StreamNotAvailable, mdu.Code);
         }
-        
+
         [Fact]
         public async void DeclarePublisherShouldReturnErrorCode()
         {
@@ -91,7 +92,7 @@ namespace Tests
         public async void PublishShouldError()
         {
             var stream = Guid.NewGuid().ToString();
-            var clientParameters = new ClientParameters{};
+            var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
             await client.CreateStream(stream, new Dictionary<string, string>());
             var testPassed = new TaskCompletionSource<bool>();
@@ -122,7 +123,7 @@ namespace Tests
         public async void PublishShouldConfirm()
         {
             var stream = Guid.NewGuid().ToString();
-            var clientParameters = new ClientParameters{};
+            var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
             await client.CreateStream(stream, new Dictionary<string, string>());
             var numConfirmed = 0;
@@ -131,7 +132,7 @@ namespace Tests
             Action<ulong[]> confirmed = (pubIds) =>
             {
                 numConfirmed = numConfirmed + pubIds.Length;
-                if(numConfirmed == 10000)
+                if (numConfirmed == 10000)
                 {
                     testPassed.SetResult(true);
                 }
@@ -146,12 +147,12 @@ namespace Tests
             // Assert.Equal(9999, (int)queryPublisherResponse.Sequence);
             var from = queryPublisherResponse.Sequence + 1;
             var to = from + 10000;
-            
+
             for (var i = from; i < to; i++)
             {
                 var msgData = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
                 client.Publish(new OutgoingMsg(publisherId, i, msgData));
-                if((int)i - numConfirmed > 1000)
+                if ((int)i - numConfirmed > 1000)
                     await Task.Delay(10);
             }
             Assert.True(testPassed.Task.Wait(10000));
@@ -163,23 +164,23 @@ namespace Tests
             Assert.True(client.IsClosed);
             Assert.Throws<AggregateException>(() => client.Close("finished").Result);
         }
-        
+
         [Fact]
         public async void ConsumerShouldReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
-            var clientParameters = new ClientParameters{};
+            var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
             var testPassed = new TaskCompletionSource<Deliver>();
             await client.CreateStream(stream, new Dictionary<string, string>());
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
             Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); };
-            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort) initialCredit,
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
-            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
+            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
             Assert.True(testPassed.Task.Wait(10000));
             var delivery = testPassed.Task.Result;
@@ -194,84 +195,109 @@ namespace Tests
             var publisherRef = Guid.NewGuid().ToString();
             int messageCount = 0;
 
+            var reference = "ref"; //todo: how to bind to consumer
+
             // create stream
-            var clientParameters = new ClientParameters{};
+            var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
-            var testPassed = new TaskCompletionSource<Deliver>();
+            var gotEvent = new ManualResetEvent(false);
+
             await client.CreateStream(stream, new Dictionary<string, string>());
 
 
             // Subscribe
-            var initialCredit = 1;
+            var initialCredit = 5;
             var offsetType = new OffsetTypeNext();
-            Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); messageCount += deliver.Messages.Count() };
-            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort) initialCredit,
+            Action<Deliver> deliverHandler = deliver =>
+            {
+                messageCount += deliver.Messages.Count();
+                gotEvent.Set();
+            };
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
 
+
             // publish
-            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
-            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
-            Assert.True(testPassed.Task.Wait(10000));
+            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
+            for (ulong i = 0; i < 10; i++)
+            {
+                client.Publish(new OutgoingMsg(publisherId, i, new ReadOnlySequence<byte>()));
+            }
+            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
+            {
+                Assert.True(false, "MessageHandler was not hit");
+            }
+            Assert.Equal(10, messageCount);
+
+            client.StoreOffset(reference, stream, 5);
 
             // reset
-            client.StoreOffset();
-            var testPassed = new TaskCompletionSource<Deliver>();
+            gotEvent.Reset();
+            messageCount = 0;
 
-            // publish
-            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
-            client.Publish(new OutgoingMsg(publisherId, 1, new ReadOnlySequence<byte>()));
-            Assert.True(testPassed.Task.Wait(10000));
+            await client.Close("done");
+            client = await Client.Create(clientParameters);
 
-            Assert.Equal(messageCount, 2);
+            var queryOffsetResponse = await client.QueryOffset(reference, stream);
+            Assert.Equal((ulong)5, queryOffsetResponse.Offset);
+
+            (subId, subscribeResponse) = await client.Subscribe(stream, new OffsetTypeNext(), (ushort)initialCredit,
+               new Dictionary<string, string>(), deliverHandler);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
+            {
+                Assert.True(false, "MessageHandler was not hit");
+            }
+            Assert.Equal(5, messageCount);
         }
-        
+
         [Fact]
         public async void ConsumerShouldReceiveDeliveryAfterCredit()
         {
             var stream = Guid.NewGuid().ToString();
-            var clientParameters = new ClientParameters{};
+            var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
             var testPassed = new TaskCompletionSource<Deliver>();
             await client.CreateStream(stream, new Dictionary<string, string>());
             var initialCredit = 0; //no initial credit
             var offsetType = new OffsetTypeFirst();
             Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); };
-            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort) initialCredit,
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
-            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
+            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
             Assert.False(testPassed.Task.Wait(1000));
             //We have not credited yet
             client.Credit(subId, 1);
-           
+
             Assert.True(testPassed.Task.Wait(10000));
             var delivery = testPassed.Task.Result;
             Assert.Single(delivery.Messages);
         }
-        
+
         [Fact]
         public async void UnsubscribedConsumerShouldNotReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
-            var clientParameters = new ClientParameters{};
+            var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
             var testPassed = new TaskCompletionSource<Deliver>();
             await client.CreateStream(stream, new Dictionary<string, string>());
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
             Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); };
-            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort) initialCredit,
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
-            
+
             var unsubscribeResponse = await client.Unsubscribe(subId);
-            
+
             Assert.Equal(ResponseCode.Ok, unsubscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
-            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
+            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
             // 1s should be enough to catch this at least some of the time
             Assert.False(testPassed.Task.Wait(1000));

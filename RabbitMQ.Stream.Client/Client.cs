@@ -110,14 +110,14 @@ namespace RabbitMQ.Stream.Client
             {
                 channel.Writer.TryWrite(command);
             };
-            
+
             var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 5552);
             var connection = await Connection.Create(ipEndPoint, callback);
             // exchange properties
             var peerProperties = new PeerPropertiesRequest(correlationId, parameters.Properties);
             await connection.Write(peerProperties);
             var peerPropertiesResponse = (PeerPropertiesResponse)await channel.Reader.ReadAsync();
-            foreach(var (k, v) in peerPropertiesResponse.Properties)
+            foreach (var (k, v) in peerPropertiesResponse.Properties)
                 Console.WriteLine($"server Props {k} {v}");
             //auth
             await connection.Write(new SaslHandshakeRequest(++correlationId));
@@ -163,8 +163,8 @@ namespace RabbitMQ.Stream.Client
             var subscriptionId = nextSubscriptionId++;
             consumers.Add(subscriptionId, deliverHandler);
             return (subscriptionId,
-                (SubscribeResponse) await Request(corr =>
-                    new SubscribeRequest(corr, subscriptionId, stream, offsetType, initialCredit, properties)));
+                (SubscribeResponse)await Request(corr =>
+                   new SubscribeRequest(corr, subscriptionId, stream, offsetType, initialCredit, properties)));
         }
         private async Task<ICommand> Request(Func<uint, ICommand> request)
         {
@@ -188,16 +188,16 @@ namespace RabbitMQ.Stream.Client
             {
                 var command = await outgoing.Reader.ReadAsync();
                 var readerCount = outgoing.Reader.Count;
-                switch(command)
+                switch (command)
                 {
                     case ICommand cmd:
-                        await this.connection.Write((ICommand) cmd);
+                        await this.connection.Write((ICommand)cmd);
                         break;
                     case OutgoingMsg msg:
                         msgs.Add((msg.PublishingId, msg.Data));
                         // if the channel is empty or we've reached some num msgs limit
                         // send the publish frame
-                        if(readerCount == 0 || msgs.Count >= 1000)
+                        if (readerCount == 0 || msgs.Count >= 1000)
                         {
                             var publish = new Publish(msg.PublisherId, msgs);
                             // Console.WriteLine($"publishing {msgs.Count} message batch {readerCount}");
@@ -239,12 +239,12 @@ namespace RabbitMQ.Stream.Client
                     deliverHandler(deliver);
                     break;
                 default:
-                    if(command.CorrelationId == uint.MaxValue)
+                    if (command.CorrelationId == uint.MaxValue)
                         throw new Exception($"unhandled incoming command {command.GetType()}");
                     else
                         HandleCorrelatedResponse(command);
                     break;
-                
+
             };
 
             return true;
@@ -262,11 +262,11 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<CloseResponse> Close(string reason)
         {
-            if(IsClosed)
+            if (IsClosed)
             {
                 throw new Exception("already closed");
             }
-            var result = (CloseResponse)await Request(corr => new CloseRequest(corr, reason)); 
+            var result = (CloseResponse)await Request(corr => new CloseRequest(corr, reason));
             connection.Dispose();
             this.IsClosed = true;
             return result;
@@ -274,27 +274,38 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<QueryPublisherResponse> QueryPublisherSequence(string publisherRef, string stream)
         {
-            return (QueryPublisherResponse) await Request(corr => new QueryPublisherRequest(corr, publisherRef, stream)) ;
+            return (QueryPublisherResponse)await Request(corr => new QueryPublisherRequest(corr, publisherRef, stream));
+        }
+
+        public bool StoreOffset(string reference, string stream, ulong offsetValue)
+        {
+            //await Request(corr => new StoreOffsetRequest(stream, reference, offsetValue));
+            return outgoing.Writer.TryWrite(new StoreOffsetRequest(stream, reference, offsetValue));
         }
 
         public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
         {
-            return (DeletePublisherResponse) await Request(corr => new DeletePublisherRequest(corr, publisherId)) ;
+            return (DeletePublisherResponse)await Request(corr => new DeletePublisherRequest(corr, publisherId));
         }
 
         public async Task<MetaDataResponse> QueryMetadata(string[] streams)
         {
-            return (MetaDataResponse) await Request(corr => new MetaDataQuery(corr, streams.ToList())) ;
+            return (MetaDataResponse)await Request(corr => new MetaDataQuery(corr, streams.ToList()));
+        }
+
+        public async Task<QueryOffsetResponse> QueryOffset(string reference, string stream)
+        {
+            return (QueryOffsetResponse)await Request(corr => new QueryOffsetRequest(stream, corr, reference));
         }
 
         public async Task<CreateResponse> CreateStream(string stream, IDictionary<string, string> args)
         {
-            return (CreateResponse) await Request(corr => new CreateRequest(corr, stream, args)) ;
+            return (CreateResponse)await Request(corr => new CreateRequest(corr, stream, args));
         }
 
         public async Task<DeleteResponse> DeleteStream(string stream)
         {
-            return (DeleteResponse) await Request(corr => new DeleteRequest(corr, stream)) ;
+            return (DeleteResponse)await Request(corr => new DeleteRequest(corr, stream));
         }
 
         public bool Credit(byte subscriptionId, ushort credit)
@@ -304,7 +315,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
         {
-            return (UnsubscribeResponse) await Request(corr => new UnsubscribeRequest(corr, subscriptionId)) ;
+            return (UnsubscribeResponse)await Request(corr => new UnsubscribeRequest(corr, subscriptionId));
         }
     }
 }
