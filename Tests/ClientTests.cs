@@ -185,6 +185,44 @@ namespace Tests
             var delivery = testPassed.Task.Result;
             Assert.Single(delivery.Messages);
         }
+
+
+        [Fact]
+        public async void ConsumerStoreOffsetShouldReceiveDelivery()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var publisherRef = Guid.NewGuid().ToString();
+            int messageCount = 0;
+
+            // create stream
+            var clientParameters = new ClientParameters{};
+            var client = await Client.Create(clientParameters);
+            var testPassed = new TaskCompletionSource<Deliver>();
+            await client.CreateStream(stream, new Dictionary<string, string>());
+
+
+            // Subscribe
+            var initialCredit = 1;
+            var offsetType = new OffsetTypeNext();
+            Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); messageCount += deliver.Messages.Count() };
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort) initialCredit,
+                new Dictionary<string, string>(), deliverHandler);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+
+            // publish
+            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
+            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
+            Assert.True(testPassed.Task.Wait(10000));
+
+            // reset
+            client.StoreOffset();
+            var testPassed = new TaskCompletionSource<Deliver>();
+
+            // publish
+            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => {}, _ => {});
+            client.Publish(new OutgoingMsg(publisherId, 1, new ReadOnlySequence<byte>()));
+            Assert.True(testPassed.Task.Wait(10000));
+        }
         
         [Fact]
         public async void ConsumerShouldReceiveDeliveryAfterCredit()

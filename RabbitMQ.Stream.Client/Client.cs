@@ -157,7 +157,7 @@ namespace RabbitMQ.Stream.Client
             new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)));
         }
 
-        public async Task<(byte, SubscribeResponse)> Subscribe(string stream, OffsetTypeFirst offsetType, ushort initialCredit,
+        public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType, ushort initialCredit,
             Dictionary<string, string> properties, Action<Deliver> deliverHandler)
         {
             var subscriptionId = nextSubscriptionId++;
