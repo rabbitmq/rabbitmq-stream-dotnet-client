@@ -8,9 +8,9 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 11;
         private readonly uint correlationId;
         private readonly ushort responseCode;
-        private readonly uint offsetValue;
+        private readonly ulong offsetValue;
 
-        public QueryOffsetResponse(uint correlationId, ushort responseCode, uint offsetValue)
+        public QueryOffsetResponse(uint correlationId, ushort responseCode, ulong offsetValue)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
             offset += WireFormatting.ReadUInt64(frame.Slice(offset), out offsetValue);
-            command = new CloseResponse(correlation, responseCode);
+            command = new QueryOffsetResponse(correlation, responseCode, offsetValue);
             return offset;
         }
     }
