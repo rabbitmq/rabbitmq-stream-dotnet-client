@@ -18,7 +18,7 @@ namespace RabbitMQ.Stream.Client
 
 
         public int SizeNeeded =>
-            2 + 2 + 4 + 2 + WireFormatting.StringSize(reference) + 2 + WireFormatting.StringSize(stream);
+            2 + 2 + 4 +  WireFormatting.StringSize(reference) + WireFormatting.StringSize(stream);
 
 
         public int Write(Span<byte> span)
