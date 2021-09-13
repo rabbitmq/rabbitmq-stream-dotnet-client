@@ -4,39 +4,51 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
+    public enum OffsetTypeEnum
+    {
+        First = 1,
+        Last = 2,
+        Next = 3,
+        Offset = 4,
+        Timestamp = 5
+    }
     public interface IOffsetType
     {
         int Size { get; }
+
+        OffsetTypeEnum OffsetType { get; }
 
         int Write(Span<byte> span);
     }
     public readonly struct OffsetTypeFirst : IOffsetType
     {
         public int Size => 2;
+        public OffsetTypeEnum OffsetType => OffsetTypeEnum.First;
 
         public int Write(Span<byte> span)
         {
-            WireFormatting.WriteUInt16(span, 1);
+            WireFormatting.WriteUInt16(span, (ushort)OffsetType);
             return 2;
         }
     }
     public readonly struct OffsetTypeLast : IOffsetType
     {
         public int Size => 2;
+        public OffsetTypeEnum OffsetType => OffsetTypeEnum.Last;
 
         public int Write(Span<byte> span)
         {
-            WireFormatting.WriteUInt16(span, 2);
+            WireFormatting.WriteUInt16(span, (ushort)OffsetType);
             return 2;
         }
     }
     public readonly struct OffsetTypeNext : IOffsetType
     {
         public int Size => 2;
-
+        public OffsetTypeEnum OffsetType => OffsetTypeEnum.Next;
         public int Write(Span<byte> span)
         {
-            WireFormatting.WriteUInt16(span, 3);
+            WireFormatting.WriteUInt16(span, (ushort)OffsetType);
             return 2;
         }
     }
@@ -44,7 +56,7 @@ namespace RabbitMQ.Stream.Client
     public readonly struct OffsetTypeOffset : IOffsetType
     {
         private readonly ulong offsetValue;
-
+        public OffsetTypeEnum OffsetType => OffsetTypeEnum.Offset;
         public OffsetTypeOffset(ulong offset)
         {
             this.offsetValue = offset;
@@ -54,7 +66,7 @@ namespace RabbitMQ.Stream.Client
 
         public int Write(Span<byte> span)
         {
-            var offset = WireFormatting.WriteUInt16(span, 4);
+            var offset = WireFormatting.WriteUInt16(span, (ushort)OffsetType);
             offset += WireFormatting.WriteUInt64(span.Slice(offset), offsetValue);
             return offset;
         }
@@ -63,7 +75,7 @@ namespace RabbitMQ.Stream.Client
     public readonly struct OffsetTypeTimestamp : IOffsetType
     {
         private readonly long timestamp;
-
+        public OffsetTypeEnum OffsetType => OffsetTypeEnum.Timestamp;
         public OffsetTypeTimestamp(long timestamp)
         {
             this.timestamp = timestamp;
@@ -73,7 +85,7 @@ namespace RabbitMQ.Stream.Client
 
         public int Write(Span<byte> span)
         {
-            var offset = WireFormatting.WriteUInt16(span, 5);
+            var offset = WireFormatting.WriteUInt16(span, (ushort)OffsetType);
             offset += WireFormatting.WriteInt64(span.Slice(offset), timestamp);
             return offset;
         }

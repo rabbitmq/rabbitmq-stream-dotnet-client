@@ -227,7 +227,7 @@ namespace Tests
             {
                 client.Publish(new OutgoingMsg(publisherId, i, new ReadOnlySequence<byte>()));
             }
-            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
+            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(50)))
             {
                 Assert.True(false, "MessageHandler was not hit");
             }
@@ -247,7 +247,7 @@ namespace Tests
             (subId, subscribeResponse) = await client.Subscribe(stream, new OffsetTypeOffset(queryOffsetResponse.Offset), (ushort)initialCredit,
                new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
-            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
+            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(50)))
             {
                 Assert.True(false, "MessageHandler was not hit");
             }
