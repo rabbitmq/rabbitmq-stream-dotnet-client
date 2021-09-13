@@ -43,20 +43,20 @@ namespace RabbitMQ.Stream.Client
 
     public readonly struct OffsetTypeOffset : IOffsetType
     {
-        private readonly ulong offset;
+        private readonly ulong offsetValue;
 
         public OffsetTypeOffset(ulong offset)
         {
-            this.offset = offset;
+            this.offsetValue = offset;
         }
 
-        public int Size => 10;
+        public int Size => 2 + 8;
 
         public int Write(Span<byte> span)
         {
-            WireFormatting.WriteUInt16(span, 4);
-            WireFormatting.WriteUInt64(span, offset);
-            return 10;
+            var offset = WireFormatting.WriteUInt16(span, 4);
+            offset += WireFormatting.WriteUInt64(span.Slice(offset), offsetValue);
+            return offset;
         }
     }
 
@@ -73,9 +73,9 @@ namespace RabbitMQ.Stream.Client
 
         public int Write(Span<byte> span)
         {
-            WireFormatting.WriteUInt16(span, 5);
-            WireFormatting.WriteInt64(span, timestamp);
-            return 10;
+            var offset = WireFormatting.WriteUInt16(span, 5);
+            offset += WireFormatting.WriteInt64(span.Slice(offset), timestamp);
+            return offset;
         }
     }
     public readonly struct SubscribeResponse : ICommand
@@ -107,7 +107,7 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
-            command = new SubscribeResponse(correlation, (ResponseCode) responseCode);
+            command = new SubscribeResponse(correlation, (ResponseCode)responseCode);
             return offset;
         }
     }
@@ -136,9 +136,10 @@ namespace RabbitMQ.Stream.Client
         {
             get
             {
-                int size = 9 + WireFormatting.StringSize(stream) + offsetType.Size + 2 + 4;
+                int size = 2 + 2 + 4 + 1 + WireFormatting.StringSize(stream) + offsetType.Size + 2;
                 foreach (var (k, v) in properties)
                 {
+                    size = 4; // size of the dict
                     // TODO: unnecessary conversion work here to work out the correct size of the frame
                     size += WireFormatting.StringSize(k) + WireFormatting.StringSize(v); //
                 }
@@ -150,17 +151,20 @@ namespace RabbitMQ.Stream.Client
         public int Write(Span<byte> span)
         {
             int offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand) this).Version);
+            offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand)this).Version);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
             offset += WireFormatting.WriteByte(span.Slice(offset), subscriptionId);
             offset += WireFormatting.WriteString(span.Slice(offset), stream);
             offset += offsetType.Write(span.Slice(offset));
             offset += WireFormatting.WriteUInt16(span.Slice(offset), credit);
-            offset += WireFormatting.WriteInt32(span.Slice(offset), properties.Count);
-            foreach(var (k,v) in properties)
+            if (properties.Count > 0)
             {
-                offset += WireFormatting.WriteString(span.Slice(offset), k);
-                offset += WireFormatting.WriteString(span.Slice(offset), v);
+                offset += WireFormatting.WriteInt32(span.Slice(offset), properties.Count);
+                foreach (var (k, v) in properties)
+                {
+                    offset += WireFormatting.WriteString(span.Slice(offset), k);
+                    offset += WireFormatting.WriteString(span.Slice(offset), v);
+                }
             }
 
             return offset;

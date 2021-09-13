@@ -210,7 +210,7 @@ namespace Tests
 
             // Subscribe
             var initialCredit = 5;
-            var offsetType = new OffsetTypeNext();
+            var offsetType = new OffsetTypeFirst();
             Action<Deliver> deliverHandler = deliver =>
             {
                 messageCount += deliver.Messages.Count();
