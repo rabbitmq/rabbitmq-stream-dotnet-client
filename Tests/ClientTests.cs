@@ -1,22 +1,25 @@
 using System;
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
-using NuGet.Frameworks;
 using RabbitMQ.Stream.Client;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Tests
 {
     public class ClientTests
     {
+        private readonly ITestOutputHelper testOutputHelper;
+
+        public ClientTests(ITestOutputHelper testOutputHelper)
+        {
+            this.testOutputHelper = testOutputHelper;
+        }
         [Fact]
         public async void CreateDeleteStream()
         {
@@ -231,18 +234,17 @@ namespace Tests
             Assert.Equal(10, messageCount);
 
             client.StoreOffset(reference, stream, 5);
+            await Task.Delay(5000);
 
             // reset
             gotEvent.Reset();
             messageCount = 0;
 
-            await client.Close("done");
-            client = await Client.Create(clientParameters);
-
             var queryOffsetResponse = await client.QueryOffset(reference, stream);
+            testOutputHelper.WriteLine("Current offset for {0}: {1}", reference, queryOffsetResponse.Offset);
             Assert.Equal((ulong)5, queryOffsetResponse.Offset);
 
-            (subId, subscribeResponse) = await client.Subscribe(stream, new OffsetTypeNext(), (ushort)initialCredit,
+            (subId, subscribeResponse) = await client.Subscribe(stream, new OffsetTypeOffset(queryOffsetResponse.Offset), (ushort)initialCredit,
                new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
