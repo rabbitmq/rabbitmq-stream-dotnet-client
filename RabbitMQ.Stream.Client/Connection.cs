@@ -26,7 +26,7 @@ namespace RabbitMQ.Stream.Client
             readerTask = Task.Run(ProcessIncomingFrames);
         }
 
-        public static async Task<Connection> Create(IPEndPoint ipEndpoint, Action<ICommand> commandCallback)
+        public static async Task<Connection> Create(EndPoint ipEndpoint, Action<ICommand> commandCallback)
         {
             var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             await socket.ConnectAsync(ipEndpoint);

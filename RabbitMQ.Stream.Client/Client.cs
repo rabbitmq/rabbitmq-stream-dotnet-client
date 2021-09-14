@@ -50,6 +50,7 @@ namespace RabbitMQ.Stream.Client
             };
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
+        public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
     }
 
@@ -111,8 +112,7 @@ namespace RabbitMQ.Stream.Client
                 channel.Writer.TryWrite(command);
             };
 
-            var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 5552);
-            var connection = await Connection.Create(ipEndPoint, callback);
+            var connection = await Connection.Create(parameters.Endpoint, callback);
             // exchange properties
             var peerProperties = new PeerPropertiesRequest(correlationId, parameters.Properties);
             await connection.Write(peerProperties);
