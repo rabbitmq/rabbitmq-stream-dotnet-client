@@ -184,10 +184,11 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
+            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("hi"))));
+            client.Publish(new OutgoingMsg(publisherId, 1, new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("hi"))));
             Assert.True(testPassed.Task.Wait(10000));
             var delivery = testPassed.Task.Result;
-            Assert.Single(delivery.Messages);
+            Assert.Equal(2, delivery.Messages.Count());
         }
 
 

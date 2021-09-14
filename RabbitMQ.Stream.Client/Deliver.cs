@@ -31,7 +31,9 @@ namespace RabbitMQ.Stream.Client
                 {
                     offset += WireFormatting.ReadUInt32(data.Slice(offset), out var len);
                     //TODO: assuming only simple entries for now
-                    yield return new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
+                    var entry = new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
+                    offset += (int) len;
+                    yield return entry;
                 }
             }
         }
