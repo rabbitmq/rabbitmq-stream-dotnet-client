@@ -10,7 +10,16 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+  services:
+    rabbitmq:
+      image: pivotalrabbitmq/rabbitmq-stream
+      env:
+        RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_stream advertised_host localhost
+        ports:
+          - 5552:5552
+          - 5672:5672
+          - 1883:1883
+          - 61613:61613
     steps:
     - uses: actions/checkout@v2
     - name: Setup .NET
@@ -21,8 +30,8 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj --no-restore
-    # - name: Test
-    #   run: dotnet test Tests/Tests.csproj --no-build --verbosity normal
+    - name: Test
+      run: dotnet test Tests/Tests.csproj --no-build --verbosity normal
     - name: Publish RabbitMQ.Stream.Client
       uses: brandedoutcast/publish-nuget@v2.5.2
       with:
