@@ -8,18 +8,19 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+
     services:
       rabbitmq:
         image: pivotalrabbitmq/rabbitmq-stream
         env:
           RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_stream advertised_host localhost
-          ports:
+        ports:
             - 5552:5552
             - 5672:5672
             - 1883:1883
             - 61613:61613
+
     steps:
     - uses: actions/checkout@v2
     - name: Setup .NET
