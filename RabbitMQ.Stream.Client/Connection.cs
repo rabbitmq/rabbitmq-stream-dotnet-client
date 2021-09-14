@@ -168,6 +168,10 @@ namespace RabbitMQ.Stream.Client
                     offset = MetaDataUpdate.Read(frame, out command);
                     commandCallback(command);
                     break;
+                case QueryOffsetResponse.Key:
+                    offset = QueryOffsetResponse.Read(frame, out command);
+                    commandCallback(command);
+                    break;
             }
             return offset;
         }

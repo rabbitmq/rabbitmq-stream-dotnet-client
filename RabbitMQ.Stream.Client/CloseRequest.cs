@@ -13,6 +13,7 @@ namespace RabbitMQ.Stream.Client
             this.correlationId = correlationId;
             this.reason = reason;
         }
+
         public int SizeNeeded => 10 + WireFormatting.StringSize(reason);
 
         public int Write(Span<byte> span)
