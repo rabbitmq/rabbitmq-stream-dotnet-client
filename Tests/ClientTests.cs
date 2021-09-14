@@ -197,7 +197,7 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var publisherRef = Guid.NewGuid().ToString();
             int messageCount = 0;
-
+            ulong offset = 0;
             var reference = "ref";
 
             // create stream
@@ -213,7 +213,11 @@ namespace Tests
             var offsetType = new OffsetTypeFirst();
             void DeliverHandler(Deliver deliver)
             {
-                messageCount += deliver.Messages.Count();
+                foreach (var msg in deliver.Messages)
+                {
+                    if (msg.Offset >= offset) //a chunk may contain messages before offset
+                        messageCount++;
+                }
                 gotEvent.Set();
             }
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
@@ -241,10 +245,11 @@ namespace Tests
             messageCount = 0;
 
             var queryOffsetResponse = await client.QueryOffset(reference, stream);
-            testOutputHelper.WriteLine("Current offset for {0}: {1}", reference, queryOffsetResponse.Offset);
-            Assert.Equal((ulong)5, queryOffsetResponse.Offset);
+            offset = queryOffsetResponse.Offset;
+            testOutputHelper.WriteLine("Current offset for {0}: {1}", reference, offset);
+            Assert.Equal((ulong)5, offset);
 
-            var offsetTypeOffset = new OffsetTypeOffset(queryOffsetResponse.Offset);
+            var offsetTypeOffset = new OffsetTypeOffset(offset);
             (subId, subscribeResponse) = await client.Subscribe(stream, offsetTypeOffset, (ushort)initialCredit,
                new Dictionary<string, string>(), DeliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
