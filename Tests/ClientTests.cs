@@ -110,7 +110,7 @@ namespace Tests
                 testOutputHelper.WriteLine($"publish error code ${errors[0]}");
                 testPassed.SetResult(true);
             };
-            
+
             var publisherRef = Guid.NewGuid().ToString();
 
             var (publisherId, result) = await client.DeclarePublisher(publisherRef, stream, confirmed, errored);
@@ -192,7 +192,7 @@ namespace Tests
             var delivery = testPassed.Task.Result;
             Assert.Equal(2, delivery.Messages.Count());
         }
-        
+
         [Fact]
         public async void ConsumerShouldReceiveDelivery_MultipleChunks()
         {
@@ -207,6 +207,7 @@ namespace Tests
             Action<Deliver> deliverHandler = deliver =>
             {
                 chunksReceived++;
+                Assert.False(deliver.Messages.Count() > 1, "Chunk should have 1 message");
                 if (chunksReceived == 2)
                 {
                     testPassed.SetResult();
