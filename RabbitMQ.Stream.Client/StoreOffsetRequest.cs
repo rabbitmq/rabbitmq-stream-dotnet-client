@@ -8,6 +8,8 @@ namespace RabbitMQ.Stream.Client
         private readonly string stream;
         private readonly string reference;
         private readonly ulong offsetValue;
+        
+        public uint CorrelationId => uint.MaxValue;
 
         public StoreOffsetRequest(string stream, string reference, ulong offsetValue)
         {

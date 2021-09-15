@@ -8,6 +8,8 @@ namespace RabbitMQ.Stream.Client
         private readonly string reason;
         public const ushort Key = 22;
 
+        public uint CorrelationId => correlationId;
+
         public CloseRequest(uint correlationId, string reason)
         {
             this.correlationId = correlationId;

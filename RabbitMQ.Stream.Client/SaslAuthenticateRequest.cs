@@ -11,6 +11,9 @@ namespace RabbitMQ.Stream.Client
         private readonly byte[] data;
         public const ushort Key = 19;
 
+
+        public uint CorrelationId => correlationId;
+
         public SaslAuthenticateRequest(uint correlationId, string mechanism, byte[] data)
         {
             this.correlationId = correlationId;

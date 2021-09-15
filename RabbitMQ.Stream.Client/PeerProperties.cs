@@ -16,6 +16,9 @@ namespace RabbitMQ.Stream.Client
             this.properties = properties;
         }
 
+
+        public uint CorrelationId => correlationId;
+
         public int SizeNeeded
         {
             get

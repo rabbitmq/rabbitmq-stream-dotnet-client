@@ -19,6 +19,8 @@ namespace RabbitMQ.Stream.Client
 
         public (ulong, ResponseCode)[] PublishingErrors => publishingErrors;
 
+        public uint CorrelationId => uint.MaxValue;
+
         public int SizeNeeded => throw new NotImplementedException();
 
         internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)

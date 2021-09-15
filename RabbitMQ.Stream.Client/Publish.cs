@@ -8,6 +8,8 @@ namespace RabbitMQ.Stream.Client
     {
         private const ushort Key = 2;
 
+        public uint CorrelationId => uint.MaxValue;
+
         public int SizeNeeded
         {
             get
@@ -19,7 +21,7 @@ namespace RabbitMQ.Stream.Client
                 }
                 
                 return size;
-             }
+            }
         }
 
         private readonly byte publisherId;
@@ -44,7 +46,7 @@ namespace RabbitMQ.Stream.Client
                 offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
                 // this only write "simple" messages, we assume msg is just the binary body
                 // not stream encoded data
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Length);
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)msg.Length);
                 offset += WireFormatting.Write(span.Slice(offset), msg);
             }
 

@@ -9,6 +9,8 @@ namespace RabbitMQ.Stream.Client
         private readonly ushort credit;
         public const ushort Key = 9;
 
+        public uint CorrelationId => uint.MaxValue;
+
         public CreditRequest(byte subscriptionId, ushort credit)
         {
             this.subscriptionId = subscriptionId;

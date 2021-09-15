@@ -17,6 +17,8 @@ namespace RabbitMQ.Stream.Client
             this.streams = streams.ToList();
         }
 
+        public uint CorrelationId => correlationId;
+
         public int SizeNeeded
         {
             get
@@ -149,6 +151,8 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 16;
         private readonly ResponseCode code;
         private readonly string stream;
+
+        public uint CorrelationId => uint.MaxValue;
 
         public MetaDataUpdate(string stream, ResponseCode code)
         {

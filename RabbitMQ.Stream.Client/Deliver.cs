@@ -21,6 +21,8 @@ namespace RabbitMQ.Stream.Client
             this.chunk = chunk;
         }
 
+        public uint CorrelationId => uint.MaxValue;
+
         public IEnumerable<MsgEntry> Messages
         {
             get

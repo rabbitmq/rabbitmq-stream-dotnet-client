@@ -10,6 +10,8 @@ namespace RabbitMQ.Stream.Client
         private readonly string stream;
         public const ushort Key = 1;
 
+        public uint CorrelationId => correlationId;
+
         public DeclarePublisherRequest(uint correlationId, byte publisherId, string publisherRef, string stream)
         {
             this.correlationId = correlationId;

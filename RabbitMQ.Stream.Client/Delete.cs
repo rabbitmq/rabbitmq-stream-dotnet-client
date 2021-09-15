@@ -11,6 +11,8 @@ namespace RabbitMQ.Stream.Client
         private readonly string stream;
         public const ushort Key = 14;
 
+        public uint CorrelationId => correlationId;
+
         public DeleteRequest (uint correlationId, string stream)
         {
             this.correlationId = correlationId;

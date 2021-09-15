@@ -7,6 +7,8 @@ namespace RabbitMQ.Stream.Client
         private readonly uint correlationId;
         public const ushort Key = 18;
 
+        public uint CorrelationId => correlationId;
+
         public SaslHandshakeRequest(uint correlationId)
         {
             this.correlationId = correlationId;

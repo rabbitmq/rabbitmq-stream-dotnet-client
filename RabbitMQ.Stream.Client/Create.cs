@@ -12,6 +12,8 @@ namespace RabbitMQ.Stream.Client
         private readonly IDictionary<string, string> arguments;
         public const ushort Key = 13;
 
+        public uint CorrelationId => correlationId;
+
         public CreateRequest(uint correlationId, string stream, IDictionary<string, string> arguments)
         {
             this.correlationId = correlationId;

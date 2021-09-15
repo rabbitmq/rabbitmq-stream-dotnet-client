@@ -43,6 +43,8 @@ namespace RabbitMQ.Stream.Client
         private readonly byte subscriptionId;
         public const ushort Key = 12;
 
+        public uint CorrelationId => correlationId;
+
         public UnsubscribeRequest(uint correlationId, byte subscriptionId)
         {
             this.correlationId = correlationId;

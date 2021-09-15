@@ -15,6 +15,8 @@ namespace RabbitMQ.Stream.Client
         }
         public int SizeNeeded => 8 + WireFormatting.StringSize(vhost);
 
+        public uint CorrelationId => correlationId;
+
         public int Write(Span<byte> span)
         {
             int offset = WireFormatting.WriteUInt16(span, Key);

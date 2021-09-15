@@ -7,6 +7,7 @@ namespace RabbitMQ.Stream.Client
         private readonly uint correlationId;
         private readonly byte publisherId;
         public const ushort Key = 6;
+        public uint CorrelationId => correlationId;
 
         public DeletePublisherRequest(uint correlationId, byte publisherId)
         {

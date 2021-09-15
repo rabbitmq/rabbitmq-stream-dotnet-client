@@ -15,6 +15,9 @@ namespace RabbitMQ.Stream.Client
             this.publishingIds = publisingIds;
         }
 
+
+        public uint CorrelationId => uint.MaxValue;
+
         public byte PublisherId => publisherId;
 
         public ulong[] PublishingIds => publishingIds;

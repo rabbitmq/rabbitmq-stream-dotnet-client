@@ -16,6 +16,8 @@ namespace RabbitMQ.Stream.Client
         }
         public int SizeNeeded => 12;
 
+        public uint CorrelationId => uint.MaxValue;
+
         public uint FrameMax => frameMax;
 
         public uint Heartbeat => heartbeat;
