@@ -304,7 +304,6 @@ namespace RabbitMQ.Stream.Client
 
         public bool StoreOffset(string reference, string stream, ulong offsetValue)
         {
-            //await Request(corr => new StoreOffsetRequest(stream, reference, offsetValue));
             return outgoing.Writer.TryWrite(new StoreOffsetRequest(stream, reference, offsetValue));
         }
 
