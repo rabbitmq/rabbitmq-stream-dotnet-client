@@ -201,7 +201,7 @@ namespace Tests
             var client = await Client.Create(clientParameters);
             var testPassed = new TaskCompletionSource();
             await client.CreateStream(stream, new Dictionary<string, string>());
-            var initialCredit = 1;
+            var initialCredit = 2;
             var offsetType = new OffsetTypeFirst();
             int chunksReceived = 0;
             Action<Deliver> deliverHandler = deliver =>
