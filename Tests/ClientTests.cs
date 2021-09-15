@@ -192,6 +192,37 @@ namespace Tests
             var delivery = testPassed.Task.Result;
             Assert.Equal(2, delivery.Messages.Count());
         }
+        
+        [Fact]
+        public async void ConsumerShouldReceiveDelivery_MultipleChunks()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var clientParameters = new ClientParameters { };
+            var client = await Client.Create(clientParameters);
+            var testPassed = new TaskCompletionSource();
+            await client.CreateStream(stream, new Dictionary<string, string>());
+            var initialCredit = 1;
+            var offsetType = new OffsetTypeFirst();
+            int chunksReceived = 0;
+            Action<Deliver> deliverHandler = deliver =>
+            {
+                chunksReceived++;
+                if (chunksReceived == 2)
+                {
+                    testPassed.SetResult();
+                }
+            };
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
+                new Dictionary<string, string>(), deliverHandler);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+            var publisherRef = Guid.NewGuid().ToString();
+            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
+            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("hi"))));
+            await Task.Delay(10); //force chunk
+            client.Publish(new OutgoingMsg(publisherId, 1, new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("hi"))));
+            Assert.True(testPassed.Task.Wait(10000));
+            Assert.Equal(2, chunksReceived);
+        }
 
 
         [Fact]
