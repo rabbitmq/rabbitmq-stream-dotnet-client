@@ -81,15 +81,18 @@ namespace RabbitMQ.Stream.Client
         private readonly Connection connection;
         private readonly Channel<ICommand> incoming;
         private readonly Channel<Object> outgoing;
-        private readonly IDictionary<byte, (Action<ulong[]>, Action<(ulong, ushort)[]>)> publishers =
-            new ConcurrentDictionary<byte, (Action<ulong[]>, Action<(ulong, ushort)[]>)>();
+        private readonly IDictionary<byte, (Action<ulong[]>, Action<(ulong, ResponseCode)[]>)> publishers =
+            new ConcurrentDictionary<byte, (Action<ulong[]>, Action<(ulong, ResponseCode)[]>)>();
         private readonly IDictionary<uint, TaskCompletionSource<ICommand>> requests =
             new ConcurrentDictionary<uint, TaskCompletionSource<ICommand>>();
 
         private byte nextSubscriptionId;
         private readonly IDictionary<byte, Action<Deliver>> consumers = new ConcurrentDictionary<byte, Action<Deliver>>();
 
-        public bool IsClosed { get; private set; } = false;
+        private object closeResponse;
+        private readonly Task<Task> outgoingTask;
+        private readonly Task<Task> incomingTask;
+        public bool IsClosed => closeResponse != null;
 
         private Client(ClientParameters parameters, Connection connection, Channel<ICommand> channel)
         {
@@ -99,8 +102,8 @@ namespace RabbitMQ.Stream.Client
             this.parameters = parameters;
             //authenticate
             var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.AttachedToParent);
-            _ = ts.StartNew(ProcessOutgoing);
-            _ = ts.StartNew(() => ProcessIncoming(parameters.MetadataHandler));
+            outgoingTask = ts.StartNew(ProcessOutgoing);
+            incomingTask = ts.StartNew(() => ProcessIncoming(parameters.MetadataHandler));
         }
         // channels and message publish aggregation
         public static async Task<Client> Create(ClientParameters parameters)
@@ -149,13 +152,23 @@ namespace RabbitMQ.Stream.Client
         }
 
         public async Task<(byte, DeclarePublisherResponse)> DeclarePublisher(string publisherRef,
-        string stream, Action<ulong[]> confirmCallback, Action<(ulong, ushort)[]> errorCallback)
+            string stream,
+            Action<ulong[]> confirmCallback,
+            Action<(ulong, ResponseCode)[]> errorCallback)
         {
             var publisherId = nextPublisherId++;
             publishers.Add(publisherId, (confirmCallback, errorCallback));
-            return (publisherId, (DeclarePublisherResponse)await Request(corr =>
-            new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)));
+            return (publisherId, (DeclarePublisherResponse) await Request(corr =>
+                new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)));
         }
+        
+        public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
+        {
+            var result =  (DeletePublisherResponse)await Request(corr => new DeletePublisherRequest(corr, publisherId));
+            publishers.Remove(publisherId);
+            return result;
+        }
+
 
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType, ushort initialCredit,
             Dictionary<string, string> properties, Action<Deliver> deliverHandler)
@@ -166,13 +179,22 @@ namespace RabbitMQ.Stream.Client
                 (SubscribeResponse)await Request(corr =>
                    new SubscribeRequest(corr, subscriptionId, stream, offsetType, initialCredit, properties)));
         }
-        private async Task<ICommand> Request(Func<uint, ICommand> request)
+        
+        public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
+        {
+            var result =  (UnsubscribeResponse)await Request(corr => new UnsubscribeRequest(corr, subscriptionId));
+            // remove consumer after RPC returns, this should avoid uncorrelated data being sent
+            consumers.Remove(subscriptionId);
+            return result;
+        }
+        
+        private async Task<ICommand> Request(Func<uint, ICommand> request, int timeout = 10000)
         {
             var corr = NextCorrelationId();
             var tcs = new TaskCompletionSource<ICommand>();
             requests.Add(corr, tcs);
             outgoing.Writer.TryWrite(request(corr));
-            await tcs.Task.TimeoutAfter(TimeSpan.FromMilliseconds(10000));
+            await tcs.Task.TimeoutAfter(TimeSpan.FromMilliseconds(timeout));
             return tcs.Task.Result;
         }
 
@@ -183,7 +205,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessOutgoing()
         {
-            var msgs = new List<(ulong, ReadOnlySequence<byte>)>();
+            var messages = new List<(ulong, ReadOnlySequence<byte>)>();
             while (true)
             {
                 var command = await outgoing.Reader.ReadAsync();
@@ -191,19 +213,20 @@ namespace RabbitMQ.Stream.Client
                 switch (command)
                 {
                     case ICommand cmd:
-                        await this.connection.Write((ICommand)cmd);
+                        await connection.Write(cmd);
                         break;
                     case OutgoingMsg msg:
-                        msgs.Add((msg.PublishingId, msg.Data));
-                        // if the channel is empty or we've reached some num msgs limit
+                        messages.Add((msg.PublishingId, msg.Data));
+                        // if the channel is empty or we've reached some num messages limit
                         // send the publish frame
-                        if (readerCount == 0 || msgs.Count >= 1000)
+                        // TODO: make limit configurable
+                        if (readerCount == 0 || messages.Count >= 1000)
                         {
-                            var publish = new Publish(msg.PublisherId, msgs);
-                            // Console.WriteLine($"publishing {msgs.Count} message batch {readerCount}");
-                            await this.connection.Write(publish);
-                            msgs.Clear();
+                            var publish = new Publish(msg.PublisherId, messages);
+                            await connection.Write(publish);
+                            messages.Clear();
                         }
+                        
                         break;
                 }
             }
@@ -262,13 +285,15 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<CloseResponse> Close(string reason)
         {
-            if (IsClosed)
+            if (closeResponse != null)
             {
-                throw new Exception("already closed");
+                return (CloseResponse) closeResponse;
             }
-            var result = (CloseResponse)await Request(corr => new CloseRequest(corr, reason));
+
+            var result = (CloseResponse) await Request(corr => new CloseRequest(corr, reason));
+            closeResponse = result;
             connection.Dispose();
-            this.IsClosed = true;
+
             return result;
         }
 
@@ -281,11 +306,6 @@ namespace RabbitMQ.Stream.Client
         {
             //await Request(corr => new StoreOffsetRequest(stream, reference, offsetValue));
             return outgoing.Writer.TryWrite(new StoreOffsetRequest(stream, reference, offsetValue));
-        }
-
-        public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
-        {
-            return (DeletePublisherResponse)await Request(corr => new DeletePublisherRequest(corr, publisherId));
         }
 
         public async Task<MetaDataResponse> QueryMetadata(string[] streams)
@@ -311,11 +331,6 @@ namespace RabbitMQ.Stream.Client
         public bool Credit(byte subscriptionId, ushort credit)
         {
             return outgoing.Writer.TryWrite(new CreditRequest(subscriptionId, credit));
-        }
-
-        public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
-        {
-            return (UnsubscribeResponse)await Request(corr => new UnsubscribeRequest(corr, subscriptionId));
         }
     }
 }

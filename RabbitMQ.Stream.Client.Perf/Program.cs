@@ -24,7 +24,7 @@ namespace RabbitMQ.Stream.Client
             {
                 numConfirmed = numConfirmed + pubIds.Length;
             };
-            Action<(ulong, ushort)[]> errored = (errors) =>
+            Action<(ulong, ResponseCode)[]> errored = (errors) =>
             {
             };
 

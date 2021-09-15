@@ -7,9 +7,9 @@ namespace RabbitMQ.Stream.Client
     {
         public const ushort Key = 4;
         private readonly byte publisherId;
-        private readonly (ulong, ushort)[] publishingErrors;
+        private readonly (ulong, ResponseCode)[] publishingErrors;
 
-        public PublishError(byte publisherId, (ulong, ushort)[] publishingErrors)
+        private PublishError(byte publisherId, (ulong, ResponseCode)[] publishingErrors)
         {
             this.publisherId = publisherId;
             this.publishingErrors = publishingErrors;
@@ -17,28 +17,22 @@ namespace RabbitMQ.Stream.Client
 
         public byte PublisherId => publisherId;
 
-        public (ulong, ushort)[] PublishingErrors => publishingErrors;
+        public (ulong, ResponseCode)[] PublishingErrors => publishingErrors;
 
         public int SizeNeeded => throw new NotImplementedException();
 
         internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
         {
-            ushort tag;
-            ushort version;
-            byte publisherId;
-            int numErrors;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
-            offset += WireFormatting.ReadByte(frame.Slice(offset), out publisherId);
-            offset += WireFormatting.ReadInt32(frame.Slice(offset), out numErrors);
-            var publishingIds = new (ulong, ushort)[numErrors];
-            for (int i = 0; i < numErrors; i++)
+            var offset = WireFormatting.ReadUInt16(frame, out var tag);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            offset += WireFormatting.ReadByte(frame.Slice(offset), out var publisherId);
+            offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numErrors);
+            var publishingIds = new (ulong, ResponseCode)[numErrors];
+            for (var i = 0; i < numErrors; i++)
             {
-                ulong pubId;
-                ushort code;
-                offset += WireFormatting.ReadUInt64(frame.Slice(offset), out pubId);
-                offset += WireFormatting.ReadUInt16(frame.Slice(offset), out code);
-                publishingIds[i] = (pubId, code);
+                offset += WireFormatting.ReadUInt64(frame.Slice(offset), out var pubId);
+                offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var code);
+                publishingIds[i] = (pubId, (ResponseCode)code);
             }
             command = new PublishError(publisherId, publishingIds);
             return offset;

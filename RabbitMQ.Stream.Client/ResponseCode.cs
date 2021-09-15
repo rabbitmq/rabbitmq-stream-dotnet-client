@@ -1,6 +1,6 @@
 namespace RabbitMQ.Stream.Client
 {
-    public enum  ResponseCode : ushort
+    public enum ResponseCode : ushort
     {
         Ok = 1,
         StreamDoesNotExist = 2,

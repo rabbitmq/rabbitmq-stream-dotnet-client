@@ -13,13 +13,12 @@ namespace RabbitMQ.Stream.Client
         private readonly PipeWriter writer;
         private readonly PipeReader reader;
         private readonly Task readerTask;
-        private Action<ICommand> commandCallback;
+        private readonly Action<ICommand> commandCallback;
 
         private Connection(Socket socket, Action<ICommand> callback)
         {
             this.socket = socket;
             this.commandCallback = callback;
-            //TODO make async using static factory
             var stream = new NetworkStream(socket);
             writer = PipeWriter.Create(stream);
             reader = PipeReader.Create(stream);
@@ -43,17 +42,13 @@ namespace RabbitMQ.Stream.Client
             var result = await writer.FlushAsync();
             return result.IsCompleted;
         }
+        
         private async Task ProcessIncomingFrames()
         {
             while (true)
             {
                 var result = await reader.ReadAsync();
 
-                if(result.IsCompleted)
-                {
-                    Console.WriteLine($"return ");
-                    return;
-                }
                 var buffer = result.Buffer;
                 var offset = WireFormatting.ReadUInt32(buffer, out var length);
                 if(buffer.Length >= length + 4)
@@ -62,7 +57,6 @@ namespace RabbitMQ.Stream.Client
                     var frame = buffer.Slice(offset, length);
                     WireFormatting.ReadUInt16(buffer.Slice(offset, 2), out var tag);
                     var isResponse = (tag & 0x8000) != 0;
-                    // Console.WriteLine($"tag [{tag}]{tag ^ 0x8000} {tag & 0x8000} {isResponse}");
                     if (isResponse)
                     {
                         tag = (ushort)(tag ^ 0x8000);
@@ -79,20 +73,18 @@ namespace RabbitMQ.Stream.Client
                 }
 
                 // Stop reading if there's no more data coming.
-                if (result.IsCompleted)
-                {
-                    break;
-                }
+                if (!result.IsCompleted) continue;
+                Console.WriteLine($"[{reader}]: disconnected");
+                break;
             }
 
             // Mark the PipeReader as complete.
             await reader.CompleteAsync();
-            Console.WriteLine($"[{reader}]: disconnected");
         }
 
         private int HandleFrame(ushort tag, ReadOnlySequence<byte> frame)
         {
-            int offset = 0;
+            var offset = 0;
             ICommand command;
             switch (tag)
             {
@@ -173,6 +165,7 @@ namespace RabbitMQ.Stream.Client
                     commandCallback(command);
                     break;
             }
+            
             return offset;
         }
 
