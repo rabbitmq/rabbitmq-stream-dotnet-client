@@ -277,8 +277,8 @@ namespace RabbitMQ.Stream.Client
         {
             if (requests.ContainsKey(command.CorrelationId))
             {
-                var tsc = requests[correlationId];
-                requests.Remove(correlationId);
+                var tsc = requests[command.CorrelationId];
+                requests.Remove(command.CorrelationId);
                 tsc.SetResult(command);
             }
         }
