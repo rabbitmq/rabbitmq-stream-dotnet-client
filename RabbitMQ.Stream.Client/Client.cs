@@ -8,6 +8,7 @@ using System.IO.Pipelines;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -27,7 +28,7 @@ namespace RabbitMQ.Stream.Client
             {
                 var supressErrorTask = task.ContinueWith((t, s) =>
                 {
-                    if (t.Exception != null) t.Exception.Handle(e => true);
+                    t.Exception?.Handle(e => true);
                 },
                     null,
                     CancellationToken.None,
@@ -52,6 +53,8 @@ namespace RabbitMQ.Stream.Client
         public string Password { get; set; } = "guest";
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+        public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
+
     }
 
     public readonly struct OutgoingMsg
@@ -73,6 +76,7 @@ namespace RabbitMQ.Stream.Client
 
         public ReadOnlySequence<byte> Data => data;
     }
+    
     public class Client
     {
         private uint correlationId = 100; // allow for some pre-amble
@@ -80,7 +84,7 @@ namespace RabbitMQ.Stream.Client
         private readonly ClientParameters parameters;
         private readonly Connection connection;
         private readonly Channel<ICommand> incoming;
-        private readonly Channel<Object> outgoing;
+        private readonly Channel<object> outgoing;
         private readonly IDictionary<byte, (Action<ulong[]>, Action<(ulong, ResponseCode)[]>)> publishers =
             new ConcurrentDictionary<byte, (Action<ulong[]>, Action<(ulong, ResponseCode)[]>)>();
         private readonly IDictionary<uint, TaskCompletionSource<ICommand>> requests =
@@ -103,7 +107,11 @@ namespace RabbitMQ.Stream.Client
             //authenticate
             var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.AttachedToParent);
             outgoingTask = ts.StartNew(ProcessOutgoing);
+            outgoingTask.ContinueWith((t, o) => { parameters.UnhandledExceptionHandler(t.Exception); },
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
             incomingTask = ts.StartNew(() => ProcessIncoming(parameters.MetadataHandler));
+            incomingTask.ContinueWith((t, o) => { parameters.UnhandledExceptionHandler(t.Exception); },
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
         // channels and message publish aggregation
         public static async Task<Client> Create(ClientParameters parameters)
