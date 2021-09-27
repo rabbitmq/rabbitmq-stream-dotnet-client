@@ -38,7 +38,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
     }
-    public class ClientParameters
+    public record ClientParameters
     {
         public IDictionary<string, string> Properties { get; } =
             new Dictionary<string, string>
@@ -91,7 +91,7 @@ namespace RabbitMQ.Stream.Client
             new ConcurrentDictionary<uint, TaskCompletionSource<ICommand>>();
 
         private byte nextSubscriptionId;
-        private readonly IDictionary<byte, Action<Deliver>> consumers = new ConcurrentDictionary<byte, Action<Deliver>>();
+        private readonly IDictionary<byte, Func<Deliver, Task>> consumers = new ConcurrentDictionary<byte, Func<Deliver, Task>>();
 
         private object closeResponse;
         private readonly Task<Task> outgoingTask;
@@ -179,7 +179,7 @@ namespace RabbitMQ.Stream.Client
 
 
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType, ushort initialCredit,
-            Dictionary<string, string> properties, Action<Deliver> deliverHandler)
+            Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler)
         {
             var subscriptionId = nextSubscriptionId++;
             consumers.Add(subscriptionId, deliverHandler);
@@ -246,11 +246,11 @@ namespace RabbitMQ.Stream.Client
             {
                 var cmd = await incoming.Reader.ReadAsync();
                 // Console.WriteLine($"incoming command {cmd}");
-                HandleIncoming(cmd, metadataHandler);
+                await HandleIncoming(cmd, metadataHandler);
             }
         }
 
-        private bool HandleIncoming(ICommand command, Action<MetaDataUpdate> metadataHandler)
+        private async Task HandleIncoming(ICommand command, Action<MetaDataUpdate> metadataHandler)
         {
             switch (command)
             {
@@ -267,7 +267,7 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case Deliver deliver:
                     var deliverHandler = consumers[deliver.SubscriptionId];
-                    deliverHandler(deliver);
+                    await deliverHandler(deliver);
                     break;
                 default:
                     if (command.CorrelationId == uint.MaxValue)
@@ -275,10 +275,7 @@ namespace RabbitMQ.Stream.Client
                     else
                         HandleCorrelatedResponse(command);
                     break;
-
             };
-
-            return true;
         }
 
         private void HandleCorrelatedResponse(ICommand command)

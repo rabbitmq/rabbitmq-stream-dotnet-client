@@ -180,7 +180,11 @@ namespace Tests
             await client.CreateStream(stream, new Dictionary<string, string>());
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
-            Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); };
+            Func<Deliver, Task> deliverHandler = deliver =>
+            {
+                testPassed.SetResult(deliver);
+                return Task.CompletedTask;
+            };
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
@@ -214,7 +218,7 @@ namespace Tests
             // Subscribe
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
-            void DeliverHandler(Deliver deliver)
+            Task DeliverHandler(Deliver deliver)
             {
                 foreach (var msg in deliver.Messages)
                 {
@@ -222,6 +226,7 @@ namespace Tests
                         messageCount++;
                 }
                 gotEvent.Set();
+                return Task.CompletedTask;
             }
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), DeliverHandler);
@@ -275,7 +280,11 @@ namespace Tests
             await client.CreateStream(stream, new Dictionary<string, string>());
             var initialCredit = 0; //no initial credit
             var offsetType = new OffsetTypeFirst();
-            Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); };
+            Func<Deliver, Task> deliverHandler = deliver =>
+            { 
+                testPassed.SetResult(deliver);
+                return Task.CompletedTask; 
+            };
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
@@ -301,7 +310,11 @@ namespace Tests
             await client.CreateStream(stream, new Dictionary<string, string>());
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
-            Action<Deliver> deliverHandler = deliver => { testPassed.SetResult(deliver); };
+            Func<Deliver, Task> deliverHandler = deliver =>
+            {
+                testPassed.SetResult(deliver);
+                return Task.CompletedTask;
+            };
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
