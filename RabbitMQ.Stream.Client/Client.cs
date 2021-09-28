@@ -149,6 +149,11 @@ namespace RabbitMQ.Stream.Client
             return new Client(parameters, connection, channel);
         }
 
+        public bool Publish(byte publisherId, ulong publishingId, Message message)
+        {
+            return this.outgoing.Writer.TryWrite(new OutgoingMsg(publisherId, publishingId, message));
+        }
+        
         public bool Publish(OutgoingMsg msg)
         {
             return this.outgoing.Writer.TryWrite(msg);
@@ -331,5 +336,6 @@ namespace RabbitMQ.Stream.Client
         {
             return outgoing.Writer.TryWrite(new CreditRequest(subscriptionId, credit));
         }
+
     }
 }

@@ -76,12 +76,13 @@ namespace RabbitMQ.Stream.Client
                             Code = code,
                             Message = msg
                         });
-                        if (pending.Count < config.MaxInFlight)
+                    }
+
+                    if (pending.Count < config.MaxInFlight)
+                    {
+                        if (flows.TryDequeue(out var result))
                         {
-                            if (flows.TryDequeue(out var result))
-                            {
-                                result.SetResult();
-                            }
+                            result.SetResult();
                         }
                     }
                 });
@@ -103,8 +104,8 @@ namespace RabbitMQ.Stream.Client
                 await tcs.Task;
             }
             
-            var _ = client.Publish(new OutgoingMsg(publisherId, publishingId, message));
             pending.Add(publishingId, message);
+            var _ = client.Publish(publisherId, publishingId, message);
         }
 
         public static async Task<Producer> Create(ClientParameters clientParameters, ProducerConfig config)
