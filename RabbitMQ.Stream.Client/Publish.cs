@@ -15,7 +15,7 @@ namespace RabbitMQ.Stream.Client
                 var size = 9; // pre amble 
                 foreach (var (_, msg) in messages)
                 {
-                    size += 8 + 4 + (int)msg.Length;
+                    size += 8 + 4 + msg.Size;
                 }
                 
                 return size;
@@ -23,9 +23,9 @@ namespace RabbitMQ.Stream.Client
         }
 
         private readonly byte publisherId;
-        private readonly IList<(ulong, ReadOnlySequence<byte>)> messages;
+        private readonly IList<(ulong, Message)> messages;
 
-        public Publish(byte publisherId, IList<(ulong, ReadOnlySequence<byte>)> messages)
+        public Publish(byte publisherId, IList<(ulong, Message)> messages)
         {
             this.publisherId = publisherId;
             this.messages = messages;
@@ -44,8 +44,8 @@ namespace RabbitMQ.Stream.Client
                 offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
                 // this only write "simple" messages, we assume msg is just the binary body
                 // not stream encoded data
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Length);
-                offset += WireFormatting.Write(span.Slice(offset), msg);
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
+                offset += msg.Write(span.Slice(offset));
             }
 
             return offset;

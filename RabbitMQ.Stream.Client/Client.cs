@@ -1,14 +1,10 @@
 
 using System;
 using System.Buffers;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO.Pipelines;
 using System.Linq;
 using System.Net;
-using System.Net.Sockets;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -54,16 +50,15 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
-
     }
 
     public readonly struct OutgoingMsg
     {
         private readonly byte publisherId;
         private readonly ulong publishingId;
-        private readonly ReadOnlySequence<byte> data;
+        private readonly Message data;
 
-        public OutgoingMsg(byte publisherId, ulong publishingId, ReadOnlySequence<byte> data)
+        public OutgoingMsg(byte publisherId, ulong publishingId, Message data)
         {
             this.publisherId = publisherId;
             this.publishingId = publishingId;
@@ -74,7 +69,7 @@ namespace RabbitMQ.Stream.Client
 
         public ulong PublishingId => publishingId;
 
-        public ReadOnlySequence<byte> Data => data;
+        public Message Data => data;
     }
     
     public class Client
@@ -213,7 +208,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessOutgoing()
         {
-            var messages = new List<(ulong, ReadOnlySequence<byte>)>();
+            var messages = new List<(ulong, Message)>();
             while (true)
             {
                 var command = await outgoing.Reader.ReadAsync();
@@ -228,7 +223,7 @@ namespace RabbitMQ.Stream.Client
                         // if the channel is empty or we've reached some num messages limit
                         // send the publish frame
                         // TODO: make limit configurable
-                        if (readerCount == 0 || messages.Count >= 1000)
+                        if (readerCount == 0 || messages.Count >= 100)
                         {
                             var publish = new Publish(msg.PublisherId, messages);
                             await connection.Write(publish);

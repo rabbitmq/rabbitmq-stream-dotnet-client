@@ -1,10 +1,9 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
-using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -109,34 +108,6 @@ namespace RabbitMQ.Stream.Client
     public struct Properties
     {
         
-    }
-    
-    public class Message
-    {
-        private readonly Properties properties;
-
-        public Message(Data data, Properties properties = new Properties())
-        {
-            this.Data = data;
-            this.properties = properties;
-        }
-
-        public Data Data { get; }
-
-        public ReadOnlySequence<byte> Serialize()
-        {
-            //what a massive cludge
-            var data = new byte[Data.Size];
-            Data.Write(data);
-            return new ReadOnlySequence<byte>(data);
-        }
-
-        public static Message From(ReadOnlySequence<byte> amqpData)
-        {
-            //parse AMQP encoded data
-            var data = AMQP.Data.Parse(amqpData);
-            return new Message(data);
-        }
     }
 
     public readonly struct LeaderLocator

@@ -117,7 +117,7 @@ namespace Tests
             var delStream = await client.DeleteStream(stream);
             Assert.Equal(ResponseCode.Ok, delStream.ResponseCode);
 
-            var msgData = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("hi"));
+            var msgData = new Message(Encoding.UTF8.GetBytes("hi"));
             client.Publish(new OutgoingMsg(publisherId, 100, msgData));
 
             Assert.True(testPassed.Task.Wait(5000));
@@ -155,7 +155,7 @@ namespace Tests
 
             for (var i = from; i < to; i++)
             {
-                var msgData = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
+                var msgData = new Message(Encoding.UTF8.GetBytes("asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
                 client.Publish(new OutgoingMsg(publisherId, i, msgData));
                 if ((int)i - numConfirmed > 1000)
                     await Task.Delay(10);
@@ -190,8 +190,8 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("hi"))));
-            client.Publish(new OutgoingMsg(publisherId, 1, new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes("hi"))));
+            client.Publish(new OutgoingMsg(publisherId, 0, new Message(Encoding.UTF8.GetBytes("hi"))));
+            client.Publish(new OutgoingMsg(publisherId, 1, new Message(Encoding.UTF8.GetBytes("hi"))));
             Assert.True(testPassed.Task.Wait(10000));
             var delivery = testPassed.Task.Result;
             Assert.Equal(2, delivery.Messages.Count());
@@ -237,7 +237,7 @@ namespace Tests
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             for (ulong i = 0; i < 10; i++)
             {
-                client.Publish(new OutgoingMsg(publisherId, i, new ReadOnlySequence<byte>()));
+                client.Publish(new OutgoingMsg(publisherId, i, new Message(Encoding.UTF8.GetBytes("hi"))));
             }
             testOutputHelper.WriteLine("Sent 10 messages to stream");
             if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
@@ -290,7 +290,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
+            client.Publish(new OutgoingMsg(publisherId, 0, new Message(Array.Empty<byte>())));
             Assert.False(testPassed.Task.Wait(1000));
             //We have not credited yet
             client.Credit(subId, 1);
@@ -324,7 +324,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, unsubscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            client.Publish(new OutgoingMsg(publisherId, 0, new ReadOnlySequence<byte>()));
+            client.Publish(new OutgoingMsg(publisherId, 0, new Message(Array.Empty<byte>())));
             // 1s should be enough to catch this at least some of the time
             Assert.False(testPassed.Task.Wait(1000));
         }
