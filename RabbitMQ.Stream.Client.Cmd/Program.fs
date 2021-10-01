@@ -16,12 +16,20 @@ let main argv =
     let mutable publishingId = 0UL
     let mutable lastPublishingId = 0
     let mutable lastConfirmed = 0
+    let mutable consumed = 0
     let mutable confirmed = 0
     let mutable prod = null
+    let consumerConfig = ConsumerConfig(Stream = "s1",
+                                        Reference = Guid.NewGuid().ToString(),
+                                        MessageHandler =
+                                            fun c ctx m ->
+                                                consumed <- consumed + 1
+                                                Task.CompletedTask )
     let t = task {
         let config = StreamSystemConfig(UserName = "guest",
                                         Password = "guest")
         let! system = StreamSystem.Create config
+        let! consumer = system.CreateConsumer(consumerConfig)
         let producerConfig = ProducerConfig(Stream = "s1",
                                             Reference = Guid.NewGuid().ToString(),
                                             MaxInFlight = 10000,
@@ -37,19 +45,21 @@ let main argv =
     }
     
     let mutable lastFrames = 0
+    let mutable lastConsumed = 0
     async{
         while run do
             do! Async.Sleep 1000
             let p = prod.Client.MessagesSent
             let f = prod.Client.PublishCommandsSent
             let c = confirmed
-            printfn $"published %i{p - lastPublishingId} msg/s in %i{f - lastFrames} publish frames, confirmed %i{c - lastConfirmed} msg/s total confirm frames %i{prod.Client.ConfirmFrames} %i{prod.Client.IncomingFrames} incoming pending command {prod.PendingCount} "
+            let cs = consumed;
+            printfn $"published %i{p - lastPublishingId} msg/s in %i{f - lastFrames} publish frames, confirmed %i{c - lastConfirmed} msg/s, consumed: %i{c - lastConsumed} msg/sec total confirm frames %i{prod.Client.ConfirmFrames} %i{prod.Client.IncomingFrames} incoming pending command {prod.PendingCount} "
+            lastConsumed <- cs
             lastFrames <- f
             lastPublishingId <- p
             lastConfirmed <- c
     } |> Async.Start
     //t.Wait()
-    //printfn "Hello world %s" message
     Console.ReadKey()  |> ignore
     run <- false
-    0 // return an integer exit code
+    0

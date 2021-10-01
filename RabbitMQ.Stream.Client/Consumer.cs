@@ -21,9 +21,9 @@ namespace RabbitMQ.Stream.Client
     
     public record ConsumerConfig
     {
-        public string Stream { get; init; }
-        public string Reference { get; init; }
-        public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; init; }
+        public string Stream { get; set; }
+        public string Reference { get; set; }
+        public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
     }
     
@@ -31,6 +31,7 @@ namespace RabbitMQ.Stream.Client
     {
         private readonly Client client;
         private readonly ConsumerConfig config;
+        private byte subscriberId;
 
         private Consumer(Client client, ConsumerConfig config)
         {
@@ -52,9 +53,10 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
+            ushort initialCredit = 2;
             var (consumerId, response) = await client.Subscribe(
                 config.Stream,
-                config.OffsetSpec, 2,
+                config.OffsetSpec, initialCredit,
                 new Dictionary<string, string>(),
                 async deliver =>
                 {
@@ -67,11 +69,15 @@ namespace RabbitMQ.Stream.Client
                             message);
                     }
 
-                    return;
-
+                    // give one credit after each chunk
+                    client.Credit(deliver.SubscriptionId, 1);
                 });
             if (response.Code == ResponseCode.Ok)
+            {
+                this.subscriberId = consumerId;
                 return;
+            }
+            
             throw new CreateConsumerException($"consumer could not be created code: {response.Code}");
         }
     }
