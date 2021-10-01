@@ -7,6 +7,7 @@ namespace RabbitMQ.Stream.Client
     public readonly struct Publish : ICommand
     {
         private const ushort Key = 2;
+        public byte Version => 1;
 
         public int SizeNeeded
         {
@@ -23,9 +24,9 @@ namespace RabbitMQ.Stream.Client
         }
 
         private readonly byte publisherId;
-        private readonly IList<(ulong, Message)> messages;
+        private readonly List<(ulong, Message)> messages;
 
-        public Publish(byte publisherId, IList<(ulong, Message)> messages)
+        public Publish(byte publisherId, List<(ulong, Message)> messages)
         {
             this.publisherId = publisherId;
             this.messages = messages;
@@ -33,9 +34,8 @@ namespace RabbitMQ.Stream.Client
 
         public int Write(Span<byte> span)
         {
-            var command = (ICommand)this;
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), command.Version);
+            offset += WireFormatting.WriteUInt16(span.Slice(offset), Version);
             offset += WireFormatting.WriteByte(span.Slice(offset), publisherId);
             // this assumes we never write an empty publish frame
             offset += WireFormatting.WriteInt32(span.Slice(offset), messages.Count);

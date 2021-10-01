@@ -9,10 +9,10 @@ namespace RabbitMQ.Stream.Client
         private readonly byte publisherId;
         private readonly ulong[] publishingIds;
 
-        public PublishConfirm(byte publisherId, ulong[] publisingIds)
+        private PublishConfirm(byte publisherId, ulong[] publishingIds)
         {
             this.publisherId = publisherId;
-            this.publishingIds = publisingIds;
+            this.publishingIds = publishingIds;
         }
 
         public byte PublisherId => publisherId;
@@ -23,8 +23,8 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
         {
-            var offset = WireFormatting.ReadUInt16(frame, out var tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            var offset = 2; //WireFormatting.ReadUInt16(frame, out var tag);
+            offset += 2; //WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
             offset += WireFormatting.ReadByte(frame.Slice(offset), out var publisherId);
             offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numIds);
             var publishingIds = new ulong[numIds];

@@ -1,9 +1,7 @@
 using System;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Net;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,25 +27,33 @@ namespace RabbitMQ.Stream.Client
         private readonly Client client;
         private byte publisherId;
         private readonly ProducerConfig config;
-        private readonly Dictionary<ulong, Message> pending = new();
+        private readonly ConcurrentDictionary<ulong, Message> pending;
+        private int pendingCount = 0;
+
+        public int PendingCount => pendingCount;
+
         private readonly ConcurrentQueue<TaskCompletionSource> flows = new();
+        private readonly SemaphoreSlim semaphore = new(0);
 
         private Producer(Client client, ProducerConfig config)
         {
             this.client = client;
             this.config = config;
+            this.pending = new ConcurrentDictionary<ulong, Message>(Environment.ProcessorCount, config.MaxInFlight);
         }
+
+        public Client Client => client;
 
         private async Task Init()
         {
-            var (pubId, response) = await client.DeclarePublisher(config.Reference,
+            var (pubId, response) = await client.DeclarePublisher(
+                config.Reference,
                 config.Stream,
                 publishingIds =>
                 {
                     foreach (var id in publishingIds)
                     {
-                        var msg = pending[id];
-                        pending.Remove(id);
+                        pending.Remove(id, out var msg);
                         config.ConfirmHandler(new Confirmation
                         {
                             PublishingId = id,
@@ -56,20 +62,16 @@ namespace RabbitMQ.Stream.Client
                         });
                     }
 
-                    if (pending.Count < config.MaxInFlight && !flows.IsEmpty)
+                    if (pending.Count < config.MaxInFlight)
                     {
-                        if (flows.TryDequeue(out var result))
-                        {
-                            result.SetResult();
-                        }
+                        semaphore.Release();
                     }
                 },
                 errors =>
                 {
                     foreach (var (id, code) in errors)
                     {
-                        var msg = pending[id];
-                        pending.Remove(id);
+                        pending.Remove(id, out var msg);
                         config.ConfirmHandler(new Confirmation
                         {
                             PublishingId = id,
@@ -90,22 +92,17 @@ namespace RabbitMQ.Stream.Client
             this.publisherId = pubId;
         }
 
-        private bool PublishLimitCheck()
-        {
-            return pending.Count < config.MaxInFlight;
-        }
-        
         public async Task Send(ulong publishingId, Message message)
         {
-            if (pending.Count >= config.MaxInFlight)
+            pendingCount = pending.Count;
+            if (pendingCount >= config.MaxInFlight)
             {
-                var tcs = new TaskCompletionSource();
-                flows.Enqueue(tcs);
-                await tcs.Task;
+                await semaphore.WaitAsync();
             }
             
-            pending.Add(publishingId, message);
             var _ = client.Publish(publisherId, publishingId, message);
+            pending.TryAdd(publishingId, message);
+            //Debug.Assert(added);
         }
 
         public static async Task<Producer> Create(ClientParameters clientParameters, ProducerConfig config)

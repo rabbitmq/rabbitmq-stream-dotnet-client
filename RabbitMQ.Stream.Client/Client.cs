@@ -4,6 +4,7 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -52,7 +53,7 @@ namespace RabbitMQ.Stream.Client
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
     }
 
-    public readonly struct OutgoingMsg
+    public readonly struct OutgoingMsg : ICommand
     {
         private readonly byte publisherId;
         private readonly ulong publishingId;
@@ -70,6 +71,11 @@ namespace RabbitMQ.Stream.Client
         public ulong PublishingId => publishingId;
 
         public Message Data => data;
+        public int SizeNeeded => 0;
+        public int Write(Span<byte> span)
+        {
+            throw new NotImplementedException();
+        }
     }
     
     public class Client
@@ -78,44 +84,68 @@ namespace RabbitMQ.Stream.Client
         private byte nextPublisherId = 0;
         private readonly ClientParameters parameters;
         private readonly Connection connection;
-        private readonly Channel<ICommand> incoming;
-        private readonly Channel<object> outgoing;
+        //private readonly Channel<ICommand> incoming;
+        private readonly Channel<ICommand> outgoing;
         private readonly IDictionary<byte, (Action<ulong[]>, Action<(ulong, ResponseCode)[]>)> publishers =
             new ConcurrentDictionary<byte, (Action<ulong[]>, Action<(ulong, ResponseCode)[]>)>();
-        private readonly IDictionary<uint, TaskCompletionSource<ICommand>> requests =
-            new ConcurrentDictionary<uint, TaskCompletionSource<ICommand>>();
+        private readonly ConcurrentDictionary<uint, TaskCompletionSource<ICommand>> requests = new();
 
         private byte nextSubscriptionId;
         private readonly IDictionary<byte, Func<Deliver, Task>> consumers = new ConcurrentDictionary<byte, Func<Deliver, Task>>();
 
         private object closeResponse;
-        private readonly Task<Task> outgoingTask;
-        private readonly Task<Task> incomingTask;
+        private readonly Task outgoingTask;
+        private readonly Task incomingTask;
+        private int publishCommandsSent;
+
+        public int PublishCommandsSent => publishCommandsSent;
+
+        public int MessagesSent => messagesSent;
+
+        private int messagesSent;
+        private int confirmFrames;
+        private readonly Channel<ICommand> incoming;
+
+        public int ConfirmFrames => confirmFrames;
+        public int IncomingFrames => this.connection.NumFrames;
+        //public int IncomingChannelCount => this.incoming.Reader.Count;
+
         public bool IsClosed => closeResponse != null;
 
         private Client(ClientParameters parameters, Connection connection, Channel<ICommand> channel)
         {
             this.connection = connection;
             this.incoming = channel;
-            this.outgoing = Channel.CreateUnbounded<object>();
+            this.outgoing = Channel.CreateUnbounded<ICommand>(new UnboundedChannelOptions{SingleReader = false});
             this.parameters = parameters;
+            
+            // connection.CommandCallback = async (command) =>
+            // {
+            //     await HandleIncoming(command, parameters.MetadataHandler);
+            // };
             //authenticate
-            var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.AttachedToParent);
-            outgoingTask = ts.StartNew(ProcessOutgoing);
-            outgoingTask.ContinueWith((t, o) => { parameters.UnhandledExceptionHandler(t.Exception); },
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
-            incomingTask = ts.StartNew(() => ProcessIncoming(parameters.MetadataHandler));
+            //var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.ExecuteSynchronously);
+            incomingTask = Task.Run(() => ProcessIncoming(parameters.MetadataHandler));
             incomingTask.ContinueWith((t, o) => { parameters.UnhandledExceptionHandler(t.Exception); },
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+            outgoingTask = Task.Run(async () =>
+            {
+                await ProcessOutgoing();
+            });
+            outgoingTask.ContinueWith((t, o) => { parameters.UnhandledExceptionHandler(t.Exception); },
                 TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
         // channels and message publish aggregation
         public static async Task<Client> Create(ClientParameters parameters)
         {
             uint correlationId = 0;
-            var channel = Channel.CreateUnbounded<ICommand>();
-            Action<ICommand> callback = (command) =>
+            var channel = Channel.CreateUnbounded<ICommand>(new UnboundedChannelOptions{
+                SingleWriter = false, SingleReader = true});
+            
+            Func<ICommand, Task> callback = (command) =>
             {
                 channel.Writer.TryWrite(command);
+                return Task.CompletedTask;
             };
 
             var connection = await Connection.Create(parameters.Endpoint, callback);
@@ -146,6 +176,7 @@ namespace RabbitMQ.Stream.Client
             foreach (var (k, v) in open.ConnectionProperties)
                 Console.WriteLine($"open prop: {k} {v}");
 
+            //channel.Writer.Complete();
             return new Client(parameters, connection, channel);
         }
 
@@ -199,8 +230,8 @@ namespace RabbitMQ.Stream.Client
         private async Task<ICommand> Request(Func<uint, ICommand> request, int timeout = 10000)
         {
             var corr = NextCorrelationId();
-            var tcs = new TaskCompletionSource<ICommand>();
-            requests.Add(corr, tcs);
+            var tcs = new TaskCompletionSource<ICommand>(TaskCreationOptions.RunContinuationsAsynchronously);
+            requests.TryAdd(corr, tcs);
             outgoing.Writer.TryWrite(request(corr));
             await tcs.Task.TimeoutAfter(TimeSpan.FromMilliseconds(timeout));
             return tcs.Task.Result;
@@ -213,28 +244,31 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessOutgoing()
         {
-            var messages = new List<(ulong, Message)>();
+            const int maxBatchSize = 100; 
+            var messages = new List<(ulong, Message)>(maxBatchSize);
             while (true)
             {
                 var command = await outgoing.Reader.ReadAsync();
-                var readerCount = outgoing.Reader.Count;
                 switch (command)
                 {
-                    case ICommand cmd:
-                        await connection.Write(cmd);
-                        break;
                     case OutgoingMsg msg:
                         messages.Add((msg.PublishingId, msg.Data));
                         // if the channel is empty or we've reached some num messages limit
                         // send the publish frame
                         // TODO: make limit configurable
-                        if (readerCount == 0 || messages.Count >= 100)
+                        var readerCount = outgoing.Reader.Count;
+                        if (readerCount == 0 || messages.Count >= maxBatchSize)
                         {
                             var publish = new Publish(msg.PublisherId, messages);
                             await connection.Write(publish);
+                            this.publishCommandsSent += 1;
+                            this.messagesSent += messages.Count;
                             messages.Clear();
                         }
                         
+                        break;
+                    case { } cmd:
+                        await connection.Write(cmd);
                         break;
                 }
             }
@@ -245,7 +279,6 @@ namespace RabbitMQ.Stream.Client
             while (true)
             {
                 var cmd = await incoming.Reader.ReadAsync();
-                // Console.WriteLine($"incoming command {cmd}");
                 await HandleIncoming(cmd, metadataHandler);
             }
         }
@@ -255,6 +288,7 @@ namespace RabbitMQ.Stream.Client
             switch (command)
             {
                 case PublishConfirm confirm:
+                    this.confirmFrames += 1;
                     var (confirmCallback, _) = publishers[confirm.PublisherId];
                     confirmCallback(confirm.PublishingIds);
                     break;
@@ -280,10 +314,8 @@ namespace RabbitMQ.Stream.Client
 
         private void HandleCorrelatedResponse(ICommand command)
         {
-            if (requests.ContainsKey(command.CorrelationId))
+            if (requests.TryRemove(command.CorrelationId, out var tsc))
             {
-                var tsc = requests[command.CorrelationId];
-                requests.Remove(command.CorrelationId);
                 tsc.SetResult(command);
             }
         }
