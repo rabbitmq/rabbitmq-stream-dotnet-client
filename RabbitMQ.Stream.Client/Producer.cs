@@ -30,7 +30,7 @@ namespace RabbitMQ.Stream.Client
         private readonly ConcurrentDictionary<ulong, Message> pending;
         private int pendingCount = 0;
 
-        public int PendingCount => pendingCount;
+        public int PendingCount => pending.Count;
 
         private readonly ConcurrentQueue<TaskCompletionSource> flows = new();
         private readonly SemaphoreSlim semaphore = new(0);
@@ -82,10 +82,7 @@ namespace RabbitMQ.Stream.Client
 
                     if (pending.Count < config.MaxInFlight)
                     {
-                        if (flows.TryDequeue(out var result))
-                        {
-                            result.SetResult();
-                        }
+                        semaphore.Release();
                     }
                 });
 
@@ -94,15 +91,16 @@ namespace RabbitMQ.Stream.Client
 
         public async Task Send(ulong publishingId, Message message)
         {
-            pendingCount = pending.Count;
-            if (pendingCount >= config.MaxInFlight)
+            if (pending.Count >= config.MaxInFlight)
             {
-                await semaphore.WaitAsync();
+                if (!await semaphore.WaitAsync(1000))
+                {
+                    Console.WriteLine("SEMAPHORE TIMEOUT");
+                }
             }
             
             var _ = client.Publish(publisherId, publishingId, message);
             pending.TryAdd(publishingId, message);
-            //Debug.Assert(added);
         }
 
         public static async Task<Producer> Create(ClientParameters clientParameters, ProducerConfig config)

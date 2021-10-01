@@ -68,6 +68,10 @@ namespace RabbitMQ.Stream.Client
         
         internal static int WriteString(Span<byte> span, string s)
         {
+            if (string.IsNullOrEmpty(s))
+            {
+                return WriteUInt16(span, 0);
+            }
             // I'm sure there are better ways
             Span<byte> stringBytes = Encoding.UTF8.GetBytes(s);
             WriteUInt16(span, (ushort) stringBytes.Length);

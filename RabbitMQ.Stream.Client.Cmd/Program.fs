@@ -23,6 +23,7 @@ let main argv =
                                         Reference = Guid.NewGuid().ToString(),
                                         MessageHandler =
                                             fun c ctx m ->
+                                                
                                                 consumed <- consumed + 1
                                                 Task.CompletedTask )
     let t = task {
@@ -31,7 +32,8 @@ let main argv =
         let! system = StreamSystem.Create config
         let! consumer = system.CreateConsumer(consumerConfig)
         let producerConfig = ProducerConfig(Stream = "s1",
-                                            Reference = Guid.NewGuid().ToString(),
+                                            //Reference = Guid.NewGuid().ToString(),
+                                            Reference = null,
                                             MaxInFlight = 10000,
                                             ConfirmHandler = fun c -> confirmed <- confirmed + 1)
         let! producer = system.CreateProducer producerConfig
@@ -53,7 +55,7 @@ let main argv =
             let f = prod.Client.PublishCommandsSent
             let c = confirmed
             let cs = consumed;
-            printfn $"published %i{p - lastPublishingId} msg/s in %i{f - lastFrames} publish frames, confirmed %i{c - lastConfirmed} msg/s, consumed: %i{c - lastConsumed} msg/sec total confirm frames %i{prod.Client.ConfirmFrames} %i{prod.Client.IncomingFrames} incoming pending command {prod.PendingCount} "
+            printfn $"published %i{p - lastPublishingId} msg/s in %i{f - lastFrames} publish frames, confirmed %i{c - lastConfirmed} msg/s, consumed: %i{c - lastConsumed} msg/sec total confirm frames %i{prod.Client.ConfirmFrames} %i{prod.Client.IncomingFrames} pending commands: {prod.PendingCount} "
             lastConsumed <- cs
             lastFrames <- f
             lastPublishingId <- p
