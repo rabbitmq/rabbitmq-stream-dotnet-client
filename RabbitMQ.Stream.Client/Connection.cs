@@ -49,140 +49,124 @@ namespace RabbitMQ.Stream.Client
             return new Connection(socket, commandCallback);
         }
 
-        public async Task<bool> Write(ICommand command)
+        public async ValueTask<bool> Write(ICommand command)
+        {
+            writer.Advance(WriteCommand(command));
+            var flushTask = writer.FlushAsync();
+
+            // Let's check if this completed synchronously befor invoking the async state mahcine
+            if (!flushTask.IsCompletedSuccessfully)
+            {
+                await flushTask.ConfigureAwait(false);
+            }
+
+            return flushTask.Result.IsCompleted;
+        }
+
+        private int WriteCommand(ICommand command)
         {
             var size = command.SizeNeeded;
-            var mem = writer.GetMemory(size + 4); // + 4 to write the size
-            WireFormatting.WriteUInt32(mem.Span, (uint) size);
-            var written = command.Write(mem.Span.Slice(4));
+            var mem = writer.GetSpan(4 + size); // + 4 to write the size
+            WireFormatting.WriteUInt32(mem, (uint)size);
+            var written = command.Write(mem.Slice(4));
             Debug.Assert(size == written);
-            writer.Advance(written + 4);
-            var result = await writer.FlushAsync();
-            return result.IsCompleted;
+            return 4 + written;
         }
-        
+
         private async Task ProcessIncomingFrames()
         {
             while (true)
             {
-                var result = await reader.ReadAsync();
+                var readerTask = reader.ReadAsync();
 
-                var buffer = result.Buffer;
-                var offset = WireFormatting.ReadUInt32(buffer, out var length);
-                if(buffer.Length >= length + 4)
+                // Let's check if this completed synchronously befor invoking the async state mahcine
+                if (!readerTask.IsCompletedSuccessfully)
                 {
-                    // there is enough data in the buffer to process the a frame
-                    var frame = buffer.Slice(offset, length);
-                    WireFormatting.ReadUInt16(buffer.Slice(offset, 2), out var tag);
-                    var isResponse = (tag & 0x8000) != 0;
-                    if (isResponse)
+                    await readerTask.ConfigureAwait(false);
+                }
+
+                var result = readerTask.Result;
+                var buffer = result.Buffer;
+                if (buffer.Length == 0)
+                {
+                    // We're not going to receive any more bytes from the connection.
+                    break;
+                }
+
+                // Let's try to read some frames!
+                while(TryReadFrame(ref buffer, out ReadOnlySequence<byte> frame))
+                {
+                    // Let's check the frame tag
+                    WireFormatting.ReadUInt16(frame, out var tag);
+                    if ((tag & 0x8000) != 0)
                     {
                         tag = (ushort)(tag ^ 0x8000);
                     }
-                    offset += HandleFrame(tag, frame);
-                    //advance the stream reader
-                    reader.AdvanceTo(frame.End, frame.End);
-                }
-                else
-                {
-                    // mark stuff as read but not consumed
-                    // TODO work out if there is an off by one issue here
-                    reader.AdvanceTo(buffer.Start, buffer.End);
+
+                    // Let's handle the frame
+                    HandleFrame(tag, frame);
                 }
 
-                // Stop reading if there's no more data coming.
-                if (!result.IsCompleted) continue;
-                break;
+                reader.AdvanceTo(buffer.Start, buffer.End);
             }
 
             // Mark the PipeReader as complete.
             await reader.CompleteAsync();
         }
 
+        private bool TryReadFrame(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> frame)
+        {
+            // Do we have enough bytes in the buffer to begin parsing a frame?
+            if (buffer.Length > 4)
+            {
+                // Let's see how big the next frame is
+                WireFormatting.ReadUInt32(buffer, out var frameSize);
+                if (buffer.Length >= 4 + frameSize)
+                {
+                    // We have enough bytes in the buffer to read a whole frame
+
+                    // Read the frame data
+                    frame = buffer.Slice(4, frameSize);
+
+                    // Let's slice the buffer
+                    buffer = buffer.Slice(4 + frameSize);
+                    return true;
+                }
+            }
+
+            frame = ReadOnlySequence<byte>.Empty;
+            return false;
+        }
+
         private int HandleFrame(ushort tag, ReadOnlySequence<byte> frame)
         {
-            var offset = 0;
             ICommand command;
-            switch (tag)
+            int offset = tag switch
             {
-                case PeerPropertiesResponse.Key:
-                    offset = PeerPropertiesResponse.Read(frame, out command);
-                    commandCallback(command);
-                    break;
-                case SaslHandshakeResponse.Key:
-                    offset = SaslHandshakeResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case SaslAuthenticateResponse.Key:
-                    offset = SaslAuthenticateResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case TuneResponse.Key:
-                    offset = TuneResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case OpenResponse.Key:
-                    offset = OpenResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case DeclarePublisherResponse.Key:
-                    offset = DeclarePublisherResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case DeletePublisherResponse.Key:
-                    offset = DeletePublisherResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case QueryPublisherResponse.Key:
-                    offset =  QueryPublisherResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case PublishConfirm.Key:
-                    offset = PublishConfirm.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case PublishError.Key:
-                    offset = PublishError.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case SubscribeResponse.Key:
-                    offset = SubscribeResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case UnsubscribeResponse.Key:
-                    offset = UnsubscribeResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case Deliver.Key:
-                    offset = Deliver.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case CloseResponse.Key:
-                    offset = CloseResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case CreateResponse.Key:
-                    offset = CreateResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case DeleteResponse.Key:
-                    offset = DeleteResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case MetaDataResponse.Key:
-                    offset = MetaDataResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case MetaDataUpdate.Key:
-                    offset = MetaDataUpdate.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-                case QueryOffsetResponse.Key:
-                    offset = QueryOffsetResponse.Read(frame, out command);
-                     commandCallback(command);
-                    break;
-            }
-            
+                DeclarePublisherResponse.Key => DeclarePublisherResponse.Read(frame, out command),
+                PublishConfirm.Key => PublishConfirm.Read(frame, out command),
+                PublishError.Key => PublishError.Read(frame, out command),
+                QueryPublisherResponse.Key => QueryPublisherResponse.Read(frame, out command),
+                DeletePublisherResponse.Key => DeletePublisherResponse.Read(frame, out command),
+                SubscribeResponse.Key => SubscribeResponse.Read(frame, out command),
+                Deliver.Key => Deliver.Read(frame, out command),
+                QueryOffsetResponse.Key => QueryOffsetResponse.Read(frame, out command),
+                UnsubscribeResponse.Key => UnsubscribeResponse.Read(frame, out command),
+                CreateResponse.Key => CreateResponse.Read(frame, out command),
+                DeleteResponse.Key => DeleteResponse.Read(frame, out command),
+                MetaDataResponse.Key => MetaDataResponse.Read(frame, out command),
+                MetaDataUpdate.Key => MetaDataUpdate.Read(frame, out command),
+                PeerPropertiesResponse.Key => PeerPropertiesResponse.Read(frame, out command),
+                SaslHandshakeResponse.Key => SaslHandshakeResponse.Read(frame, out command),
+                SaslAuthenticateResponse.Key => SaslAuthenticateResponse.Read(frame, out command),
+                TuneResponse.Key => TuneResponse.Read(frame, out command),
+                OpenResponse.Key => OpenResponse.Read(frame, out command),
+                CloseResponse.Key => CloseResponse.Read(frame, out command),
+                _ => throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag))
+            };
+
+            commandCallback(command);
+
             this.numFrames += 1;
             return offset;
         }

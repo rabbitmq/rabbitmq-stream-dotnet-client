@@ -8,18 +8,13 @@ namespace RabbitMQ.Stream.Client
 {
     internal static class WireFormatting
     {
-        static WireFormatting()
-        {
-        }
+        private static Encoding s_encoding = Encoding.UTF8;
 
         internal static int StringSize(string s)
         {
-            if(String.IsNullOrEmpty(s))
-                return 2;
-            //TODO: can this be done without allocation?
-            return 2 + Encoding.UTF8.GetBytes(s).Length;
+            return string.IsNullOrEmpty(s) ? 2 : 2 + s_encoding.GetByteCount(s);
         }
-        
+
         internal static int WriteByte(Span<byte> span, byte value)
         {
             span[0] = value;
@@ -58,76 +53,122 @@ namespace RabbitMQ.Stream.Client
             msg.CopyTo(span);
             return (int)msg.Length;
         }
-        
+
         internal static int WriteBytes(Span<byte> span, ReadOnlySequence<byte> msg)
         {
-                WriteUInt32(span, (uint) msg.Length);
-                Write(span.Slice(4), msg);
-                return 4 + (int) msg.Length;
+            WriteUInt32(span, (uint)msg.Length);
+            Write(span.Slice(4), msg);
+            return 4 + (int)msg.Length;
         }
-        
+
         internal static int WriteString(Span<byte> span, string s)
         {
             if (string.IsNullOrEmpty(s))
             {
                 return WriteUInt16(span, 0);
             }
+
             // I'm sure there are better ways
-            Span<byte> stringBytes = Encoding.UTF8.GetBytes(s);
-            WriteUInt16(span, (ushort) stringBytes.Length);
-            stringBytes.CopyTo(span.Slice(2));
-            return stringBytes.Length + 2;
+            int bytecount = s_encoding.GetBytes(s, span.Slice(2));
+            WriteUInt16(span, (ushort)bytecount);
+            return 2 + bytecount;
         }
-        
+
         internal static int ReadUInt32(ReadOnlySequence<byte> seq, out uint value)
         {
-            value = BinaryPrimitives.ReadUInt32BigEndian(AsSpan(seq, 4));
+            if (seq.FirstSpan.Length >= 4)
+            {
+                value = BinaryPrimitives.ReadUInt32BigEndian(seq.FirstSpan);
+            }
+            else
+            {
+                Span<byte> tempSpan = stackalloc byte[4];
+                seq.Slice(0, 4).CopyTo(tempSpan);
+                value = BinaryPrimitives.ReadUInt32BigEndian(tempSpan);
+            }
+
             return 4;
         }
         internal static int ReadInt32(ReadOnlySequence<byte> seq, out int value)
         {
-            value = BinaryPrimitives.ReadInt32BigEndian(AsSpan(seq, 4));
+            if (seq.FirstSpan.Length >= 4)
+            {
+                value = BinaryPrimitives.ReadInt32BigEndian(seq.FirstSpan);
+            }
+            else
+            {
+                Span<byte> tempSpan = stackalloc byte[4];
+                seq.Slice(0, 4).CopyTo(tempSpan);
+                value = BinaryPrimitives.ReadInt32BigEndian(tempSpan);
+            }
+
             return 4;
         }
         internal static int ReadUInt16(ReadOnlySequence<byte> seq, out ushort value)
         {
-            value = BinaryPrimitives.ReadUInt16BigEndian(AsSpan(seq, 2));
+            if (seq.FirstSpan.Length >= 2)
+            {
+                value = BinaryPrimitives.ReadUInt16BigEndian(seq.FirstSpan);
+            }
+            else
+            {
+                Span<byte> tempSpan = stackalloc byte[2];
+                seq.Slice(0, 2).CopyTo(tempSpan);
+                value = BinaryPrimitives.ReadUInt16BigEndian(tempSpan);
+            }
+
             return 2;
         }
 
         internal static int ReadUInt64(ReadOnlySequence<byte> seq, out ulong value)
         {
-            value = BinaryPrimitives.ReadUInt64BigEndian(AsSpan(seq, 8));
+            if (seq.FirstSpan.Length >= 8)
+            {
+                value = BinaryPrimitives.ReadUInt64BigEndian(seq.FirstSpan);
+            }
+            else
+            {
+                Span<byte> tempSpan = stackalloc byte[8];
+                seq.Slice(0, 8).CopyTo(tempSpan);
+                value = BinaryPrimitives.ReadUInt64BigEndian(tempSpan);
+            }
+
             return 8;
         }
-        private static ReadOnlySpan<byte> AsSpan(ReadOnlySequence<byte> seq, int len)
-        {
-            var s = seq.Slice(0, len);   
-            return s.IsSingleSegment ? s.FirstSpan : s.ToArray();
-        }
+        
         internal static int ReadByte(ReadOnlySequence<byte> seq, out byte b)
         {
-                b = seq.FirstSpan[0];
-                return 1;
+            b = seq.FirstSpan[0];
+            return 1;
         }
 
         internal static int ReadString(ReadOnlySequence<byte> s, out string k)
         {
             ReadUInt16(s, out var len);
-            k = Encoding.UTF8.GetString(s.Slice(2, len));
+            k = s_encoding.GetString(s.Slice(2, len));
             return len + 2;
         }
 
         internal static int ReadBytes(ReadOnlySequence<byte> seq, out byte[] data)
         {
-            var len = BinaryPrimitives.ReadUInt32BigEndian(AsSpan(seq, 4));
+            ReadUInt32(seq, out var len);
             data = seq.Slice(4, len).ToArray();
-            return 4 + (int) len;
+            return 4 + (int)len;
         }
 
         internal static int ReadInt64(ReadOnlySequence<byte> seq, out long value)
         {
-            value = BinaryPrimitives.ReadInt64BigEndian(AsSpan(seq, 8));
+            if (seq.FirstSpan.Length >= 8)
+            {
+                value = BinaryPrimitives.ReadInt64BigEndian(seq.FirstSpan);
+            }
+            else
+            {
+                Span<byte> tempSpan = stackalloc byte[8];
+                seq.Slice(0, 8).CopyTo(tempSpan);
+                value = BinaryPrimitives.ReadInt64BigEndian(tempSpan);
+            }
+
             return 8;
         }
     }

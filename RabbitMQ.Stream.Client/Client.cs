@@ -139,8 +139,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<Client> Create(ClientParameters parameters)
         {
             uint correlationId = 0;
-            var channel = Channel.CreateUnbounded<ICommand>(new UnboundedChannelOptions{
-                SingleWriter = false, SingleReader = true});
+            var channel = Channel.CreateUnbounded<ICommand>(new UnboundedChannelOptions { SingleWriter = true, SingleReader = true });
             
             Func<ICommand, Task> callback = (command) =>
             {
@@ -248,28 +247,37 @@ namespace RabbitMQ.Stream.Client
             var messages = new List<(ulong, Message)>(maxBatchSize);
             while (true)
             {
-                var command = await outgoing.Reader.ReadAsync();
-                switch (command)
-                {
-                    case OutgoingMsg msg:
-                        messages.Add((msg.PublishingId, msg.Data));
-                        // if the channel is empty or we've reached some num messages limit
-                        // send the publish frame
-                        // TODO: make limit configurable
-                        var readerCount = outgoing.Reader.Count;
-                        if (readerCount == 0 || messages.Count >= maxBatchSize)
-                        {
-                            var publish = new Publish(msg.PublisherId, messages);
-                            await connection.Write(publish);
-                            this.publishCommandsSent += 1;
-                            this.messagesSent += messages.Count;
-                            messages.Clear();
-                        }
-                        
-                        break;
-                    case { } cmd:
-                        await connection.Write(cmd);
-                        break;
+                await foreach(var command in outgoing.Reader.ReadAllAsync().ConfigureAwait(false))
+                { 
+                    switch (command)
+                    {
+                        case OutgoingMsg msg:
+                            messages.Add((msg.PublishingId, msg.Data));
+                            // if the channel is empty or we've reached some num messages limit
+                            // send the publish frame
+                            // TODO: make limit configurable
+                            var readerCount = outgoing.Reader.Count;
+                            if (readerCount == 0 || messages.Count >= maxBatchSize)
+                            {
+                                var publish = new Publish(msg.PublisherId, messages);
+                                var writeTask = connection.Write(publish);
+
+                                // Let's check if this completed synchronously befor invoking the async state mahcine
+                                if (!writeTask.IsCompletedSuccessfully)
+                                {
+                                    await writeTask.ConfigureAwait(false);
+                                }
+
+                                this.publishCommandsSent += 1;
+                                this.messagesSent += messages.Count;
+                                messages.Clear();
+                            }
+
+                            break;
+                        case { } cmd:
+                            await connection.Write(cmd);
+                            break;
+                    }
                 }
             }
         }
@@ -278,8 +286,10 @@ namespace RabbitMQ.Stream.Client
         {
             while (true)
             {
-                var cmd = await incoming.Reader.ReadAsync();
-                await HandleIncoming(cmd, metadataHandler);
+                await foreach(var cmd in incoming.Reader.ReadAllAsync().ConfigureAwait(false))
+                { 
+                    await HandleIncoming(cmd, metadataHandler).ConfigureAwait(false);
+                }
             }
         }
 

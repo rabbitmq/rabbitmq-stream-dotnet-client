@@ -18,14 +18,7 @@ namespace RabbitMQ.Stream.Client
             this.data = data;
         }
 
-        public int SizeNeeded
-        {
-            get
-            {
-                    var mechLen = UTF8Encoding.UTF8.GetBytes(mechanism).Length;
-                    return 4 + 4 + 2 + mechLen + 4 + data.Length;
-            }
-        }
+        public int SizeNeeded => 4 + 4 + WireFormatting.StringSize(mechanism) + 4 + data.Length;
 
         public int Write(Span<byte> span)
         {
