@@ -225,6 +225,7 @@ namespace RabbitMQ.Stream.Client
             {
                 var valueTask = new ValueTask<ICommand>(tcs, tcs.Version);
                 var result = await valueTask;
+                PooledTaskSource<ICommand>.Return(tcs);
                 return (TOut)result;
             }
         }
