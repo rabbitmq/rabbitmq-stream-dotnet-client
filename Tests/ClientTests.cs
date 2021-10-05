@@ -180,9 +180,12 @@ namespace Tests
             await client.CreateStream(stream, new Dictionary<string, string>());
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
+            var msgs = new List<MsgEntry>();
             Func<Deliver, Task> deliverHandler = deliver =>
             {
-                testPassed.SetResult(deliver);
+                msgs.AddRange(deliver.Messages);
+                if(msgs.Count == 2)
+                    testPassed.SetResult(deliver);
                 return Task.CompletedTask;
             };
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
@@ -193,8 +196,7 @@ namespace Tests
             client.Publish(new OutgoingMsg(publisherId, 0, new Message(Encoding.UTF8.GetBytes("hi"))));
             client.Publish(new OutgoingMsg(publisherId, 1, new Message(Encoding.UTF8.GetBytes("hi"))));
             Assert.True(testPassed.Task.Wait(10000));
-            var delivery = testPassed.Task.Result;
-            Assert.Equal(2, delivery.Messages.Count());
+            Assert.Equal(2, msgs.Count());
         }
 
 
