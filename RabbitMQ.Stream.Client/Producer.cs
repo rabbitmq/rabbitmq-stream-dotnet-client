@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -28,18 +29,21 @@ namespace RabbitMQ.Stream.Client
         private byte publisherId;
         private readonly ProducerConfig config;
         private readonly ConcurrentDictionary<ulong, Message> pending;
-        private int pendingCount = 0;
+        private readonly Channel<OutgoingMsg> messageBuffer;
+        private readonly SemaphoreSlim semaphore = new(0);
 
         public int PendingCount => pending.Count;
 
         private readonly ConcurrentQueue<TaskCompletionSource> flows = new();
-        private readonly SemaphoreSlim semaphore = new(0);
+        private Task publishTask;
 
         private Producer(Client client, ProducerConfig config)
         {
             this.client = client;
             this.config = config;
             this.pending = new ConcurrentDictionary<ulong, Message>(Environment.ProcessorCount, config.MaxInFlight);
+            this.messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000) { AllowSynchronousContinuations = false, SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
+            this.publishTask = Task.Run(ProcessBuffer);
         }
 
         public Client Client => client;
@@ -51,15 +55,17 @@ namespace RabbitMQ.Stream.Client
                 config.Stream,
                 publishingIds =>
                 {
-                    foreach (var id in publishingIds)
+                    foreach (var id in publishingIds.Span)
                     {
-                        pending.Remove(id, out var msg);
-                        config.ConfirmHandler(new Confirmation
+                        if (pending.TryRemove(id, out Message msg))
                         {
-                            PublishingId = id,
-                            Code = ResponseCode.Ok,
-                            Message = msg
-                        });
+                            config.ConfirmHandler(new Confirmation
+                            {
+                                PublishingId = id,
+                                Code = ResponseCode.Ok,
+                                Message = msg
+                            });
+                        }
                     }
 
                     if (pending.Count < config.MaxInFlight)
@@ -69,15 +75,17 @@ namespace RabbitMQ.Stream.Client
                 },
                 errors =>
                 {
-                    foreach (var (id, code) in errors)
+                    foreach ((ulong id, ResponseCode code) in errors)
                     {
-                        pending.Remove(id, out var msg);
-                        config.ConfirmHandler(new Confirmation
+                        if (pending.TryRemove(id, out Message msg))
                         {
-                            PublishingId = id,
-                            Code = code,
-                            Message = msg
-                        });
+                            config.ConfirmHandler(new Confirmation
+                            {
+                                PublishingId = id,
+                                Code = code,
+                                Message = msg
+                            });
+                        }
                     }
 
                     if (pending.Count < config.MaxInFlight)
@@ -89,7 +97,7 @@ namespace RabbitMQ.Stream.Client
             this.publisherId = pubId;
         }
 
-        public async Task Send(ulong publishingId, Message message)
+        public async ValueTask Send(ulong publishingId, Message message)
         {
             if (pending.Count >= config.MaxInFlight)
             {
@@ -98,9 +106,46 @@ namespace RabbitMQ.Stream.Client
                     Console.WriteLine("SEMAPHORE TIMEOUT");
                 }
             }
-            
-            var _ = client.Publish(publisherId, publishingId, message);
+
+            var msg = new OutgoingMsg(publisherId, publishingId, message);
+            if(!messageBuffer.Writer.TryWrite(msg))
+            { 
+                await messageBuffer.Writer.WriteAsync(msg).ConfigureAwait(false);
+            }
+
             pending.TryAdd(publishingId, message);
+        }
+
+        public async Task ProcessBuffer()
+        {
+            var messages = new List<(ulong, Message)>(100);
+            while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+            {
+                while (messageBuffer.Reader.TryRead(out OutgoingMsg msg))
+                {
+                    messages.Add((msg.PublishingId, msg.Data));
+                    if (messages.Count == 1000)
+                    {
+                        await SendMessages(messages).ConfigureAwait(false);
+                    }
+                }
+
+                if (messages.Count > 0)
+                {
+                    await SendMessages(messages).ConfigureAwait(false);
+                }
+            }
+
+            async Task SendMessages(List<(ulong, Message)> messages)
+            {
+                var publishTask = client.Publish(new Publish(publisherId, messages));
+                if (!publishTask.IsCompletedSuccessfully)
+                {
+                    await publishTask.ConfigureAwait(false);
+                }
+
+                messages.Clear();
+            }
         }
 
         public static async Task<Producer> Create(ClientParameters clientParameters, ProducerConfig config)

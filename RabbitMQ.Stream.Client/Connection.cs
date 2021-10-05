@@ -15,30 +15,30 @@ namespace RabbitMQ.Stream.Client
         private readonly PipeWriter writer;
         private readonly PipeReader reader;
         private readonly Task readerTask;
-        private Func<ICommand, Task> commandCallback;
+        private Func<Memory<byte>, Task> commandCallback;
 
         private int numFrames;
+        private object writeLock = new object();
 
         internal int NumFrames => numFrames;
 
-        internal Func<ICommand, Task> CommandCallback
+        internal Func<Memory<byte>, Task> CommandCallback
         {
             get => commandCallback;
             set => commandCallback = value;
         }
 
-        private Connection(Socket socket, Func<ICommand, Task> callback)
+        private Connection(Socket socket, Func<Memory<byte>, Task> callback)
         {
             this.socket = socket;
             this.commandCallback = callback;
             var stream = new NetworkStream(socket);
             writer = PipeWriter.Create(stream);
             reader = PipeReader.Create(stream);
-            var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.None);
-            readerTask = ts.StartNew(ProcessIncomingFrames);
+            readerTask = Task.Run(ProcessIncomingFrames);
         }
 
-        public static async Task<Connection> Create(EndPoint ipEndpoint, Func<ICommand, Task> commandCallback)
+        public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback)
         {
             var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             socket.NoDelay = true;
@@ -49,9 +49,9 @@ namespace RabbitMQ.Stream.Client
             return new Connection(socket, commandCallback);
         }
 
-        public async ValueTask<bool> Write(ICommand command)
+        public async ValueTask<bool> Write<T>(T command) where T : struct, ICommand
         {
-            writer.Advance(WriteCommand(command));
+            WriteCommand(command);
             var flushTask = writer.FlushAsync();
 
             // Let's check if this completed synchronously befor invoking the async state mahcine
@@ -63,29 +63,29 @@ namespace RabbitMQ.Stream.Client
             return flushTask.Result.IsCompleted;
         }
 
-        private int WriteCommand(ICommand command)
+        private void WriteCommand<T>(T command) where T : struct, ICommand
         {
-            var size = command.SizeNeeded;
-            var mem = writer.GetSpan(4 + size); // + 4 to write the size
-            WireFormatting.WriteUInt32(mem, (uint)size);
-            var written = command.Write(mem.Slice(4));
-            Debug.Assert(size == written);
-            return 4 + written;
+            // Only one thread should be able to write to the output pipeline at a time.
+            lock (writeLock)
+            {
+                var size = command.SizeNeeded;
+                var mem = writer.GetSpan(4 + size); // + 4 to write the size
+                WireFormatting.WriteUInt32(mem, (uint)size);
+                var written = command.Write(mem.Slice(4));
+                Debug.Assert(size == written);
+                writer.Advance(4 + written);
+            }
         }
 
         private async Task ProcessIncomingFrames()
         {
             while (true)
             {
-                var readerTask = reader.ReadAsync();
-
-                // Let's check if this completed synchronously befor invoking the async state mahcine
-                if (!readerTask.IsCompletedSuccessfully)
+                if (!reader.TryRead(out ReadResult result))
                 {
-                    await readerTask.ConfigureAwait(false);
+                    result = await reader.ReadAsync().ConfigureAwait(false);
                 }
 
-                var result = readerTask.Result;
                 var buffer = result.Buffer;
                 if (buffer.Length == 0)
                 {
@@ -96,15 +96,11 @@ namespace RabbitMQ.Stream.Client
                 // Let's try to read some frames!
                 while(TryReadFrame(ref buffer, out ReadOnlySequence<byte> frame))
                 {
-                    // Let's check the frame tag
-                    WireFormatting.ReadUInt16(frame, out var tag);
-                    if ((tag & 0x8000) != 0)
-                    {
-                        tag = (ushort)(tag ^ 0x8000);
-                    }
-
-                    // Let's handle the frame
-                    HandleFrame(tag, frame);
+                    // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
+                    Memory<byte> memory = ArrayPool<byte>.Shared.Rent((int)frame.Length).AsMemory(0, (int)frame.Length);
+                    frame.CopyTo(memory.Span);
+                    await commandCallback(memory).ConfigureAwait(false);
+                    this.numFrames += 1;
                 }
 
                 reader.AdvanceTo(buffer.Start, buffer.End);
@@ -123,52 +119,17 @@ namespace RabbitMQ.Stream.Client
                 WireFormatting.ReadUInt32(buffer, out var frameSize);
                 if (buffer.Length >= 4 + frameSize)
                 {
-                    // We have enough bytes in the buffer to read a whole frame
-
-                    // Read the frame data
+                    // We have enough bytes in the buffer to read a whole frame so let's read it
                     frame = buffer.Slice(4, frameSize);
 
-                    // Let's slice the buffer
-                    buffer = buffer.Slice(4 + frameSize);
+                    // Let's slice the buffer at the end of the current frame
+                    buffer = buffer.Slice(frame.End);
                     return true;
                 }
             }
 
             frame = ReadOnlySequence<byte>.Empty;
             return false;
-        }
-
-        private int HandleFrame(ushort tag, ReadOnlySequence<byte> frame)
-        {
-            ICommand command;
-            int offset = tag switch
-            {
-                DeclarePublisherResponse.Key => DeclarePublisherResponse.Read(frame, out command),
-                PublishConfirm.Key => PublishConfirm.Read(frame, out command),
-                PublishError.Key => PublishError.Read(frame, out command),
-                QueryPublisherResponse.Key => QueryPublisherResponse.Read(frame, out command),
-                DeletePublisherResponse.Key => DeletePublisherResponse.Read(frame, out command),
-                SubscribeResponse.Key => SubscribeResponse.Read(frame, out command),
-                Deliver.Key => Deliver.Read(frame, out command),
-                QueryOffsetResponse.Key => QueryOffsetResponse.Read(frame, out command),
-                UnsubscribeResponse.Key => UnsubscribeResponse.Read(frame, out command),
-                CreateResponse.Key => CreateResponse.Read(frame, out command),
-                DeleteResponse.Key => DeleteResponse.Read(frame, out command),
-                MetaDataResponse.Key => MetaDataResponse.Read(frame, out command),
-                MetaDataUpdate.Key => MetaDataUpdate.Read(frame, out command),
-                PeerPropertiesResponse.Key => PeerPropertiesResponse.Read(frame, out command),
-                SaslHandshakeResponse.Key => SaslHandshakeResponse.Read(frame, out command),
-                SaslAuthenticateResponse.Key => SaslAuthenticateResponse.Read(frame, out command),
-                TuneResponse.Key => TuneResponse.Read(frame, out command),
-                OpenResponse.Key => OpenResponse.Read(frame, out command),
-                CloseResponse.Key => CloseResponse.Read(frame, out command),
-                _ => throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag))
-            };
-
-            commandCallback(command);
-
-            this.numFrames += 1;
-            return offset;
         }
 
         public void Dispose()

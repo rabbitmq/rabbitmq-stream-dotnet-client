@@ -22,9 +22,8 @@ namespace RabbitMQ.Stream.Client
 
         public int Write(Span<byte> span)
         {
-            var command = (ICommand)this;
             int offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), command.Version);
+            offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand)this).Version);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), frameMax);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), heartbeat);
             return offset;

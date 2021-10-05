@@ -70,7 +70,7 @@ namespace RabbitMQ.Stream.Client
                     }
 
                     // give one credit after each chunk
-                    client.Credit(deliver.SubscriptionId, 1);
+                    await client.Credit(deliver.SubscriptionId, 1);
                 });
             if (response.Code == ResponseCode.Ok)
             {

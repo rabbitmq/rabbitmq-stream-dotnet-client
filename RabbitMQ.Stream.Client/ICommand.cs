@@ -5,7 +5,7 @@ namespace RabbitMQ.Stream.Client
 {
     public interface ICommand
     {
-        ushort Version => 1;
+        ushort Version { get => 1; }
         uint CorrelationId => uint.MaxValue;
         static ushort Key { get; }
         public int SizeNeeded { get; }

@@ -25,11 +25,13 @@ namespace RabbitMQ.Stream.Client
 
         private readonly byte publisherId;
         private readonly List<(ulong, Message)> messages;
+        public int MessageCount { get; }
 
         public Publish(byte publisherId, List<(ulong, Message)> messages)
         {
             this.publisherId = publisherId;
             this.messages = messages;
+            this.MessageCount = messages.Count;
         }
 
         public int Write(Span<byte> span)
@@ -38,7 +40,7 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteUInt16(span.Slice(offset), Version);
             offset += WireFormatting.WriteByte(span.Slice(offset), publisherId);
             // this assumes we never write an empty publish frame
-            offset += WireFormatting.WriteInt32(span.Slice(offset), messages.Count);
+            offset += WireFormatting.WriteInt32(span.Slice(offset), MessageCount);
             foreach(var (publishingId, msg) in messages)
             {
                 offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);

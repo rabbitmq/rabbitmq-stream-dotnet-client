@@ -21,7 +21,7 @@ namespace RabbitMQ.Stream.Client
 
         public int SizeNeeded => throw new NotImplementedException();
 
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out PublishError command)
         {
             var offset = WireFormatting.ReadUInt16(frame, out var tag);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
