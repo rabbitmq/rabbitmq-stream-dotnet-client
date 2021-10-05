@@ -25,7 +25,7 @@ namespace RabbitMQ.Stream.Client
                 foreach (var s in streams)
                 {
                     // TODO: unnecessary conversion work here to work out the correct size of the frame
-                    size += Encoding.UTF8.GetBytes(s).Length +  2; //
+                    size += WireFormatting.StringSize(s); //
                 }
 
                 return size;
