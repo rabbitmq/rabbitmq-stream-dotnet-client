@@ -23,7 +23,7 @@ namespace RabbitMQ.Stream.Client
 
         public IList<string> Mechanisms => mechanisms;
 
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out SaslHandshakeResponse command)
         {
             ushort tag;
             ushort version;

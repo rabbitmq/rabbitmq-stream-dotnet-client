@@ -88,7 +88,7 @@ namespace RabbitMQ.Stream.Client
         private Connection connection;
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)> publishers =
             new ConcurrentDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>();
-        private readonly ConcurrentDictionary<uint, ManualResetValueTaskSource<ICommand>> requests = new();
+        private readonly ConcurrentDictionary<uint, IValueTaskSource> requests = new();
         private TaskCompletionSource<TuneResponse> tuneReceived = new TaskCompletionSource<TuneResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private byte nextSubscriptionId;
@@ -217,16 +217,18 @@ namespace RabbitMQ.Stream.Client
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, int timeout = 10000) where TIn : struct, ICommand where TOut : struct, ICommand
         {
             var corr = NextCorrelationId();
-            var tcs = PooledTaskSource<ICommand>.Rent();
+            var tcs = PooledTaskSource<TOut>.Rent();
             requests.TryAdd(corr, tcs);
             await Publish(request(corr));
             using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
-            using (cts.Token.Register(valueTaskSource => ((ManualResetValueTaskSource<ICommand>)valueTaskSource).SetException(new TimeoutException()), tcs))
             {
-                var valueTask = new ValueTask<ICommand>(tcs, tcs.Version);
-                var result = await valueTask;
-                PooledTaskSource<ICommand>.Return(tcs);
-                return (TOut)result;
+                using (cts.Token.Register(valueTaskSource => ((ManualResetValueTaskSource<TOut>)valueTaskSource).SetException(new TimeoutException()), tcs))
+                {
+                    var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
+                    var result = await valueTask;
+                    PooledTaskSource<TOut>.Return(tcs);
+                    return result;
+                }
             }
         }
 
@@ -251,7 +253,7 @@ namespace RabbitMQ.Stream.Client
                     this.confirmFrames += 1;
                     var (confirmCallback, _) = publishers[confirm.PublisherId];
                     confirmCallback(confirm.PublishingIds);
-                    if(MemoryMarshal.TryGetArray(confirm.PublishingIds, out ArraySegment<ulong> confirmSegment))
+                    if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out ArraySegment<ulong> confirmSegment))
                     {
                         ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
                     }
@@ -274,32 +276,64 @@ namespace RabbitMQ.Stream.Client
                     TuneResponse.Read(frame, out TuneResponse tuneResponse);
                     tuneReceived.SetResult(tuneResponse);
                     break;
-                default:
-                    ICommand command;
-                    int offset = tag switch
-                    {
-                        DeclarePublisherResponse.Key => DeclarePublisherResponse.Read(frame, out command),
-                        QueryPublisherResponse.Key => QueryPublisherResponse.Read(frame, out command),
-                        DeletePublisherResponse.Key => DeletePublisherResponse.Read(frame, out command),
-                        SubscribeResponse.Key => SubscribeResponse.Read(frame, out command),
-                        QueryOffsetResponse.Key => QueryOffsetResponse.Read(frame, out command),
-                        UnsubscribeResponse.Key => UnsubscribeResponse.Read(frame, out command),
-                        CreateResponse.Key => CreateResponse.Read(frame, out command),
-                        DeleteResponse.Key => DeleteResponse.Read(frame, out command),
-                        MetaDataResponse.Key => MetaDataResponse.Read(frame, out command),
-                        PeerPropertiesResponse.Key => PeerPropertiesResponse.Read(frame, out command),
-                        SaslHandshakeResponse.Key => SaslHandshakeResponse.Read(frame, out command),
-                        SaslAuthenticateResponse.Key => SaslAuthenticateResponse.Read(frame, out command),
-                        OpenResponse.Key => OpenResponse.Read(frame, out command),
-                        CloseResponse.Key => CloseResponse.Read(frame, out command),
-                        _ => throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag))
-                    };
-
-                    if (command.CorrelationId == uint.MaxValue)
-                        throw new Exception($"unhandled incoming command {command.GetType()}");
-                    else
-                        HandleCorrelatedResponse(command);
+                case DeclarePublisherResponse.Key:
+                    DeclarePublisherResponse.Read(frame, out var declarePublisherResponse);
+                    HandleCorrelatedResponse(declarePublisherResponse);
                     break;
+                case QueryPublisherResponse.Key:
+                    QueryPublisherResponse.Read(frame, out var queryPublisherResponse);
+                    HandleCorrelatedResponse(queryPublisherResponse);
+                    break;
+                case DeletePublisherResponse.Key:
+                    DeletePublisherResponse.Read(frame, out var deletePublisherResponse);
+                    HandleCorrelatedResponse(deletePublisherResponse);
+                    break;
+                case SubscribeResponse.Key:
+                    SubscribeResponse.Read(frame, out var subscribeResponse);
+                    HandleCorrelatedResponse(subscribeResponse);
+                    break;
+                case QueryOffsetResponse.Key:
+                    QueryOffsetResponse.Read(frame, out var queryOffsetResponse);
+                    HandleCorrelatedResponse(queryOffsetResponse);
+                    break;
+                case UnsubscribeResponse.Key:
+                    UnsubscribeResponse.Read(frame, out var unsubscribeResponse);
+                    HandleCorrelatedResponse(unsubscribeResponse);
+                    break;
+                case CreateResponse.Key:
+                    CreateResponse.Read(frame, out var createResponse);
+                    HandleCorrelatedResponse(createResponse);
+                    break;
+                case DeleteResponse.Key:
+                    DeleteResponse.Read(frame, out var deleteResponse);
+                    HandleCorrelatedResponse(deleteResponse);
+                    break;
+                case MetaDataResponse.Key:
+                    MetaDataResponse.Read(frame, out var metaDataResponse);
+                    HandleCorrelatedResponse(metaDataResponse);
+                    break;
+                case PeerPropertiesResponse.Key:
+                    PeerPropertiesResponse.Read(frame, out var peerPropertiesResponse);
+                    HandleCorrelatedResponse(peerPropertiesResponse);
+                    break;
+                case SaslHandshakeResponse.Key:
+                    SaslHandshakeResponse.Read(frame, out var saslHandshakeResponse);
+                    HandleCorrelatedResponse(saslHandshakeResponse);
+                    break;
+                case SaslAuthenticateResponse.Key:
+                    SaslAuthenticateResponse.Read(frame, out var saslAuthenticateResponse);
+                    HandleCorrelatedResponse(saslAuthenticateResponse);
+                    break;
+                case OpenResponse.Key:
+                    OpenResponse.Read(frame, out var openResponse);
+                    HandleCorrelatedResponse(openResponse);
+                    break;
+                case CloseResponse.Key:
+                    CloseResponse.Read(frame, out var closeResponse);
+                    HandleCorrelatedResponse(closeResponse);
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag));
             }
 
             if(MemoryMarshal.TryGetArray(frameMemory, out ArraySegment<byte> segment))
@@ -308,11 +342,16 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private void HandleCorrelatedResponse(ICommand command)
+        private void HandleCorrelatedResponse<T>(T command) where T : struct, ICommand
         {
+            if (command.CorrelationId == uint.MaxValue)
+            {
+                throw new Exception($"unhandled incoming command {command.GetType()}");
+            }
+
             if (requests.TryRemove(command.CorrelationId, out var tsc))
             {
-                tsc.SetResult(command);
+                ((ManualResetValueTaskSource<T>)tsc).SetResult(command);
             }
         }
 
