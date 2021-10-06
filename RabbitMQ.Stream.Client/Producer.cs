@@ -12,7 +12,6 @@ namespace RabbitMQ.Stream.Client
     {
         public ulong PublishingId { get; set; }
         public ResponseCode Code { get; set; }
-        public Message Message { get; set; }
     }
 
     public record ProducerConfig
@@ -28,11 +27,10 @@ namespace RabbitMQ.Stream.Client
         private readonly Client client;
         private byte publisherId;
         private readonly ProducerConfig config;
-        private readonly ConcurrentDictionary<ulong, Message> pending;
         private readonly Channel<OutgoingMsg> messageBuffer;
-        private readonly SemaphoreSlim semaphore = new(0);
+        private readonly SemaphoreSlim semaphore;
 
-        public int PendingCount => pending.Count;
+        public int PendingCount => config.MaxInFlight - semaphore.CurrentCount;
 
         private readonly ConcurrentQueue<TaskCompletionSource> flows = new();
         private Task publishTask;
@@ -41,9 +39,9 @@ namespace RabbitMQ.Stream.Client
         {
             this.client = client;
             this.config = config;
-            this.pending = new ConcurrentDictionary<ulong, Message>(Environment.ProcessorCount, config.MaxInFlight);
             this.messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000) { AllowSynchronousContinuations = false, SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
             this.publishTask = Task.Run(ProcessBuffer);
+            this.semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }
 
         public Client Client => client;
@@ -57,41 +55,27 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var id in publishingIds.Span)
                     {
-                        if (pending.TryRemove(id, out Message msg))
+                        config.ConfirmHandler(new Confirmation
                         {
-                            config.ConfirmHandler(new Confirmation
-                            {
-                                PublishingId = id,
-                                Code = ResponseCode.Ok,
-                                Message = msg
-                            });
-                        }
+                            PublishingId = id,
+                            Code = ResponseCode.Ok,
+                        });
                     }
 
-                    if (pending.Count < config.MaxInFlight)
-                    {
-                        semaphore.Release();
-                    }
+                    semaphore.Release(publishingIds.Length);
                 },
                 errors =>
                 {
                     foreach ((ulong id, ResponseCode code) in errors)
                     {
-                        if (pending.TryRemove(id, out Message msg))
+                        config.ConfirmHandler(new Confirmation
                         {
-                            config.ConfirmHandler(new Confirmation
-                            {
-                                PublishingId = id,
-                                Code = code,
-                                Message = msg
-                            });
-                        }
+                            PublishingId = id,
+                            Code = code,
+                        });
                     }
 
-                    if (pending.Count < config.MaxInFlight)
-                    {
-                        semaphore.Release();
-                    }
+                    semaphore.Release(errors.Length);
                 });
 
             this.publisherId = pubId;
@@ -99,32 +83,37 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask Send(ulong publishingId, Message message)
         {
-            if (pending.Count >= config.MaxInFlight)
+            // Let's see if we can get a semaphore without having to wait, which should be the case most of the time
+            if(!semaphore.Wait(0))
             {
-                if (!await semaphore.WaitAsync(1000))
+                // Nope, we have maxed our In-Flight messages, let's asynchrnously wait for confirms
+                if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
                 {
                     Console.WriteLine("SEMAPHORE TIMEOUT");
                 }
             }
 
             var msg = new OutgoingMsg(publisherId, publishingId, message);
+            
+            // Let's see if we can write a message to the channel without having to wait
             if(!messageBuffer.Writer.TryWrite(msg))
             { 
+
+                // Nope, channel is full and being processed, let's asynchronously wait until we can buffer the message
                 await messageBuffer.Writer.WriteAsync(msg).ConfigureAwait(false);
             }
-
-            pending.TryAdd(publishingId, message);
         }
 
         public async Task ProcessBuffer()
         {
+            // TODO: make the batch size configurable.
             var messages = new List<(ulong, Message)>(100);
             while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
             {
                 while (messageBuffer.Reader.TryRead(out OutgoingMsg msg))
                 {
                     messages.Add((msg.PublishingId, msg.Data));
-                    if (messages.Count == 1000)
+                    if (messages.Count == 100)
                     {
                         await SendMessages(messages).ConfigureAwait(false);
                     }

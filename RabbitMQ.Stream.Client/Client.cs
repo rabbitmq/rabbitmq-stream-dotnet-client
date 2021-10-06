@@ -258,6 +258,11 @@ namespace RabbitMQ.Stream.Client
                         ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
                     }
                     break;
+                case Deliver.Key:
+                    Deliver.Read(frame, out Deliver deliver);
+                    var deliverHandler = consumers[deliver.SubscriptionId];
+                    await deliverHandler(deliver).ConfigureAwait(false);
+                    break;
                 case PublishError.Key:
                     PublishError.Read(frame, out PublishError error);
                     var (_, errorCallback) = publishers[error.PublisherId];
@@ -267,15 +272,25 @@ namespace RabbitMQ.Stream.Client
                     MetaDataUpdate.Read(frame, out MetaDataUpdate metaDataUpdate);
                     parameters.MetadataHandler(metaDataUpdate);
                     break;
-                case Deliver.Key:
-                    Deliver.Read(frame, out Deliver deliver);
-                    var deliverHandler = consumers[deliver.SubscriptionId];
-                    await deliverHandler(deliver).ConfigureAwait(false);
-                    break;
                 case TuneResponse.Key:
                     TuneResponse.Read(frame, out TuneResponse tuneResponse);
                     tuneReceived.SetResult(tuneResponse);
                     break;
+                default:
+                    HandleCorrelatedCommand(tag, ref frame);
+                    break;
+            }
+
+            if(MemoryMarshal.TryGetArray(frameMemory, out ArraySegment<byte> segment))
+            {
+                ArrayPool<byte>.Shared.Return(segment.Array);
+            }
+        }
+
+        private void HandleCorrelatedCommand(ushort tag, ref ReadOnlySequence<byte> frame)
+        {
+            switch(tag)
+            {
                 case DeclarePublisherResponse.Key:
                     DeclarePublisherResponse.Read(frame, out var declarePublisherResponse);
                     HandleCorrelatedResponse(declarePublisherResponse);
@@ -333,12 +348,12 @@ namespace RabbitMQ.Stream.Client
                     HandleCorrelatedResponse(closeResponse);
                     break;
                 default:
-                    throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag));
-            }
+                    if (MemoryMarshal.TryGetArray(frame.First, out ArraySegment<byte> segment))
+                    {
+                        ArrayPool<byte>.Shared.Return(segment.Array);
+                    }
 
-            if(MemoryMarshal.TryGetArray(frameMemory, out ArraySegment<byte> segment))
-            {
-                ArrayPool<byte>.Shared.Return(segment.Array);
+                    throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag));
             }
         }
 
