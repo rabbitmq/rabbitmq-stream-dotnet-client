@@ -222,7 +222,7 @@ namespace Tests
             // Subscribe
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
-            Task DeliverHandler(Deliver deliver)
+            var deliverHandler = new Func<Deliver, Task>(async (Deliver deliver) =>
             {
                 foreach (var msg in deliver.Messages)
                 {
@@ -230,12 +230,18 @@ namespace Tests
                         messageCount++;
                 }
 
-                gotEvent.Set();
+                testOutputHelper.WriteLine("GotDelivery: {0}", deliver.Messages.Count());
 
-                return Task.CompletedTask;
-            }
+                if (messageCount == 10)
+                {
+                    testOutputHelper.WriteLine("Got 10: ");
+                    gotEvent.Set();
+                }
+
+                await client.Credit(deliver.SubscriptionId, 1);
+            });
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
-                new Dictionary<string, string>(), DeliverHandler);
+                new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
 
@@ -246,7 +252,7 @@ namespace Tests
                 await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
             }
             testOutputHelper.WriteLine("Sent 10 messages to stream");
-            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
+            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
             {
                 Assert.True(false, "MessageHandler was not hit");
             }
@@ -256,7 +262,7 @@ namespace Tests
 
             // reset
             gotEvent.Reset();
-            messageCount = 0;
+            messageCount = 5;
 
             var queryOffsetResponse = await client.QueryOffset(reference, stream);
             offset = queryOffsetResponse.Offset;
@@ -265,7 +271,7 @@ namespace Tests
 
             var offsetTypeOffset = new OffsetTypeOffset(offset);
             (subId, subscribeResponse) = await client.Subscribe(stream, offsetTypeOffset, (ushort)initialCredit,
-               new Dictionary<string, string>(), DeliverHandler);
+               new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
 
@@ -273,7 +279,7 @@ namespace Tests
             {
                 Assert.True(false, "MessageHandler was not hit");
             }
-            Assert.Equal(5, messageCount);
+            Assert.Equal(10, messageCount);
         }
 
         [Fact]
