@@ -4,7 +4,7 @@ using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
 {
-    public class Message
+    public readonly struct Message
     {
         private readonly Properties properties;
         

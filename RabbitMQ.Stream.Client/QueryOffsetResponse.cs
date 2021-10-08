@@ -29,7 +29,7 @@ namespace RabbitMQ.Stream.Client
             throw new NotImplementedException();
         }
 
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out QueryOffsetResponse command)
         {
             ushort key;
             ushort version;

@@ -30,7 +30,7 @@ namespace RabbitMQ.Stream.Client
             return offset;
         }
 
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out TuneResponse command)
         {
             ushort tag;
             ushort version;

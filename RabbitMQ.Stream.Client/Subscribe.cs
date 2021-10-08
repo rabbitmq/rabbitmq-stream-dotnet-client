@@ -113,7 +113,7 @@ namespace RabbitMQ.Stream.Client
             throw new NotImplementedException();
 
         }
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out SubscribeResponse command)
         {
             var offset = WireFormatting.ReadUInt16(frame, out var tag);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);

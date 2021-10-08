@@ -65,7 +65,7 @@ namespace Tests
             var clientParameters = new ClientParameters { MetadataHandler = m => testPassed.SetResult(m) };
             var client = await Client.Create(clientParameters);
             await client.CreateStream(stream, new Dictionary<string, string>());
-            Action<ulong[]> confirmed = (pubIds) => { };
+            Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) => { };
             Action<(ulong, ResponseCode)[]> errored = (errors) => { };
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, result) = await client.DeclarePublisher(publisherRef, stream, confirmed, errored);
@@ -83,7 +83,7 @@ namespace Tests
             var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
             var testPassed = new TaskCompletionSource<bool>();
-            Action<ulong[]> confirmed = (pubIds) => { testPassed.SetResult(false); };
+            Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) => { testPassed.SetResult(false); };
             Action<(ulong, ResponseCode)[]> errored = (errors) => { testPassed.SetResult(true); };
             var publisherRef = Guid.NewGuid().ToString();
 
@@ -100,7 +100,7 @@ namespace Tests
             await client.CreateStream(stream, new Dictionary<string, string>());
             var testPassed = new TaskCompletionSource<bool>();
 
-            Action<ulong[]> confirmed = (pubIds) =>
+            Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) =>
             {
                 testPassed.SetResult(false);
             };
@@ -118,7 +118,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, delStream.ResponseCode);
 
             var msgData = new Message(Encoding.UTF8.GetBytes("hi"));
-            client.Publish(new OutgoingMsg(publisherId, 100, msgData));
+            await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (100, msgData) }));
 
             Assert.True(testPassed.Task.Wait(5000));
             Assert.True(testPassed.Task.Result);
@@ -134,7 +134,7 @@ namespace Tests
             var numConfirmed = 0;
             var testPassed = new TaskCompletionSource<bool>();
 
-            Action<ulong[]> confirmed = (pubIds) =>
+            Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) =>
             {
                 numConfirmed = numConfirmed + pubIds.Length;
                 if (numConfirmed == 10000)
@@ -156,7 +156,7 @@ namespace Tests
             for (var i = from; i < to; i++)
             {
                 var msgData = new Message(Encoding.UTF8.GetBytes("asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
-                client.Publish(new OutgoingMsg(publisherId, i, msgData));
+                await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, msgData)}));
                 if ((int)i - numConfirmed > 1000)
                     await Task.Delay(10);
             }
@@ -193,8 +193,11 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            client.Publish(new OutgoingMsg(publisherId, 0, new Message(Encoding.UTF8.GetBytes("hi"))));
-            client.Publish(new OutgoingMsg(publisherId, 1, new Message(Encoding.UTF8.GetBytes("hi"))));
+            await client.Publish(new Publish(publisherId, new List<(ulong, Message)>
+            {
+                (0, new Message(Encoding.UTF8.GetBytes("hi"))),
+                (1, new Message(Encoding.UTF8.GetBytes("hi")))
+            }));
             Assert.True(testPassed.Task.Wait(10000));
             Assert.Equal(2, msgs.Count());
         }
@@ -216,7 +219,6 @@ namespace Tests
 
             await client.CreateStream(stream, new Dictionary<string, string>());
 
-
             // Subscribe
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
@@ -227,7 +229,9 @@ namespace Tests
                     if (msg.Offset >= offset) //a chunk may contain messages before offset
                         messageCount++;
                 }
+
                 gotEvent.Set();
+
                 return Task.CompletedTask;
             }
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
@@ -239,7 +243,7 @@ namespace Tests
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             for (ulong i = 0; i < 10; i++)
             {
-                client.Publish(new OutgoingMsg(publisherId, i, new Message(Encoding.UTF8.GetBytes("hi"))));
+                await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
             }
             testOutputHelper.WriteLine("Sent 10 messages to stream");
             if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
@@ -248,7 +252,7 @@ namespace Tests
             }
             Assert.Equal(10, messageCount);
 
-            client.StoreOffset(reference, stream, 5);
+            await client.StoreOffset(reference, stream, 5);
 
             // reset
             gotEvent.Reset();
@@ -292,10 +296,10 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            client.Publish(new OutgoingMsg(publisherId, 0, new Message(Array.Empty<byte>())));
+            await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
             Assert.False(testPassed.Task.Wait(1000));
             //We have not credited yet
-            client.Credit(subId, 1);
+            await client.Credit(subId, 1);
 
             Assert.True(testPassed.Task.Wait(10000));
             var delivery = testPassed.Task.Result;
@@ -326,7 +330,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, unsubscribeResponse.Code);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            client.Publish(new OutgoingMsg(publisherId, 0, new Message(Array.Empty<byte>())));
+            await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
             // 1s should be enough to catch this at least some of the time
             Assert.False(testPassed.Task.Wait(1000));
         }

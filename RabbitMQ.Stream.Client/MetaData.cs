@@ -100,7 +100,7 @@ namespace RabbitMQ.Stream.Client
 
         public IDictionary<string, StreamInfo> StreamInfos => streamInfos;
 
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out MetaDataResponse command)
         {
             var offset = WireFormatting.ReadUInt16(frame, out var tag);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
@@ -162,7 +162,7 @@ namespace RabbitMQ.Stream.Client
 
         public string Stream => stream;
 
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out MetaDataUpdate command)
         {
             var offset = WireFormatting.ReadUInt16(frame, out var tag);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);

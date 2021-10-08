@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -11,7 +12,6 @@ namespace RabbitMQ.Stream.Client
     {
         public ulong PublishingId { get; set; }
         public ResponseCode Code { get; set; }
-        public Message Message { get; set; }
     }
 
     public record ProducerConfig
@@ -27,19 +27,21 @@ namespace RabbitMQ.Stream.Client
         private readonly Client client;
         private byte publisherId;
         private readonly ProducerConfig config;
-        private readonly ConcurrentDictionary<ulong, Message> pending;
-        private int pendingCount = 0;
+        private readonly Channel<OutgoingMsg> messageBuffer;
+        private readonly SemaphoreSlim semaphore;
 
-        public int PendingCount => pending.Count;
+        public int PendingCount => config.MaxInFlight - semaphore.CurrentCount;
 
         private readonly ConcurrentQueue<TaskCompletionSource> flows = new();
-        private readonly SemaphoreSlim semaphore = new(0);
+        private Task publishTask;
 
         private Producer(Client client, ProducerConfig config)
         {
             this.client = client;
             this.config = config;
-            this.pending = new ConcurrentDictionary<ulong, Message>(Environment.ProcessorCount, config.MaxInFlight);
+            this.messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000) { AllowSynchronousContinuations = false, SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait });
+            this.publishTask = Task.Run(ProcessBuffer);
+            this.semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }
 
         public Client Client => client;
@@ -51,56 +53,88 @@ namespace RabbitMQ.Stream.Client
                 config.Stream,
                 publishingIds =>
                 {
-                    foreach (var id in publishingIds)
+                    foreach (var id in publishingIds.Span)
                     {
-                        pending.Remove(id, out var msg);
                         config.ConfirmHandler(new Confirmation
                         {
                             PublishingId = id,
                             Code = ResponseCode.Ok,
-                            Message = msg
                         });
                     }
 
-                    if (pending.Count < config.MaxInFlight)
-                    {
-                        semaphore.Release();
-                    }
+                    semaphore.Release(publishingIds.Length);
                 },
                 errors =>
                 {
-                    foreach (var (id, code) in errors)
+                    foreach ((ulong id, ResponseCode code) in errors)
                     {
-                        pending.Remove(id, out var msg);
                         config.ConfirmHandler(new Confirmation
                         {
                             PublishingId = id,
                             Code = code,
-                            Message = msg
                         });
                     }
 
-                    if (pending.Count < config.MaxInFlight)
-                    {
-                        semaphore.Release();
-                    }
+                    semaphore.Release(errors.Length);
                 });
 
             this.publisherId = pubId;
         }
 
-        public async Task Send(ulong publishingId, Message message)
+        public async ValueTask Send(ulong publishingId, Message message)
         {
-            if (pending.Count >= config.MaxInFlight)
+            // Let's see if we can get a semaphore without having to wait, which should be the case most of the time
+            if(!semaphore.Wait(0))
             {
-                if (!await semaphore.WaitAsync(1000))
+                // Nope, we have maxed our In-Flight messages, let's asynchrnously wait for confirms
+                if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
                 {
                     Console.WriteLine("SEMAPHORE TIMEOUT");
                 }
             }
+
+            var msg = new OutgoingMsg(publisherId, publishingId, message);
             
-            var _ = client.Publish(publisherId, publishingId, message);
-            pending.TryAdd(publishingId, message);
+            // Let's see if we can write a message to the channel without having to wait
+            if(!messageBuffer.Writer.TryWrite(msg))
+            { 
+
+                // Nope, channel is full and being processed, let's asynchronously wait until we can buffer the message
+                await messageBuffer.Writer.WriteAsync(msg).ConfigureAwait(false);
+            }
+        }
+
+        public async Task ProcessBuffer()
+        {
+            // TODO: make the batch size configurable.
+            var messages = new List<(ulong, Message)>(100);
+            while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+            {
+                while (messageBuffer.Reader.TryRead(out OutgoingMsg msg))
+                {
+                    messages.Add((msg.PublishingId, msg.Data));
+                    if (messages.Count == 100)
+                    {
+                        await SendMessages(messages).ConfigureAwait(false);
+                    }
+                }
+
+                if (messages.Count > 0)
+                {
+                    await SendMessages(messages).ConfigureAwait(false);
+                }
+            }
+
+            async Task SendMessages(List<(ulong, Message)> messages)
+            {
+                var publishTask = client.Publish(new Publish(publisherId, messages));
+                if (!publishTask.IsCompletedSuccessfully)
+                {
+                    await publishTask.ConfigureAwait(false);
+                }
+
+                messages.Clear();
+            }
         }
 
         public static async Task<Producer> Create(ClientParameters clientParameters, ProducerConfig config)

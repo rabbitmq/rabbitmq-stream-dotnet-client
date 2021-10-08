@@ -46,7 +46,7 @@ namespace RabbitMQ.Stream.Client
         {
             throw new NotImplementedException();
         }
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out Deliver command)
         {
             var offset = WireFormatting.ReadUInt16(frame, out var tag);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
@@ -120,10 +120,9 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var trailerLen);
             offset += 4; // reserved
             //TODO: rather than copying at this point we may want to do codec / message parsing here
-            var data = seq.Slice(offset, dataLen).ToArray();
+            var data = seq.Slice(offset, dataLen);
             offset += (int)dataLen;
-            chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc,
-                new ReadOnlySequence<byte>(data));
+            chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data);
             return offset;
         }
     }

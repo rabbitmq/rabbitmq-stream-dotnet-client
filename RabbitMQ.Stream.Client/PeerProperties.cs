@@ -75,7 +75,7 @@ namespace RabbitMQ.Stream.Client
         public int SizeNeeded => throw new NotImplementedException();
 
 
-        internal static int Read(ReadOnlySequence<byte> frame, out ICommand command)
+        internal static int Read(ReadOnlySequence<byte> frame, out PeerPropertiesResponse command)
         {
             ushort tag;
             ushort version;
