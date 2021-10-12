@@ -7,11 +7,14 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -53,6 +56,7 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
+        public ILogger<Client> Logger { get; set; } = NullLogger<Client>.Instance;
     }
 
     public readonly struct OutgoingMsg : ICommand
@@ -79,7 +83,7 @@ namespace RabbitMQ.Stream.Client
             throw new NotImplementedException();
         }
     }
-    
+
     public class Client
     {
         private uint correlationId = 0; // allow for some pre-amble
@@ -116,7 +120,7 @@ namespace RabbitMQ.Stream.Client
         {
             //this.connection = connection;
             this.parameters = parameters;
-            
+
             // connection.CommandCallback = async (command) =>
             // {
             //     await HandleIncoming(command, parameters.MetadataHandler);
@@ -130,31 +134,31 @@ namespace RabbitMQ.Stream.Client
         {
             var client = new Client(parameters);
             client.connection = await Connection.Create(parameters.Endpoint, client.HandleIncoming);
-            
+
             // exchange properties
             var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr => new PeerPropertiesRequest(corr, parameters.Properties));
             foreach (var (k, v) in peerPropertiesResponse.Properties)
-                Console.WriteLine($"server Props {k} {v}");
+                client.parameters.Logger.LogInformation($"server Props {k} {v}");
 
             //auth
             var saslHandshakeResponse = await client.Request<SaslHandshakeRequest, SaslHandshakeResponse>(corr => new SaslHandshakeRequest(corr));
             foreach (var m in saslHandshakeResponse.Mechanisms)
-                Console.WriteLine($"sasl mechanism: {m}");
+                client.parameters.Logger.LogInformation($"sasl mechanism: {m}");
 
             var saslData = Encoding.UTF8.GetBytes($"\0{parameters.UserName}\0{parameters.Password}");
             var authResponse = await client.Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr => new SaslAuthenticateRequest(corr, "PLAIN", saslData));
-            Console.WriteLine($"auth: {authResponse.ResponseCode} {authResponse.Data}");
+            client.parameters.Logger.LogInformation($"auth: {authResponse.ResponseCode} {authResponse.Data}");
 
             //tune
             var tune = await client.tuneReceived.Task;
             await client.Publish(new TuneRequest(0, 0));
-            
-            // open 
+
+            // open
             var open = await client.Request<OpenRequest, OpenResponse>(corr => new OpenRequest(corr, "/"));
-            Console.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
+            client.parameters.Logger.LogInformation($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
             foreach (var (k, v) in open.ConnectionProperties)
-                Console.WriteLine($"open prop: {k} {v}");
-            
+                client.parameters.Logger.LogInformation($"open prop: {k} {v}");
+
             client.correlationId = 100;
             return client;
         }
@@ -187,7 +191,7 @@ namespace RabbitMQ.Stream.Client
             return (publisherId, await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
                new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)));
         }
-        
+
         public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
         {
             var result = await Request<DeletePublisherRequest, DeletePublisherResponse>(corr => new DeletePublisherRequest(corr, publisherId));
@@ -205,7 +209,7 @@ namespace RabbitMQ.Stream.Client
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
                    new SubscribeRequest(corr, subscriptionId, stream, offsetType, initialCredit, properties)));
         }
-        
+
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
         {
             var result = await Request<UnsubscribeRequest, UnsubscribeResponse>(corr => new UnsubscribeRequest(corr, subscriptionId));

@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -20,6 +22,7 @@ namespace RabbitMQ.Stream.Client
         public string Reference { get; set; }
         public int MaxInFlight { get; set; } = 1000;
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
+        public ILogger<Producer> Logger { get; set; } = NullLogger<Producer>.Instance;
     }
 
     public class Producer
@@ -89,15 +92,15 @@ namespace RabbitMQ.Stream.Client
                 // Nope, we have maxed our In-Flight messages, let's asynchrnously wait for confirms
                 if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
                 {
-                    Console.WriteLine("SEMAPHORE TIMEOUT");
+                    config.Logger.LogInformation("SEMAPHORE TIMEOUT");
                 }
             }
 
             var msg = new OutgoingMsg(publisherId, publishingId, message);
-            
+
             // Let's see if we can write a message to the channel without having to wait
             if(!messageBuffer.Writer.TryWrite(msg))
-            { 
+            {
 
                 // Nope, channel is full and being processed, let's asynchronously wait until we can buffer the message
                 await messageBuffer.Writer.WriteAsync(msg).ConfigureAwait(false);
