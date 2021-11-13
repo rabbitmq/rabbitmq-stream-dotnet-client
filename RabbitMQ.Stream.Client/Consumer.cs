@@ -72,13 +72,13 @@ namespace RabbitMQ.Stream.Client
                     // give one credit after each chunk
                     await client.Credit(deliver.SubscriptionId, 1);
                 });
-            if (response.Code == ResponseCode.Ok)
+            if (response.ResponseCode == ResponseCode.Ok)
             {
                 this.subscriberId = consumerId;
                 return;
             }
             
-            throw new CreateConsumerException($"consumer could not be created code: {response.Code}");
+            throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
         }
     }
 }
