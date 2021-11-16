@@ -8,8 +8,8 @@ namespace RabbitMQ.Stream.Client
     {
         public const ushort Key = 6;
         private readonly uint correlationId;
-        private readonly ushort responseCode;
-        public DeletePublisherResponse(uint correlationId, ushort responseCode)
+        private readonly ResponseCode responseCode;
+        public DeletePublisherResponse(uint correlationId, ResponseCode responseCode)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
@@ -19,7 +19,7 @@ namespace RabbitMQ.Stream.Client
 
         public uint CorrelationId => correlationId;
 
-        public ushort ResponseCode => responseCode;
+        public ResponseCode ResponseCode => responseCode;
         
         public int Write(Span<byte> span)
         {
@@ -27,15 +27,11 @@ namespace RabbitMQ.Stream.Client
         }
         internal static int Read(ReadOnlySequence<byte> frame, out DeletePublisherResponse command)
         {
-            ushort tag;
-            ushort version;
-            uint correlation;
-            ushort responseCode;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
-            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
-            command = new DeletePublisherResponse(correlation, responseCode);
+            var offset = WireFormatting.ReadUInt16(frame, out _);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
+            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
+            command = new DeletePublisherResponse(correlation, (ResponseCode)responseCode);
             return offset;
         }
     }

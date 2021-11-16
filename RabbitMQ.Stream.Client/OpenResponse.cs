@@ -7,11 +7,12 @@ namespace RabbitMQ.Stream.Client
     public readonly struct OpenResponse : ICommand
     {
         private readonly uint correlationId;
-        private readonly ushort responseCode;
+        private readonly ResponseCode responseCode;
         private readonly IDictionary<string, string> connectionProperties;
         public const ushort Key = 21;
 
-        private OpenResponse(uint correlationId, ushort responseCode, IDictionary<string, string> connectionProperties)
+        private OpenResponse(uint correlationId, ResponseCode responseCode,
+            IDictionary<string, string> connectionProperties)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
@@ -22,7 +23,7 @@ namespace RabbitMQ.Stream.Client
 
         public uint CorrelationId => correlationId;
 
-        public ushort ResponseCode => responseCode;
+        public ResponseCode ResponseCode => responseCode;
 
         public IDictionary<string, string> ConnectionProperties => connectionProperties;
 
@@ -30,12 +31,11 @@ namespace RabbitMQ.Stream.Client
         {
             throw new NotImplementedException();
         }
+
         internal static int Read(ReadOnlySequence<byte> frame, out OpenResponse command)
         {
-            ushort tag;
-            ushort version;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
+            var offset = WireFormatting.ReadUInt16(frame, out var tag);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
             offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numProps);
@@ -46,7 +46,8 @@ namespace RabbitMQ.Stream.Client
                 offset += WireFormatting.ReadString(frame.Slice(offset), out var v);
                 props.Add(k, v);
             }
-            command = new OpenResponse(correlation, responseCode, props);
+
+            command = new OpenResponse(correlation, (ResponseCode) responseCode, props);
             return offset;
         }
     }

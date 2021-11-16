@@ -6,6 +6,7 @@ gensrc/
 [Ll]ocal.props
 [Ll]ocal.dist
 
+.idea
 .vscode
 *.pyc
 docs/pyle.log

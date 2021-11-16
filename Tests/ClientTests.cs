@@ -69,7 +69,8 @@ namespace Tests
             Action<(ulong, ResponseCode)[]> errored = (errors) => { };
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, result) = await client.DeclarePublisher(publisherRef, stream, confirmed, errored);
-            Assert.Equal(1, result.ResponseCode);
+            Assert.Equal(ResponseCode.Ok, result.ResponseCode);
+            
             await client.DeleteStream(stream);
             Assert.True(testPassed.Task.Wait(5000));
             var mdu = testPassed.Task.Result;
@@ -88,7 +89,7 @@ namespace Tests
             var publisherRef = Guid.NewGuid().ToString();
 
             var (publisherId, result) = await client.DeclarePublisher(publisherRef, "this-stream-does-not-exist", confirmed, errored);
-            Assert.Equal(2, result.ResponseCode);
+            Assert.Equal(ResponseCode.StreamDoesNotExist, result.ResponseCode);
         }
 
         [Fact]
@@ -165,7 +166,7 @@ namespace Tests
             Assert.True(testPassed.Task.Result);
             await client.DeleteStream(stream);
             var closeResponse = await client.Close("finished");
-            Assert.Equal(1, closeResponse.ResponseCode);
+            Assert.Equal(ResponseCode.Ok, closeResponse.ResponseCode);
             Assert.True(client.IsClosed);
             //Assert.Throws<AggregateException>(() => client.Close("finished").Result);
         }
@@ -190,7 +191,7 @@ namespace Tests
             };
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
-            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             await client.Publish(new Publish(publisherId, new List<(ulong, Message)>
@@ -242,7 +243,7 @@ namespace Tests
             });
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
-            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
 
             // publish
@@ -272,7 +273,7 @@ namespace Tests
             var offsetTypeOffset = new OffsetTypeOffset(offset);
             (subId, subscribeResponse) = await client.Subscribe(stream, offsetTypeOffset, (ushort)initialCredit,
                new Dictionary<string, string>(), deliverHandler);
-            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
 
             if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
@@ -299,7 +300,7 @@ namespace Tests
             };
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
-            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
@@ -329,7 +330,7 @@ namespace Tests
             };
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
-            Assert.Equal(ResponseCode.Ok, subscribeResponse.Code);
+            Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
 
             var unsubscribeResponse = await client.Unsubscribe(subId);
 

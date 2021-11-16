@@ -7,10 +7,10 @@ namespace RabbitMQ.Stream.Client
     {
         public const ushort Key = 11;
         private readonly uint correlationId;
-        private readonly ushort responseCode;
+        private readonly ResponseCode responseCode;
         private readonly ulong offsetValue;
 
-        public QueryOffsetResponse(uint correlationId, ushort responseCode, ulong offsetValue)
+        public QueryOffsetResponse(uint correlationId, ResponseCode responseCode, ulong offsetValue)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
@@ -21,7 +21,7 @@ namespace RabbitMQ.Stream.Client
 
         public uint CorrelationId => correlationId;
 
-        public ushort ResponseCode => responseCode;
+        public ResponseCode ResponseCode => responseCode;
         public ulong Offset => offsetValue;
 
         public int Write(Span<byte> span)
@@ -31,17 +31,12 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out QueryOffsetResponse command)
         {
-            ushort key;
-            ushort version;
-            uint correlation;
-            ushort responseCode;
-            ulong offsetValue;
-            var offset = WireFormatting.ReadUInt16(frame, out key);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
-            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
-            offset += WireFormatting.ReadUInt64(frame.Slice(offset), out offsetValue);
-            command = new QueryOffsetResponse(correlation, responseCode, offsetValue);
+            var offset = WireFormatting.ReadUInt16(frame, out var key);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
+            offset += WireFormatting.ReadUInt64(frame.Slice(offset), out var offsetValue);
+            command = new QueryOffsetResponse(correlation, (ResponseCode) responseCode, offsetValue);
             return offset;
         }
     }

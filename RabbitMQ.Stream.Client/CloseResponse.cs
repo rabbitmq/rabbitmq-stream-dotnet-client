@@ -8,9 +8,9 @@ namespace RabbitMQ.Stream.Client
     {
         public const ushort Key = 22;
         private readonly uint correlationId;
-        private readonly ushort responseCode;
+        private readonly ResponseCode responseCode;
         
-        public CloseResponse(uint correlationId, ushort responseCode)
+        public CloseResponse(uint correlationId, ResponseCode responseCode)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;
@@ -20,7 +20,7 @@ namespace RabbitMQ.Stream.Client
 
         public uint CorrelationId => correlationId;
 
-        public ushort ResponseCode => responseCode;
+        public ResponseCode ResponseCode => responseCode;
 
         public int Write(Span<byte> span)
         {
@@ -28,15 +28,11 @@ namespace RabbitMQ.Stream.Client
         }
         internal static int Read(ReadOnlySequence<byte> frame, out CloseResponse command)
         {
-            ushort tag;
-            ushort version;
-            uint correlation;
-            ushort responseCode;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
-            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
-            command = new CloseResponse(correlation, responseCode);
+            var offset = WireFormatting.ReadUInt16(frame, out var tag);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
+            command = new CloseResponse(correlation, (ResponseCode)responseCode);
             return offset;
         }
     }
