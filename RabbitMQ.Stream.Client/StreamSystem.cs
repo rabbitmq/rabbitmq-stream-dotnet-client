@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
@@ -63,8 +64,10 @@ namespace RabbitMQ.Stream.Client
         public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
         {
             var meta = await client.QueryMetadata(new []{producerConfig.Stream});
-            //TODO: error handling
             var info = meta.StreamInfos[producerConfig.Stream];
+            if (info.ResponseCode != ResponseCode.Ok) {
+                throw new CreateProducerException($"producer could not be created code: {info.ResponseCode}");
+            }
             var hostEntry = await Dns.GetHostEntryAsync(info.Leader.Host);
             var ipEndpoint = new IPEndPoint(hostEntry.AddressList.First(), (int)info.Leader.Port);
             // first look up meta data for stream
@@ -103,6 +106,11 @@ namespace RabbitMQ.Stream.Client
     public class CreateStreamException : Exception
     {
         public CreateStreamException(string s) : base(s) { }
+    }
+    
+    public class CreateProducerException : Exception
+    {
+        public CreateProducerException(string s) : base(s) { }
     }
 
     public struct Properties

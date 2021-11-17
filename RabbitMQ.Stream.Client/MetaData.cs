@@ -68,16 +68,24 @@ namespace RabbitMQ.Stream.Client
     public readonly struct StreamInfo
     {
         public string Stream { get; }
-        public ushort Code { get; }
+        public ResponseCode ResponseCode { get; }
         public Broker Leader { get; }
         public IList<Broker> Replicas { get; }
 
-        public StreamInfo(string stream, ushort code, Broker leader, IList<Broker> replicas)
+        public StreamInfo(string stream, ResponseCode responseCode, Broker leader, IList<Broker> replicas)
         {
             Stream = stream;
-            Code = code;
+            ResponseCode = responseCode;
             Leader = leader;
             Replicas = replicas;
+        }
+        
+        public StreamInfo(string stream, ResponseCode responseCode)
+        {
+            Stream = stream;
+            ResponseCode = responseCode;
+            Leader = default;
+            Replicas = null;
         }
     }
     
@@ -129,9 +137,17 @@ namespace RabbitMQ.Stream.Client
                     offset += WireFormatting.ReadUInt16(frame.Slice(offset), out replicaRefs[j]);
                 }
 
-                var replicas = replicaRefs.Select(r => brokers[r]).ToList();
-                var leader = brokers[leaderRef];
-                streamInfos.Add(stream, new StreamInfo(stream, code, leader, replicas));
+                if (brokers.Count > 0) {
+                    var replicas = replicaRefs.Select(r => brokers[r]).ToList();
+                    var leader = brokers[leaderRef];
+                    streamInfos.Add(stream, new StreamInfo(stream, (ResponseCode)code, leader, replicas));
+                }
+                else
+                {
+                    streamInfos.Add(stream, new StreamInfo(stream, (ResponseCode)code));
+                }
+
+                
             }
             command = new MetaDataResponse(correlation, streamInfos);
             

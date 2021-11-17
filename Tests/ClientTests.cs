@@ -51,9 +51,19 @@ namespace Tests
             var streamInfoPair = metaDataResponse.StreamInfos.First();
             Assert.Equal(stream, streamInfoPair.Key);
             var streamInfo = streamInfoPair.Value;
-            Assert.Equal(1, streamInfo.Code);
+            Assert.Equal(ResponseCode.Ok, streamInfo.ResponseCode);
             Assert.Equal(5552, (int)streamInfo.Leader.Port);
             Assert.Empty(streamInfo.Replicas);
+            
+            // Test result when the Stream Does Not Exist
+            const string streamNotExist = "StreamNotExist";
+            var metaDataResponseNo = await client.QueryMetadata(new[] { streamNotExist});
+            Assert.Equal(1, metaDataResponseNo.StreamInfos.Count);
+            var streamInfoPairNo = metaDataResponseNo.StreamInfos.First();
+            Assert.Equal(streamNotExist, streamInfoPairNo.Key);
+            var streamInfoNo = streamInfoPairNo.Value;
+            Assert.Equal(ResponseCode.StreamDoesNotExist, streamInfoNo.ResponseCode);
+            
             await client.Close("done");
         }
 

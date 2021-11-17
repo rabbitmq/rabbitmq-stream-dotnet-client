@@ -106,7 +106,25 @@ namespace Tests
             Assert.True(testPassed.Task.Result);
             await system.Close();
         }
-        
+
+        [Fact]
+      
+        public async Task CreateProducerStreamDoesNotExist()
+        {
+            const string stream = "StreamNotExist";
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+           
+            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
+                new ProducerConfig{
+                    Reference = "producer",
+                    Stream = stream,
+                }));
+            
+            await system.Close();
+        }
+
+
         [Fact]
         public async void CreateConsumer()
         {
