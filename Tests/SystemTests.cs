@@ -1,11 +1,8 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
@@ -21,15 +18,9 @@ namespace Tests
             return new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(s));
         }
     }
+
     public class SystemTests
     {
-        private readonly ITestOutputHelper testOutputHelper;
-
-        public SystemTests(ITestOutputHelper testOutputHelper)
-        {
-            this.testOutputHelper = testOutputHelper;
-        }
-
         [Fact]
         public async void CreateSystem()
         {
@@ -46,7 +37,7 @@ namespace Tests
             await system.Close();
             Assert.True(system.IsClosed);
         }
-        
+
         [Fact]
         public async void CreateSystemThrowsWhenNoEndpointsAreReachable()
         {
@@ -78,86 +69,5 @@ namespace Tests
             await system.CreateStream(spec);
             await system.Close();
         }
-        
-        [Fact]
-        public async void CreateProducer()
-        {
-            var testPassed = new TaskCompletionSource<bool>();
-            var stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig();
-            var system = await StreamSystem.Create(config);
-            await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(
-                new ProducerConfig{
-                    Reference = "producer",
-                    Stream = stream,
-                    ConfirmHandler = conf =>
-                    {
-                        if(conf.Code == ResponseCode.Ok)
-                            testPassed.SetResult(true);
-                        else
-                            testPassed.SetResult(false);
-                    }
-                });
-            var readonlySequence = "apple".AsReadonlySequence();
-            var message = new Message(new Data(readonlySequence));
-            await producer.Send(1, message);
-            Assert.True(testPassed.Task.Wait(5000));
-            Assert.True(testPassed.Task.Result);
-            await system.Close();
-        }
-
-        [Fact]
-      
-        public async Task CreateProducerStreamDoesNotExist()
-        {
-            const string stream = "StreamNotExist";
-            var config = new StreamSystemConfig();
-            var system = await StreamSystem.Create(config);
-           
-            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig{
-                    Reference = "producer",
-                    Stream = stream,
-                }));
-            
-            await system.Close();
-        }
-
-
-        [Fact]
-        public async void CreateConsumer()
-        {
-            var testPassed = new TaskCompletionSource<Data>();
-            var stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig();
-            var system = await StreamSystem.Create(config);
-            await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(
-                new ProducerConfig{
-                    Reference = "producer",
-                    Stream = stream
-                });
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
-                {
-                    Reference = "consumer",
-                    Stream = stream,
-                    MessageHandler = async (consumer, ctx, message) =>
-                    {
-                        //consumer.Commit(ctx.Offset);
-                        testPassed.SetResult(message.Data);
-                        await Task.CompletedTask;
-                    }
-                });
-            var msgData = new Data("apple".AsReadonlySequence());
-            var message = new Message(msgData);
-            await producer.Send(1, message);
-            //wait for sent message to be delivered
-            Assert.True(testPassed.Task.Wait(5000));
-            Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
-            await system.Close();
-        }
     }
-
 }

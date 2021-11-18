@@ -3,6 +3,7 @@ using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net;
@@ -134,16 +135,16 @@ namespace RabbitMQ.Stream.Client
             // exchange properties
             var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr => new PeerPropertiesRequest(corr, parameters.Properties));
             foreach (var (k, v) in peerPropertiesResponse.Properties)
-                Console.WriteLine($"server Props {k} {v}");
+                Debug.WriteLine($"server Props {k} {v}");
 
             //auth
             var saslHandshakeResponse = await client.Request<SaslHandshakeRequest, SaslHandshakeResponse>(corr => new SaslHandshakeRequest(corr));
             foreach (var m in saslHandshakeResponse.Mechanisms)
-                Console.WriteLine($"sasl mechanism: {m}");
+                Debug.WriteLine($"sasl mechanism: {m}");
 
             var saslData = Encoding.UTF8.GetBytes($"\0{parameters.UserName}\0{parameters.Password}");
             var authResponse = await client.Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr => new SaslAuthenticateRequest(corr, "PLAIN", saslData));
-            Console.WriteLine($"auth: {authResponse.ResponseCode} {authResponse.Data}");
+            Debug.WriteLine($"auth: {authResponse.ResponseCode} {authResponse.Data}");
 
             //tune
             var tune = await client.tuneReceived.Task;
@@ -151,9 +152,9 @@ namespace RabbitMQ.Stream.Client
             
             // open 
             var open = await client.Request<OpenRequest, OpenResponse>(corr => new OpenRequest(corr, "/"));
-            Console.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
+            Debug.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
             foreach (var (k, v) in open.ConnectionProperties)
-                Console.WriteLine($"open prop: {k} {v}");
+                Debug.WriteLine($"open prop: {k} {v}");
             
             client.correlationId = 100;
             return client;
@@ -222,7 +223,7 @@ namespace RabbitMQ.Stream.Client
             await Publish(request(corr));
             using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
             {
-                using (cts.Token.Register(valueTaskSource => ((ManualResetValueTaskSource<TOut>)valueTaskSource).SetException(new TimeoutException()), tcs))
+                await using (cts.Token.Register(valueTaskSource => ((ManualResetValueTaskSource<TOut>)valueTaskSource).SetException(new TimeoutException()), tcs))
                 {
                     var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
                     var result = await valueTask;
@@ -381,6 +382,19 @@ namespace RabbitMQ.Stream.Client
             closeResponse = result;
             connection.Dispose();
 
+            return result;
+        }
+        
+        // Safe close 
+        // the client can be closed only if the publishers are == 0
+        // not a public method used internally by producers and consumers
+        internal  CloseResponse MaybeClose(string reason)
+        {
+            if (publishers.Count == 0 && consumers.Count ==0)
+            {
+                return this.Close(reason).Result;
+            }
+            var result = new CloseResponse(0, ResponseCode.Ok);
             return result;
         }
 
