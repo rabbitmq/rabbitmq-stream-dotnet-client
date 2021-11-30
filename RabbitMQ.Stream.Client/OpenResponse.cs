@@ -38,13 +38,16 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
-            offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numProps);
             var props = new Dictionary<string, string>();
-            for (var i = 0; i < numProps; i++)
+            if (ResponseCode.Ok == (ResponseCode) responseCode)
             {
-                offset += WireFormatting.ReadString(frame.Slice(offset), out var k);
-                offset += WireFormatting.ReadString(frame.Slice(offset), out var v);
-                props.Add(k, v);
+                offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numProps);
+                for (var i = 0; i < numProps; i++)
+                {
+                    offset += WireFormatting.ReadString(frame.Slice(offset), out var k);
+                    offset += WireFormatting.ReadString(frame.Slice(offset), out var v);
+                    props.Add(k, v);
+                }
             }
 
             command = new OpenResponse(correlation, (ResponseCode) responseCode, props);

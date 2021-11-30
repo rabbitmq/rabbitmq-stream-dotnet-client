@@ -12,9 +12,11 @@ namespace RabbitMQ.Stream.Client
     {
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
+        public string VirtualHost { get; set; } = "/";
+
         public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
     }
-    
+
     public class StreamSystem
     {
         private readonly StreamSystemConfig config;
@@ -35,7 +37,8 @@ namespace RabbitMQ.Stream.Client
             var clientParams = new ClientParameters
             {
                 UserName = config.UserName,
-                Password = config.Password
+                Password = config.Password,
+                VirtualHost = config.VirtualHost
             };
             // create the metadata client connection
             foreach (var endPoint in config.Endpoints)
@@ -46,11 +49,14 @@ namespace RabbitMQ.Stream.Client
                     if (!client.IsClosed)
                         return new StreamSystem(config, clientParams, client);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                   //TODO log? 
+                    if (e is ProtocolException)
+                    {
+                        throw;
+                    }
+                    //TODO log? 
                 }
-                    
             }
 
             throw new StreamSystemInitialisationException("no endpoints could be reached");
@@ -63,16 +69,18 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
         {
-            var meta = await client.QueryMetadata(new []{producerConfig.Stream});
+            var meta = await client.QueryMetadata(new[] {producerConfig.Stream});
             var info = meta.StreamInfos[producerConfig.Stream];
-            if (info.ResponseCode != ResponseCode.Ok) {
+            if (info.ResponseCode != ResponseCode.Ok)
+            {
                 throw new CreateProducerException($"producer could not be created code: {info.ResponseCode}");
             }
+
             var hostEntry = await Dns.GetHostEntryAsync(info.Leader.Host);
-            var ipEndpoint = new IPEndPoint(hostEntry.AddressList.First(), (int)info.Leader.Port);
+            var ipEndpoint = new IPEndPoint(hostEntry.AddressList.First(), (int) info.Leader.Port);
             // first look up meta data for stream
             //then connect producer to that node
-            return await Producer.Create(clientParameters with {Endpoint = ipEndpoint}, producerConfig); 
+            return await Producer.Create(clientParameters with {Endpoint = ipEndpoint}, producerConfig);
         }
 
         public async Task CreateStream(StreamSpec spec)
@@ -85,14 +93,14 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
-            var meta = await client.QueryMetadata(new []{consumerConfig.Stream});
+            var meta = await client.QueryMetadata(new[] {consumerConfig.Stream});
             //TODO: error handling
             var info = meta.StreamInfos[consumerConfig.Stream];
             var hostEntry = await Dns.GetHostEntryAsync(info.Leader.Host);
-            var ipEndpoint = new IPEndPoint(hostEntry.AddressList.First(), (int)info.Leader.Port);
+            var ipEndpoint = new IPEndPoint(hostEntry.AddressList.First(), (int) info.Leader.Port);
             // first look up meta data for stream
             //then connect producer to that node
-            return await Consumer.Create(clientParameters with {Endpoint = ipEndpoint}, consumerConfig); 
+            return await Consumer.Create(clientParameters with {Endpoint = ipEndpoint}, consumerConfig);
         }
     }
 
@@ -102,22 +110,25 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
-    
- 
+
+
     public class CreateStreamException : Exception
     {
-        public CreateStreamException(string s) : base(s) { }
+        public CreateStreamException(string s) : base(s)
+        {
+        }
     }
-    
+
     public class CreateProducerException : Exception
     {
-        public CreateProducerException(string s) : base(s) { }
+        public CreateProducerException(string s) : base(s)
+        {
+        }
     }
-    
+
 
     public struct Properties
     {
-        
     }
 
     public readonly struct LeaderLocator

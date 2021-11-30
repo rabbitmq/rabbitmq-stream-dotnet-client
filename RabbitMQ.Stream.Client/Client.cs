@@ -51,6 +51,7 @@ namespace RabbitMQ.Stream.Client
             };
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
+        public string VirtualHost { get; set; } = "/";
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
@@ -151,7 +152,9 @@ namespace RabbitMQ.Stream.Client
             await client.Publish(new TuneRequest(0, 0));
             
             // open 
-            var open = await client.Request<OpenRequest, OpenResponse>(corr => new OpenRequest(corr, "/"));
+            var open = await client.Request<OpenRequest, OpenResponse>(corr => new OpenRequest(corr, parameters.VirtualHost));
+            ClientExceptions.MaybeThrowException(open.ResponseCode, parameters.VirtualHost);
+            
             Debug.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
             foreach (var (k, v) in open.ConnectionProperties)
                 Debug.WriteLine($"open prop: {k} {v}");

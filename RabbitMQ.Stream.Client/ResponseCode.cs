@@ -1,3 +1,5 @@
+using System;
+
 namespace RabbitMQ.Stream.Client
 {
     public enum ResponseCode : ushort
@@ -13,12 +15,15 @@ namespace RabbitMQ.Stream.Client
         SaslError = 9,
         SaslChallenge = 10,
         SaslAuthenticationFailureLoopback = 11,
-        VirtualHostAccessFailure =  12,
+        VirtualHostAccessFailure = 12,
         UnknownFrame = 13,
-        FrameTooLarge = 14 ,
+        FrameTooLarge = 14,
         InternalError = 15,
         AccessRefused = 16,
         PreconditionFailed = 17,
-        PublisherDoesNotExist = 18 
+        PublisherDoesNotExist = 18
     }
+    
+
+    
 }

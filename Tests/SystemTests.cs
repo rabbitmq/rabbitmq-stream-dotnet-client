@@ -69,5 +69,17 @@ namespace Tests
             await system.CreateStream(spec);
             await system.Close();
         }
+        
+        [Fact]
+        public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
+        {
+            var config = new StreamSystemConfig
+            {
+                VirtualHost = "DOES_NOT_EXIST"
+            };
+            await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
+                async () => {  await StreamSystem.Create(config); }
+            );
+        }
     }
 }
