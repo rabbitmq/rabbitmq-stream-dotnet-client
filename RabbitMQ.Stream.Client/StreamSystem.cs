@@ -102,7 +102,8 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
-
+    
+ 
     public class CreateStreamException : Exception
     {
         public CreateStreamException(string s) : base(s) { }
@@ -112,6 +113,7 @@ namespace RabbitMQ.Stream.Client
     {
         public CreateProducerException(string s) : base(s) { }
     }
+    
 
     public struct Properties
     {

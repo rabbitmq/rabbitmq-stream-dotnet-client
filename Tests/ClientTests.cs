@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using Xunit;
 using Xunit.Abstractions;
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Tests
 {
@@ -86,6 +87,7 @@ namespace Tests
             var mdu = testPassed.Task.Result;
             Assert.Equal(stream, mdu.Stream);
             Assert.Equal(ResponseCode.StreamNotAvailable, mdu.Code);
+            await client.Close("done");
         }
 
         [Fact]
@@ -100,6 +102,7 @@ namespace Tests
 
             var (publisherId, result) = await client.DeclarePublisher(publisherRef, "this-stream-does-not-exist", confirmed, errored);
             Assert.Equal(ResponseCode.StreamDoesNotExist, result.ResponseCode);
+            await client.Close("done");
         }
 
         [Fact]
@@ -131,13 +134,16 @@ namespace Tests
             var msgData = new Message(Encoding.UTF8.GetBytes("hi"));
             await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (100, msgData) }));
 
-            Assert.True(testPassed.Task.Wait(5000));
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
             Assert.True(testPassed.Task.Result);
+            await client.Close("done");
         }
 
         [Fact]
         public async void PublishShouldConfirm()
         {
+            testOutputHelper.WriteLine("PublishShouldConfirm");
             var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
@@ -171,7 +177,8 @@ namespace Tests
                 if ((int)i - numConfirmed > 1000)
                     await Task.Delay(10);
             }
-            Assert.True(testPassed.Task.Wait(10000));
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
             Debug.WriteLine($"num confirmed {numConfirmed}");
             Assert.True(testPassed.Task.Result);
             await client.DeleteStream(stream);
@@ -179,6 +186,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, closeResponse.ResponseCode);
             Assert.True(client.IsClosed);
             //Assert.Throws<AggregateException>(() => client.Close("finished").Result);
+            await client.Close("done");
         }
 
         [Fact]
@@ -209,8 +217,10 @@ namespace Tests
                 (0, new Message(Encoding.UTF8.GetBytes("hi"))),
                 (1, new Message(Encoding.UTF8.GetBytes("hi")))
             }));
-            Assert.True(testPassed.Task.Wait(10000));
+            new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
             Assert.Equal(2, msgs.Count());
+            await client.Close("done");
         }
 
 
@@ -314,13 +324,16 @@ namespace Tests
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
-            Assert.False(testPassed.Task.Wait(1000));
+            new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
+
             //We have not credited yet
             await client.Credit(subId, 1);
 
-            Assert.True(testPassed.Task.Wait(10000));
+            new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
             var delivery = testPassed.Task.Result;
             Assert.Single(delivery.Messages);
+            await client.Close("done");
         }
 
         [Fact]
@@ -344,12 +357,14 @@ namespace Tests
 
             var unsubscribeResponse = await client.Unsubscribe(subId);
 
-            Assert.Equal(ResponseCode.Ok, unsubscribeResponse.Code);
+            Assert.Equal(ResponseCode.Ok, unsubscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
             // 1s should be enough to catch this at least some of the time
-            Assert.False(testPassed.Task.Wait(1000));
+            new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
+            await client.Close("done");
+
         }
     }
 }

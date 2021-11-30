@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
-
     public struct MessageContext
     {
         public ulong Offset { get; }
@@ -18,7 +17,7 @@ namespace RabbitMQ.Stream.Client
             this.Timestamp = timestamp;
         }
     }
-    
+
     public record ConsumerConfig
     {
         public string Stream { get; set; }
@@ -26,12 +25,13 @@ namespace RabbitMQ.Stream.Client
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
     }
-    
-    public class Consumer
+
+    public class Consumer : IDisposable
     {
         private readonly Client client;
         private readonly ConsumerConfig config;
         private byte subscriberId;
+        private bool _disposed;
 
         private Consumer(Client client, ConsumerConfig config)
         {
@@ -77,8 +77,45 @@ namespace RabbitMQ.Stream.Client
                 this.subscriberId = consumerId;
                 return;
             }
-            
+
             throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
+        }
+
+        public async Task<ResponseCode> Close()
+        {
+            if (_disposed)
+                return ResponseCode.Ok;
+
+            var deleteConsumerResponse = await this.client.Unsubscribe(this.subscriberId);
+            var result = deleteConsumerResponse.ResponseCode;
+            var closed = this.client.MaybeClose($"client-close-subscriber: {this.subscriberId}");
+            if (closed.ResponseCode != ResponseCode.Ok)
+            {
+                // TODO replace with new logger
+                Console.WriteLine($"Error during close tcp connection. Subscriber: {this.subscriberId}");
+            }
+
+            _disposed = true;
+            return result;
+        }
+
+        //
+        private void Dispose(bool disposing)
+        {
+            if (!disposing) return;
+
+            var closeProducer = this.Close();
+            if (closeProducer.Result != ResponseCode.Ok)
+            {
+                // TODO replace with new logger
+                Console.WriteLine($"Error during remove producer. Subscriber: {this.subscriberId}");
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

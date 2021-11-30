@@ -32,7 +32,7 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Test
-      run: dotnet test Tests/Tests.csproj --no-build --verbosity normal
+      run: dotnet test Tests/Tests.csproj --no-build --logger "console;verbosity=detailed"
     - name: Publish RabbitMQ.Stream.Client
       uses: brandedoutcast/publish-nuget@v2.5.2
       with:

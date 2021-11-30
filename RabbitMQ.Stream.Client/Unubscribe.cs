@@ -19,7 +19,7 @@ namespace RabbitMQ.Stream.Client
 
         public uint CorrelationId => correlationId;
 
-        public ResponseCode Code => responseCode;
+        public ResponseCode ResponseCode => responseCode;
 
         public int Write(Span<byte> span)
         {
