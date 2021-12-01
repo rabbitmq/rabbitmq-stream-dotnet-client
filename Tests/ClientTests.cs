@@ -364,7 +364,19 @@ namespace Tests
             // 1s should be enough to catch this at least some of the time
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
             await client.Close("done");
+        }
 
+
+        [Fact]
+        public async void VirtualHostFailureAccess()
+        {
+            var clientParameters = new ClientParameters
+            {
+                VirtualHost = "DOES_NOT_EXIST"
+            };
+            await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
+                async () => {  await Client.Create(clientParameters); }
+            );
         }
     }
 }
