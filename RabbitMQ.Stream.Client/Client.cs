@@ -383,7 +383,14 @@ namespace RabbitMQ.Stream.Client
 
             var result = await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason));
             closeResponse = result;
-            connection.Dispose();
+            try
+            {
+                connection.Dispose();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
 
             return result;
         }

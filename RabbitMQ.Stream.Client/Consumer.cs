@@ -39,8 +39,9 @@ namespace RabbitMQ.Stream.Client
             this.config = config;
         }
 
-        public void Commit(ulong offset)
+        public async Task  StoreOffset(ulong offset)
         {
+           await client.StoreOffset(config.Reference, config.Stream, offset);
         }
 
         public static async Task<Consumer> Create(ClientParameters clientParameters, ConsumerConfig config)
