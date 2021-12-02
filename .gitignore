@@ -20,7 +20,7 @@ TestResult.xml
 /NuGet
 .vscode/
 *.lock.json
-
+Tests/coverage.xml
 test.sh
 *.VisualState.xml
 test-output.log
