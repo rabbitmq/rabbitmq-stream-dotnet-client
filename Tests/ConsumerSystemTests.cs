@@ -20,6 +20,8 @@ namespace Tests
             this.testOutputHelper = testOutputHelper;
         }
 
+     
+        
         [Fact]
         public async void CreateConsumer()
         {
@@ -60,7 +62,7 @@ namespace Tests
         }
 
         [Fact]
-        public async Task CloseProducerTwoTimesShouldBeOk()
+        public async void CloseProducerTwoTimesShouldBeOk()
         {
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -80,5 +82,53 @@ namespace Tests
 
             await system.Close();
         }
+        
+        
+        [Fact]
+        public async void ConsumerStoreOffset()
+        {
+            var testPassed = new TaskCompletionSource<int>();
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            const int numberOfMessages = 10;
+            new SystemUtils().PublishMessages(system, stream,numberOfMessages);
+            var count = 0;
+            using var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = "consumer_offset",
+                    Stream = stream,
+                    
+                    MessageHandler = async (consumer, ctx, message) =>
+                    {
+                        count++;
+                        if (count == numberOfMessages)
+                        {
+                            await consumer.StoreOffset(ctx.Offset);
+                            testOutputHelper.WriteLine($"SetResult {count}");
+                            testPassed.SetResult(numberOfMessages);
+                        }
+                        
+                        await Task.CompletedTask;
+                    }
+                });
+            
+            testPassed.Task.Wait(1000);
+            await system.Close();
+            
+            
+             // // Here we use the standard client to check the offest
+             // // since client.QueryOffset/2 is hidden in the System
+             //
+             var clientParameters = new ClientParameters { };
+             var client = await Client.Create(clientParameters);
+             var offset =  await client.QueryOffset("consumer_offset", stream);
+             // The offset must be numberOfMessages less one
+             Assert.Equal(offset.Offset, Convert.ToUInt64(numberOfMessages -1));
+        }
+        
+        
     }
 }
