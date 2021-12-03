@@ -4,8 +4,8 @@
     <TargetFramework>net5.0</TargetFramework>
     <AssemblyName>RabbitMQ.Stream.Client</AssemblyName>
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
-    <Version>0.0.1-pre.5</Version>
-    <PackageVersion>0.0.1-pre.5</PackageVersion>
+    <Version>0.0.1-pre.6</Version>
+    <PackageVersion>0.0.1-pre.6</PackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
