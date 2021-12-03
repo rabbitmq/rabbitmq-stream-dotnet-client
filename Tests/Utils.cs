@@ -15,7 +15,7 @@ namespace Tests
         {
             this.testOutputHelper = testOutputHelper;
         }
-        
+
 
         // Added this generic function to trap error during the 
         // tests
@@ -37,9 +37,10 @@ namespace Tests
     }
 
 
-    public class SystemUtils
+    public static class SystemUtils
     {
-        public async void PublishMessages(StreamSystem system, string stream, int numberOfMessages)
+        public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
+            ITestOutputHelper testOutputHelper)
         {
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
@@ -51,8 +52,11 @@ namespace Tests
                     ConfirmHandler = confirmation =>
                     {
                         count++;
+
+                        testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
                         if (count == numberOfMessages)
                         {
+                            testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
                             testPassed.SetResult(count);
                         }
                     }
@@ -64,7 +68,7 @@ namespace Tests
                 var message = new Message(msgData);
                 await producer.Send(Convert.ToUInt64(i), message);
             }
-            
+
             testPassed.Task.Wait(10000);
             producer.Dispose();
         }
