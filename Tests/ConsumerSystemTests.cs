@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
@@ -20,8 +21,7 @@ namespace Tests
             this.testOutputHelper = testOutputHelper;
         }
 
-     
-        
+
         [Fact]
         public async void CreateConsumer()
         {
@@ -82,8 +82,8 @@ namespace Tests
 
             await system.Close();
         }
-        
-        
+
+
         [Fact]
         public async void ConsumerStoreOffset()
         {
@@ -93,42 +93,43 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             const int numberOfMessages = 10;
-            new SystemUtils().PublishMessages(system, stream,numberOfMessages);
+            testOutputHelper.WriteLine($"Staring...");
+            await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
+            testOutputHelper.WriteLine($"End...");
             var count = 0;
             using var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
                     Reference = "consumer_offset",
                     Stream = stream,
-                    
+                    OffsetSpec = new OffsetTypeFirst(),
                     MessageHandler = async (consumer, ctx, message) =>
                     {
+                        testOutputHelper.WriteLine($"ConsumerStoreOffset receiving.. {count}");
                         count++;
                         if (count == numberOfMessages)
                         {
                             await consumer.StoreOffset(ctx.Offset);
-                            testOutputHelper.WriteLine($"SetResult {count}");
+                            testOutputHelper.WriteLine($"ConsumerStoreOffset done: {count}");
                             testPassed.SetResult(numberOfMessages);
                         }
-                        
+
                         await Task.CompletedTask;
                     }
                 });
-            
-            testPassed.Task.Wait(1000);
+
+            new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await system.Close();
-            
-            
-             // // Here we use the standard client to check the offest
-             // // since client.QueryOffset/2 is hidden in the System
-             //
-             var clientParameters = new ClientParameters { };
-             var client = await Client.Create(clientParameters);
-             var offset =  await client.QueryOffset("consumer_offset", stream);
-             // The offset must be numberOfMessages less one
-             Assert.Equal(offset.Offset, Convert.ToUInt64(numberOfMessages -1));
+
+
+            // // Here we use the standard client to check the offest
+            // // since client.QueryOffset/2 is hidden in the System
+            //
+            var clientParameters = new ClientParameters { };
+            var client = await Client.Create(clientParameters);
+            var offset = await client.QueryOffset("consumer_offset", stream);
+            // The offset must be numberOfMessages less one
+            Assert.Equal(offset.Offset, Convert.ToUInt64(numberOfMessages - 1));
         }
-        
-        
     }
 }
