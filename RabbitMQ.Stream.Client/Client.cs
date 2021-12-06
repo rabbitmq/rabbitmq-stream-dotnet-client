@@ -111,7 +111,17 @@ namespace RabbitMQ.Stream.Client
         public int ConfirmFrames => confirmFrames;
         public int IncomingFrames => this.connection.NumFrames;
         //public int IncomingChannelCount => this.incoming.Reader.Count;
+        private static readonly object Obj = new();
 
+        private byte GetNextSubscriptionId()
+        {
+            byte result;
+            lock (Obj)
+            {
+                result = nextSubscriptionId++;
+            }
+            return result;
+        }
         public bool IsClosed => closeResponse != null;
 
         private Client(ClientParameters parameters)
@@ -203,7 +213,7 @@ namespace RabbitMQ.Stream.Client
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType, ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler)
         {
-            var subscriptionId = nextSubscriptionId++;
+            var subscriptionId = GetNextSubscriptionId();
             consumers.Add(subscriptionId, deliverHandler);
             return (subscriptionId,
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
