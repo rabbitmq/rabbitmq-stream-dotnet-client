@@ -10,8 +10,7 @@ namespace RabbitMQ.Stream.Client
             {
                 throw responseCode switch
                 {
-                    ResponseCode.VirtualHostAccessFailure => new VirtualHostAccessFailureException(responseCode,
-                        message),
+                    ResponseCode.VirtualHostAccessFailure => new VirtualHostAccessFailureException(message),
                     //TODO Implement for all the response code
                     _ => new GenericProtocolException(responseCode, message)
                 };
@@ -21,8 +20,8 @@ namespace RabbitMQ.Stream.Client
 
     public class ProtocolException : Exception
     {
-        protected ProtocolException(ResponseCode responseCode, string s) :
-            base($"response code: {responseCode} - {s}")
+        protected ProtocolException(string s) :
+            base(s)
         {
         }
     }
@@ -30,15 +29,15 @@ namespace RabbitMQ.Stream.Client
     public class GenericProtocolException : ProtocolException
     {
         public GenericProtocolException(ResponseCode responseCode, string s) :
-            base(responseCode, s)
+            base($"response code: {responseCode} - {s}")
         {
         }
     }
 
     public class VirtualHostAccessFailureException : ProtocolException
     {
-        public VirtualHostAccessFailureException(ResponseCode responseCode, string s) :
-            base(responseCode, s)
+        public VirtualHostAccessFailureException(string s) :
+            base(s)
         {
         }
     }
