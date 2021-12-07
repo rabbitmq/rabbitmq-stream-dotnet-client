@@ -58,6 +58,7 @@ namespace Tests
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
             producer.Dispose();
             consumer.Dispose();
+            await system.DeleteStream(stream);
             await system.Close();
         }
 
@@ -79,7 +80,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, await consumer.Close());
             Assert.Equal(ResponseCode.Ok, await consumer.Close());
             consumer.Dispose();
-
+            await system.DeleteStream(stream);
             await system.Close();
         }
 
@@ -117,7 +118,6 @@ namespace Tests
                 });
 
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            await system.Close();
 
 
             // // Here we use the standard client to check the offest
@@ -128,6 +128,8 @@ namespace Tests
             var offset = await client.QueryOffset("consumer_offset", stream);
             // The offset must be numberOfMessages less one
             Assert.Equal(offset.Offset, Convert.ToUInt64(numberOfMessages - 1));
+            await system.DeleteStream(stream);
+            await system.Close();
         }
     }
 }

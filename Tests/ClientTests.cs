@@ -137,6 +137,7 @@ namespace Tests
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Assert.True(testPassed.Task.Result);
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
@@ -217,6 +218,7 @@ namespace Tests
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Assert.Equal(2, msgs.Count());
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
@@ -302,6 +304,7 @@ namespace Tests
             }
             Assert.Equal(10, messageCount);
             await client.Unsubscribe(subId);
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
@@ -337,6 +340,7 @@ namespace Tests
 
             var delivery = testPassed.Task.Result;
             Assert.Single(delivery.Messages);
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
@@ -367,6 +371,7 @@ namespace Tests
             await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
             // 1s should be enough to catch this at least some of the time
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
