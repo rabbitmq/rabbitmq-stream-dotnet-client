@@ -39,9 +39,9 @@ namespace RabbitMQ.Stream.Client
             this.config = config;
         }
 
-        public async Task  StoreOffset(ulong offset)
+        public async Task StoreOffset(ulong offset)
         {
-           await client.StoreOffset(config.Reference, config.Stream, offset);
+            await client.StoreOffset(config.Reference, config.Stream, offset);
         }
 
         public static async Task<Consumer> Create(ClientParameters clientParameters, ConsumerConfig config)
@@ -90,11 +90,7 @@ namespace RabbitMQ.Stream.Client
             var deleteConsumerResponse = await this.client.Unsubscribe(this.subscriberId);
             var result = deleteConsumerResponse.ResponseCode;
             var closed = this.client.MaybeClose($"client-close-subscriber: {this.subscriberId}");
-            if (closed.ResponseCode != ResponseCode.Ok)
-            {
-                // TODO replace with new logger
-                Console.WriteLine($"Error during close tcp connection. Subscriber: {this.subscriberId}");
-            }
+            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {this.subscriberId}");
 
             _disposed = true;
             return result;
@@ -105,17 +101,23 @@ namespace RabbitMQ.Stream.Client
         {
             if (!disposing) return;
 
-            var closeProducer = this.Close();
-            if (closeProducer.Result != ResponseCode.Ok)
-            {
-                // TODO replace with new logger
-                Console.WriteLine($"Error during remove producer. Subscriber: {this.subscriberId}");
-            }
+            var closeConsumer = this.Close();
+            closeConsumer.Wait(1000);
+            ClientExceptions.MaybeThrowException(closeConsumer.Result,
+                $"Error during remove producer. Subscriber: {this.subscriberId}");
         }
 
         public void Dispose()
         {
-            Dispose(true);
+            try
+            {
+                Dispose(true);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error during disposing Consumer: {this.subscriberId}, " +
+                                  $"error: {e}");
+            }
             GC.SuppressFinalize(this);
         }
     }

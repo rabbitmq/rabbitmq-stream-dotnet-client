@@ -49,10 +49,20 @@ namespace RabbitMQ.Stream.Client
             return new Connection(socket, commandCallback);
         }
 
+        private ValueTask<FlushResult> FlushAsync()
+        {
+            lock (writeLock)
+            {
+                var flushTask = writer.FlushAsync();
+                return flushTask;
+            }
+        }
+
         public async ValueTask<bool> Write<T>(T command) where T : struct, ICommand
         {
             WriteCommand(command);
-            var flushTask = writer.FlushAsync();
+            var flushTask = FlushAsync();
+
 
             // Let's check if this completed synchronously befor invoking the async state mahcine
             if (!flushTask.IsCompletedSuccessfully)
@@ -70,7 +80,7 @@ namespace RabbitMQ.Stream.Client
             {
                 var size = command.SizeNeeded;
                 var mem = writer.GetSpan(4 + size); // + 4 to write the size
-                WireFormatting.WriteUInt32(mem, (uint)size);
+                WireFormatting.WriteUInt32(mem, (uint) size);
                 var written = command.Write(mem.Slice(4));
                 Debug.Assert(size == written);
                 writer.Advance(4 + written);
@@ -94,10 +104,11 @@ namespace RabbitMQ.Stream.Client
                 }
 
                 // Let's try to read some frames!
-                while(TryReadFrame(ref buffer, out ReadOnlySequence<byte> frame))
+                while (TryReadFrame(ref buffer, out ReadOnlySequence<byte> frame))
                 {
                     // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
-                    Memory<byte> memory = ArrayPool<byte>.Shared.Rent((int)frame.Length).AsMemory(0, (int)frame.Length);
+                    Memory<byte> memory =
+                        ArrayPool<byte>.Shared.Rent((int) frame.Length).AsMemory(0, (int) frame.Length);
                     frame.CopyTo(memory.Span);
                     await commandCallback(memory).ConfigureAwait(false);
                     this.numFrames += 1;
