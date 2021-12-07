@@ -93,9 +93,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             const int numberOfMessages = 10;
-            testOutputHelper.WriteLine($"Staring...");
             await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
-            testOutputHelper.WriteLine($"End...");
             var count = 0;
             using var consumer = await system.CreateConsumer(
                 new ConsumerConfig
