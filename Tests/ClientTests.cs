@@ -304,7 +304,6 @@ namespace Tests
             }
             Assert.Equal(10, messageCount);
             await client.Unsubscribe(subId);
-            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
