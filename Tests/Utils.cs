@@ -66,6 +66,8 @@ namespace Tests
             }
 
             testPassed.Task.Wait(10000);
+            Assert.Equal(producer.Client.MessagesSent, numberOfMessages);
+            Assert.True(producer.Client.ConfirmFrames >= 1);
             producer.Dispose();
         }
     }
