@@ -159,10 +159,7 @@ namespace Tests
                     testPassed.SetResult(true);
                 }
             };
-            Action<(ulong, ResponseCode)[]> errored = (errors) =>
-            {
-                throw new Exception($"unexpected errors {errors}");
-            };
+            Action<(ulong, ResponseCode)[]> errored = (errors) => throw new Exception($"unexpected errors {errors}");
 
             var (publisherId, declarePubResp) = await client.DeclarePublisher("my-publisher", stream, confirmed, errored);
             var queryPublisherResponse = await client.QueryPublisherSequence("my-publisher", stream);
@@ -229,9 +226,9 @@ namespace Tests
         {
             var stream = Guid.NewGuid().ToString();
             var publisherRef = Guid.NewGuid().ToString();
-            int messageCount = 0;
+            var messageCount = 0;
             ulong offset = 0;
-            var reference = "ref";
+            const string reference = "ref";
 
             // create stream
             var clientParameters = new ClientParameters { };
@@ -272,6 +269,9 @@ namespace Tests
             {
                 await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
             }
+
+            var deletePublisher = await client.DeletePublisher(publisherId);
+            Assert.Equal(ResponseCode.Ok, deletePublisher.ResponseCode);
             testOutputHelper.WriteLine("Sent 10 messages to stream");
             if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
             {
@@ -301,6 +301,8 @@ namespace Tests
                 Assert.True(false, "MessageHandler was not hit");
             }
             Assert.Equal(10, messageCount);
+            await client.Unsubscribe(subId);
+            await client.Close("done");
         }
 
         [Fact]
@@ -313,13 +315,15 @@ namespace Tests
             await client.CreateStream(stream, new Dictionary<string, string>());
             var initialCredit = 0; //no initial credit
             var offsetType = new OffsetTypeFirst();
-            Func<Deliver, Task> deliverHandler = deliver =>
-            { 
+
+            Task DeliverHandler(Deliver deliver)
+            {
                 testPassed.SetResult(deliver);
-                return Task.CompletedTask; 
-            };
+                return Task.CompletedTask;
+            }
+
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
-                new Dictionary<string, string>(), deliverHandler);
+                new Dictionary<string, string>(), DeliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });

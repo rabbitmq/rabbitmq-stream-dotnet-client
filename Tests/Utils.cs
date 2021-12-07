@@ -52,13 +52,9 @@ namespace Tests
                     ConfirmHandler = confirmation =>
                     {
                         count++;
-
                         testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
-                        if (count == numberOfMessages)
-                        {
-                            testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
-                            testPassed.SetResult(count);
-                        }
+                        if (count != numberOfMessages) return;
+                        testPassed.SetResult(count);
                     }
                 });
 
@@ -70,6 +66,8 @@ namespace Tests
             }
 
             testPassed.Task.Wait(10000);
+            Assert.Equal(producer.Client.MessagesSent, numberOfMessages);
+            Assert.True(producer.Client.ConfirmFrames >= 1);
             producer.Dispose();
         }
     }

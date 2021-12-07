@@ -7,7 +7,6 @@ namespace RabbitMQ.Stream.Client
     {
         ushort Version { get => 1; }
         uint CorrelationId => uint.MaxValue;
-        static ushort Key { get; }
         public int SizeNeeded { get; }
         int Write(Span<byte> span);
     }

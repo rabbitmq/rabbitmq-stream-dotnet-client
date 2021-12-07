@@ -36,11 +36,7 @@ namespace Tests
                     ConfirmHandler = conf =>
                     {
                         testOutputHelper.WriteLine($"CreateProducer Confirm Handler #{conf.Code}");
-
-                        if (conf.Code == ResponseCode.Ok)
-                            testPassed.SetResult(true);
-                        else
-                            testPassed.SetResult(false);
+                        testPassed.SetResult(conf.Code == ResponseCode.Ok);
                     }
                 });
 

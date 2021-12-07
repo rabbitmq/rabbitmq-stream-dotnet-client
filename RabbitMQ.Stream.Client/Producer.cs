@@ -108,7 +108,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task ProcessBuffer()
+        private async Task ProcessBuffer()
         {
             // TODO: make the batch size configurable.
             var messages = new List<(ulong, Message)>(100);
@@ -149,12 +149,7 @@ namespace RabbitMQ.Stream.Client
             var deletePublisherResponse = await this.client.DeletePublisher(this.publisherId);
             var result = deletePublisherResponse.ResponseCode;
             var closed = this.client.MaybeClose($"client-close-publisher: {this.publisherId}");
-            if (closed.ResponseCode != ResponseCode.Ok)
-            {
-                // TODO replace with new logger
-                Console.WriteLine($"Error during close tcp connection. Producer: {this.publisherId}");
-            }
-
+            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {this.publisherId}");
             _disposed = true;
             return result;
         }
@@ -170,19 +165,25 @@ namespace RabbitMQ.Stream.Client
         private void Dispose(bool disposing)
         {
             if (!disposing) return;
-
             var closeProducer = this.Close();
-            if (closeProducer.Result != ResponseCode.Ok)
-            {
-                // TODO replace with new logger
-                Console.WriteLine($"Error during remove producer. Producer: {this.publisherId}");
-            }
+            closeProducer.Wait(1000);
+            ClientExceptions.MaybeThrowException(closeProducer.Result,
+                $"Error during remove producer. Producer: {this.publisherId}");
         }
 
 
         public void Dispose()
         {
-            Dispose(true);
+            try
+            {
+                Dispose(true);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error during disposing producer: {this.publisherId}, " +
+                                  $"error: {e}");
+            }
+
             GC.SuppressFinalize(this);
         }
     }
