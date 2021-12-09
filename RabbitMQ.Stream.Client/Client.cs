@@ -43,7 +43,7 @@ namespace RabbitMQ.Stream.Client
             new Dictionary<string, string>
             {
                 {"product", "RabbitMQ Stream"},
-                {"version", "0.1.0"},
+                {"version", "1.0.0-alpha.1"},
                 {"platform", ".NET"},
                 {"copyright", "Copyright (c) 2020-2021 VMware, Inc. or its affiliates."},
                 {"information", "Licensed under the MPL 2.0. See https://www.rabbitmq.com/"}
