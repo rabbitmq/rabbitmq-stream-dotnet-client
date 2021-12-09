@@ -96,7 +96,7 @@ namespace Tests
             const int numberOfMessages = 10;
             await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
             var count = 0;
-            using var consumer = await system.CreateConsumer(
+            var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
                     Reference = "consumer_offset",
@@ -128,6 +128,7 @@ namespace Tests
             var offset = await client.QueryOffset("consumer_offset", stream);
             // The offset must be numberOfMessages less one
             Assert.Equal(offset.Offset, Convert.ToUInt64(numberOfMessages - 1));
+            await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();
         }

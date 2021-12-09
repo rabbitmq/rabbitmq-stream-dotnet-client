@@ -100,6 +100,8 @@ namespace RabbitMQ.Stream.Client
         private void Dispose(bool disposing)
         {
             if (!disposing) return;
+            if (_disposed)
+                return;
 
             var closeConsumer = this.Close();
             closeConsumer.Wait(1000);
@@ -118,6 +120,7 @@ namespace RabbitMQ.Stream.Client
                 Console.WriteLine($"Error during disposing Consumer: {this.subscriberId}, " +
                                   $"error: {e}");
             }
+
             GC.SuppressFinalize(this);
         }
     }
