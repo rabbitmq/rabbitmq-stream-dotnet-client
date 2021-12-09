@@ -165,6 +165,8 @@ namespace RabbitMQ.Stream.Client
         private void Dispose(bool disposing)
         {
             if (!disposing) return;
+            if (_disposed) return;
+            
             var closeProducer = this.Close();
             closeProducer.Wait(1000);
             ClientExceptions.MaybeThrowException(closeProducer.Result,

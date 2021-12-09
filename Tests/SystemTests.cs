@@ -54,7 +54,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateStream()
+        public async void Create_Delete_Stream()
         {
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -67,6 +67,7 @@ namespace Tests
             Assert.Equal("28800s", spec.Args["max-age"]);
             Assert.Equal("random", spec.Args["queue-leader-locator"]);
             await system.CreateStream(spec);
+            await system.DeleteStream(stream);
             await system.Close();
         }
         

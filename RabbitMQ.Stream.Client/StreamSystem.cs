@@ -90,6 +90,15 @@ namespace RabbitMQ.Stream.Client
                 return;
             throw new CreateStreamException($"Failed to create stream, error code: {response.ResponseCode.ToString()}");
         }
+        
+        
+        public async Task DeleteStream(string stream)
+        {
+            var response = await client.DeleteStream(stream);
+            if (response.ResponseCode == ResponseCode.Ok)
+                return;
+            throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
+        }
 
         public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
@@ -115,6 +124,13 @@ namespace RabbitMQ.Stream.Client
     public class CreateStreamException : Exception
     {
         public CreateStreamException(string s) : base(s)
+        {
+        }
+    }
+    
+    public class DeleteStreamException : Exception
+    {
+        public DeleteStreamException(string s) : base(s)
         {
         }
     }

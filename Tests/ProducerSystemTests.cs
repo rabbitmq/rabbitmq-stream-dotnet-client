@@ -50,7 +50,7 @@ namespace Tests
             
             Assert.True(testPassed.Task.Result);
             producer.Dispose();
-
+            await system.DeleteStream(stream);
             await system.Close();
         }
 
@@ -88,7 +88,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             producer.Dispose();    
-
+            await system.DeleteStream(stream);
             await system.Close();
         }
     }
