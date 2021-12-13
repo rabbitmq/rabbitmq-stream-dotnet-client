@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
-    static class SocketExtensions
+    internal static class SocketExtensions
     {
         public static bool IsConnected(this Socket socket)
         {
@@ -23,7 +23,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
     }
-    
+
     public class Connection : IDisposable
     {
         private readonly Socket socket;
@@ -31,6 +31,7 @@ namespace RabbitMQ.Stream.Client
         private readonly PipeReader reader;
         private readonly Task readerTask;
         private Func<Memory<byte>, Task> commandCallback;
+        private Func<string, Task> closedCallback;
 
         private int numFrames;
         private object writeLock = new object();
@@ -43,19 +44,19 @@ namespace RabbitMQ.Stream.Client
             set => commandCallback = value;
         }
 
-        private Connection(Socket socket, Func<Memory<byte>, Task> callback)
+        private Connection(Socket socket, Func<Memory<byte>, Task> callback, Func<string, Task> closedCallBack)
         {
             this.socket = socket;
             this.commandCallback = callback;
+            this.closedCallback = closedCallBack;
             var stream = new NetworkStream(socket);
             writer = PipeWriter.Create(stream);
             reader = PipeReader.Create(stream);
             readerTask = Task.Run(ProcessIncomingFrames);
-            Task.Run(IsConnected);
-
         }
 
-        public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback)
+        public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback,
+            Func<string, Task> closedCallBack)
         {
             var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             socket.NoDelay = true;
@@ -63,7 +64,7 @@ namespace RabbitMQ.Stream.Client
             socket.SendBufferSize *= 10;
             socket.ReceiveBufferSize *= 10;
             await socket.ConnectAsync(ipEndpoint);
-            return new Connection(socket, commandCallback);
+            return new Connection(socket, commandCallback, closedCallBack);
         }
 
         private ValueTask<FlushResult> FlushAsync()
@@ -104,15 +105,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private void IsConnected()
-        {
-            while (socket.IsConnected())
-            {
-                    Thread.Sleep(1000);
-            }
-            
-            Console.WriteLine("aaa");
-        }
+
         private async Task ProcessIncomingFrames()
         {
             while (true)
@@ -121,11 +114,17 @@ namespace RabbitMQ.Stream.Client
                 {
                     result = await reader.ReadAsync().ConfigureAwait(false);
                 }
-
+                
                 var buffer = result.Buffer;
                 if (buffer.Length == 0)
                 {
                     // We're not going to receive any more bytes from the connection.
+                    if (!socket.IsConnected())
+                    {
+                        await this.closedCallback("Connection Closed");
+                        Debug.WriteLine("Closed");
+                    }
+
                     break;
                 }
 

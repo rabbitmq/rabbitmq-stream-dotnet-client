@@ -15,6 +15,8 @@ using System.Threading.Tasks.Sources;
 
 namespace RabbitMQ.Stream.Client
 {
+    public delegate Task ConnectionCloseHandler(string reason);
+
     // internal static class TaskExtensions
     // {
     //     public static async Task TimeoutAfter(this Task task, TimeSpan timeout)
@@ -149,11 +151,23 @@ namespace RabbitMQ.Stream.Client
             //var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.ExecuteSynchronously);
         }
 
+
+        public event ConnectionCloseHandler ConnectionClosed;
+
+        protected virtual async Task OnConnectionClosed(string reason)
+        {
+            if (ConnectionClosed != null)
+            {
+                await ConnectionClosed?.Invoke(reason);
+            }
+        }
+
         // channels and message publish aggregation
         public static async Task<Client> Create(ClientParameters parameters)
         {
             var client = new Client(parameters);
-            client.connection = await Connection.Create(parameters.Endpoint, client.HandleIncoming);
+            client.connection = await Connection.Create(parameters.Endpoint,
+                client.HandleIncoming, client.HandleClosed);
 
             // exchange properties
             var peerPropertiesResponse =
@@ -276,6 +290,11 @@ namespace RabbitMQ.Stream.Client
         private uint NextCorrelationId()
         {
             return Interlocked.Increment(ref correlationId);
+        }
+
+        private async Task HandleClosed(string reason)
+        {
+            await OnConnectionClosed(reason);
         }
 
         private async Task HandleIncoming(Memory<byte> frameMemory)

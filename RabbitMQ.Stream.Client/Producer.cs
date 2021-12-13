@@ -99,7 +99,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             var msg = new OutgoingMsg(publisherId, publishingId, message);
-
+            
             // Let's see if we can write a message to the channel without having to wait
             if (!messageBuffer.Writer.TryWrite(msg))
             {
@@ -110,6 +110,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessBuffer()
         {
+            
             // TODO: make the batch size configurable.
             var messages = new List<(ulong, Message)>(100);
             while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))

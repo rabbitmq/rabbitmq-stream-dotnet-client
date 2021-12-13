@@ -23,6 +23,7 @@ namespace RabbitMQ.Stream.Client
         public string Stream { get; set; }
         public string Reference { get; set; }
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
     }
 
@@ -49,8 +50,16 @@ namespace RabbitMQ.Stream.Client
             var client = await Client.Create(clientParameters);
             var consumer = new Consumer(client, config);
             await consumer.Init();
+            client.ConnectionClosed += async (reason) =>
+            {
+                if (config.ConnectionClosedHandler != null)
+                {
+                    await config.ConnectionClosedHandler?.Invoke(reason);
+                }
+            };
             return consumer;
         }
+
 
         private async Task Init()
         {
@@ -91,7 +100,7 @@ namespace RabbitMQ.Stream.Client
             var result = deleteConsumerResponse.ResponseCode;
             var closed = this.client.MaybeClose($"client-close-subscriber: {this.subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {this.subscriberId}");
-
+            this.config.ConnectionClosedHandler = null;
             _disposed = true;
             return result;
         }
