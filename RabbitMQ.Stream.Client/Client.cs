@@ -266,7 +266,7 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
 
-        private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, int timeout = 5000)
+        private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, int timeout = 10000)
             where TIn : struct, ICommand where TOut : struct, ICommand
         {
             var corr = NextCorrelationId();
