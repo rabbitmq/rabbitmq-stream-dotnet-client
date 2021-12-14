@@ -35,7 +35,6 @@ namespace RabbitMQ.Stream.Client
 
         private int numFrames;
         private readonly object writeLock = new object();
-        private bool disposed = false;
         internal int NumFrames => numFrames;
 
         internal Func<Memory<byte>, Task> CommandCallback
@@ -53,7 +52,6 @@ namespace RabbitMQ.Stream.Client
             writer = PipeWriter.Create(stream);
             reader = PipeReader.Create(stream);
             readerTask = Task.Run(ProcessIncomingFrames);
-            
         }
 
         public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback,
@@ -115,17 +113,11 @@ namespace RabbitMQ.Stream.Client
                 {
                     result = await reader.ReadAsync().ConfigureAwait(false);
                 }
-                
+
                 var buffer = result.Buffer;
                 if (buffer.Length == 0)
                 {
                     // We're not going to receive any more bytes from the connection.
-                    if (!socket.IsConnected())
-                    {
-                        await this.closedCallback("TCP Connection Closed");
-                        Debug.WriteLine("TCP Connection Closed");
-                    }
-
                     break;
                 }
 
@@ -145,6 +137,13 @@ namespace RabbitMQ.Stream.Client
 
             // Mark the PipeReader as complete.
             await reader.CompleteAsync();
+
+            if (closedCallback != null)
+            {
+                await this.closedCallback("TCP Connection Closed");
+            }
+
+            Debug.WriteLine("TCP Connection Closed");
         }
 
         private bool TryReadFrame(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> frame)

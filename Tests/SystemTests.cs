@@ -18,10 +18,11 @@ namespace Tests
             return new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(s));
         }
     }
-
+    [Collection("Sequential")]
     public class SystemTests
     {
         [Fact]
+        [WaitTestBeforeAfter]
         public async void CreateSystem()
         {
             var config = new StreamSystemConfig
@@ -39,6 +40,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenNoEndpointsAreReachable()
         {
             var config = new StreamSystemConfig
@@ -54,6 +56,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void Create_Delete_Stream()
         {
             var stream = Guid.NewGuid().ToString();
@@ -72,6 +75,7 @@ namespace Tests
         }
         
         [Fact]
+        [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
             var config = new StreamSystemConfig

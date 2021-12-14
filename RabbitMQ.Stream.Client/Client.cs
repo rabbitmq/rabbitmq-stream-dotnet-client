@@ -15,8 +15,7 @@ using System.Threading.Tasks.Sources;
 
 namespace RabbitMQ.Stream.Client
 {
-    public delegate Task ConnectionCloseHandler(string reason);
-
+   
     // internal static class TaskExtensions
     // {
     //     public static async Task TimeoutAfter(this Task task, TimeSpan timeout)
@@ -151,6 +150,7 @@ namespace RabbitMQ.Stream.Client
             //var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.ExecuteSynchronously);
         }
 
+        public delegate Task ConnectionCloseHandler(string reason);
 
         public event ConnectionCloseHandler ConnectionClosed;
 
@@ -266,24 +266,22 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
 
-        private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, int timeout = 10000)
+        private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, int timeout = 5000)
             where TIn : struct, ICommand where TOut : struct, ICommand
         {
             var corr = NextCorrelationId();
             var tcs = PooledTaskSource<TOut>.Rent();
             requests.TryAdd(corr, tcs);
             await Publish(request(corr));
-            using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
+            using CancellationTokenSource cts = new CancellationTokenSource(timeout);
+            await using (cts.Token.Register(
+                valueTaskSource =>
+                    ((ManualResetValueTaskSource<TOut>) valueTaskSource).SetException(new TimeoutException()), tcs))
             {
-                await using (cts.Token.Register(
-                    valueTaskSource =>
-                        ((ManualResetValueTaskSource<TOut>) valueTaskSource).SetException(new TimeoutException()), tcs))
-                {
-                    var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
-                    var result = await valueTask;
-                    PooledTaskSource<TOut>.Return(tcs);
-                    return result;
-                }
+                var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
+                var result = await valueTask;
+                PooledTaskSource<TOut>.Return(tcs);
+                return result;
             }
         }
 

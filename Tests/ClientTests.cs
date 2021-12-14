@@ -1,18 +1,22 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using Xunit;
 using Xunit.Abstractions;
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
+using Xunit.Sdk;
 
 namespace Tests
 {
+
+
+
+    [Collection("Sequential")]
     public class ClientTests
     {
         private readonly ITestOutputHelper testOutputHelper;
@@ -21,7 +25,10 @@ namespace Tests
         {
             this.testOutputHelper = testOutputHelper;
         }
+
+        
         [Fact]
+        [WaitTestBeforeAfter]
         public async void CreateDeleteStream()
         {
             var stream = Guid.NewGuid().ToString();
@@ -40,6 +47,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void MetaDataShouldReturn()
         {
             var stream = Guid.NewGuid().ToString();
@@ -69,6 +77,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void MetadataUpdateIsHandled()
         {
             var stream = Guid.NewGuid().ToString();
@@ -91,6 +100,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void DeclarePublisherShouldReturnErrorCode()
         {
             var clientParameters = new ClientParameters { };
@@ -106,6 +116,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void PublishShouldError()
         {
             var stream = Guid.NewGuid().ToString();
@@ -142,6 +153,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void PublishShouldConfirm()
         {
             testOutputHelper.WriteLine("PublishShouldConfirm");
@@ -188,6 +200,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void ConsumerShouldReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
@@ -224,6 +237,7 @@ namespace Tests
 
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void ConsumerStoreOffsetShouldReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
@@ -248,6 +262,7 @@ namespace Tests
                 {
                     if (msg.Offset >= offset) //a chunk may contain messages before offset
                         messageCount++;
+                        
                 }
 
                 testOutputHelper.WriteLine("GotDelivery: {0}", deliver.Messages.Count());
@@ -266,7 +281,7 @@ namespace Tests
             testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
 
             // publish
-            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
+            var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             for (ulong i = 0; i < 10; i++)
             {
                 await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
@@ -298,7 +313,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
 
-            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(5)))
+            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
             {
                 Assert.True(false, "MessageHandler was not hit");
             }
@@ -308,6 +323,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void ConsumerShouldReceiveDeliveryAfterCredit()
         {
             var stream = Guid.NewGuid().ToString();
@@ -344,6 +360,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void UnsubscribedConsumerShouldNotReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
@@ -366,7 +383,7 @@ namespace Tests
 
             Assert.Equal(ResponseCode.Ok, unsubscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
-            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
+            var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
             // 1s should be enough to catch this at least some of the time
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
@@ -376,6 +393,7 @@ namespace Tests
 
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void VirtualHostFailureAccess()
         {
             var clientParameters = new ClientParameters
@@ -385,6 +403,23 @@ namespace Tests
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
                 async () => {  await Client.Create(clientParameters); }
             );
+        }
+
+        [Fact]
+        public async void NotifyClientClose()
+        {
+            var clientParameters = new ClientParameters { };
+            var client = await Client.Create(clientParameters);
+            var testPassed = new TaskCompletionSource<bool>();
+        
+            client.ConnectionClosed += async reason =>
+            {
+                testPassed.SetResult(true);
+                await Task.CompletedTask;
+            };
+        
+            await client.Close("done");
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
         }
     }
 }

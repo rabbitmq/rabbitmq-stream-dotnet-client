@@ -29,20 +29,20 @@ namespace RabbitMQ.Stream.Client
 
     public class Consumer : IDisposable
     {
-        private readonly Client client;
+        private readonly Client _client;
+        private bool _disposed;
         private readonly ConsumerConfig config;
         private byte subscriberId;
-        private bool _disposed;
-
+       
         private Consumer(Client client, ConsumerConfig config)
         {
-            this.client = client;
+            this._client = client;
             this.config = config;
         }
 
         public async Task StoreOffset(ulong offset)
         {
-            await client.StoreOffset(config.Reference, config.Stream, offset);
+            await _client.StoreOffset(config.Reference, config.Stream, offset);
         }
 
         public static async Task<Consumer> Create(ClientParameters clientParameters, ConsumerConfig config)
@@ -50,21 +50,22 @@ namespace RabbitMQ.Stream.Client
             var client = await Client.Create(clientParameters);
             var consumer = new Consumer(client, config);
             await consumer.Init();
-            client.ConnectionClosed += async (reason) =>
-            {
-                if (config.ConnectionClosedHandler != null)
-                {
-                    await config.ConnectionClosedHandler?.Invoke(reason);
-                }
-            };
             return consumer;
         }
 
 
         private async Task Init()
         {
+            _client.ConnectionClosed += async (reason) =>
+            {
+                if (config.ConnectionClosedHandler != null)
+                {
+                    await config.ConnectionClosedHandler(reason);
+                }
+            };
+            
             ushort initialCredit = 2;
-            var (consumerId, response) = await client.Subscribe(
+            var (consumerId, response) = await _client.Subscribe(
                 config.Stream,
                 config.OffsetSpec, initialCredit,
                 new Dictionary<string, string>(),
@@ -80,7 +81,7 @@ namespace RabbitMQ.Stream.Client
                     }
 
                     // give one credit after each chunk
-                    await client.Credit(deliver.SubscriptionId, 1);
+                    await _client.Credit(deliver.SubscriptionId, 1);
                 });
             if (response.ResponseCode == ResponseCode.Ok)
             {
@@ -96,11 +97,10 @@ namespace RabbitMQ.Stream.Client
             if (_disposed)
                 return ResponseCode.Ok;
 
-            var deleteConsumerResponse = await this.client.Unsubscribe(this.subscriberId);
+            var deleteConsumerResponse = await this._client.Unsubscribe(this.subscriberId);
             var result = deleteConsumerResponse.ResponseCode;
-            var closed = this.client.MaybeClose($"client-close-subscriber: {this.subscriberId}");
+            var closed = this._client.MaybeClose($"client-close-subscriber: {this.subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {this.subscriberId}");
-            this.config.ConnectionClosedHandler = null;
             _disposed = true;
             return result;
         }

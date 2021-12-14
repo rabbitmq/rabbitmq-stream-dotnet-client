@@ -20,11 +20,15 @@ namespace RabbitMQ.Stream.Client
         public string Reference { get; set; }
         public int MaxInFlight { get; set; } = 1000;
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
+        
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
+
     }
 
     public class Producer : IDisposable
     {
-        private readonly Client client;
+        private readonly Client _client;
+        private bool _disposed;
         private byte publisherId;
         private readonly ProducerConfig config;
         private readonly Channel<OutgoingMsg> messageBuffer;
@@ -34,11 +38,10 @@ namespace RabbitMQ.Stream.Client
 
         private readonly ConcurrentQueue<TaskCompletionSource> flows = new();
         private Task publishTask;
-        private bool _disposed;
 
         private Producer(Client client, ProducerConfig config)
         {
-            this.client = client;
+            this._client = client;
             this.config = config;
             this.messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
             {
@@ -49,11 +52,21 @@ namespace RabbitMQ.Stream.Client
             this.semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }
 
-        public Client Client => client;
+        public Client Client => _client;
 
         private async Task Init()
         {
-            var (pubId, response) = await client.DeclarePublisher(
+            
+            _client.ConnectionClosed += async (reason) =>
+            {
+                if (config.ConnectionClosedHandler != null)
+                {
+                    await config.ConnectionClosedHandler(reason);
+                }
+               
+            };
+            
+            var (pubId, response) = await _client.DeclarePublisher(
                 config.Reference,
                 config.Stream,
                 publishingIds =>
@@ -132,7 +145,7 @@ namespace RabbitMQ.Stream.Client
 
             async Task SendMessages(List<(ulong, Message)> messages)
             {
-                var publishTask = client.Publish(new Publish(publisherId, messages));
+                var publishTask = _client.Publish(new Publish(publisherId, messages));
                 if (!publishTask.IsCompletedSuccessfully)
                 {
                     await publishTask.ConfigureAwait(false);
@@ -147,9 +160,9 @@ namespace RabbitMQ.Stream.Client
             if (_disposed)
                 return ResponseCode.Ok;
 
-            var deletePublisherResponse = await this.client.DeletePublisher(this.publisherId);
+            var deletePublisherResponse = await this._client.DeletePublisher(this.publisherId);
             var result = deletePublisherResponse.ResponseCode;
-            var closed = this.client.MaybeClose($"client-close-publisher: {this.publisherId}");
+            var closed = this._client.MaybeClose($"client-close-publisher: {this.publisherId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {this.publisherId}");
             _disposed = true;
             return result;

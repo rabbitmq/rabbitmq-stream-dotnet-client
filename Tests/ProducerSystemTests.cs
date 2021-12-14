@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
@@ -21,6 +22,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void CreateProducer()
         {
             var testPassed = new TaskCompletionSource<bool>();
@@ -55,6 +57,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async Task CreateProducerStreamDoesNotExist()
         {
             const string stream = "StreamNotExist";
@@ -72,6 +75,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async Task CloseProducerTwoTimesShouldReturnOk()
         {
             var stream = Guid.NewGuid().ToString();
@@ -89,6 +93,36 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             producer.Dispose();    
             await system.DeleteStream(stream);
+            await system.Close();
+        }
+        
+        
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void NotifyProducerClose()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var testPassed = new TaskCompletionSource<bool>();
+            var producer = await system.CreateProducer(
+                new ProducerConfig
+                {
+                    Reference = "producer",
+                    Stream = stream,
+                    ConnectionClosedHandler = async s =>
+                    {
+                        testOutputHelper.WriteLine("NotifyProducerClose true");
+                        testPassed.SetResult(true);
+                        await Task.CompletedTask;
+                    }
+                });
+        
+            
+            Assert.Equal(ResponseCode.Ok, await producer.Close());
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            await system.DeleteStream(stream); 
             await system.Close();
         }
     }
