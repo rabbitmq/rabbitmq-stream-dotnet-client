@@ -4,12 +4,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
 
@@ -44,7 +42,7 @@ namespace RabbitMQ.Stream.Client
             new Dictionary<string, string>
             {
                 {"product", "RabbitMQ Stream"},
-                {"version", "1.0.0-alpha.1"},
+                {"version", Consts.ClientVersion},
                 {"platform", ".NET"},
                 {"copyright", "Copyright (c) 2020-2021 VMware, Inc. or its affiliates."},
                 {"information", "Licensed under the MPL 2.0. See https://www.rabbitmq.com/"}
