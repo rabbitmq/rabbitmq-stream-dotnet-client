@@ -86,5 +86,26 @@ namespace Tests
                 async () => {  await StreamSystem.Create(config); }
             );
         }
+        
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void CreateExistStreamIdempotentShouldNoRaiseExceptions()
+        {
+            // Create the stream in idempotent way
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            var spec = new StreamSpec(stream);
+            // Stream does not exist
+            Assert.False(await system.StreamExists(stream));
+            await system.CreateStream(spec);
+            // Stream just created 
+            Assert.True(await system.StreamExists(stream));
+            await system.CreateStream(spec);
+            Assert.True(await system.StreamExists(stream));
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+        
     }
 }

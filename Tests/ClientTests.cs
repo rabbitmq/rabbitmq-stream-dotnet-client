@@ -380,7 +380,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
 
             var unsubscribeResponse = await client.Unsubscribe(subId);
-
+            
             Assert.Equal(ResponseCode.Ok, unsubscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
@@ -403,23 +403,6 @@ namespace Tests
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
                 async () => {  await Client.Create(clientParameters); }
             );
-        }
-
-        [Fact]
-        public async void NotifyClientClose()
-        {
-            var clientParameters = new ClientParameters { };
-            var client = await Client.Create(clientParameters);
-            var testPassed = new TaskCompletionSource<bool>();
-        
-            client.ConnectionClosed += async reason =>
-            {
-                testPassed.SetResult(true);
-                await Task.CompletedTask;
-            };
-        
-            await client.Close("done");
-            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
         }
     }
 }
