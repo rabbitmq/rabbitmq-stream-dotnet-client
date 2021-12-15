@@ -4,8 +4,8 @@
     <TargetFramework>net5.0</TargetFramework>
     <AssemblyName>RabbitMQ.Stream.Client</AssemblyName>
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
-    <Version>1.0.0-alpha.2</Version>
-    <PackageVersion>1.0.0-alpha.2</PackageVersion>
+    <Version>1.0.0-alpha.3</Version>
+    <PackageVersion>1.0.0-alpha.3</PackageVersion>
     <Authors>VMware</Authors>
     <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-go-client</RepositoryUrl>
     <PackageDescription>DotNET RabbitMQ Stream Client</PackageDescription>
