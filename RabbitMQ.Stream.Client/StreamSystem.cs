@@ -86,12 +86,20 @@ namespace RabbitMQ.Stream.Client
         public async Task CreateStream(StreamSpec spec)
         {
             var response = await client.CreateStream(spec.Name, spec.Args);
-            if (response.ResponseCode == ResponseCode.Ok)
+            if (response.ResponseCode is ResponseCode.Ok or ResponseCode.StreamAlreadyExists)
                 return;
             throw new CreateStreamException($"Failed to create stream, error code: {response.ResponseCode.ToString()}");
         }
-        
-        
+
+
+        public async Task<bool> StreamExists(string stream)
+        {
+            var streams = new[] {stream};
+            var response = await client.QueryMetadata(streams);
+            return response.StreamInfos is {Count: >= 1} && 
+                   response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
+        }
+
         public async Task DeleteStream(string stream)
         {
             var response = await client.DeleteStream(stream);
@@ -127,7 +135,7 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
-    
+
     public class DeleteStreamException : Exception
     {
         public DeleteStreamException(string s) : base(s)

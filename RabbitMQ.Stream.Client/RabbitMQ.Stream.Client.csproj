@@ -6,6 +6,11 @@
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
     <Version>1.0.0-alpha.2</Version>
     <PackageVersion>1.0.0-alpha.2</PackageVersion>
+    <Authors>VMware</Authors>
+    <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-go-client</RepositoryUrl>
+    <PackageDescription>DotNET RabbitMQ Stream Client</PackageDescription>
+    <Copyright>Copyright © 2007-2021 VMware, Inc. or its affiliates.</Copyright>
+    <PackageTags>rabbitmq, stream</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
