@@ -1,12 +1,33 @@
 using System;
+using System.Diagnostics;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
 using Xunit.Abstractions;
+using Xunit.Sdk;
 
 namespace Tests
 {
+    
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public class WaitTestBeforeAfter : BeforeAfterTestAttribute
+    {
+
+        public override void Before(MethodInfo methodUnderTest)
+        {
+            Thread.Sleep(200);
+        }
+
+        public override void After(MethodInfo methodUnderTest)
+        {
+            Thread.Sleep(200);
+
+        }
+    }
+
     public class Utils<TResult>
     {
         private readonly ITestOutputHelper testOutputHelper;
@@ -39,6 +60,10 @@ namespace Tests
 
     public static class SystemUtils
     {
+        public static void Wait()
+        {
+            Thread.Sleep(500);
+        }
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             ITestOutputHelper testOutputHelper)
         {

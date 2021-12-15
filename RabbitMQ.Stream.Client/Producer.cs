@@ -20,11 +20,15 @@ namespace RabbitMQ.Stream.Client
         public string Reference { get; set; }
         public int MaxInFlight { get; set; } = 1000;
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
+        
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
+
     }
 
     public class Producer : IDisposable
     {
         private readonly Client client;
+        private bool _disposed;
         private byte publisherId;
         private readonly ProducerConfig config;
         private readonly Channel<OutgoingMsg> messageBuffer;
@@ -34,7 +38,6 @@ namespace RabbitMQ.Stream.Client
 
         private readonly ConcurrentQueue<TaskCompletionSource> flows = new();
         private Task publishTask;
-        private bool _disposed;
 
         private Producer(Client client, ProducerConfig config)
         {
@@ -53,6 +56,16 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
+            
+            client.ConnectionClosed += async (reason) =>
+            {
+                if (config.ConnectionClosedHandler != null)
+                {
+                    await config.ConnectionClosedHandler(reason);
+                }
+               
+            };
+            
             var (pubId, response) = await client.DeclarePublisher(
                 config.Reference,
                 config.Stream,
@@ -99,7 +112,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             var msg = new OutgoingMsg(publisherId, publishingId, message);
-
+            
             // Let's see if we can write a message to the channel without having to wait
             if (!messageBuffer.Writer.TryWrite(msg))
             {
@@ -110,6 +123,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessBuffer()
         {
+            
             // TODO: make the batch size configurable.
             var messages = new List<(ulong, Message)>(100);
             while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))

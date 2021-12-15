@@ -23,16 +23,17 @@ namespace RabbitMQ.Stream.Client
         public string Stream { get; set; }
         public string Reference { get; set; }
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
     }
 
     public class Consumer : IDisposable
     {
         private readonly Client client;
+        private bool _disposed;
         private readonly ConsumerConfig config;
         private byte subscriberId;
-        private bool _disposed;
-
+       
         private Consumer(Client client, ConsumerConfig config)
         {
             this.client = client;
@@ -52,8 +53,17 @@ namespace RabbitMQ.Stream.Client
             return consumer;
         }
 
+
         private async Task Init()
         {
+            client.ConnectionClosed += async (reason) =>
+            {
+                if (config.ConnectionClosedHandler != null)
+                {
+                    await config.ConnectionClosedHandler(reason);
+                }
+            };
+            
             ushort initialCredit = 2;
             var (consumerId, response) = await client.Subscribe(
                 config.Stream,
@@ -91,7 +101,6 @@ namespace RabbitMQ.Stream.Client
             var result = deleteConsumerResponse.ResponseCode;
             var closed = this.client.MaybeClose($"client-close-subscriber: {this.subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {this.subscriberId}");
-
             _disposed = true;
             return result;
         }

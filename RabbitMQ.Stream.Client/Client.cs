@@ -15,6 +15,7 @@ using System.Threading.Tasks.Sources;
 
 namespace RabbitMQ.Stream.Client
 {
+   
     // internal static class TaskExtensions
     // {
     //     public static async Task TimeoutAfter(this Task task, TimeSpan timeout)
@@ -43,7 +44,7 @@ namespace RabbitMQ.Stream.Client
             new Dictionary<string, string>
             {
                 {"product", "RabbitMQ Stream"},
-                {"version", "0.1.0"},
+                {"version", "1.0.0-alpha.1"},
                 {"platform", ".NET"},
                 {"copyright", "Copyright (c) 2020-2021 VMware, Inc. or its affiliates."},
                 {"information", "Licensed under the MPL 2.0. See https://www.rabbitmq.com/"}
@@ -149,11 +150,24 @@ namespace RabbitMQ.Stream.Client
             //var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.ExecuteSynchronously);
         }
 
+        public delegate Task ConnectionCloseHandler(string reason);
+
+        public event ConnectionCloseHandler ConnectionClosed;
+
+        protected virtual async Task OnConnectionClosed(string reason)
+        {
+            if (ConnectionClosed != null)
+            {
+                await ConnectionClosed?.Invoke(reason);
+            }
+        }
+
         // channels and message publish aggregation
         public static async Task<Client> Create(ClientParameters parameters)
         {
             var client = new Client(parameters);
-            client.connection = await Connection.Create(parameters.Endpoint, client.HandleIncoming);
+            client.connection = await Connection.Create(parameters.Endpoint,
+                client.HandleIncoming, client.HandleClosed);
 
             // exchange properties
             var peerPropertiesResponse =
@@ -259,23 +273,26 @@ namespace RabbitMQ.Stream.Client
             var tcs = PooledTaskSource<TOut>.Rent();
             requests.TryAdd(corr, tcs);
             await Publish(request(corr));
-            using (CancellationTokenSource cts = new CancellationTokenSource(timeout))
+            using CancellationTokenSource cts = new CancellationTokenSource(timeout);
+            await using (cts.Token.Register(
+                valueTaskSource =>
+                    ((ManualResetValueTaskSource<TOut>) valueTaskSource).SetException(new TimeoutException()), tcs))
             {
-                await using (cts.Token.Register(
-                    valueTaskSource =>
-                        ((ManualResetValueTaskSource<TOut>) valueTaskSource).SetException(new TimeoutException()), tcs))
-                {
-                    var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
-                    var result = await valueTask;
-                    PooledTaskSource<TOut>.Return(tcs);
-                    return result;
-                }
+                var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
+                var result = await valueTask;
+                PooledTaskSource<TOut>.Return(tcs);
+                return result;
             }
         }
 
         private uint NextCorrelationId()
         {
             return Interlocked.Increment(ref correlationId);
+        }
+
+        private async Task HandleClosed(string reason)
+        {
+            await OnConnectionClosed(reason);
         }
 
         private async Task HandleIncoming(Memory<byte> frameMemory)
@@ -421,6 +438,7 @@ namespace RabbitMQ.Stream.Client
 
             var result = await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason));
             closeResponse = result;
+            
             try
             {
                 connection.Dispose();

@@ -16,10 +16,10 @@ namespace RabbitMQ.Stream.Client
         private readonly PipeReader reader;
         private readonly Task readerTask;
         private Func<Memory<byte>, Task> commandCallback;
+        private Func<string, Task> closedCallback;
 
         private int numFrames;
-        private object writeLock = new object();
-
+        private readonly object writeLock = new object();
         internal int NumFrames => numFrames;
 
         internal Func<Memory<byte>, Task> CommandCallback
@@ -28,17 +28,19 @@ namespace RabbitMQ.Stream.Client
             set => commandCallback = value;
         }
 
-        private Connection(Socket socket, Func<Memory<byte>, Task> callback)
+        private Connection(Socket socket, Func<Memory<byte>, Task> callback, Func<string, Task> closedCallBack)
         {
             this.socket = socket;
             this.commandCallback = callback;
+            this.closedCallback = closedCallBack;
             var stream = new NetworkStream(socket);
             writer = PipeWriter.Create(stream);
             reader = PipeReader.Create(stream);
             readerTask = Task.Run(ProcessIncomingFrames);
         }
 
-        public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback)
+        public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback,
+            Func<string, Task> closedCallBack)
         {
             var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             socket.NoDelay = true;
@@ -46,7 +48,7 @@ namespace RabbitMQ.Stream.Client
             socket.SendBufferSize *= 10;
             socket.ReceiveBufferSize *= 10;
             await socket.ConnectAsync(ipEndpoint);
-            return new Connection(socket, commandCallback);
+            return new Connection(socket, commandCallback, closedCallBack);
         }
 
         private ValueTask<FlushResult> FlushAsync()
@@ -87,6 +89,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+
         private async Task ProcessIncomingFrames()
         {
             while (true)
@@ -119,6 +122,13 @@ namespace RabbitMQ.Stream.Client
 
             // Mark the PipeReader as complete.
             await reader.CompleteAsync();
+
+            if (closedCallback != null)
+            {
+                await this.closedCallback("TCP Connection Closed");
+            }
+
+            Debug.WriteLine("TCP Connection Closed");
         }
 
         private bool TryReadFrame(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> frame)

@@ -12,6 +12,7 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
+    [Collection("Sequential")]
     public class ConsumerSystemTests
     {
         private readonly ITestOutputHelper testOutputHelper;
@@ -21,8 +22,9 @@ namespace Tests
             this.testOutputHelper = testOutputHelper;
         }
 
-
+        
         [Fact]
+        [WaitTestBeforeAfter]
         public async void CreateConsumer()
         {
             var testPassed = new TaskCompletionSource<Data>();
@@ -63,6 +65,7 @@ namespace Tests
         }
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void CloseProducerTwoTimesShouldBeOk()
         {
             var stream = Guid.NewGuid().ToString();
@@ -86,6 +89,7 @@ namespace Tests
 
 
         [Fact]
+        [WaitTestBeforeAfter]
         public async void ConsumerStoreOffset()
         {
             var testPassed = new TaskCompletionSource<int>();
@@ -129,6 +133,37 @@ namespace Tests
             // The offset must be numberOfMessages less one
             Assert.Equal(offset.Offset, Convert.ToUInt64(numberOfMessages - 1));
             await consumer.Close();
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+        
+        
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void NotifyConsumerClose()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var testPassed = new TaskCompletionSource<bool>();
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = "consumer",
+                    Stream = stream,
+                    MessageHandler = async (consumer, ctx, message) => { await Task.CompletedTask; },
+                    ConnectionClosedHandler = async s =>
+                    {
+                        testOutputHelper.WriteLine("NotifyConsumerClose set true");
+                        testPassed.SetResult(true);
+                        await Task.CompletedTask;
+                    }
+                    
+                });
+
+            Assert.Equal(ResponseCode.Ok, await consumer.Close());
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await system.DeleteStream(stream);
             await system.Close();
         }
