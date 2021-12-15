@@ -9,21 +9,6 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
-    internal static class SocketExtensions
-    {
-        public static bool IsConnected(this Socket socket)
-        {
-            try
-            {
-                return !(socket.Poll(1, SelectMode.SelectRead) && socket.Available == 0);
-            }
-            catch (SocketException)
-            {
-                return false;
-            }
-        }
-    }
-
     public class Connection : IDisposable
     {
         private readonly Socket socket;
