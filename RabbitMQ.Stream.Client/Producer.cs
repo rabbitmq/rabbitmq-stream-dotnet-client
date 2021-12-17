@@ -95,8 +95,15 @@ namespace RabbitMQ.Stream.Client
 
                     semaphore.Release(errors.Length);
                 });
+            
+            if (response.ResponseCode == ResponseCode.Ok)
+            {
+                publisherId = pubId;
+                return;
+            }
 
-            this.publisherId = pubId;
+            throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
+
         }
 
         public async ValueTask Send(ulong publishingId, Message message)
