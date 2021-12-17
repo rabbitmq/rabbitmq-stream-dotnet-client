@@ -186,6 +186,7 @@ namespace RabbitMQ.Stream.Client
                 await client.Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
                     new SaslAuthenticateRequest(corr, "PLAIN", saslData));
             Debug.WriteLine($"auth: {authResponse.ResponseCode} {authResponse.Data}");
+            ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
             //tune
             var tune = await client.tuneReceived.Task;
