@@ -13,7 +13,6 @@ using System.Threading.Tasks.Sources;
 
 namespace RabbitMQ.Stream.Client
 {
-   
     // internal static class TaskExtensions
     // {
     //     public static async Task TimeoutAfter(this Task task, TimeSpan timeout)
@@ -54,6 +53,12 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
+        /// <summary>
+        /// TLS options setting.
+        /// </summary>
+        public SslOption Ssl { get; set; } = new SslOption();
+
+
     }
 
     public readonly struct OutgoingMsg : ICommand
@@ -165,7 +170,7 @@ namespace RabbitMQ.Stream.Client
         {
             var client = new Client(parameters);
             client.connection = await Connection.Create(parameters.Endpoint,
-                client.HandleIncoming, client.HandleClosed);
+                client.HandleIncoming, client.HandleClosed, parameters.Ssl);
 
             // exchange properties
             var peerPropertiesResponse =
@@ -274,8 +279,9 @@ namespace RabbitMQ.Stream.Client
             await Publish(request(corr));
             using CancellationTokenSource cts = new CancellationTokenSource(timeout);
             await using (cts.Token.Register(
-                valueTaskSource =>
-                    ((ManualResetValueTaskSource<TOut>) valueTaskSource).SetException(new TimeoutException()), tcs))
+                             valueTaskSource =>
+                                 ((ManualResetValueTaskSource<TOut>) valueTaskSource).SetException(
+                                     new TimeoutException()), tcs))
             {
                 var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
                 var result = await valueTask;
@@ -437,7 +443,7 @@ namespace RabbitMQ.Stream.Client
 
             var result = await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason));
             closeResponse = result;
-            
+
             try
             {
                 connection.Dispose();

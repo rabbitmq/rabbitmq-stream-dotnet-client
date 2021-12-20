@@ -3,8 +3,9 @@ using System.Buffers;
 using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
-using System.Threading;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -28,27 +29,41 @@ namespace RabbitMQ.Stream.Client
             set => commandCallback = value;
         }
 
-        private Connection(Socket socket, Func<Memory<byte>, Task> callback, Func<string, Task> closedCallBack)
+
+        private Connection(Socket socket, Func<Memory<byte>, Task> callback,
+            Func<string, Task> closedCallBack, SslOption sslOption)
         {
             this.socket = socket;
+
             this.commandCallback = callback;
             this.closedCallback = closedCallBack;
-            var stream = new NetworkStream(socket);
-            writer = PipeWriter.Create(stream);
-            reader = PipeReader.Create(stream);
+            var networkStream = new NetworkStream(socket);
+            if (sslOption is {Enabled: true})
+            {
+                var sslStream = SslHelper.TcpUpgrade(networkStream, sslOption);
+                writer = PipeWriter.Create(sslStream);
+                reader = PipeReader.Create(sslStream);
+            }
+            else
+            {
+                writer = PipeWriter.Create(networkStream);
+                reader = PipeReader.Create(networkStream);
+            }
+
             readerTask = Task.Run(ProcessIncomingFrames);
         }
 
         public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback,
-            Func<string, Task> closedCallBack)
+            Func<string, Task> closedCallBack, SslOption sslOption)
         {
             var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             socket.NoDelay = true;
             //TODO: make configurable
             socket.SendBufferSize *= 10;
             socket.ReceiveBufferSize *= 10;
+
             await socket.ConnectAsync(ipEndpoint);
-            return new Connection(socket, commandCallback, closedCallBack);
+            return new Connection(socket, commandCallback, closedCallBack, sslOption);
         }
 
         private ValueTask<FlushResult> FlushAsync()
