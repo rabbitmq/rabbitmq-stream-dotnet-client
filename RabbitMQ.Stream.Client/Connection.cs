@@ -30,6 +30,11 @@ namespace RabbitMQ.Stream.Client
         }
 
 
+        private System.IO.Stream MaybeTcpUpgrade(NetworkStream networkStream, SslOption sslOption)
+        {
+            return sslOption is {Enabled: false} ? networkStream : SslHelper.TcpUpgrade(networkStream, sslOption);
+        }
+
         private Connection(Socket socket, Func<Memory<byte>, Task> callback,
             Func<string, Task> closedCallBack, SslOption sslOption)
         {
@@ -38,18 +43,9 @@ namespace RabbitMQ.Stream.Client
             this.commandCallback = callback;
             this.closedCallback = closedCallBack;
             var networkStream = new NetworkStream(socket);
-            if (sslOption is {Enabled: true})
-            {
-                var sslStream = SslHelper.TcpUpgrade(networkStream, sslOption);
-                writer = PipeWriter.Create(sslStream);
-                reader = PipeReader.Create(sslStream);
-            }
-            else
-            {
-                writer = PipeWriter.Create(networkStream);
-                reader = PipeReader.Create(networkStream);
-            }
-
+            var stream = MaybeTcpUpgrade(networkStream, sslOption);
+            writer = PipeWriter.Create(stream);
+            reader = PipeReader.Create(stream);
             readerTask = Task.Run(ProcessIncomingFrames);
         }
 

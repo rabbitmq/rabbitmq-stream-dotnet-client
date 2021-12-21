@@ -58,10 +58,11 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
-                    if (e is ProtocolException)
+                    if (e is ProtocolException or SslException)
                     {
                         throw;
                     }
+                    
                     //TODO log? 
                 }
             }
