@@ -4,8 +4,8 @@
     <TargetFramework>net5.0</TargetFramework>
     <AssemblyName>RabbitMQ.Stream.Client</AssemblyName>
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
-    <Version>1.0.0-alpha6</Version>
-    <PackageVersion>1.0.0-alpha6</PackageVersion>
+    <Version>1.0.0-alpha7</Version>
+    <PackageVersion>1.0.0-alpha7</PackageVersion>
     <Authors>VMware</Authors>
     <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</RepositoryUrl>
     <PackageDescription>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</PackageDescription>
