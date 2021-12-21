@@ -13,6 +13,11 @@ namespace RabbitMQ.Stream.Client
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
         public string VirtualHost { get; set; } = "/";
+        
+        /// <summary>
+        /// TLS options setting.
+        /// </summary>
+        public SslOption Ssl { get; set; } = new SslOption();
 
         public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
     }
@@ -38,7 +43,9 @@ namespace RabbitMQ.Stream.Client
             {
                 UserName = config.UserName,
                 Password = config.Password,
-                VirtualHost = config.VirtualHost
+                VirtualHost = config.VirtualHost,
+                Ssl = config.Ssl
+                
             };
             // create the metadata client connection
             foreach (var endPoint in config.Endpoints)
@@ -51,10 +58,11 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
-                    if (e is ProtocolException)
+                    if (e is ProtocolException or SslException)
                     {
                         throw;
                     }
+                    
                     //TODO log? 
                 }
             }

@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Security;
 using System.Text;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
@@ -51,6 +52,26 @@ namespace Tests
                 }
             };
             await Assert.ThrowsAsync<StreamSystemInitialisationException>(
+                async () => { await StreamSystem.Create(config); }
+            );
+        }
+        
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void CreateSslExceptionThrowsWhenEndPointIsNotSsl()
+        {
+            // Try to connect to an NoTLS port to using TLS parameters
+            var config = new StreamSystemConfig
+            {
+                Ssl = new SslOption()
+                {
+                    Enabled = true,
+                    AcceptablePolicyErrors = SslPolicyErrors.RemoteCertificateNotAvailable | 
+                                             SslPolicyErrors.RemoteCertificateChainErrors | 
+                                             SslPolicyErrors.RemoteCertificateNameMismatch
+                },
+            };
+            await Assert.ThrowsAsync<SslException>(
                 async () => { await StreamSystem.Create(config); }
             );
         }
