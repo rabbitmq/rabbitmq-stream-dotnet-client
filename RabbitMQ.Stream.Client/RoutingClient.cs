@@ -12,13 +12,9 @@ namespace RabbitMQ.Stream.Client
     /// Routes the client connection to the correct node.
     /// It lookups the leader node for a producer. If case AddressResolver is enabled it tries
     /// until the connection properties Host/Port and  advertisedHost and advertisedPort match.
-    /// It lookups a random node (from leader and replicas) for a consumer,
+    /// It lookups a random node (from leader and replicas) for a consumer.
     /// 
     /// </summary>
-    internal abstract class RoutingClient
-    {
-    }
-
     internal static class RoutingClientHelper
     {
         private static async Task<Client> LookupConnection(ClientParameters clientParameters,
@@ -88,9 +84,9 @@ namespace RabbitMQ.Stream.Client
             brokers.AddRange(metaDataInfo.Replicas);
 
             // pick one random node from leader and replicas.
-            // we need to use the LookupConnection since not all the nodes can have a 
-            // replicas. So in case of AddressResolver is configured the client could be
-            // connected to a node without replicas
+            // we need to use the LookupConnection since not all the nodes can have 
+            // replicas. For example if AddressResolver is configured the client could be
+            // connected to a node without replicas.
             var rnd = new Random();
             var brokerId = rnd.Next(0, brokers.Count);
             var broker = brokers[brokerId];

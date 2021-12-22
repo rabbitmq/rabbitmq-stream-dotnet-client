@@ -27,13 +27,12 @@ namespace RabbitMQ.Stream.Client
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
     }
 
-    public class Consumer : IDisposable
+    public class Consumer : AbstractEntity, IDisposable
     {
-        private readonly Client client;
         private bool _disposed;
         private readonly ConsumerConfig config;
         private byte subscriberId;
-       
+
         private Consumer(Client client, ConsumerConfig config)
         {
             this.client = client;
@@ -45,7 +44,7 @@ namespace RabbitMQ.Stream.Client
             await client.StoreOffset(config.Reference, config.Stream, offset);
         }
 
-        public static async Task<Consumer> Create(ClientParameters clientParameters, 
+        public static async Task<Consumer> Create(ClientParameters clientParameters,
             ConsumerConfig config,
             StreamInfo metaStreamInfo)
         {
@@ -54,8 +53,7 @@ namespace RabbitMQ.Stream.Client
             await consumer.Init();
             return consumer;
         }
-
-
+        
         private async Task Init()
         {
             client.ConnectionClosed += async (reason) =>
@@ -65,7 +63,7 @@ namespace RabbitMQ.Stream.Client
                     await config.ConnectionClosedHandler(reason);
                 }
             };
-            
+
             ushort initialCredit = 2;
             var (consumerId, response) = await client.Subscribe(
                 config.Stream,
