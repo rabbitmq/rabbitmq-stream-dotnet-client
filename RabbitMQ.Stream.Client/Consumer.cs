@@ -45,9 +45,11 @@ namespace RabbitMQ.Stream.Client
             await client.StoreOffset(config.Reference, config.Stream, offset);
         }
 
-        public static async Task<Consumer> Create(ClientParameters clientParameters, ConsumerConfig config)
+        public static async Task<Consumer> Create(ClientParameters clientParameters, 
+            ConsumerConfig config,
+            StreamInfo metaStreamInfo)
         {
-            var client = await Client.Create(clientParameters);
+            var client = await RoutingClientHelper.LookupReplicaConnection(clientParameters, metaStreamInfo);
             var consumer = new Consumer(client, config);
             await consumer.Init();
             return consumer;

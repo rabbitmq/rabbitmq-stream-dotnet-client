@@ -53,12 +53,16 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
+
         /// <summary>
         /// TLS options setting.
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
-
-
+        
+        public AddressResolver AddressResolver { get; set; } = null;
+        
+        
+        
     }
 
     public readonly struct OutgoingMsg : ICommand
@@ -92,6 +96,8 @@ namespace RabbitMQ.Stream.Client
         private uint correlationId = 0; // allow for some pre-amble
         private byte nextPublisherId = 0;
         private readonly ClientParameters parameters;
+        public IDictionary<string, string> ConnectionProperties { get; set; }
+
         private Connection connection;
 
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
@@ -145,6 +151,7 @@ namespace RabbitMQ.Stream.Client
             //this.connection = connection;
             this.parameters = parameters;
 
+
             // connection.CommandCallback = async (command) =>
             // {
             //     await HandleIncoming(command, parameters.MetadataHandler);
@@ -164,6 +171,9 @@ namespace RabbitMQ.Stream.Client
                 await ConnectionClosed?.Invoke(reason);
             }
         }
+
+     
+
 
         // channels and message publish aggregation
         public static async Task<Client> Create(ClientParameters parameters)
@@ -205,6 +215,7 @@ namespace RabbitMQ.Stream.Client
             Debug.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
             foreach (var (k, v) in open.ConnectionProperties)
                 Debug.WriteLine($"open prop: {k} {v}");
+            client.ConnectionProperties = open.ConnectionProperties;
 
             client.correlationId = 100;
             return client;
