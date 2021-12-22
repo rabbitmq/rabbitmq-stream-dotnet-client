@@ -167,5 +167,53 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
+        
+        
+        
+        
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void CreateProducerConsumerAddressResolver()
+        {
+            var testPassed = new TaskCompletionSource<Data>();
+            var stream = Guid.NewGuid().ToString();
+            AddressResolver addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
+            var config = new StreamSystemConfig()
+            {
+                AddressResolver = addressResolver,
+            };
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var producer = await system.CreateProducer(
+                new ProducerConfig
+                {
+                    Reference = "producer",
+                    Stream = stream
+                });
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = "consumer",
+                    Stream = stream,
+                    MessageHandler = async (consumer, ctx, message) =>
+                    {
+                        testPassed.SetResult(message.Data);
+                        await Task.CompletedTask;
+                    }
+                });
+            var msgData = new Data("apple".AsReadonlySequence());
+            var message = new Message(msgData);
+            await producer.Send(1, message);
+            //wait for sent message to be delivered
+
+            new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
+
+            Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
+            producer.Dispose();
+            consumer.Dispose();
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
     }
 }

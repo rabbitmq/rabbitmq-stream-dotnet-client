@@ -49,7 +49,7 @@ namespace RabbitMQ.Stream.Client
             ConsumerConfig config,
             StreamInfo metaStreamInfo)
         {
-            var client = await RoutingClientHelper.LookupReplicaConnection(clientParameters, metaStreamInfo);
+            var client = await RoutingClientHelper.LookupRandomConnection(clientParameters, metaStreamInfo);
             var consumer = new Consumer(client, config);
             await consumer.Init();
             return consumer;

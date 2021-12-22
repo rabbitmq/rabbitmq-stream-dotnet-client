@@ -77,25 +77,24 @@ namespace RabbitMQ.Stream.Client
         {
             return await LookupConnection(clientParameters, metaDataInfo.Leader);
         }
-       
+
         /// <summary>
-        /// Gets the Replica connection. The consumer can connect to a replica.
-        /// If there are not replicas it can use the Leader. 
+        /// Gets a random connection. The consumer can connect to a replica or leader.
         /// </summary>
-        public static async Task<Client> LookupReplicaConnection(ClientParameters clientParameters,
+        public static async Task<Client> LookupRandomConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
-            // if there are no replicas, we have to use the leader 
-            if (metaDataInfo.Replicas.Count <= 0) return await LookupConnection(clientParameters, metaDataInfo.Leader);
+            var brokers = new List<Broker>() {metaDataInfo.Leader};
+            brokers.AddRange(metaDataInfo.Replicas);
 
-            // if there are replicas, we can pick one of the node
+            // pick one random node from leader and replicas.
             // we need to use the LookupConnection since not all the nodes can have a 
             // replicas. So in case of AddressResolver is configured the client could be
             // connected to a node without replicas
             var rnd = new Random();
-            var replicaId = rnd.Next(0, metaDataInfo.Replicas.Count);
-            var replicaBroker = metaDataInfo.Replicas[replicaId];
-            return await LookupConnection(clientParameters, replicaBroker);
+            var brokerId = rnd.Next(0, brokers.Count);
+            var broker = brokers[brokerId];
+            return await LookupConnection(clientParameters, broker);
         }
     }
 
