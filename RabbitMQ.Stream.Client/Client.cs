@@ -93,16 +93,15 @@ namespace RabbitMQ.Stream.Client
     /// It is needed to create unit tests hard to test using
     /// Integration tests: See AddressResolver tests.
     /// </summary>
-    public class FakeClient
+    public abstract class AbstractClient
     {
         protected readonly ClientParameters parameters;
         public IDictionary<string, string> ConnectionProperties { get; set; }
 
-        public FakeClient(ClientParameters parameters)
+        protected AbstractClient(ClientParameters parameters)
         {
             this.parameters = parameters;
         }
-
 
         public virtual Task Close(string reason)
         {
@@ -110,7 +109,7 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public class Client : FakeClient
+    public class Client : AbstractClient
     {
         private uint correlationId = 0; // allow for some pre-amble
 

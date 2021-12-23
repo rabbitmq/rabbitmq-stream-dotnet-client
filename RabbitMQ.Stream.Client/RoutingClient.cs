@@ -10,13 +10,13 @@ namespace RabbitMQ.Stream.Client
 {
     public abstract class RoutingBase
     {
-        public abstract FakeClient CreateClient(ClientParameters clientParameters);
+        public abstract AbstractClient CreateClient(ClientParameters clientParameters);
         public bool ValidateDns { get; set; } = false;
     }
     
     public class Routing : RoutingBase
     {
-        public override FakeClient CreateClient(ClientParameters clientParameters)
+        public override AbstractClient CreateClient(ClientParameters clientParameters)
         {
             ValidateDns = true;
             var taskClient = Client.Create(clientParameters);
@@ -35,7 +35,7 @@ namespace RabbitMQ.Stream.Client
     /// </summary>
     public static class RoutingHelper<T> where T : RoutingBase, new()
     {
-        private static async Task<FakeClient> LookupConnection(ClientParameters clientParameters,
+        private static async Task<AbstractClient> LookupConnection(ClientParameters clientParameters,
             Broker broker)
         {
 
@@ -96,7 +96,7 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// Gets the leader connection. The producer must connect to the leader. 
         /// </summary>
-        public static async Task<FakeClient> LookupLeaderConnection(ClientParameters clientParameters,
+        public static async Task<AbstractClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
             return await LookupConnection(clientParameters, metaDataInfo.Leader);
@@ -105,7 +105,7 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// Gets a random connection. The consumer can connect to a replica or leader.
         /// </summary>
-        public static async Task<FakeClient> LookupRandomConnection(ClientParameters clientParameters,
+        public static async Task<AbstractClient> LookupRandomConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
             var brokers = new List<Broker>() {metaDataInfo.Leader};

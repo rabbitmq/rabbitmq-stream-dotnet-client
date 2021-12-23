@@ -6,6 +6,14 @@ using Xunit;
 
 namespace Tests
 {
+    public class FakeClient : AbstractClient
+    {
+        public FakeClient(ClientParameters parameters) : base(parameters)
+        {
+            
+        }
+    }
+
     public class LoadBalancerRouting : RoutingBase
     {
         private readonly List<string> advertisedHosts = new()
@@ -17,7 +25,7 @@ namespace Tests
 
         // Simulate a load-balancer access using random 
         // access to the advertisedHosts list
-        public override FakeClient CreateClient(ClientParameters clientParameters)
+        public override AbstractClient CreateClient(ClientParameters clientParameters)
         {
             var rnd = new Random();
             var advId = rnd.Next(0, advertisedHosts.Count);
@@ -38,7 +46,7 @@ namespace Tests
     //advertised_host is is missed
     public class MissingFieldsRouting : RoutingBase
     {
-        public override FakeClient CreateClient(ClientParameters clientParameters)
+        public override AbstractClient CreateClient(ClientParameters clientParameters)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -54,7 +62,7 @@ namespace Tests
 
     public class ReplicaRouting : RoutingBase
     {
-        public override FakeClient CreateClient(ClientParameters clientParameters)
+        public override AbstractClient CreateClient(ClientParameters clientParameters)
         {
             var fake = new FakeClient(clientParameters)
             {
