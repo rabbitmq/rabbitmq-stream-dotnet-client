@@ -48,12 +48,12 @@ namespace RabbitMQ.Stream.Client
             ConsumerConfig config,
             StreamInfo metaStreamInfo)
         {
-            var client = await RoutingClientHelper.LookupRandomConnection(clientParameters, metaStreamInfo);
-            var consumer = new Consumer(client, config);
+            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo);
+            var consumer = new Consumer((Client) client, config);
             await consumer.Init();
             return consumer;
         }
-        
+
         private async Task Init()
         {
             client.ConnectionClosed += async (reason) =>

@@ -175,8 +175,8 @@ namespace RabbitMQ.Stream.Client
             ProducerConfig config,
             StreamInfo metaStreamInfo)
         {
-            var client = await RoutingClientHelper.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new Producer(client, config);
+            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
+            var producer = new Producer((Client)client, config);
             await producer.Init();
             return producer;
         }

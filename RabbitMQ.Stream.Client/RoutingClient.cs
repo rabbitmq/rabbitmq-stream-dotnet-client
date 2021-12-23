@@ -8,6 +8,24 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
+    public abstract class RoutingBase
+    {
+        public abstract FakeClient CreateClient(ClientParameters clientParameters);
+        public bool ValidateDns { get; set; } = false;
+    }
+    
+    public class Routing : RoutingBase
+    {
+        public override FakeClient CreateClient(ClientParameters clientParameters)
+        {
+            ValidateDns = true;
+            var taskClient = Client.Create(clientParameters);
+            taskClient.Wait(1000);
+            return taskClient.Result;;
+        }
+    }
+
+
     /// <summary>
     /// Routes the client connection to the correct node.
     /// It lookups the leader node for a producer. If case AddressResolver is enabled it tries
@@ -15,27 +33,36 @@ namespace RabbitMQ.Stream.Client
     /// It lookups a random node (from leader and replicas) for a consumer.
     /// 
     /// </summary>
-    internal static class RoutingClientHelper
+    public static class RoutingHelper<T> where T : RoutingBase, new()
     {
-        private static async Task<Client> LookupConnection(ClientParameters clientParameters,
+        private static async Task<FakeClient> LookupConnection(ClientParameters clientParameters,
             Broker broker)
         {
-            var hostEntry = await Dns.GetHostEntryAsync(broker.Host);
-            var leaderEndPoint = new IPEndPoint(hostEntry.AddressList.First(), (int) broker.Port);
+
+            var routing = new T();
+            
+            var leaderEndPoint = new IPEndPoint(IPAddress.Loopback, (int) broker.Port);
+            
+            if (routing.ValidateDns)
+            {
+                var hostEntry = await Dns.GetHostEntryAsync(broker.Host);
+                leaderEndPoint = new IPEndPoint(hostEntry.AddressList.First(), (int) broker.Port);
+            }
 
             if (clientParameters.AddressResolver == null
                 || clientParameters.AddressResolver.Enabled == false)
             {
                 // In this case we just return the leader node info since there is not
                 // load balancer configuration
-                return await Client.Create(clientParameters with {Endpoint = leaderEndPoint});
+                
+                return routing.CreateClient(clientParameters with {Endpoint = leaderEndPoint}); ;
             }
 
             // here it means that there is a AddressResolver configuration
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
             leaderEndPoint = clientParameters.AddressResolver.EndPoint;
-            var client = await Client.Create(clientParameters with {Endpoint = leaderEndPoint});
+            var client = routing.CreateClient(clientParameters with {Endpoint = leaderEndPoint});
 
             string GetPropertyValue(IDictionary<string, string> connectionProperties, string key)
             {
@@ -55,11 +82,12 @@ namespace RabbitMQ.Stream.Client
             {
                 await client.Close("advertised_host or advertised_port doesn't mach");
 
-                client = await Client.Create(clientParameters with {Endpoint = leaderEndPoint});
+                client = routing.CreateClient(clientParameters with {Endpoint = leaderEndPoint});
+
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
                 advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
-
-                Thread.Sleep(500);
+                // TODO: Maybe an external parameter
+                Thread.Sleep(200);
             }
 
             return client;
@@ -68,7 +96,7 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// Gets the leader connection. The producer must connect to the leader. 
         /// </summary>
-        public static async Task<Client> LookupLeaderConnection(ClientParameters clientParameters,
+        public static async Task<FakeClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
             return await LookupConnection(clientParameters, metaDataInfo.Leader);
@@ -77,7 +105,7 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// Gets a random connection. The consumer can connect to a replica or leader.
         /// </summary>
-        public static async Task<Client> LookupRandomConnection(ClientParameters clientParameters,
+        public static async Task<FakeClient> LookupRandomConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
             var brokers = new List<Broker>() {metaDataInfo.Leader};

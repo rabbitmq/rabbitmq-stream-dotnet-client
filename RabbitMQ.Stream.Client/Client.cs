@@ -58,11 +58,8 @@ namespace RabbitMQ.Stream.Client
         /// TLS options setting.
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
-        
+
         public AddressResolver AddressResolver { get; set; } = null;
-        
-        
-        
     }
 
     public readonly struct OutgoingMsg : ICommand
@@ -91,12 +88,35 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public class Client
+    /// <summary>
+    /// FakeClient is the base class for the actual Client
+    /// It is needed to create unit tests hard to test using
+    /// Integration tests: See AddressResolver tests.
+    /// </summary>
+    public class FakeClient
+    {
+        protected readonly ClientParameters parameters;
+        public IDictionary<string, string> ConnectionProperties { get; set; }
+
+        public FakeClient(ClientParameters parameters)
+        {
+            this.parameters = parameters;
+        }
+
+
+        public virtual Task Close(string reason)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public class Client : FakeClient
     {
         private uint correlationId = 0; // allow for some pre-amble
+
         private byte nextPublisherId = 0;
-        private readonly ClientParameters parameters;
-        public IDictionary<string, string> ConnectionProperties { get; set; }
+        // private readonly ClientParameters parameters;
+        // public IDictionary<string, string> ConnectionProperties { get; set; }
 
         private Connection connection;
 
@@ -146,25 +166,15 @@ namespace RabbitMQ.Stream.Client
 
         public bool IsClosed => closeResponse != null;
 
-        private Client(ClientParameters parameters)
+        private Client(ClientParameters parameters) : base(parameters)
         {
-            //this.connection = connection;
-            this.parameters = parameters;
-
-
-            // connection.CommandCallback = async (command) =>
-            // {
-            //     await HandleIncoming(command, parameters.MetadataHandler);
-            // };
-            //authenticate
-            //var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.ExecuteSynchronously);
         }
 
         public delegate Task ConnectionCloseHandler(string reason);
 
         public event ConnectionCloseHandler ConnectionClosed;
 
-        protected virtual async Task OnConnectionClosed(string reason)
+        private async Task OnConnectionClosed(string reason)
         {
             if (ConnectionClosed != null)
             {
@@ -172,10 +182,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-     
 
-
-        // channels and message publish aggregation
         public static async Task<Client> Create(ClientParameters parameters)
         {
             var client = new Client(parameters);
@@ -445,7 +452,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<CloseResponse> Close(string reason)
+        public override async Task<CloseResponse> Close(string reason)
         {
             if (closeResponse != null)
             {
