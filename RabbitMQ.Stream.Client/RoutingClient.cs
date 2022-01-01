@@ -11,17 +11,22 @@ namespace RabbitMQ.Stream.Client
     public abstract class RoutingBase
     {
         public abstract AbstractClient CreateClient(ClientParameters clientParameters);
-        public bool ValidateDns { get; set; } = false;
+        public bool ValidateDns { get; protected init; } = false;
     }
-    
+
     public class Routing : RoutingBase
     {
-        public override AbstractClient CreateClient(ClientParameters clientParameters)
+        public Routing()
         {
             ValidateDns = true;
+        }
+
+        public override AbstractClient CreateClient(ClientParameters clientParameters)
+        {
             var taskClient = Client.Create(clientParameters);
             taskClient.Wait(1000);
-            return taskClient.Result;;
+            return taskClient.Result;
+            ;
         }
     }
 
@@ -38,11 +43,10 @@ namespace RabbitMQ.Stream.Client
         private static async Task<AbstractClient> LookupConnection(ClientParameters clientParameters,
             Broker broker)
         {
-
             var routing = new T();
-            
+
             var leaderEndPoint = new IPEndPoint(IPAddress.Loopback, (int) broker.Port);
-            
+
             if (routing.ValidateDns)
             {
                 var hostEntry = await Dns.GetHostEntryAsync(broker.Host);
@@ -54,8 +58,9 @@ namespace RabbitMQ.Stream.Client
             {
                 // In this case we just return the leader node info since there is not
                 // load balancer configuration
-                
-                return routing.CreateClient(clientParameters with {Endpoint = leaderEndPoint}); ;
+
+                return routing.CreateClient(clientParameters with {Endpoint = leaderEndPoint});
+                ;
             }
 
             // here it means that there is a AddressResolver configuration
@@ -127,13 +132,6 @@ namespace RabbitMQ.Stream.Client
     public class RoutingClientException : Exception
     {
         public RoutingClientException(string message) : base(message)
-        {
-        }
-
-
-        protected RoutingClientException(
-            SerializationInfo info,
-            StreamingContext context) : base(info, context)
         {
         }
     }
