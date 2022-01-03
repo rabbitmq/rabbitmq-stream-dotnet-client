@@ -2,8 +2,9 @@ name: .NET
 
 on:
   push:
-    tags:
-      - '*'
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
@@ -33,8 +34,5 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test Tests/Tests.csproj --no-build --logger "console;verbosity=detailed" /p:AltCover=true
-    - name: Publish RabbitMQ.Stream.Client
-      uses: brandedoutcast/publish-nuget@v2.5.2
-      with:
-          PROJECT_FILE_PATH: RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj
-          NUGET_KEY: ${{secrets.NUGET_API_KEY}}
+    - name: Upload code coverage to Codecov
+      run: bash <(curl -s https://codecov.io/bash)
