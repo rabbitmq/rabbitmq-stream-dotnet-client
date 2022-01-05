@@ -11,7 +11,7 @@ namespace RabbitMQ.Stream.Client
     public interface IClient
     {
         public ClientParameters Parameters { get; set; }
-        public IDictionary<string, string> ConnectionProperties { get; set; }
+        public IDictionary<string, string> ConnectionProperties { get;}
 
         public Task<CloseResponse> Close(string reason);
     }

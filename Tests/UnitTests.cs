@@ -10,7 +10,7 @@ namespace Tests
     public class FakeClient : IClient
     {
         public ClientParameters Parameters { get; set; }
-        public IDictionary<string, string> ConnectionProperties { get; set; } 
+        public IDictionary<string, string> ConnectionProperties { get; init; } 
 
         public Task<CloseResponse> Close(string reason)
         {

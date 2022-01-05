@@ -121,7 +121,7 @@ namespace RabbitMQ.Stream.Client
 
         private int messagesSent;
         private int confirmFrames;
-        public IDictionary<string, string> ConnectionProperties { get; set; }
+        public IDictionary<string, string> ConnectionProperties { get; private set; }
         public ClientParameters Parameters { get; set; }
 
 
