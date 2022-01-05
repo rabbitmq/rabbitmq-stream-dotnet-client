@@ -19,7 +19,8 @@ let main argv =
     let mutable consumed = 0
     let mutable confirmed = 0
     let mutable prod = null
-    let consumerConfig = ConsumerConfig(Stream = "s1",
+    let streamName = "dotnet-perftest"
+    let consumerConfig = ConsumerConfig(Stream = streamName,
                                         Reference = Guid.NewGuid().ToString(),
                                         MessageHandler =
                                             fun c ctx m ->
@@ -30,9 +31,10 @@ let main argv =
         let config = StreamSystemConfig(UserName = "guest",
                                         Password = "guest")
         let! system = StreamSystem.Create config
+        let! stream = system.CreateStream(StreamSpec(streamName))
+        printfn $"Stream: {streamName}"
         let! consumer = system.CreateConsumer(consumerConfig)
-        let producerConfig = ProducerConfig(Stream = "s1",
-                                            //Reference = Guid.NewGuid().ToString(),
+        let producerConfig = ProducerConfig(Stream = streamName,
                                             Reference = null,
                                             MaxInFlight = 10000,
                                             ConfirmHandler = fun c -> confirmed <- confirmed + 1)
