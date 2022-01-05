@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitMQ.Stream.Client", "R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{57283B49-FC40-4910-9647-DC51433B3A79}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RabbitMQ.Stream.Client.Cmd", "RabbitMQ.Stream.Client.Cmd\RabbitMQ.Stream.Client.Cmd.fsproj", "{8EEF75BF-F0E5-493B-B642-40A4860733BA}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RabbitMQ.Stream.Client.PerfTest", "RabbitMQ.Stream.Client.PerfTest\RabbitMQ.Stream.Client.PerfTest.fsproj", "{8EEF75BF-F0E5-493B-B642-40A4860733BA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
