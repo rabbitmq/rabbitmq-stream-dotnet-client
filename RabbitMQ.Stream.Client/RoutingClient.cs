@@ -8,26 +8,25 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
-    public abstract class RoutingBase
+    public interface IRouting
     {
-        public abstract AbstractClient CreateClient(ClientParameters clientParameters);
-        public bool ValidateDns { get; protected init; } = false;
+        public IClient CreateClient(ClientParameters clientParameters);
+        public bool ValidateDns { get; set; }
     }
 
-    public class Routing : RoutingBase
+    public class Routing : IRouting
     {
-        public Routing()
-        {
-            ValidateDns = true;
-        }
 
-        public override AbstractClient CreateClient(ClientParameters clientParameters)
+        public bool ValidateDns { get; set; } = true;
+
+        public IClient CreateClient(ClientParameters clientParameters)
         {
             var taskClient = Client.Create(clientParameters);
             taskClient.Wait(1000);
             return taskClient.Result;
-            ;
         }
+
+       
     }
 
 
@@ -38,9 +37,9 @@ namespace RabbitMQ.Stream.Client
     /// It lookups a random node (from leader and replicas) for a consumer.
     /// 
     /// </summary>
-    public static class RoutingHelper<T> where T : RoutingBase, new()
+    public static class RoutingHelper<T> where T : IRouting, new()
     {
-        private static async Task<AbstractClient> LookupConnection(ClientParameters clientParameters,
+        private static async Task<IClient> LookupConnection(ClientParameters clientParameters,
             Broker broker)
         {
             var routing = new T();
@@ -101,7 +100,7 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// Gets the leader connection. The producer must connect to the leader. 
         /// </summary>
-        public static async Task<AbstractClient> LookupLeaderConnection(ClientParameters clientParameters,
+        public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
             return await LookupConnection(clientParameters, metaDataInfo.Leader);
@@ -110,7 +109,7 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// Gets a random connection. The consumer can connect to a replica or leader.
         /// </summary>
-        public static async Task<AbstractClient> LookupRandomConnection(ClientParameters clientParameters,
+        public static async Task<IClient> LookupRandomConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
             var brokers = new List<Broker>() {metaDataInfo.Leader};

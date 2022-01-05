@@ -88,35 +88,12 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    /// <summary>
-    /// FakeClient is the base class for the actual Client
-    /// It is needed to create unit tests hard to test using
-    /// Integration tests: See AddressResolver tests.
-    /// </summary>
-    public abstract class AbstractClient
-    {
-        protected readonly ClientParameters parameters;
-        public IDictionary<string, string> ConnectionProperties { get; set; }
-
-        protected AbstractClient(ClientParameters parameters)
-        {
-            this.parameters = parameters;
-        }
-
-        public virtual Task Close(string reason)
-        {
-            return Task.CompletedTask;
-        }
-    }
-
-    public class Client : AbstractClient
+    public class Client : IClient
     {
         private uint correlationId = 0; // allow for some pre-amble
 
         private byte nextPublisherId = 0;
-        // private readonly ClientParameters parameters;
-        // public IDictionary<string, string> ConnectionProperties { get; set; }
-
+      
         private Connection connection;
 
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
@@ -144,6 +121,9 @@ namespace RabbitMQ.Stream.Client
 
         private int messagesSent;
         private int confirmFrames;
+        public IDictionary<string, string> ConnectionProperties { get; set; }
+        public ClientParameters Parameters { get; set; }
+
 
         public int ConfirmFrames => confirmFrames;
 
@@ -165,8 +145,9 @@ namespace RabbitMQ.Stream.Client
 
         public bool IsClosed => closeResponse != null;
 
-        private Client(ClientParameters parameters) : base(parameters)
+        private Client(ClientParameters parameters)
         {
+            Parameters = parameters;
         }
 
         public delegate Task ConnectionCloseHandler(string reason);
@@ -351,7 +332,7 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case MetaDataUpdate.Key:
                     MetaDataUpdate.Read(frame, out MetaDataUpdate metaDataUpdate);
-                    parameters.MetadataHandler(metaDataUpdate);
+                    Parameters.MetadataHandler(metaDataUpdate);
                     break;
                 case TuneResponse.Key:
                     TuneResponse.Read(frame, out TuneResponse tuneResponse);
@@ -451,7 +432,10 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public override async Task<CloseResponse> Close(string reason)
+       
+
+       
+        public async Task<CloseResponse> Close(string reason)
         {
             if (closeResponse != null)
             {

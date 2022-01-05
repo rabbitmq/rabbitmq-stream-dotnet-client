@@ -1,20 +1,29 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using Xunit;
 
 namespace Tests
 {
-    public class FakeClient : AbstractClient
+    public class FakeClient : IClient
     {
-        public FakeClient(ClientParameters parameters) : base(parameters)
+        public ClientParameters Parameters { get; set; }
+        public IDictionary<string, string> ConnectionProperties { get; set; } 
+
+        public Task<CloseResponse> Close(string reason)
         {
-            
+            return Task.FromResult(new CloseResponse());
+        }
+
+        public FakeClient(ClientParameters clientParameters)
+        {
+            this.Parameters = clientParameters;
         }
     }
 
-    public class LoadBalancerRouting : RoutingBase
+    public class LoadBalancerRouting : IRouting
     {
         private readonly List<string> advertisedHosts = new()
         {
@@ -25,7 +34,7 @@ namespace Tests
 
         // Simulate a load-balancer access using random 
         // access to the advertisedHosts list
-        public override AbstractClient CreateClient(ClientParameters clientParameters)
+        public IClient CreateClient(ClientParameters clientParameters)
         {
             var rnd = new Random();
             var advId = rnd.Next(0, advertisedHosts.Count);
@@ -40,13 +49,15 @@ namespace Tests
             };
             return fake;
         }
+
+        public bool ValidateDns { get; set; } = false;
     }
 
 
     //advertised_host is is missed
-    public class MissingFieldsRouting : RoutingBase
+    public class MissingFieldsRouting : IRouting
     {
-        public override AbstractClient CreateClient(ClientParameters clientParameters)
+        public IClient CreateClient(ClientParameters clientParameters)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -57,12 +68,14 @@ namespace Tests
             };
             return fake;
         }
+
+        public bool ValidateDns { get; set; } = false;
     }
 
 
-    public class ReplicaRouting : RoutingBase
+    public class ReplicaRouting : IRouting
     {
-        public override AbstractClient CreateClient(ClientParameters clientParameters)
+        public IClient CreateClient(ClientParameters clientParameters)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -74,6 +87,8 @@ namespace Tests
             };
             return fake;
         }
+
+        public bool ValidateDns { get; set; } = false;
     }
 
 
