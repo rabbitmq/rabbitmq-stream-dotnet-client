@@ -2,6 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -20,14 +22,12 @@ namespace RabbitMQ.Stream.Client
         public string Reference { get; set; }
         public int MaxInFlight { get; set; } = 1000;
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
-        
-        public Func<string, Task> ConnectionClosedHandler { get; set; }
 
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
     }
 
-    public class Producer : IDisposable
+    public class Producer : AbstractEntity, IDisposable
     {
-        private readonly Client client;
         private bool _disposed;
         private byte publisherId;
         private readonly ProducerConfig config;
@@ -56,16 +56,14 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
-            
             client.ConnectionClosed += async (reason) =>
             {
                 if (config.ConnectionClosedHandler != null)
                 {
                     await config.ConnectionClosedHandler(reason);
                 }
-               
             };
-            
+
             var (pubId, response) = await client.DeclarePublisher(
                 config.Reference,
                 config.Stream,
@@ -95,7 +93,7 @@ namespace RabbitMQ.Stream.Client
 
                     semaphore.Release(errors.Length);
                 });
-            
+
             if (response.ResponseCode == ResponseCode.Ok)
             {
                 publisherId = pubId;
@@ -103,7 +101,6 @@ namespace RabbitMQ.Stream.Client
             }
 
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
-
         }
 
         public async ValueTask Send(ulong publishingId, Message message)
@@ -119,7 +116,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             var msg = new OutgoingMsg(publisherId, publishingId, message);
-            
+
             // Let's see if we can write a message to the channel without having to wait
             if (!messageBuffer.Writer.TryWrite(msg))
             {
@@ -130,7 +127,6 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessBuffer()
         {
-            
             // TODO: make the batch size configurable.
             var messages = new List<(ulong, Message)>(100);
             while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
@@ -175,10 +171,12 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
 
-        public static async Task<Producer> Create(ClientParameters clientParameters, ProducerConfig config)
+        public static async Task<Producer> Create(ClientParameters clientParameters,
+            ProducerConfig config,
+            StreamInfo metaStreamInfo)
         {
-            var client = await Client.Create(clientParameters);
-            var producer = new Producer(client, config);
+            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
+            var producer = new Producer((Client)client, config);
             await producer.Init();
             return producer;
         }
@@ -187,7 +185,7 @@ namespace RabbitMQ.Stream.Client
         {
             if (!disposing) return;
             if (_disposed) return;
-            
+
             var closeProducer = this.Close();
             closeProducer.Wait(1000);
             ClientExceptions.MaybeThrowException(closeProducer.Result,

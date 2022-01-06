@@ -53,12 +53,13 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
+
         /// <summary>
         /// TLS options setting.
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
-
+        public AddressResolver AddressResolver { get; set; } = null;
     }
 
     public readonly struct OutgoingMsg : ICommand
@@ -87,11 +88,12 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public class Client
+    public class Client : IClient
     {
         private uint correlationId = 0; // allow for some pre-amble
+
         private byte nextPublisherId = 0;
-        private readonly ClientParameters parameters;
+      
         private Connection connection;
 
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
@@ -119,6 +121,9 @@ namespace RabbitMQ.Stream.Client
 
         private int messagesSent;
         private int confirmFrames;
+        public IDictionary<string, string> ConnectionProperties { get; private set; }
+        public ClientParameters Parameters { get; set; }
+
 
         public int ConfirmFrames => confirmFrames;
 
@@ -142,22 +147,14 @@ namespace RabbitMQ.Stream.Client
 
         private Client(ClientParameters parameters)
         {
-            //this.connection = connection;
-            this.parameters = parameters;
-
-            // connection.CommandCallback = async (command) =>
-            // {
-            //     await HandleIncoming(command, parameters.MetadataHandler);
-            // };
-            //authenticate
-            //var ts = new TaskFactory(TaskCreationOptions.LongRunning, TaskContinuationOptions.ExecuteSynchronously);
+            Parameters = parameters;
         }
 
         public delegate Task ConnectionCloseHandler(string reason);
 
         public event ConnectionCloseHandler ConnectionClosed;
 
-        protected virtual async Task OnConnectionClosed(string reason)
+        private async Task OnConnectionClosed(string reason)
         {
             if (ConnectionClosed != null)
             {
@@ -165,7 +162,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        // channels and message publish aggregation
+
         public static async Task<Client> Create(ClientParameters parameters)
         {
             var client = new Client(parameters);
@@ -205,6 +202,7 @@ namespace RabbitMQ.Stream.Client
             Debug.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
             foreach (var (k, v) in open.ConnectionProperties)
                 Debug.WriteLine($"open prop: {k} {v}");
+            client.ConnectionProperties = open.ConnectionProperties;
 
             client.correlationId = 100;
             return client;
@@ -334,7 +332,7 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case MetaDataUpdate.Key:
                     MetaDataUpdate.Read(frame, out MetaDataUpdate metaDataUpdate);
-                    parameters.MetadataHandler(metaDataUpdate);
+                    Parameters.MetadataHandler(metaDataUpdate);
                     break;
                 case TuneResponse.Key:
                     TuneResponse.Read(frame, out TuneResponse tuneResponse);
@@ -434,6 +432,9 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+       
+
+       
         public async Task<CloseResponse> Close(string reason)
         {
             if (closeResponse != null)

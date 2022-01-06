@@ -13,13 +13,15 @@ namespace RabbitMQ.Stream.Client
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
         public string VirtualHost { get; set; } = "/";
-        
+
         /// <summary>
         /// TLS options setting.
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
         public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
+
+        public AddressResolver AddressResolver { get; set; } = null;
     }
 
     public class StreamSystem
@@ -44,8 +46,8 @@ namespace RabbitMQ.Stream.Client
                 UserName = config.UserName,
                 Password = config.Password,
                 VirtualHost = config.VirtualHost,
-                Ssl = config.Ssl
-                
+                Ssl = config.Ssl,
+                AddressResolver = config.AddressResolver
             };
             // create the metadata client connection
             foreach (var endPoint in config.Endpoints)
@@ -62,7 +64,7 @@ namespace RabbitMQ.Stream.Client
                     {
                         throw;
                     }
-                    
+
                     //TODO log? 
                 }
             }
@@ -78,17 +80,12 @@ namespace RabbitMQ.Stream.Client
         public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
         {
             var meta = await client.QueryMetadata(new[] {producerConfig.Stream});
-            var info = meta.StreamInfos[producerConfig.Stream];
-            if (info.ResponseCode != ResponseCode.Ok)
+            var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
+            if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
-                throw new CreateProducerException($"producer could not be created code: {info.ResponseCode}");
+                throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
-
-            var hostEntry = await Dns.GetHostEntryAsync(info.Leader.Host);
-            var ipEndpoint = new IPEndPoint(hostEntry.AddressList.First(), (int) info.Leader.Port);
-            // first look up meta data for stream
-            //then connect producer to that node
-            return await Producer.Create(clientParameters with {Endpoint = ipEndpoint}, producerConfig);
+            return await Producer.Create(clientParameters, producerConfig, metaStreamInfo);
         }
 
         public async Task CreateStream(StreamSpec spec)
@@ -104,7 +101,7 @@ namespace RabbitMQ.Stream.Client
         {
             var streams = new[] {stream};
             var response = await client.QueryMetadata(streams);
-            return response.StreamInfos is {Count: >= 1} && 
+            return response.StreamInfos is {Count: >= 1} &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -119,13 +116,12 @@ namespace RabbitMQ.Stream.Client
         public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
             var meta = await client.QueryMetadata(new[] {consumerConfig.Stream});
-            //TODO: error handling
-            var info = meta.StreamInfos[consumerConfig.Stream];
-            var hostEntry = await Dns.GetHostEntryAsync(info.Leader.Host);
-            var ipEndpoint = new IPEndPoint(hostEntry.AddressList.First(), (int) info.Leader.Port);
-            // first look up meta data for stream
-            //then connect producer to that node
-            return await Consumer.Create(clientParameters with {Endpoint = ipEndpoint}, consumerConfig);
+            var metaStreamInfo = meta.StreamInfos[consumerConfig.Stream];
+            if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
+            {
+                throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
+            }
+            return await Consumer.Create(clientParameters, consumerConfig, metaStreamInfo);
         }
     }
 
