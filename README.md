@@ -1,19 +1,36 @@
-<h1 align="center">RabbitMQ client for the stream protocol</h1>
+<h1 style="text-align:center;">RabbitMQ client for the stream protocol</h1>
 
 ---
-<div align="center">
+<div style="text-align:center;">
 
 ![tests](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions/workflows/nuget.yml//badge.svg)	
 [![codecov](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client/branch/main/graph/badge.svg?token=OIA04ZQD79)](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client)
-
 </div>
 
-## Dependency (NuGet Artifact)
+<h2>Table of content</h2>
 
+
+---
+- [Overview](#overview)
+- [Installing via NuGet](#installing-via-nuget)
+- [Getting started](#getting-started)
+  - [Usage](#usage)
+    - [Connect](#connect)
+    - [Multi Host](#multi-host)
+    - [TLS](#tls)
+    - [Load Balancer](#load-balancer)
+  - [Publish Messages](#publish-messages)
+  - [Consume Messages](#consume-messages)
+  - [Build from source](#build-from-source)
+  - [Project Status](#project-status)
+
+### Overview
+
+Dotnet client for [RabbitMQ Stream Queues](https://github.com/rabbitmq/rabbitmq-server/tree/master/deps/rabbitmq_stream)
+
+### Installing via NuGet
 The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.Stream.Client/).
-
-
-## Getting started
+### Getting started
 
 ```csharp
  var config = new StreamSystemConfig
@@ -81,9 +98,33 @@ await producer.Close();
 await consumer.Close();
 await system.DeleteStream(stream);
 await system.Close();
-Console.WriteLine($"Done");
 ```
 
-## Project Status	
+### Usage
+
+---
+
+### Connect
+// TODO
+
+### Multi Host
+// TODO
+
+### Tls
+// TODO
+
+### Load Balancer
+// TODO
+
+### Publish Messages
+// TODO
+
+### Consume Messages
+// TODO
+
+### Build from source
+// TODO
+
+### Project Status
 The client is work in progress. The API(s) could change
 
