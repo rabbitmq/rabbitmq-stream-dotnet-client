@@ -67,8 +67,7 @@ var producer = await system.CreateProducer(
 // should be sequential
 for (ulong i = 0; i < 100; i++)
 {
-    var readonlySequence = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes($"hello {i}"));
-    var message = new Message(new Data(readonlySequence));
+    var message = new Message(Encoding.UTF8.GetBytes($"hello {i}"));
     await producer.Send(i, message);
 }
 
