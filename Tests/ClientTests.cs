@@ -319,7 +319,7 @@ namespace Tests
             }
             Assert.Equal(10, messageCount);
             await client.Unsubscribe(subId);
-            await client.Close("done");
+           // await client.Close("done");
         }
 
         [Fact]
