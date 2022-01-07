@@ -8,6 +8,8 @@
 </div>
 
 <h2>Table of content</h2>
+
+
 ---
 - [Overview](#overview)
 - [Installing via NuGet](#installing-via-nuget)
@@ -104,18 +106,25 @@ await system.Close();
 
 ### Connect
 // TODO
+
 ### Multi Host
 // TODO
+
 ### Tls
 // TODO
+
 ### Load Balancer
 // TODO
+
 ### Publish Messages
 // TODO
+
 ### Consume Messages
 // TODO
+
 ### Build from source
 // TODO
+
 ### Project Status
 The client is work in progress. The API(s) could change
 
