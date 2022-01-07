@@ -19,8 +19,8 @@
     - [Multi Host](#multi-host)
     - [TLS](#tls)
     - [Load Balancer](#load-balancer)
-  - [Publish Messages](#publish-message)
-  - [Consume Messages](#consume-message)
+  - [Publish Messages](#publish-messages)
+  - [Consume Messages](#consume-messages)
   - [Build from source](#build-from-source)
   - [Project Status](#project-status)
 
