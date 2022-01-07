@@ -108,6 +108,20 @@ namespace Tests
             );
         }
         
+        
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void CreateSystemThrowsWhenAuthenticationAccess()
+        {
+            var config = new StreamSystemConfig
+            {
+                UserName = "user_does_not_exist"
+            };
+            await Assert.ThrowsAsync<AuthenticationFailureException>(
+                async () => {  await StreamSystem.Create(config); }
+            );
+        }
+        
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateExistStreamIdempotentShouldNoRaiseExceptions()
@@ -128,5 +142,32 @@ namespace Tests
             await system.Close();
         }
         
+        
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void CreateExistStreamPreconditionFailShouldRaiseExceptions()
+        {
+            // Create the stream in idempotent way
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream)
+            {
+                MaxLengthBytes = 20,
+            });
+
+            await Assert.ThrowsAsync<CreateStreamException>(
+                async () =>
+                {
+                    await system.CreateStream(new StreamSpec(stream)
+                    {
+                        MaxLengthBytes = 10000,
+                    });
+                }
+            );
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
     }
 }

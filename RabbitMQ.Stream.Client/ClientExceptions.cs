@@ -12,6 +12,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     ResponseCode.VirtualHostAccessFailure => new VirtualHostAccessFailureException(message),
                     ResponseCode.SaslAuthenticationFailureLoopback => new AuthenticationFailureLoopback(message),
+                    ResponseCode.AuthenticationFailure => new AuthenticationFailureException(message),
                     //TODO Implement for all the response code
                     _ => new GenericProtocolException(responseCode, message)
                 };
@@ -35,6 +36,14 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
+    public class AuthenticationFailureException : ProtocolException
+    {
+        public AuthenticationFailureException(string s) :
+            base(s)
+        {
+        }
+    }
+    
     public class AuthenticationFailureLoopback : ProtocolException
     {
         public AuthenticationFailureLoopback(string s) :
