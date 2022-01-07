@@ -104,16 +104,46 @@ await system.Close();
 ---
 
 ### Connect
-// TODO
+
+```csharp
+var config = new StreamSystemConfig
+{
+    UserName = "myuser",
+    Password = "mypassword",
+    VirtualHost = "myhost",
+    Endpoints = new List<EndPoint> {new IPEndPoint(IPAddress.Parse("<<brokerip>>"), 5552)},
+}
+```
 
 ### Multi Host
 // TODO
 
 ### Tls
-// TODO
+```csharp
+ var config = new StreamSystemConfig
+            {
+                UserName = "guest",
+                Password = "guest",
+                VirtualHost = "/",
+                Ssl = new SslOption()
+                {
+                    Enabled = true                    
+                },
+```
 
 ### Load Balancer
-// TODO
+```csharp
+
+var lbAddressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("<<loadBalancerIP>>"), 5552));
+var config = new StreamSystemConfig
+{
+    UserName = "guest",
+    Password = "guest",
+    VirtualHost = "/",
+    AddressResolver = lbAddressResolver,
+    Endpoints = new List<EndPoint> {addressResolver.EndPoint},
+}    
+```
 
 ### Publish Messages
 // TODO
