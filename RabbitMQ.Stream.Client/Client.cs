@@ -156,13 +156,9 @@ namespace RabbitMQ.Stream.Client
 
         private async Task OnConnectionClosed(string reason)
         {
-            if (ConnectionClosed != null)
-            {
-                await ConnectionClosed?.Invoke(reason);
-            }
+                await ConnectionClosed?.Invoke(reason)!;
         }
-
-
+        
         public static async Task<Client> Create(ClientParameters parameters)
         {
             var client = new Client(parameters);

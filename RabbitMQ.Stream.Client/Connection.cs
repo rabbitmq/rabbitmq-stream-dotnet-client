@@ -18,7 +18,6 @@ namespace RabbitMQ.Stream.Client
         private readonly Task readerTask;
         private Func<Memory<byte>, Task> commandCallback;
         private Func<string, Task> closedCallback;
-
         private int numFrames;
         private readonly object writeLock = new object();
         internal int NumFrames => numFrames;
@@ -103,41 +102,58 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessIncomingFrames()
         {
-            while (true)
+            try
             {
-                if (!reader.TryRead(out ReadResult result))
+                while (true)
                 {
-                    result = await reader.ReadAsync().ConfigureAwait(false);
+                    if (!reader.TryRead(out ReadResult result))
+                    {
+                        result = await reader.ReadAsync().ConfigureAwait(false);
+                    }
+
+
+                    var buffer = result.Buffer;
+                    if (buffer.Length == 0)
+                    {
+                        Debug.WriteLine("TCP Connection Closed");
+                        // We're not going to receive any more bytes from the connection.
+                        break;
+                    }
+
+
+                    // Let's try to read some frames!
+
+                    while (TryReadFrame(ref buffer, out ReadOnlySequence<byte> frame))
+                    {
+                        // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
+
+                        // Console.WriteLine(
+                        //     $"B TryReadFrame {buffer.Length} {result.IsCompleted} {result.Buffer.IsEmpty} {frame.Length}");
+
+                        Memory<byte> memory =
+                            ArrayPool<byte>.Shared.Rent((int) frame.Length).AsMemory(0, (int) frame.Length);
+                        frame.CopyTo(memory.Span);
+                        await commandCallback(memory).ConfigureAwait(false);
+                        this.numFrames += 1;
+                    }
+
+                    reader.AdvanceTo(buffer.Start, buffer.End);
                 }
 
-                var buffer = result.Buffer;
-                if (buffer.Length == 0)
-                {
-                    // We're not going to receive any more bytes from the connection.
-                    break;
-                }
+                // Mark the PipeReader as complete
 
-                // Let's try to read some frames!
-                while (TryReadFrame(ref buffer, out ReadOnlySequence<byte> frame))
-                {
-                    // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
-                    Memory<byte> memory =
-                        ArrayPool<byte>.Shared.Rent((int) frame.Length).AsMemory(0, (int) frame.Length);
-                    frame.CopyTo(memory.Span);
-                    await commandCallback(memory).ConfigureAwait(false);
-                    this.numFrames += 1;
-                }
-
-                reader.AdvanceTo(buffer.Start, buffer.End);
+                await reader.CompleteAsync();
+            }
+            // The exception is needed mostly to raise the 
+            // closedCallback event.
+            // It is useful to trace the error, but at this point
+            // the socket is closed maybe not in the correct way
+            catch (Exception e)
+            {
+                Debug.WriteLine($"Error reading the socket, error: {e}");
             }
 
-            // Mark the PipeReader as complete.
-            await reader.CompleteAsync();
-
-            if (closedCallback != null)
-            {
-                await this.closedCallback("TCP Connection Closed");
-            }
+            await this.closedCallback?.Invoke("TCP Connection Closed")!;
 
             Debug.WriteLine("TCP Connection Closed");
         }
@@ -145,6 +161,7 @@ namespace RabbitMQ.Stream.Client
         private bool TryReadFrame(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> frame)
         {
             // Do we have enough bytes in the buffer to begin parsing a frame?
+
             if (buffer.Length > 4)
             {
                 // Let's see how big the next frame is
