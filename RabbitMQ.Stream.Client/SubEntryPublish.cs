@@ -13,9 +13,10 @@ namespace RabbitMQ.Stream.Client
         {
             get
             {
-//                msgLen += ((8 + 1 + 2 + 4 + 4) * len(aggregation.items)) + aggregation.totalSizeInBytes
-                var initBufferPublishSize = 2 + 2 + 1 + 4;
-                var len = initBufferPublishSize + (8 + 1 + 2 + 4 + 4) +
+                // SubBatch publish protocol is different from the standard 
+                // publish
+                const int headerSize = 2 + 2 + 1 + 4;
+                var len = headerSize + (8 + 1 + 2 + 4 + 4) +
                           messages.Sum(msg => 4 + msg.Size);
                 return len;
             }
@@ -28,21 +29,27 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteByte(span.Slice(offset), publisherId);
             // number of root messages. In this case will be always 1. 
             offset += WireFormatting.WriteInt32(span.Slice(offset), 1);
-            
+            // publishingId for all the messages
+            // so there is publishingId --> []messages
             offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
+            // compress mode see CompressMode
             var agg = (byte) compressMode << 4;
             offset += WireFormatting.WriteByte(
                 span.Slice(offset), (byte) (0x80 | agg));
+            
+            // sub Messages number  
             offset += WireFormatting.WriteUInt16(span.Slice(offset), (ushort)MessageCount);
-            // compressed size
+            
+            // compressed byte size value 
             offset += WireFormatting.WriteUInt32(span.Slice(offset),
                 (uint) messages.Sum(msg => 4 + msg.Size));
 
-            // uncompressed size
+            // uncompressed byte size value
             offset += WireFormatting.WriteUInt32(span.Slice(offset),
                 (uint) messages.Sum(msg => 4 + msg.Size));
 
-
+            
+            // message with size and value
             foreach (var msg in messages)
             {
                 offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
