@@ -103,6 +103,17 @@ namespace RabbitMQ.Stream.Client
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 
+        public async ValueTask Send(ulong publishingId, List<Message> messages,
+            CompressMode compressMode)
+        {
+            var publishTask =
+                client.Publish(new SubEntryPublish(publisherId, publishingId, messages, compressMode));
+            if (!publishTask.IsCompletedSuccessfully)
+            {
+                await publishTask.ConfigureAwait(false);
+            }
+        }
+
         public async ValueTask Send(ulong publishingId, Message message)
         {
             // Let's see if we can get a semaphore without having to wait, which should be the case most of the time
@@ -176,7 +187,7 @@ namespace RabbitMQ.Stream.Client
             StreamInfo metaStreamInfo)
         {
             var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new Producer((Client)client, config);
+            var producer = new Producer((Client) client, config);
             await producer.Init();
             return producer;
         }
