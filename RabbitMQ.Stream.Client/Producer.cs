@@ -106,8 +106,18 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask Send(ulong publishingId, List<Message> messages,
             CompressMode compressMode)
         {
+            if (!semaphore.Wait(0))
+            {
+                // Nope, we have maxed our In-Flight messages, let's asynchrnously wait for confirms
+                if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
+                {
+                    Console.WriteLine("SEMAPHORE TIMEOUT");
+                }
+            }
+            
             var publishTask =
-                client.Publish(new SubEntryPublish(publisherId, publishingId, messages, compressMode));
+                client.Publish(new SubEntryPublish(publisherId, publishingId, 
+                    CompressHelper.Compress(messages, compressMode)));
             if (!publishTask.IsCompletedSuccessfully)
             {
                 await publishTask.ConfigureAwait(false);

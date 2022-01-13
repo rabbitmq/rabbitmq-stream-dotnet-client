@@ -150,7 +150,7 @@ namespace RabbitMQ.Stream.Client
             // the socket is closed maybe not in the correct way
             catch (Exception e)
             {
-                Debug.WriteLine($"Error reading the socket, error: {e}");
+                Console.WriteLine($"Error reading the socket, error: {e}");
             }
 
             await this.closedCallback?.Invoke("TCP Connection Closed")!;

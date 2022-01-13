@@ -17,7 +17,7 @@ namespace RabbitMQ.Stream.Client
                 // publish
                 const int headerSize = 2 + 2 + 1 + 4;
                 var len = headerSize + (8 + 1 + 2 + 4 + 4) +
-                          messages.Sum(msg => 4 + msg.Size);
+                          compress.CompressedSize;
                 return len;
             }
         }
@@ -33,46 +33,34 @@ namespace RabbitMQ.Stream.Client
             // so there is publishingId --> []messages
             offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
             // compress mode see CompressMode
-            var agg = (byte) compressMode << 4;
+            var agg = (byte) compress.CompressMode << 4;
             offset += WireFormatting.WriteByte(
                 span.Slice(offset), (byte) (0x80 | agg));
             
             // sub Messages number  
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), (ushort)MessageCount);
+            offset += WireFormatting.WriteUInt16(span.Slice(offset), (ushort)compress.MessagesCount);
             
-            // compressed byte size value 
-            offset += WireFormatting.WriteUInt32(span.Slice(offset),
-                (uint) messages.Sum(msg => 4 + msg.Size));
-
             // uncompressed byte size value
             offset += WireFormatting.WriteUInt32(span.Slice(offset),
-                (uint) messages.Sum(msg => 4 + msg.Size));
+                (uint) compress.UnCompressedSize);
 
+            // compressed byte size value 
+            offset += WireFormatting.WriteUInt32(span.Slice(offset),
+                (uint) compress.CompressedSize);
             
-            // message with size and value
-            foreach (var msg in messages)
-            {
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
-                offset += msg.Write(span.Slice(offset));
-            }
-
+            offset += compress.Write(span.Slice(offset));
             return offset;
         }
 
         private readonly byte publisherId;
-        private readonly List<Message> messages;
         private readonly ulong publishingId;
-        private readonly CompressMode compressMode;
-        public int MessageCount { get; }
+        private readonly ICompress compress;
 
-        public SubEntryPublish(byte publisherId, ulong publishingId,
-            List<Message> messages, CompressMode compressMode)
+        public SubEntryPublish(byte publisherId, ulong publishingId,  ICompress compress)
         {
             this.publisherId = publisherId;
             this.publishingId = publishingId;
-            this.messages = messages;
-            this.MessageCount = messages.Count;
-            this.compressMode = compressMode;
+            this.compress = compress;
         }
     }
 }
