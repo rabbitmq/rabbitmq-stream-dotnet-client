@@ -106,14 +106,7 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask Send(ulong publishingId, List<Message> messages,
             CompressMode compressMode)
         {
-            if (!semaphore.Wait(0))
-            {
-                // Nope, we have maxed our In-Flight messages, let's asynchrnously wait for confirms
-                if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
-                {
-                    Console.WriteLine("SEMAPHORE TIMEOUT");
-                }
-            }
+            await SemaphoreWait();
             
             var publishTask =
                 client.Publish(new SubEntryPublish(publisherId, publishingId, 
@@ -124,9 +117,8 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async ValueTask Send(ulong publishingId, Message message)
+        private async Task SemaphoreWait()
         {
-            // Let's see if we can get a semaphore without having to wait, which should be the case most of the time
             if (!semaphore.Wait(0))
             {
                 // Nope, we have maxed our In-Flight messages, let's asynchrnously wait for confirms
@@ -135,7 +127,12 @@ namespace RabbitMQ.Stream.Client
                     Console.WriteLine("SEMAPHORE TIMEOUT");
                 }
             }
+        }
 
+        public async ValueTask Send(ulong publishingId, Message message)
+        {
+            await SemaphoreWait();
+            
             var msg = new OutgoingMsg(publisherId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait
