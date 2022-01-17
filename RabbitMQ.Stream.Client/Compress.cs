@@ -17,6 +17,7 @@ namespace RabbitMQ.Stream.Client
         Zstd = 4,
     }
 
+    // Compress Section
     public interface ICompress
     {
         void Compress(List<Message> messages);
@@ -120,4 +121,13 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
     }
+    
+    // UnCompress Section
+    public interface IUnCompress
+    {
+        void UnCompress();
+
+    }
+
+    
 }

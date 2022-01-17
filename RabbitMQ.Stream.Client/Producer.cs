@@ -121,10 +121,10 @@ namespace RabbitMQ.Stream.Client
         {
             if (!semaphore.Wait(0))
             {
-                // Nope, we have maxed our In-Flight messages, let's asynchrnously wait for confirms
+                // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
                 if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
                 {
-                    Console.WriteLine("SEMAPHORE TIMEOUT");
+                    Console.WriteLine("Semaphore Wait timeout during publishing.");
                 }
             }
         }
