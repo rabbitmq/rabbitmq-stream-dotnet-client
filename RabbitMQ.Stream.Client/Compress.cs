@@ -29,7 +29,7 @@ namespace RabbitMQ.Stream.Client
         public CompressMode CompressMode { get; }
     }
 
-    internal class None : ICompress
+    internal class NoneCompress : ICompress
     {
         private List<Message> rMessages;
 
@@ -48,6 +48,7 @@ namespace RabbitMQ.Stream.Client
                 offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
                 offset += msg.Write(span.Slice(offset));
             }
+
             return offset;
         }
 
@@ -57,11 +58,11 @@ namespace RabbitMQ.Stream.Client
         public CompressMode CompressMode => CompressMode.None;
     }
 
-    internal class Gzip : ICompress
+    internal class GzipCompress : ICompress
     {
         private ReadOnlySequence<byte> compressedReadOnlySequence;
 
-        public Gzip()
+        public GzipCompress()
         {
             UnCompressedSize = 0;
         }
@@ -107,27 +108,70 @@ namespace RabbitMQ.Stream.Client
 
     internal static class CompressHelper
     {
-        private static readonly Dictionary<CompressMode, ICompress> Compresses =
+        private static readonly Dictionary<CompressMode, ICompress> CompressesList =
             new()
             {
-                {CompressMode.Gzip, new Gzip()},
-                {CompressMode.None, new None()},
+                {CompressMode.Gzip, new GzipCompress()},
+                {CompressMode.None, new NoneCompress()},
             };
 
         public static ICompress Compress(List<Message> messages, CompressMode compressionMode)
         {
-            var result = Compresses[compressionMode];
+            var result = CompressesList[compressionMode];
             result.Compress(messages);
             return result;
         }
+
+        private static readonly Dictionary<CompressMode, IUnCompress> UnCompressesList =
+            new()
+            {
+                {CompressMode.None, new NoneUnCompress()},
+                {CompressMode.Gzip, new GzipUnCompress()},
+            };
+
+
+        public static ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataSize,
+            uint unCompressedDataSize,
+            CompressMode compressionMode)
+        {
+            var result = UnCompressesList[compressionMode];
+            return result.UnCompress(source, dataSize, unCompressedDataSize);;
+        }
     }
-    
+
     // UnCompress Section
     public interface IUnCompress
     {
-        void UnCompress();
+        ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataSize, uint unCompressedDataSize);
+    }
+
+    internal class NoneUnCompress : IUnCompress
+    {
+
+        public  ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataSize, uint unCompressedDataSize)
+        {
+            return source;
+        }
 
     }
 
-    
+
+    internal class GzipUnCompress : IUnCompress
+    {
+
+        public  ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataSize, uint unCompressedDataSize)
+        {
+            var mm = new MemoryStream(source.ToArray(), 0, (int) dataSize);
+            var rMemoryStream = new MemoryStream((int) unCompressedDataSize);
+            var gZipStream = new GZipStream(mm, CompressionMode.Decompress);
+            gZipStream.CopyTo(rMemoryStream);
+            gZipStream.Flush();
+            gZipStream.Close();
+            var result = new ReadOnlySequence<byte>(rMemoryStream.ToArray());
+            mm.Close();
+            rMemoryStream.Close();
+            return result;
+        }
+
+    }
 }

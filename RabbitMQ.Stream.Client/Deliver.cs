@@ -33,11 +33,19 @@ namespace RabbitMQ.Stream.Client
 
                     while (numRecords != 0)
                     {
-                        offset += SubBatchChunk.Read(data.Slice(offset), out var subBatchChunk);
+                        SubBatchChunk.Read(data.Slice(offset), out var subBatchChunk);
+                        var unCompressedData =
+                            CompressHelper.UnCompress(subBatchChunk.Data,
+                                subBatchChunk.DataSize,
+                                subBatchChunk.UnCompressedDataSize,
+                                subBatchChunk.CompressMode);
                         for (ulong z = 0; z < subBatchChunk.NumRecordsInBatch; z++)
                         {
-                            offset += WireFormatting.ReadUInt32(data.Slice(offset), out var len); 
-                            var entry = new MsgEntry(chunk.ChunkId + z, chunk.Epoch, data.Slice(offset, len));
+                            offset +=
+                                WireFormatting.ReadUInt32(unCompressedData.Slice(offset),
+                                    out var len);
+                            var entry = new MsgEntry(chunk.ChunkId + z, chunk.Epoch,
+                                unCompressedData.Slice(offset, len));
                             offset += (int) len;
                             yield return entry;
                         }
@@ -82,20 +90,23 @@ namespace RabbitMQ.Stream.Client
 
     internal readonly struct SubBatchChunk
     {
-        public SubBatchChunk(byte compressionValue, ushort numRecordsInBatch, uint nnCompressedDataSize, uint dataSize,
+        private readonly byte compressValue;
+
+        public SubBatchChunk(byte compressionValue, ushort numRecordsInBatch, uint unCompressedDataSize, uint dataSize,
             ReadOnlySequence<byte> data)
         {
-            CompressionValue = compressionValue;
+            compressValue = compressionValue;
             NumRecordsInBatch = numRecordsInBatch;
-            NnCompressedDataSize = nnCompressedDataSize;
+            UnCompressedDataSize = unCompressedDataSize;
             DataSize = dataSize;
             Data = data;
         }
 
-        public byte CompressionValue { get; }
+        public CompressMode CompressMode => (CompressMode) compressValue;
+
         public ushort NumRecordsInBatch { get; }
 
-        public uint NnCompressedDataSize { get; }
+        public uint UnCompressedDataSize { get; }
 
         public uint DataSize { get; }
 
@@ -111,7 +122,7 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var unCompressedDataSize);
             offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var dataSize);
             compressionValue = (byte) ((byte) (compression & 0x70) >> 4);
-            var data = seq.Slice(offset, unCompressedDataSize);
+            var data = seq.Slice(offset, dataSize);
             subBatchChunk =
                 new SubBatchChunk(compressionValue, numRecordsInBatch, unCompressedDataSize, dataSize, data);
             return offset;
