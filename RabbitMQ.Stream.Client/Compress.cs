@@ -130,25 +130,25 @@ namespace RabbitMQ.Stream.Client
             };
 
 
-        public static ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataSize,
+        public static ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen,
             uint unCompressedDataSize,
             CompressMode compressionMode)
         {
             var result = UnCompressesList[compressionMode];
-            return result.UnCompress(source, dataSize, unCompressedDataSize);;
+            return result.UnCompress(source, dataLen, unCompressedDataSize);;
         }
     }
 
     // UnCompress Section
     public interface IUnCompress
     {
-        ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataSize, uint unCompressedDataSize);
+        ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize);
     }
 
     internal class NoneUnCompress : IUnCompress
     {
 
-        public  ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataSize, uint unCompressedDataSize)
+        public  ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
         {
             return source;
         }
@@ -159,9 +159,9 @@ namespace RabbitMQ.Stream.Client
     internal class GzipUnCompress : IUnCompress
     {
 
-        public  ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataSize, uint unCompressedDataSize)
+        public  ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
         {
-            var mm = new MemoryStream(source.ToArray(), 0, (int) dataSize);
+            var mm = new MemoryStream(source.ToArray(), 0, (int) dataLen);
             var rMemoryStream = new MemoryStream((int) unCompressedDataSize);
             var gZipStream = new GZipStream(mm, CompressionMode.Decompress);
             gZipStream.CopyTo(rMemoryStream);
