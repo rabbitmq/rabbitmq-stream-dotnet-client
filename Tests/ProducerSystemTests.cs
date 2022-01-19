@@ -48,8 +48,8 @@ namespace Tests
 
 
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            
-            
+
+
             Assert.True(testPassed.Task.Result);
             producer.Dispose();
             await system.DeleteStream(stream);
@@ -91,12 +91,12 @@ namespace Tests
 
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             Assert.Equal(ResponseCode.Ok, await producer.Close());
-            producer.Dispose();    
+            producer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
         }
-        
-        
+
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void NotifyProducerClose()
@@ -118,11 +118,47 @@ namespace Tests
                         await Task.CompletedTask;
                     }
                 });
-        
-            
+
+
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            await system.DeleteStream(stream); 
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ProducerMessagesListLenValidation()
+        {
+            var messages = new List<Message>();
+            for (var i = 0; i < (ushort.MaxValue + 1); i++)
+            {
+                messages.Add(new Message(Encoding.UTF8.GetBytes($"data_{i}")));
+            }
+
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var producer = await system.CreateProducer(
+                new ProducerConfig
+                {
+                    Reference = "producer",
+                    Stream = stream,
+                });
+
+            try
+            {
+                await producer.Send(1, messages, CompressMode.None);
+            }
+            catch (Exception e)
+            {
+                Assert.True(e is OutOfBoundsException);
+            }
+
+            Assert.Equal(ResponseCode.Ok, await producer.Close());
+            await system.DeleteStream(stream);
             await system.Close();
         }
     }

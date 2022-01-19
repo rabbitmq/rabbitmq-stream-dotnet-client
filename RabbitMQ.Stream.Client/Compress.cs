@@ -8,23 +8,33 @@ using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
 {
+    // Compress Mode for sub-batching publish
+    // see the test: UnitTests:CompressUnCompressShouldHaveTheSize/0
+    // it already tests all the compress mode(s)
+    // once all the other kind will be implemented the tests 
+    // must pass.
     public enum CompressMode : byte
     {
         None = 0,
         Gzip = 1,
-        Snappy = 2,
-        Lz4 = 3,
-        Zstd = 4,
+        // Not implemented yet.
+        // Snappy = 2,
+        // Lz4 = 3,
+        // Zstd = 4,
     }
 
-    // Compress Section
+    // Interface for compress the messages
+    // used on the SubBatchPublish to publish the message
+    // using the compression
     public interface ICompress
     {
         void Compress(List<Message> messages);
         public int Write(Span<byte> span);
         public int CompressedSize { get; }
         public int UnCompressedSize { get; }
+
         public int MessagesCount { get; }
+
 
         public CompressMode CompressMode { get; }
     }
@@ -37,6 +47,7 @@ namespace RabbitMQ.Stream.Client
         {
             rMessages = messages;
             UnCompressedSize = messages.Sum(msg => 4 + msg.Size);
+            // since the buffer is not compressed CompressedSize is ==UnCompressedSize 
             CompressedSize = UnCompressedSize;
         }
 
@@ -62,36 +73,23 @@ namespace RabbitMQ.Stream.Client
     {
         private ReadOnlySequence<byte> compressedReadOnlySequence;
 
-        public GzipCompress()
-        {
-            UnCompressedSize = 0;
-        }
-
         public void Compress(List<Message> messages)
         {
             MessagesCount = messages.Count;
             UnCompressedSize = messages.Sum(msg => 4 + msg.Size);
-            var result = new MemoryStream();
-            var gZipStream = new GZipStream(result, CompressionLevel.Optimal);
-            try
+            using var result = new MemoryStream();
+            using var gZipStream = new GZipStream(result, CompressionLevel.Optimal);
+            var span = new Span<byte>(new byte[UnCompressedSize]);
+            var offset = 0;
+            foreach (var msg in messages)
             {
-                Span<byte> span = new Span<byte>(new byte[UnCompressedSize]);
-                var offset = 0;
-                foreach (var msg in messages)
-                {
-                    offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
-                    offset += msg.Write(span.Slice(offset));
-                }
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
+                offset += msg.Write(span.Slice(offset));
+            }
 
-                gZipStream.Write(span);
-                gZipStream.Flush();
-            }
-            finally
-            {
-                gZipStream.Close();
-                compressedReadOnlySequence = new ReadOnlySequence<byte>(result.ToArray());
-                result.Close();
-            }
+            gZipStream.Write(span);
+            gZipStream.Flush();
+            compressedReadOnlySequence = new ReadOnlySequence<byte>(result.ToArray());
         }
 
         public int Write(Span<byte> span)
@@ -100,13 +98,12 @@ namespace RabbitMQ.Stream.Client
         }
 
         public int CompressedSize => (int) compressedReadOnlySequence.Length;
-
         public int UnCompressedSize { get; private set; }
         public int MessagesCount { get; private set; }
         public CompressMode CompressMode => CompressMode.Gzip;
     }
 
-    internal static class CompressHelper
+    public static class CompressHelper
     {
         private static readonly Dictionary<CompressMode, ICompress> CompressesList =
             new()
@@ -117,6 +114,10 @@ namespace RabbitMQ.Stream.Client
 
         public static ICompress Compress(List<Message> messages, CompressMode compressionMode)
         {
+            if (messages.Count > ushort.MaxValue)
+            {
+                throw new OutOfBoundsException($"List out of limits: 0-{ushort.MaxValue}");
+            }
             var result = CompressesList[compressionMode];
             result.Compress(messages);
             return result;
@@ -129,13 +130,12 @@ namespace RabbitMQ.Stream.Client
                 {CompressMode.Gzip, new GzipUnCompress()},
             };
 
-
         public static ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen,
             uint unCompressedDataSize,
             CompressMode compressionMode)
         {
             var result = UnCompressesList[compressionMode];
-            return result.UnCompress(source, dataLen, unCompressedDataSize);;
+            return result.UnCompress(source, dataLen, unCompressedDataSize);
         }
     }
 
@@ -147,31 +147,33 @@ namespace RabbitMQ.Stream.Client
 
     internal class NoneUnCompress : IUnCompress
     {
-
-        public  ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
+        public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
         {
             return source;
         }
-
     }
 
 
     internal class GzipUnCompress : IUnCompress
     {
-
-        public  ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
+        public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
         {
-            var mm = new MemoryStream(source.ToArray(), 0, (int) dataLen);
-            var rMemoryStream = new MemoryStream((int) unCompressedDataSize);
-            var gZipStream = new GZipStream(mm, CompressionMode.Decompress);
-            gZipStream.CopyTo(rMemoryStream);
+            using var sourceMemoryStream = new MemoryStream(source.ToArray(), 0, (int) dataLen);
+            using var resultMemoryStream = new MemoryStream((int) unCompressedDataSize);
+            using var gZipStream = new GZipStream(sourceMemoryStream, CompressionMode.Decompress);
+            gZipStream.CopyTo(resultMemoryStream);
             gZipStream.Flush();
-            gZipStream.Close();
-            var result = new ReadOnlySequence<byte>(rMemoryStream.ToArray());
-            mm.Close();
-            rMemoryStream.Close();
-            return result;
+            return new ReadOnlySequence<byte>(resultMemoryStream.ToArray());
         }
-
+    }
+    
+    
+    
+    public class OutOfBoundsException : Exception
+    {
+        public OutOfBoundsException(string s) :
+            base(s)
+        {
+        }
     }
 }

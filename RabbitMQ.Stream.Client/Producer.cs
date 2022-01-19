@@ -103,13 +103,21 @@ namespace RabbitMQ.Stream.Client
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 
+        /// <summary>
+        /// SubBatch send: Aggregate more messages under the same publishingId.
+        /// Relation is publishingId ->[]messages. 
+        /// Messages can be compressed using different methods.
+        /// </summary>
+        /// <param name="publishingId"></param>
+        /// <param name="messages"> List of messages. Max len allowed is ushort.MaxValue</param>
+        /// <param name="compressMode">No Compression, Gzip Compression</param>
         public async ValueTask Send(ulong publishingId, List<Message> messages,
             CompressMode compressMode)
         {
             await SemaphoreWait();
-            
+
             var publishTask =
-                client.Publish(new SubEntryPublish(publisherId, publishingId, 
+                client.Publish(new SubEntryPublish(publisherId, publishingId,
                     CompressHelper.Compress(messages, compressMode)));
             if (!publishTask.IsCompletedSuccessfully)
             {
@@ -132,7 +140,7 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask Send(ulong publishingId, Message message)
         {
             await SemaphoreWait();
-            
+
             var msg = new OutgoingMsg(publisherId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait

@@ -26,7 +26,7 @@ namespace RabbitMQ.Stream.Client
             get
             {
                 var offset = 0;
-                if (chunk.IsSubBatch)
+                if (chunk.HasSubBatch)
                 {
                     var data = chunk.Data;
                     var numRecords = chunk.NumRecords;
@@ -39,8 +39,8 @@ namespace RabbitMQ.Stream.Client
                                 subBatchChunk.DataLen,
                                 subBatchChunk.UnCompressedDataSize,
                                 subBatchChunk.CompressMode);
-                        var offsetSub = 0;
 
+                        var offsetSub = 0;
                         for (ulong z = 0; z < subBatchChunk.NumRecordsInBatch; z++)
                         {
                             offsetSub += WireFormatting.ReadUInt32(unCompressedData.Slice(offsetSub),
@@ -93,10 +93,12 @@ namespace RabbitMQ.Stream.Client
     {
         private readonly byte compressValue;
 
-        public SubBatchChunk(byte compressionValue, ushort numRecordsInBatch, uint unCompressedDataSize, uint dataLen,
+        private SubBatchChunk(byte compress,
+            ushort numRecordsInBatch,
+            uint unCompressedDataSize, uint dataLen,
             ReadOnlySequence<byte> data)
         {
-            compressValue = compressionValue;
+            compressValue = compress;
             NumRecordsInBatch = numRecordsInBatch;
             UnCompressedDataSize = unCompressedDataSize;
             DataLen = dataLen;
@@ -110,24 +112,22 @@ namespace RabbitMQ.Stream.Client
         public uint UnCompressedDataSize { get; }
 
         public uint DataLen { get; }
-
         public ReadOnlySequence<byte> Data { get; }
-
 
         internal static int Read(ReadOnlySequence<byte> seq, out SubBatchChunk subBatchChunk)
         {
-            var compressionValue = (byte) 0;
             var offset = 0;
             offset = WireFormatting.ReadByte(seq.Slice(offset), out var compression);
             offset += WireFormatting.ReadUInt16(seq.Slice(offset), out var numRecordsInBatch);
             offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var unCompressedDataSize);
             offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var dataLen);
-            compressionValue = (byte) ((byte) (compression & 0x70) >> 4);
+            // Determinate what kind of the compression it is using
+            // See Compress:CompressMode
+            var compress = (byte) ((byte) (compression & 0x70) >> 4);
             var data = seq.Slice(offset, dataLen);
             subBatchChunk =
-                new SubBatchChunk(compressionValue, numRecordsInBatch, unCompressedDataSize, dataLen, data);
+                new SubBatchChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, data);
             offset += (int) dataLen;
-
             return offset;
         }
     }
@@ -162,7 +162,7 @@ namespace RabbitMQ.Stream.Client
             ulong epoch,
             ulong chunkId,
             int crc,
-            ReadOnlySequence<byte> data, bool isSubBatch)
+            ReadOnlySequence<byte> data, bool hasSubBatch)
         {
             MagicVersion = magicVersion;
             NumEntries = numEntries;
@@ -171,11 +171,11 @@ namespace RabbitMQ.Stream.Client
             Epoch = epoch;
             ChunkId = chunkId;
             Crc = crc;
-            IsSubBatch = isSubBatch;
+            HasSubBatch = hasSubBatch;
             Data = data;
         }
 
-        public bool IsSubBatch { get; }
+        public bool HasSubBatch { get; }
 
 
         public byte MagicVersion { get; }
@@ -204,19 +204,13 @@ namespace RabbitMQ.Stream.Client
 
             // don't move the offset. It is a "peek" to determinate the entry type
             // (entryType & 0x80) == 0 is standard entry
-            // (entryType & 0x80) != 0 is compress entry
+            // (entryType & 0x80) != 0 is compress entry (used for subBatching)
             WireFormatting.ReadByte(seq.Slice(offset), out var entryType);
-
-            var isSubBatch = (entryType & 0x80) != 0;
-
-
+            var hasSubBatch = (entryType & 0x80) != 0;
             var data = seq.Slice(offset, dataLen);
-
-
             offset += (int) dataLen;
             chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data,
-                isSubBatch);
-
+                hasSubBatch);
             return offset;
         }
     }
