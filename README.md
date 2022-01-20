@@ -120,15 +120,15 @@ var config = new StreamSystemConfig
 
 ### Tls
 ```csharp
- var config = new StreamSystemConfig
-            {
-                UserName = "guest",
-                Password = "guest",
-                VirtualHost = "/",
-                Ssl = new SslOption()
-                {
-                    Enabled = true                    
-                },
+var config = new StreamSystemConfig
+{
+    UserName = "guest",
+    Password = "guest",
+    VirtualHost = "/",
+    Ssl = new SslOption()
+    {
+        Enabled = true                    
+},
 ```
 
 ### Load Balancer
@@ -146,7 +146,47 @@ var config = new StreamSystemConfig
 ```
 
 ### Publish Messages
-// TODO
+
+Standard publish:
+```csharp
+var producer = await system.CreateProducer(
+    new ProducerConfig
+    {
+        Reference = Guid.NewGuid().ToString(),
+        Stream = stream,
+        ConfirmHandler = conf =>
+        {
+         // messages confirmed    
+        },
+    });
+
+    var message = new Message(Encoding.UTF8.GetBytes($"hello {i}"));
+    await producer.Send(i, message);
+
+```
+
+Sub Entries Batching:
+A sub-entry is one "slot" in a publishing frame, meaning outbound messages are not only batched in publishing frames, but in sub-entries as well. Use this feature to increase throughput at the cost of increased latency.
+
+`CompressionMode.None` and `CompressionMode.GZip` codecs compression are built-in.
+
+```csharp
+var subEntryMessages = List<Messages>();
+for (var i = 1; i <= 500; i++)
+{
+    var message = new Message(Encoding.UTF8.GetBytes($"SubBatchMessage_{i}"));
+    subEntryMessages.Add(message);
+}
+
+await producer.Send(1, subEntryMessages, CompressionMode.Gzip);
+messages.Clear();
+```
+
+Note:
+`CompressionMode.Lz4`,`CompressionMode.Snappy`,`CompressionMode.Zstd`
+are not provided by default.<br>
+See the section: "Implement a Custom Compression Codec" for more details.
+
 
 ### Consume Messages
 // TODO

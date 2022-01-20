@@ -104,25 +104,19 @@ namespace RabbitMQ.Stream.Client
         }
 
         /// <summary>
-        /// SubBatch send: Aggregate more messages under the same publishingId.
+        /// SubEntry Batch send: Aggregate more messages under the same publishingId.
         /// Relation is publishingId ->[]messages. 
         /// Messages can be compressed using different methods.
         /// </summary>
         /// <param name="publishingId"></param>
-        /// <param name="messages"> List of messages. Max len allowed is ushort.MaxValue</param>
-        /// <param name="compressionMode">No Compression, Gzip Compression</param>
-        public async ValueTask Send(ulong publishingId, List<Message> messages, CompressionMode compressionMode)
+        /// <param name="subEntryMessages"> List of messages for sub-entry. Max len allowed is ushort.MaxValue</param>
+        /// <param name="compressionMode">No Compression, Gzip Compression. Other types are not provided by default</param>
+        public async ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionMode compressionMode)
         {
-            // if message count ==1 use the standard send
             await SemaphoreWait();
-            if (messages.Count > ushort.MaxValue)
-            {
-                throw new OutOfBoundsException($"List out of limits: 0-{ushort.MaxValue}");
-            }
-
             var publishTask =
                 client.Publish(new SubEntryPublish(publisherId, publishingId,
-                    CompressionHelper.Compress( messages, compressionMode)));
+                    CompressionHelper.Compress( subEntryMessages, compressionMode)));
             if (!publishTask.IsCompletedSuccessfully)
             {
                 await publishTask.ConfigureAwait(false);

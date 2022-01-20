@@ -242,7 +242,7 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
 
             var receivedMessages = new List<Message>();
-            using var consumer = await system.CreateConsumer(
+            var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
                     Reference = "consumer",
@@ -260,7 +260,7 @@ namespace Tests
                 });
 
 
-            using var producer = await system.CreateProducer(
+            var producer = await system.CreateProducer(
                 new ProducerConfig
                 {
                     Reference = "producer",
@@ -282,7 +282,9 @@ namespace Tests
 
             AssertMessages(messagesGzip, testPassed.Task.Result.FindAll(s =>
                 Encoding.Default.GetString(s.Data.Contents.ToArray()).Contains("Gzip_")));
-
+            
+            producer.Dispose();
+            consumer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
         }

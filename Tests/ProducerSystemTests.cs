@@ -131,7 +131,7 @@ namespace Tests
         [WaitTestBeforeAfter]
         public async void ProducerMessagesListLenValidation()
         {
-            // by protocol the subBatchList is ushort
+            // by protocol the subEntryList is ushort
             var messages = new List<Message>();
             for (var i = 0; i < (ushort.MaxValue + 1); i++)
             {
@@ -163,9 +163,9 @@ namespace Tests
         public async void ProducerMixingDifferentConfirmations()
         {
             // we send 150 messages using three different ways:
-            // 1- 50 messages subBatch with compress None 
+            // 1- 50 messages subEntry with compress None 
             // 2- 50 messages with standard send 
-            // 3- subBatch with compress Gzip
+            // 3- subEntry with compress Gzip
             // we should receive only 52 conformations
             // one for the point 1
             // 50 for the point 2

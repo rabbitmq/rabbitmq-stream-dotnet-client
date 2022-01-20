@@ -22,7 +22,7 @@ namespace RabbitMQ.Stream.Client
     }
 
     // Interface for Compress/unCompress the messages
-    // used by SubBatchPublish to publish the messages
+    // used by SubEntryPublish to publish the messages
     public interface ICompressionCodec
     {
         void Compress(List<Message> messages);

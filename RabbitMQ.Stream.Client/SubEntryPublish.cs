@@ -13,8 +13,6 @@ namespace RabbitMQ.Stream.Client
         {
             get
             {
-                // SubBatch publish protocol is different from the standard 
-                // publish
                 const int headerSize = 2 + 2 + 1 + 4;
                 var len = headerSize + (8 + 1 + 2 + 4 + 4) +
                           compressionCodec.CompressedSize;
