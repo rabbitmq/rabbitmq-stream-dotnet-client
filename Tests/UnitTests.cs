@@ -156,59 +156,45 @@ namespace Tests
         }
 
 
-        [Fact]
-        [WaitTestBeforeAfter]
-        public void CompressUnCompressShouldHaveTheSize()
-        {
-            void PumpMessages(ICollection<Message> messages)
-            {
-                for (var i = 0; i < 54321; i++)
-                {
-                    messages.Add(new Message(Encoding.UTF8.GetBytes($"data_{i}")));
-                }
-            }
+        // [Fact]
+        // [WaitTestBeforeAfter]
+        // public void CompressUnCompressShouldHaveTheSize()
+        // {
+        //     void PumpMessages(ICollection<Message> messages)
+        //     {
+        //         for (var i = 0; i < 54321; i++)
+        //         {
+        //             messages.Add(new Message(Encoding.UTF8.GetBytes($"data_{i}")));
+        //         }
+        //     }
+        //
+        //     // test the compress routine
+        //     // The uncompressed data len _must_ be equal to the original iCompress.UnCompressedSize
+        //     // 
+        //     void AssertCompress(List<Message> messages, ICompress iCompress )
+        //     {
+        //         var data = new Span<byte>(new byte[iCompress.UnCompressedSize]);
+        //         iCompress.Write(data);
+        //         Assert.True(iCompress != null);
+        //         Assert.True(data != null);
+        //         var b = new ReadOnlySequence<byte>(data.ToArray());
+        //         var unCompress = CompressHelper.UnCompress(b,
+        //             (uint) iCompress.CompressedSize,
+        //             (uint) iCompress.UnCompressedSize,
+        //             compressMode);
+        //         Assert.True(unCompress.Length == iCompress.UnCompressedSize);
+        //     }
+        //
+        //     var messagesTest = new List<Message>();
+        //     PumpMessages(messagesTest);
+        //
+        //     // It is ready for the future compress implementations.
+        //     var values = Enum.GetValues(typeof(CompressMode));
+        //     foreach (var value in values.Cast<CompressMode>())
+        //     {
+        //         AssertCompress(messagesTest, value);
+        //     }
+        // }
 
-            // test the compress routine
-            // The uncompressed data len _must_ be equal to the original iCompress.UnCompressedSize
-            // 
-            void AssertCompress(List<Message> messages, CompressMode compressMode)
-            {
-                var iCompress = CompressHelper.Compress(messages, compressMode);
-                var data = new Span<byte>(new byte[iCompress.UnCompressedSize]);
-                iCompress.Write(data);
-                Assert.True(iCompress != null);
-                Assert.True(data != null);
-                var b = new ReadOnlySequence<byte>(data.ToArray());
-                var unCompress = CompressHelper.UnCompress(b,
-                    (uint) iCompress.CompressedSize,
-                    (uint) iCompress.UnCompressedSize,
-                    compressMode);
-                Assert.True(unCompress.Length == iCompress.UnCompressedSize);
-            }
-
-            var messagesTest = new List<Message>();
-            PumpMessages(messagesTest);
-
-            // It is ready for the future compress implementations.
-            var values = Enum.GetValues(typeof(CompressMode));
-            foreach (var value in values.Cast<CompressMode>())
-            {
-                AssertCompress(messagesTest, value);
-            }
-        }
-
-        [Fact]
-        [WaitTestBeforeAfter]
-        public void MessagesListLenValidation()
-        {
-            var messages = new List<Message>();
-            for (var i = 0; i < (ushort.MaxValue + 1); i++)
-            {
-                messages.Add(new Message(Encoding.UTF8.GetBytes($"data_{i}")));
-            }
-
-            Assert.Throws<OutOfBoundsException>(() =>
-                CompressHelper.Compress(messages, CompressMode.None));
-        }
     }
 }

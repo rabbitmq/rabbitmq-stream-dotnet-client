@@ -110,15 +110,19 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         /// <param name="publishingId"></param>
         /// <param name="messages"> List of messages. Max len allowed is ushort.MaxValue</param>
-        /// <param name="compressMode">No Compression, Gzip Compression</param>
-        public async ValueTask Send(ulong publishingId, List<Message> messages,
-            CompressMode compressMode)
+        /// <param name="compressionMode">No Compression, Gzip Compression</param>
+        public async ValueTask Send(ulong publishingId, List<Message> messages, CompressionMode compressionMode)
         {
+            // if message count ==1 use the standard send
             await SemaphoreWait();
+            if (messages.Count > ushort.MaxValue)
+            {
+                throw new OutOfBoundsException($"List out of limits: 0-{ushort.MaxValue}");
+            }
 
             var publishTask =
                 client.Publish(new SubEntryPublish(publisherId, publishingId,
-                    CompressHelper.Compress(messages, compressMode)));
+                    CompressionHelper.Compress( messages, compressionMode)));
             if (!publishTask.IsCompletedSuccessfully)
             {
                 await publishTask.ConfigureAwait(false);

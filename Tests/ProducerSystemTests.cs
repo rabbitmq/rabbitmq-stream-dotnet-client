@@ -149,14 +149,8 @@ namespace Tests
                     Stream = stream,
                 });
 
-            try
-            {
-                await producer.Send(1, messages, CompressMode.None);
-            }
-            catch (Exception e)
-            {
-                Assert.True(e is OutOfBoundsException);
-            }
+            await Assert.ThrowsAsync<OutOfBoundsException>(() =>
+                producer.Send(1, messages, CompressionMode.Gzip).AsTask());
 
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);
@@ -194,7 +188,7 @@ namespace Tests
                 {
                     Reference = "producer",
                     Stream = stream,
-                    ConfirmHandler = async confirmation =>
+                    ConfirmHandler = confirmation =>
                     {
                         count = Interlocked.Increment(ref count);
                         if (count == 52)
@@ -205,14 +199,14 @@ namespace Tests
                 });
 
             ulong pid = 0;
-            await producer.Send(++pid, messages, CompressMode.None);
+            await producer.Send(++pid, messages, CompressionMode.None);
 
             foreach (var message in messages)
             {
                 await producer.Send(++pid, message);
             }
 
-            await producer.Send(++pid, messages, CompressMode.Gzip);
+            await producer.Send(++pid, messages, CompressionMode.Gzip);
             Thread.Sleep(500);
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);

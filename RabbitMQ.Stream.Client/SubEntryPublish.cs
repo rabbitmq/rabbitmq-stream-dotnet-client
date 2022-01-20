@@ -17,7 +17,7 @@ namespace RabbitMQ.Stream.Client
                 // publish
                 const int headerSize = 2 + 2 + 1 + 4;
                 var len = headerSize + (8 + 1 + 2 + 4 + 4) +
-                          compress.CompressedSize;
+                          compressionCodec.CompressedSize;
                 return len;
             }
         }
@@ -33,34 +33,34 @@ namespace RabbitMQ.Stream.Client
             // so there is publishingId --> []messages
             offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
             // compress mode see CompressMode
-            var agg = (byte) compress.CompressMode << 4;
+            var agg = (byte) compressionCodec.CompressionMode << 4;
             offset += WireFormatting.WriteByte(
                 span.Slice(offset), (byte) (0x80 | agg));
             
             // sub Messages number  
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), (ushort)compress.MessagesCount);
+            offset += WireFormatting.WriteUInt16(span.Slice(offset), (ushort)compressionCodec.MessagesCount);
             
             // uncompressed byte size value
             offset += WireFormatting.WriteUInt32(span.Slice(offset),
-                (uint) compress.UnCompressedSize);
+                (uint) compressionCodec.UnCompressedSize);
 
             // compressed byte size value 
             offset += WireFormatting.WriteUInt32(span.Slice(offset),
-                (uint) compress.CompressedSize);
+                (uint) compressionCodec.CompressedSize);
             
-            offset += compress.Write(span.Slice(offset));
+            offset += compressionCodec.Write(span.Slice(offset));
             return offset;
         }
 
         private readonly byte publisherId;
         private readonly ulong publishingId;
-        private readonly ICompress compress;
+        private readonly ICompressionCodec compressionCodec;
 
-        public SubEntryPublish(byte publisherId, ulong publishingId,  ICompress compress)
+        public SubEntryPublish(byte publisherId, ulong publishingId,  ICompressionCodec compressionCodec)
         {
             this.publisherId = publisherId;
             this.publishingId = publishingId;
-            this.compress = compress;
+            this.compressionCodec = compressionCodec;
         }
     }
 }

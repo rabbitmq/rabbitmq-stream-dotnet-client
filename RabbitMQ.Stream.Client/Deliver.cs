@@ -34,11 +34,11 @@ namespace RabbitMQ.Stream.Client
                     while (numRecords != 0)
                     {
                         offset += SubBatchChunk.Read(data.Slice(offset), out var subBatchChunk);
-                        var unCompressedData =
-                            CompressHelper.UnCompress(subBatchChunk.Data,
-                                subBatchChunk.DataLen,
-                                subBatchChunk.UnCompressedDataSize,
-                                subBatchChunk.CompressMode);
+                        var unCompressedData = CompressionHelper.UnCompress(
+                            subBatchChunk.CompressionMode,
+                            subBatchChunk.Data,
+                            subBatchChunk.DataLen,
+                            subBatchChunk.UnCompressedDataSize);
 
                         var offsetSub = 0;
                         for (ulong z = 0; z < subBatchChunk.NumRecordsInBatch; z++)
@@ -105,7 +105,7 @@ namespace RabbitMQ.Stream.Client
             Data = data;
         }
 
-        public CompressMode CompressMode => (CompressMode) compressValue;
+        public CompressionMode CompressionMode => (CompressionMode) compressValue;
 
         public ushort NumRecordsInBatch { get; }
 

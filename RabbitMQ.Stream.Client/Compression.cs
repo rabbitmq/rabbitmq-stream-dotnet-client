@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
 using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
@@ -13,20 +15,22 @@ namespace RabbitMQ.Stream.Client
     // it already tests all the compress mode(s)
     // once all the other kind will be implemented the tests 
     // must pass.
-    public enum CompressMode : byte
+    public enum CompressionMode : byte
     {
         None = 0,
         Gzip = 1,
+
         // Not implemented yet.
-        // Snappy = 2,
-        // Lz4 = 3,
-        // Zstd = 4,
+        Snappy = 2,
+        Lz4 = 3,
+        Zstd = 4,
     }
+
 
     // Interface for compress the messages
     // used on the SubBatchPublish to publish the message
     // using the compression
-    public interface ICompress
+    public interface ICompressionCodec
     {
         void Compress(List<Message> messages);
         public int Write(Span<byte> span);
@@ -35,11 +39,12 @@ namespace RabbitMQ.Stream.Client
 
         public int MessagesCount { get; }
 
+        public CompressionMode CompressionMode { get; }
 
-        public CompressMode CompressMode { get; }
+        ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize);
     }
 
-    internal class NoneCompress : ICompress
+    public class NoneCompressionCodec : ICompressionCodec
     {
         private List<Message> rMessages;
 
@@ -66,10 +71,16 @@ namespace RabbitMQ.Stream.Client
         public int CompressedSize { get; private set; }
         public int UnCompressedSize { get; private set; }
         public int MessagesCount => rMessages.Count;
-        public CompressMode CompressMode => CompressMode.None;
+        public CompressionMode CompressionMode => CompressionMode.None;
+
+        public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen,
+            uint unCompressedDataSize)
+        {
+            return source;
+        }
     }
 
-    internal class GzipCompress : ICompress
+    public class GzipCompressionCodec : ICompressionCodec
     {
         private ReadOnlySequence<byte> compressedReadOnlySequence;
 
@@ -100,75 +111,72 @@ namespace RabbitMQ.Stream.Client
         public int CompressedSize => (int) compressedReadOnlySequence.Length;
         public int UnCompressedSize { get; private set; }
         public int MessagesCount { get; private set; }
-        public CompressMode CompressMode => CompressMode.Gzip;
-    }
-
-    public static class CompressHelper
-    {
-        private static readonly Dictionary<CompressMode, ICompress> CompressesList =
-            new()
-            {
-                {CompressMode.Gzip, new GzipCompress()},
-                {CompressMode.None, new NoneCompress()},
-            };
-
-        public static ICompress Compress(List<Message> messages, CompressMode compressionMode)
-        {
-            if (messages.Count > ushort.MaxValue)
-            {
-                throw new OutOfBoundsException($"List out of limits: 0-{ushort.MaxValue}");
-            }
-            var result = CompressesList[compressionMode];
-            result.Compress(messages);
-            return result;
-        }
-
-        private static readonly Dictionary<CompressMode, IUnCompress> UnCompressesList =
-            new()
-            {
-                {CompressMode.None, new NoneUnCompress()},
-                {CompressMode.Gzip, new GzipUnCompress()},
-            };
-
-        public static ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen,
-            uint unCompressedDataSize,
-            CompressMode compressionMode)
-        {
-            var result = UnCompressesList[compressionMode];
-            return result.UnCompress(source, dataLen, unCompressedDataSize);
-        }
-    }
-
-    // UnCompress Section
-    public interface IUnCompress
-    {
-        ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize);
-    }
-
-    internal class NoneUnCompress : IUnCompress
-    {
-        public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
-        {
-            return source;
-        }
-    }
+        public CompressionMode CompressionMode => CompressionMode.Gzip;
 
 
-    internal class GzipUnCompress : IUnCompress
-    {
         public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
         {
             using var sourceMemoryStream = new MemoryStream(source.ToArray(), 0, (int) dataLen);
             using var resultMemoryStream = new MemoryStream((int) unCompressedDataSize);
-            using var gZipStream = new GZipStream(sourceMemoryStream, CompressionMode.Decompress);
+            using var gZipStream = new GZipStream(sourceMemoryStream, System.IO.Compression.CompressionMode.Decompress);
             gZipStream.CopyTo(resultMemoryStream);
             gZipStream.Flush();
             return new ReadOnlySequence<byte>(resultMemoryStream.ToArray());
         }
     }
-    
-    
-    
+
+    public static class StreamCompressionCodecs
+    {
+        private static readonly Dictionary<CompressionMode, Type> AvailableCompressCodecs =
+            new()
+            {
+                {CompressionMode.Gzip, typeof(GzipCompressionCodec)},
+                {CompressionMode.None, typeof(NoneCompressionCodec)},
+            };
+
+        public static void RegisterCodec<T>(CompressionMode compressionMode) where T : ICompressionCodec, new()
+        {
+            AvailableCompressCodecs.Add(compressionMode, typeof(T));
+        }
+
+        public static void UnRegisterCodec<T>(CompressionMode compressionMode) where T : ICompressionCodec, new()
+        {
+            AvailableCompressCodecs.Remove(compressionMode);
+        }
+
+        public static ICompressionCodec GetCompress(CompressionMode compressionMode)
+        {
+            return (ICompressionCodec) Activator.CreateInstance(AvailableCompressCodecs[compressionMode]);
+        }
+    }
+
+    public static class CompressionHelper
+    {
+        public static ICompressionCodec Compress(List<Message> messages, CompressionMode compressionMode)
+        {
+            if (messages.Count > ushort.MaxValue)
+            {
+                throw new OutOfBoundsException($"List out of limits: 0-{ushort.MaxValue}");
+            }
+
+            var codec
+                = StreamCompressionCodecs.GetCompress(compressionMode);
+            codec.Compress(messages);
+            return codec;
+        }
+
+
+        public static ReadOnlySequence<byte> UnCompress(CompressionMode compressionMode,
+            ReadOnlySequence<byte> source, uint dataLen,
+            uint unCompressedDataSize)
+        {
+            var codec = StreamCompressionCodecs.GetCompress(compressionMode);
+            return codec.UnCompress(source, dataLen, unCompressedDataSize);
+        }
+    }
+
+
+
     public class OutOfBoundsException : Exception
     {
         public OutOfBoundsException(string s) :
