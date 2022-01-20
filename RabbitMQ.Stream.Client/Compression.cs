@@ -4,32 +4,25 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
-using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
 {
     // Compress Mode for sub-batching publish
-    // see the test: UnitTests:CompressUnCompressShouldHaveTheSize/0
-    // it already tests all the compress mode(s)
-    // once all the other kind will be implemented the tests 
-    // must pass.
     public enum CompressionMode : byte
     {
+        // builtin compression
         None = 0,
         Gzip = 1,
 
-        // Not implemented yet.
+        // Not implemented by default.
+        // It is possible to add custom codec with StreamCompressionCodecs
         Snappy = 2,
         Lz4 = 3,
         Zstd = 4,
     }
 
-
-    // Interface for compress the messages
-    // used on the SubBatchPublish to publish the message
-    // using the compression
+    // Interface for Compress/unCompress the messages
+    // used by SubBatchPublish to publish the messages
     public interface ICompressionCodec
     {
         void Compress(List<Message> messages);
@@ -125,6 +118,10 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
+    /// <summary>
+    /// StreamCompressionCodecs: Global class to register/unregister the compress codec
+    /// GZip and None compression are provided by default
+    /// </summary>
     public static class StreamCompressionCodecs
     {
         private static readonly Dictionary<CompressionMode, Type> AvailableCompressCodecs =
@@ -136,16 +133,29 @@ namespace RabbitMQ.Stream.Client
 
         public static void RegisterCodec<T>(CompressionMode compressionMode) where T : ICompressionCodec, new()
         {
+            if (AvailableCompressCodecs.ContainsKey(compressionMode))
+            {
+                throw new CodecAlreadyExistException($"codec for {compressionMode} already exist.");
+            }
+
             AvailableCompressCodecs.Add(compressionMode, typeof(T));
         }
 
-        public static void UnRegisterCodec<T>(CompressionMode compressionMode) where T : ICompressionCodec, new()
+        public static void UnRegisterCodec(CompressionMode compressionMode)
         {
-            AvailableCompressCodecs.Remove(compressionMode);
+            if (AvailableCompressCodecs.ContainsKey(compressionMode))
+            {
+                AvailableCompressCodecs.Remove(compressionMode);
+            }
         }
 
-        public static ICompressionCodec GetCompress(CompressionMode compressionMode)
+        public static ICompressionCodec GetCompressionCodec(CompressionMode compressionMode)
         {
+            if (!AvailableCompressCodecs.ContainsKey(compressionMode))
+            {
+                throw new CodecNotFoundException($"codec for {compressionMode} not found");
+            }
+
             return (ICompressionCodec) Activator.CreateInstance(AvailableCompressCodecs[compressionMode]);
         }
     }
@@ -160,26 +170,40 @@ namespace RabbitMQ.Stream.Client
             }
 
             var codec
-                = StreamCompressionCodecs.GetCompress(compressionMode);
+                = StreamCompressionCodecs.GetCompressionCodec(compressionMode);
             codec.Compress(messages);
             return codec;
         }
-
 
         public static ReadOnlySequence<byte> UnCompress(CompressionMode compressionMode,
             ReadOnlySequence<byte> source, uint dataLen,
             uint unCompressedDataSize)
         {
-            var codec = StreamCompressionCodecs.GetCompress(compressionMode);
+            var codec = StreamCompressionCodecs.GetCompressionCodec(compressionMode);
             return codec.UnCompress(source, dataLen, unCompressedDataSize);
         }
     }
 
 
-
     public class OutOfBoundsException : Exception
     {
         public OutOfBoundsException(string s) :
+            base(s)
+        {
+        }
+    }
+
+    public class CodecNotFoundException : Exception
+    {
+        public CodecNotFoundException(string s) :
+            base(s)
+        {
+        }
+    }
+
+    public class CodecAlreadyExistException : Exception
+    {
+        public CodecAlreadyExistException(string s) :
             base(s)
         {
         }

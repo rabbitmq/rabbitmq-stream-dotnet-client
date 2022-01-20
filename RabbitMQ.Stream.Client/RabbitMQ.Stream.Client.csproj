@@ -9,7 +9,7 @@
     <Authors>VMware</Authors>
     <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</RepositoryUrl>
     <PackageDescription>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</PackageDescription>
-    <Copyright>Copyright © 2007-2021 VMware, Inc. or its affiliates.</Copyright>
+    <Copyright>Copyright © 2007-2022 VMware, Inc. or its affiliates.</Copyright>
     <PackageTags>rabbitmq, stream</PackageTags>
     <Description>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</Description>
     <Title>RabbitMQ Stream .NET client</Title>
