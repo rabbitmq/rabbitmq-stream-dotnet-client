@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -22,7 +23,7 @@ namespace Tests
             this.testOutputHelper = testOutputHelper;
         }
 
-        
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateConsumer()
@@ -136,8 +137,8 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-        
-        
+
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void NotifyConsumerClose()
@@ -159,7 +160,6 @@ namespace Tests
                         testPassed.SetResult(true);
                         await Task.CompletedTask;
                     }
-                    
                 });
 
             Assert.Equal(ResponseCode.Ok, await consumer.Close());
@@ -167,10 +167,8 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-        
-        
-        
-        
+
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateProducerConsumerAddressResolver()
@@ -210,6 +208,81 @@ namespace Tests
 
 
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
+            producer.Dispose();
+            consumer.Dispose();
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ProducerAndConsumerCompressShouldHaveTheSameMessages()
+        {
+            void PumpMessages(ICollection<Message> messages, string prefix)
+            {
+                for (var i = 0; i < 5; i++)
+                {
+                    messages.Add(new Message(Encoding.UTF8.GetBytes($"{prefix}_{i}")));
+                }
+            }
+
+            void AssertMessages(IReadOnlyList<Message> expected, IReadOnlyList<Message> actual)
+            {
+                for (var i = 0; i < 5; i++)
+                {
+                    Assert.Equal(expected[i].Data.Contents.ToArray(), actual[i].Data.Contents.ToArray());
+                }
+            }
+
+            var testPassed = new TaskCompletionSource<List<Message>>();
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+
+            var receivedMessages = new List<Message>();
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = "consumer",
+                    Stream = stream,
+                    MessageHandler = async (consumer, ctx, message) =>
+                    {
+                        receivedMessages.Add(message);
+                        if (receivedMessages.Count == 10)
+                        {
+                            testPassed.SetResult(receivedMessages);
+                        }
+
+                        await Task.CompletedTask;
+                    }
+                });
+
+
+            var producer = await system.CreateProducer(
+                new ProducerConfig
+                {
+                    Reference = "producer",
+                    Stream = stream
+                });
+
+            var messagesNone = new List<Message>();
+            PumpMessages(messagesNone, "None");
+            await producer.Send(1, messagesNone, CompressionType.None);
+
+            var messagesGzip = new List<Message>();
+            PumpMessages(messagesGzip, "Gzip");
+            await producer.Send(2, messagesGzip, CompressionType.Gzip);
+            
+            new Utils<List<Message>>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
+            AssertMessages(messagesNone, testPassed.Task.Result.FindAll(s =>
+                Encoding.Default.GetString(s.Data.Contents.ToArray()).Contains("None_")));
+
+            AssertMessages(messagesGzip, testPassed.Task.Result.FindAll(s =>
+                Encoding.Default.GetString(s.Data.Contents.ToArray()).Contains("Gzip_")));
+            
             producer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);

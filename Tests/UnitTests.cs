@@ -1,6 +1,9 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using Xunit;
@@ -10,7 +13,7 @@ namespace Tests
     public class FakeClient : IClient
     {
         public ClientParameters Parameters { get; set; }
-        public IDictionary<string, string> ConnectionProperties { get; init; } 
+        public IDictionary<string, string> ConnectionProperties { get; init; }
 
         public Task<CloseResponse> Close(string reason)
         {
@@ -150,6 +153,121 @@ namespace Tests
             var res = (client.Result.ConnectionProperties["advertised_host"] == "leader" ||
                        client.Result.ConnectionProperties["advertised_host"] == "replica");
             Assert.True(res);
+        }
+
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public void CompressUnCompressShouldHaveTheSize()
+        {
+            void PumpMessages(ICollection<Message> messages)
+            {
+                for (var i = 0; i < 54321; i++)
+                {
+                    messages.Add(new Message(Encoding.UTF8.GetBytes($"data_{i}")));
+                }
+            }
+
+            // test the compress routine
+            // The uncompressed data len _must_ be equal to the original iCompress.UnCompressedSize
+            // 
+            void AssertCompress(List<Message> messages, CompressionType compressionType)
+            {
+                var codec = CompressionHelper.Compress(messages, compressionType);
+                var data = new Span<byte>(new byte[codec.UnCompressedSize]);
+                codec.Write(data);
+                Assert.True(codec != null);
+                Assert.True(data != null);
+                var b = new ReadOnlySequence<byte>(data.ToArray());
+                var unCompress = CompressionHelper.UnCompress(
+                    compressionType,
+                    b,
+                    (uint) codec.CompressedSize,
+                    (uint) codec.UnCompressedSize
+                );
+                Assert.True(unCompress.Length == codec.UnCompressedSize);
+            }
+
+            var messagesTest = new List<Message>();
+            PumpMessages(messagesTest);
+            AssertCompress(messagesTest, CompressionType.Gzip);
+            AssertCompress(messagesTest, CompressionType.None);
+        }
+
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public void CodeNotFoundException()
+        {
+            // Raise an exception for the codec not implemented.
+            var messages = new List<Message>();
+
+            // codec for CompressionType.Lz4 does not exist.
+            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
+                CompressionType.Lz4));
+            
+            // codec for CompressionType.Snappy does not exist.
+            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
+                CompressionType.Snappy));
+            
+            // codec for CompressionType.Zstd does not exist.
+            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
+                CompressionType.Zstd));
+        }
+
+
+        private class FakeCodec: ICompressionCodec
+        {
+            public void Compress(List<Message> messages)
+            {
+                // nothing to do
+            }
+
+            public int Write(Span<byte> span)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int CompressedSize { get; }
+            public int UnCompressedSize { get; }
+            public int MessagesCount { get; }
+            public CompressionType CompressionType { get; }
+            public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
+            {
+                throw new NotImplementedException();
+            }
+        }
+        [Fact]
+        [WaitTestBeforeAfter]
+        public void AddNewCodecShouldNotRaiseException()
+        {
+            // the following codec aren't provided by builtin.
+            // need to register custom codecs
+            var types = new List<CompressionType>
+            {
+                CompressionType.Lz4,
+                CompressionType.Snappy,
+                CompressionType.Zstd
+            };
+            foreach (var compressionType in types)
+            {
+                var messages = new List<Message>();
+                // codec for CompressionType does not exist.
+                Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
+                    compressionType));
+
+                // Add codec for CompressionType.
+                StreamCompressionCodecs.RegisterCodec<FakeCodec>(compressionType);
+                Assert.IsType<FakeCodec>(CompressionHelper.Compress(messages,
+                    compressionType));
+
+                StreamCompressionCodecs.UnRegisterCodec(compressionType);
+
+                // codec for CompressionType removed
+                Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
+                    compressionType));
+            }
+
         }
     }
 }

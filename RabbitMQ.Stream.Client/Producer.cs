@@ -103,17 +103,44 @@ namespace RabbitMQ.Stream.Client
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 
-        public async ValueTask Send(ulong publishingId, Message message)
+        /// <summary>
+        /// SubEntry Batch send: Aggregate more messages under the same publishingId.
+        /// Relation is publishingId ->[]messages. 
+        /// Messages can be compressed using different methods.
+        /// </summary>
+        /// <param name="publishingId"></param>
+        /// <param name="subEntryMessages"> List of messages for sub-entry. Max len allowed is ushort.MaxValue</param>
+        /// <param name="compressionType">No Compression, Gzip Compression. Other types are not provided by default</param>
+        public async ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType)
         {
-            // Let's see if we can get a semaphore without having to wait, which should be the case most of the time
-            if (!semaphore.Wait(0))
+            if (subEntryMessages.Count != 0)
             {
-                // Nope, we have maxed our In-Flight messages, let's asynchrnously wait for confirms
-                if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
+                await SemaphoreWait();
+                var publishTask =
+                    client.Publish(new SubEntryPublish(publisherId, publishingId,
+                        CompressionHelper.Compress(subEntryMessages, compressionType)));
+                if (!publishTask.IsCompletedSuccessfully)
                 {
-                    Console.WriteLine("SEMAPHORE TIMEOUT");
+                    await publishTask.ConfigureAwait(false);
                 }
             }
+        }
+
+        private async Task SemaphoreWait()
+        {
+            if (!semaphore.Wait(0))
+            {
+                // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
+                if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
+                {
+                    Console.WriteLine("Semaphore Wait timeout during publishing.");
+                }
+            }
+        }
+
+        public async ValueTask Send(ulong publishingId, Message message)
+        {
+            await SemaphoreWait();
 
             var msg = new OutgoingMsg(publisherId, publishingId, message);
 
@@ -176,7 +203,7 @@ namespace RabbitMQ.Stream.Client
             StreamInfo metaStreamInfo)
         {
             var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new Producer((Client)client, config);
+            var producer = new Producer((Client) client, config);
             await producer.Init();
             return producer;
         }

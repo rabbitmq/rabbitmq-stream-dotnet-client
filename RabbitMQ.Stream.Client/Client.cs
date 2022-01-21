@@ -93,7 +93,7 @@ namespace RabbitMQ.Stream.Client
         private uint correlationId = 0; // allow for some pre-amble
 
         private byte nextPublisherId = 0;
-      
+
         private Connection connection;
 
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
@@ -156,9 +156,9 @@ namespace RabbitMQ.Stream.Client
 
         private async Task OnConnectionClosed(string reason)
         {
-                await ConnectionClosed?.Invoke(reason)!;
+            await ConnectionClosed?.Invoke(reason)!;
         }
-        
+
         public static async Task<Client> Create(ClientParameters parameters)
         {
             var client = new Client(parameters);
@@ -428,9 +428,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-       
 
-       
         public async Task<CloseResponse> Close(string reason)
         {
             if (closeResponse != null)
