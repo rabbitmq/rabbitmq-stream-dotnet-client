@@ -110,16 +110,19 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         /// <param name="publishingId"></param>
         /// <param name="subEntryMessages"> List of messages for sub-entry. Max len allowed is ushort.MaxValue</param>
-        /// <param name="compressionMode">No Compression, Gzip Compression. Other types are not provided by default</param>
-        public async ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionMode compressionMode)
+        /// <param name="compressionType">No Compression, Gzip Compression. Other types are not provided by default</param>
+        public async ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType)
         {
-            await SemaphoreWait();
-            var publishTask =
-                client.Publish(new SubEntryPublish(publisherId, publishingId,
-                    CompressionHelper.Compress( subEntryMessages, compressionMode)));
-            if (!publishTask.IsCompletedSuccessfully)
+            if (subEntryMessages.Count != 0)
             {
-                await publishTask.ConfigureAwait(false);
+                await SemaphoreWait();
+                var publishTask =
+                    client.Publish(new SubEntryPublish(publisherId, publishingId,
+                        CompressionHelper.Compress(subEntryMessages, compressionType)));
+                if (!publishTask.IsCompletedSuccessfully)
+                {
+                    await publishTask.ConfigureAwait(false);
+                }
             }
         }
 

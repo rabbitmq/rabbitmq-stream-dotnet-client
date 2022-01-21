@@ -31,7 +31,7 @@ namespace RabbitMQ.Stream.Client
             // so there is publishingId --> []messages
             offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
             // compress mode see CompressMode
-            var agg = (byte) compressionCodec.CompressionMode << 4;
+            var agg = (byte) compressionCodec.CompressionType << 4;
             offset += WireFormatting.WriteByte(
                 span.Slice(offset), (byte) (0x80 | agg));
             

@@ -150,7 +150,7 @@ namespace Tests
                 });
 
             await Assert.ThrowsAsync<OutOfBoundsException>(() =>
-                producer.Send(1, messages, CompressionMode.Gzip).AsTask());
+                producer.Send(1, messages, CompressionType.Gzip).AsTask());
 
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);
@@ -199,14 +199,14 @@ namespace Tests
                 });
 
             ulong pid = 0;
-            await producer.Send(++pid, messages, CompressionMode.None);
+            await producer.Send(++pid, messages, CompressionType.None);
 
             foreach (var message in messages)
             {
                 await producer.Send(++pid, message);
             }
 
-            await producer.Send(++pid, messages, CompressionMode.Gzip);
+            await producer.Send(++pid, messages, CompressionType.Gzip);
             Thread.Sleep(500);
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);

@@ -35,7 +35,7 @@ namespace RabbitMQ.Stream.Client
                     {
                         offset += SubEntryChunk.Read(data.Slice(offset), out var subEntryChunk);
                         var unCompressedData = CompressionHelper.UnCompress(
-                            subEntryChunk.CompressionMode,
+                            subEntryChunk.CompressionType,
                             subEntryChunk.Data,
                             subEntryChunk.DataLen,
                             subEntryChunk.UnCompressedDataSize);
@@ -105,7 +105,7 @@ namespace RabbitMQ.Stream.Client
             Data = data;
         }
 
-        public CompressionMode CompressionMode => (CompressionMode) compressValue;
+        public CompressionType CompressionType => (CompressionType) compressValue;
 
         public ushort NumRecordsInBatch { get; }
 

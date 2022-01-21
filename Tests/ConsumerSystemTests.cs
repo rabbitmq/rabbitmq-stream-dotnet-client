@@ -269,11 +269,11 @@ namespace Tests
 
             var messagesNone = new List<Message>();
             PumpMessages(messagesNone, "None");
-            await producer.Send(1, messagesNone, CompressionMode.None);
+            await producer.Send(1, messagesNone, CompressionType.None);
 
             var messagesGzip = new List<Message>();
             PumpMessages(messagesGzip, "Gzip");
-            await producer.Send(2, messagesGzip, CompressionMode.Gzip);
+            await producer.Send(2, messagesGzip, CompressionType.Gzip);
             
             new Utils<List<Message>>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 

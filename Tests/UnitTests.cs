@@ -171,16 +171,16 @@ namespace Tests
             // test the compress routine
             // The uncompressed data len _must_ be equal to the original iCompress.UnCompressedSize
             // 
-            void AssertCompress(List<Message> messages, CompressionMode compressionMode)
+            void AssertCompress(List<Message> messages, CompressionType compressionType)
             {
-                var codec = CompressionHelper.Compress(messages, compressionMode);
+                var codec = CompressionHelper.Compress(messages, compressionType);
                 var data = new Span<byte>(new byte[codec.UnCompressedSize]);
                 codec.Write(data);
                 Assert.True(codec != null);
                 Assert.True(data != null);
                 var b = new ReadOnlySequence<byte>(data.ToArray());
                 var unCompress = CompressionHelper.UnCompress(
-                    compressionMode,
+                    compressionType,
                     b,
                     (uint) codec.CompressedSize,
                     (uint) codec.UnCompressedSize
@@ -190,8 +190,8 @@ namespace Tests
 
             var messagesTest = new List<Message>();
             PumpMessages(messagesTest);
-            AssertCompress(messagesTest, CompressionMode.Gzip);
-            AssertCompress(messagesTest, CompressionMode.None);
+            AssertCompress(messagesTest, CompressionType.Gzip);
+            AssertCompress(messagesTest, CompressionType.None);
         }
 
 
@@ -202,17 +202,17 @@ namespace Tests
             // Raise an exception for the codec not implemented.
             var messages = new List<Message>();
 
-            // codec for CompressionMode.Lz4 does not exist.
+            // codec for CompressionType.Lz4 does not exist.
             Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
-                CompressionMode.Lz4));
+                CompressionType.Lz4));
             
-            // codec for CompressionMode.Snappy does not exist.
+            // codec for CompressionType.Snappy does not exist.
             Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
-                CompressionMode.Snappy));
+                CompressionType.Snappy));
             
-            // codec for CompressionMode.Zstd does not exist.
+            // codec for CompressionType.Zstd does not exist.
             Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
-                CompressionMode.Zstd));
+                CompressionType.Zstd));
         }
 
 
@@ -231,7 +231,7 @@ namespace Tests
             public int CompressedSize { get; }
             public int UnCompressedSize { get; }
             public int MessagesCount { get; }
-            public CompressionMode CompressionMode { get; }
+            public CompressionType CompressionType { get; }
             public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
             {
                 throw new NotImplementedException();
@@ -243,29 +243,29 @@ namespace Tests
         {
             // the following codec aren't provided by builtin.
             // need to register custom codecs
-            var types = new List<CompressionMode>
+            var types = new List<CompressionType>
             {
-                CompressionMode.Lz4,
-                CompressionMode.Snappy,
-                CompressionMode.Zstd
+                CompressionType.Lz4,
+                CompressionType.Snappy,
+                CompressionType.Zstd
             };
-            foreach (var compressionMode in types)
+            foreach (var compressionType in types)
             {
                 var messages = new List<Message>();
-                // codec for compressionMode does not exist.
+                // codec for CompressionType does not exist.
                 Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
-                    compressionMode));
+                    compressionType));
 
-                // Add codec for compressionMode.
-                StreamCompressionCodecs.RegisterCodec<FakeCodec>(compressionMode);
+                // Add codec for CompressionType.
+                StreamCompressionCodecs.RegisterCodec<FakeCodec>(compressionType);
                 Assert.IsType<FakeCodec>(CompressionHelper.Compress(messages,
-                    compressionMode));
+                    compressionType));
 
-                StreamCompressionCodecs.UnRegisterCodec(compressionMode);
+                StreamCompressionCodecs.UnRegisterCodec(compressionType);
 
-                // codec for compressionMode removed
+                // codec for CompressionType removed
                 Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
-                    compressionMode));
+                    compressionType));
             }
 
         }
