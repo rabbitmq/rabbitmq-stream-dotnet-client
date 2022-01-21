@@ -203,20 +203,20 @@ namespace Tests
             var messages = new List<Message>();
 
             // codec for CompressionType.Lz4 does not exist.
-            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
+            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
                 CompressionType.Lz4));
-            
+
             // codec for CompressionType.Snappy does not exist.
-            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
+            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
                 CompressionType.Snappy));
-            
+
             // codec for CompressionType.Zstd does not exist.
-            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages, 
+            Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
                 CompressionType.Zstd));
         }
 
 
-        private class FakeCodec: ICompressionCodec
+        private class FakeCodec : ICompressionCodec
         {
             public void Compress(List<Message> messages)
             {
@@ -232,14 +232,17 @@ namespace Tests
             public int UnCompressedSize { get; }
             public int MessagesCount { get; }
             public CompressionType CompressionType { get; }
-            public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
+
+            public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen,
+                uint unCompressedDataSize)
             {
                 throw new NotImplementedException();
             }
         }
+
         [Fact]
         [WaitTestBeforeAfter]
-        public void AddNewCodecShouldNotRaiseException()
+        public void AddRemoveCodecsForType()
         {
             // the following codec aren't provided by builtin.
             // need to register custom codecs
@@ -267,7 +270,38 @@ namespace Tests
                 Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
                     compressionType));
             }
+        }
 
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public void CodecAlreadyExistException()
+        {
+            // the following codec aren't provided by builtin.
+            // need to register custom codecs
+            var types = new List<CompressionType>
+            {
+                CompressionType.Lz4,
+                CompressionType.Snappy,
+                CompressionType.Zstd
+            };
+            foreach (var compressionType in types)
+            {
+                var messages = new List<Message>();
+
+
+                // Add codec first time. Ok.
+                StreamCompressionCodecs.RegisterCodec<FakeCodec>(compressionType);
+                
+                // Exception for the second time
+                Assert.Throws<CodecAlreadyExistException>(() =>
+                    StreamCompressionCodecs.RegisterCodec<FakeCodec>(compressionType));
+
+                StreamCompressionCodecs.UnRegisterCodec(compressionType);
+                // codec for CompressionType removed
+                Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
+                    compressionType));
+            }
         }
     }
 }
