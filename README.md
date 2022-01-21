@@ -168,7 +168,7 @@ var producer = await system.CreateProducer(
 Sub Entries Batching:
 A sub-entry is one "slot" in a publishing frame, meaning outbound messages are not only batched in publishing frames, but in sub-entries as well. Use this feature to increase throughput at the cost of increased latency.
 
-`CompressionMode.None` and `CompressionMode.GZip` codecs compression are built-in.
+`CompressionType.None` and `CompressionType.GZip` codecs compression are built-in.
 
 ```csharp
 var subEntryMessages = List<Messages>();
@@ -178,12 +178,12 @@ for (var i = 1; i <= 500; i++)
     subEntryMessages.Add(message);
 }
 
-await producer.Send(1, subEntryMessages, CompressionMode.Gzip);
+await producer.Send(1, subEntryMessages, CompressionType.Gzip);
 messages.Clear();
 ```
 
 Note:
-`CompressionMode.Lz4`,`CompressionMode.Snappy`,`CompressionMode.Zstd`
+`CompressionType.Lz4`,`CompressionType.Snappy`,`CompressionType.Zstd`
 are not provided by default.<br>
 See the section: "Implement a Custom Compression Codec" for more details.
 
