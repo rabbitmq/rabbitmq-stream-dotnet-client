@@ -51,12 +51,13 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static Data Parse(ReadOnlySequence<byte> amqpData)
+        public static Data Parse(ReadOnlySequence<byte> amqpData, MessageType messageType)
         {
             var offset = WireFormatting.ReadByte(amqpData, out var marker);
             offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var descriptor);
             offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var dataCode);
             offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var binaryMarker);
+         
             switch (binaryMarker)
             {
                 case 0xA0:

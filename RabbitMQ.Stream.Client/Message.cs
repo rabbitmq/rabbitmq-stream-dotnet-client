@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
@@ -7,7 +8,6 @@ namespace RabbitMQ.Stream.Client
     public readonly struct Message
     {
         private readonly Properties properties;
-        
         public Message(byte[] data) : this(new Data(new ReadOnlySequence<byte>(data)))
         {
         }
@@ -36,8 +36,31 @@ namespace RabbitMQ.Stream.Client
 
         public static Message From(ReadOnlySequence<byte> amqpData)
         {
+            //                                                         Bare Message
+            //                                                             |
+            //                                       .---------------------+--------------------.
+            //                                      |                                           |
+            // +--------+-------------+-------------+------------+--------------+--------------+--------
+            // | header | delivery-   | message-    | properties | application- | application- | footer |
+            // |        | annotations | annotations |             | properties  | data         |        |
+            // +--------+-------------+-------------+------------+--------------+--------------+--------+            
+
             //parse AMQP encoded data
-            var data = AMQP.Data.Parse(amqpData);
+            var messageType = AMQP.MessageType.Parse(amqpData);
+            var offest = messageType.Size;
+            switch (messageType.DataCode)
+            {
+                case FrameType.TypeCodeApplicationData:
+                    
+                    break;
+                case FrameType.TypeCodeMessageAnnotations:
+                    var annotations = AMQP.Annotations.Parse(amqpData.Slice(offest));
+
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            var data = AMQP.Data.Parse(amqpData.Slice(offest), messageType);
             return new Message(data);
         }
     }
