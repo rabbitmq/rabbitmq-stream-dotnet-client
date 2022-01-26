@@ -7,23 +7,34 @@ namespace RabbitMQ.Stream.Client
 {
     public readonly struct Message
     {
-        private readonly Properties properties;
+        private readonly AmqpFrameHeader amqpFrameHeader;
+
         public Message(byte[] data) : this(new Data(new ReadOnlySequence<byte>(data)))
         {
         }
-
-        public Message(Data data, Properties properties = new Properties())
+        
+        public Message(Data data, Annotations? annotations = null, Properties? properties =null)
         {
             this.Data = data;
-            this.properties = properties;
+            this.Annotations = annotations;
+            this.Properties = properties;
+            amqpFrameHeader = new AmqpFrameHeader(0,
+                AmqpType.TypeCodeSmallUlong,
+                FrameType.TypeCodeApplicationData);
         }
 
+
+        public Annotations? Annotations { get; }
+        public Properties? Properties { get; }
+
         public Data Data { get; }
-        public int Size => Data.Size;
+        public int Size => Data.Size + amqpFrameHeader.Size;
 
         public int Write(Span<byte> span)
         {
-            return Data.Write(span);
+            var offset = amqpFrameHeader.Write(span);
+            offset += Data.Write(span.Slice(offset));
+            return offset;
         }
 
         public ReadOnlySequence<byte> Serialize()
@@ -46,22 +57,33 @@ namespace RabbitMQ.Stream.Client
             // +--------+-------------+-------------+------------+--------------+--------------+--------+            
 
             //parse AMQP encoded data
-            var messageType = AMQP.MessageType.Parse(amqpData);
-            var offest = messageType.Size;
-            switch (messageType.DataCode)
+            var offset = 0;
+            Annotations? annotations = null;
+            AMQP.Data? data = null;
+            while (amqpData.Slice(offset).Length != 0)
             {
-                case FrameType.TypeCodeApplicationData:
-                    
-                    break;
-                case FrameType.TypeCodeMessageAnnotations:
-                    var annotations = AMQP.Annotations.Parse(amqpData.Slice(offest));
-
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                var messageType = AMQP.AmqpFrameHeader.Parse(amqpData.Slice(offset));
+                offset += messageType.Size;
+                switch (messageType.DataCode)
+                {
+                    case FrameType.TypeCodeApplicationData:
+                        data = AMQP.Data.Parse(amqpData.Slice(offset));
+                        offset += data.Value.Size;
+                        break;
+                    case FrameType.TypeCodeMessageAnnotations:
+                        annotations = AMQP.Annotations.Parse(amqpData.Slice(offset));
+                        offset += annotations.Value.Size;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             }
-            var data = AMQP.Data.Parse(amqpData.Slice(offest), messageType);
-            return new Message(data);
+
+
+            if (data != null)
+                return new Message(data.Value, annotations);
+
+            throw new AMQP.AmqpParseException($"Can't parse data is null");
         }
     }
 }

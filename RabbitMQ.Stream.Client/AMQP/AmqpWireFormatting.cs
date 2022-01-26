@@ -7,10 +7,9 @@ namespace RabbitMQ.Stream.Client.AMQP
 {
     public static class AmqpWireFormatting
     {
-        private static int ReadType(ReadOnlySequence<byte> seq, out AmqpType type)
+        private static int ReadType(ReadOnlySequence<byte> seq, out byte value)
         {
-            var read = WireFormatting.ReadByte(seq, out var value);
-            type = (AmqpType) value;
+            var read = WireFormatting.ReadByte(seq, out value);
             return read;
         }
 
@@ -18,6 +17,8 @@ namespace RabbitMQ.Stream.Client.AMQP
         internal static int ReadAny(ReadOnlySequence<byte> seq, out object value)
         {
             var offset = 0;
+            // Just pick the type. Won't move the offset since it will be read 
+            // again inside each read.
             ReadType(seq, out var type);
             switch (type)
             {
@@ -38,7 +39,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             throw new AMQP.AmqpParseException($"can't read any {type}");
         }
 
-        internal static int ReadString(ReadOnlySequence<byte> seq, out string value)
+        private static int ReadString(ReadOnlySequence<byte> seq, out string value)
         {
             var offset = ReadType(seq, out var type);
             switch (type)
@@ -56,8 +57,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset + len;
             }
 
-            value = "";
-            return offset;
+            throw new AMQP.AmqpParseException($"ReadString invalid type {type}");
         }
 
 
@@ -89,6 +89,25 @@ namespace RabbitMQ.Stream.Client.AMQP
             }
 
             throw new AMQP.AmqpParseException($"ReadUbyte Invalid type {type}");
+        }
+        
+        
+        internal static int ReadBytes(ReadOnlySequence<byte> seq, out ReadOnlySequence<byte> value)
+        {
+            var offset = ReadType(seq, out var type);
+            switch (type)
+            {
+                case AmqpType.TypeCodeVbin8:
+                    offset += WireFormatting.ReadByte(seq.Slice(offset), out var length8);
+                    value = seq.Slice(offset, length8);
+                    return offset;
+                case AmqpType.TypeCodeVbin32:
+                    offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var length32);
+                    value = seq.Slice(offset, length32);
+                    return offset;
+            }
+
+            throw new AMQP.AmqpParseException($"ReadBytes Invalid type {type}");
         }
     }
 }

@@ -155,7 +155,7 @@ namespace RabbitMQ.Stream.Client
     }
 
 
-    public struct Properties
+    public readonly struct Properties
     {
     }
 
