@@ -7,32 +7,32 @@ namespace RabbitMQ.Stream.Client
 {
     public readonly struct Message
     {
-        private readonly AmqpFrameHeader amqpFrameHeader;
+        private readonly Described described;
 
         public Message(byte[] data) : this(new Data(new ReadOnlySequence<byte>(data)))
         {
         }
-        
-        public Message(Data data, Annotations? annotations = null, Properties? properties =null)
+
+        public Message(Data data, Annotations annotations = null, Properties? properties = null)
         {
             this.Data = data;
             this.Annotations = annotations;
             this.Properties = properties;
-            amqpFrameHeader = new AmqpFrameHeader(0,
-                AmqpType.TypeCodeSmallUlong,
-                FrameType.TypeCodeApplicationData);
+            described = new Described(0,
+                FormatCode.Ulong,
+                Codec.ApplicationData);
         }
 
 
-        public Annotations? Annotations { get; }
+        public Annotations Annotations { get; }
         public Properties? Properties { get; }
 
         public Data Data { get; }
-        public int Size => Data.Size + amqpFrameHeader.Size;
+        public int Size => Data.Size + described.Size;
 
         public int Write(Span<byte> span)
         {
-            var offset = amqpFrameHeader.Write(span);
+            var offset = described.Write(span);
             offset += Data.Write(span.Slice(offset));
             return offset;
         }
@@ -58,28 +58,27 @@ namespace RabbitMQ.Stream.Client
 
             //parse AMQP encoded data
             var offset = 0;
-            Annotations? annotations = null;
+            Annotations annotations = null;
             AMQP.Data? data = null;
             while (amqpData.Slice(offset).Length != 0)
             {
-                var messageType = AMQP.AmqpFrameHeader.Parse(amqpData.Slice(offset));
-                offset += messageType.Size;
-                switch (messageType.DataCode)
+                var described = AMQP.Described.Parse(amqpData.Slice(offset));
+                offset += described.Size;
+                switch (described.DataCode)
                 {
-                    case FrameType.TypeCodeApplicationData:
-                        data = AMQP.Data.Parse(amqpData.Slice(offset));
-                        offset += data.Value.Size;
+                    case Codec.ApplicationData:
+                        data = AMQP.Data.Parse(amqpData.Slice(offset), out var readD);
+                        offset += readD;
                         break;
-                    case FrameType.TypeCodeMessageAnnotations:
-                        annotations = AMQP.Annotations.Parse(amqpData.Slice(offset));
-                        offset += annotations.Value.Size;
+                    case Codec.MessageAnnotations:
+                        annotations = AMQP.Annotations.Parse(amqpData.Slice(offset), out var readA);
+                        offset += readA;
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
-
-
+            
             if (data != null)
                 return new Message(data.Value, annotations);
 

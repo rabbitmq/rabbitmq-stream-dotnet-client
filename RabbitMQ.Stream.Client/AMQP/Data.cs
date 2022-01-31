@@ -52,9 +52,9 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static Data Parse(ReadOnlySequence<byte> amqpData)
+        public static Data Parse(ReadOnlySequence<byte> amqpData, out int offset)
         {
-            AmqpWireFormatting.ReadBytes(amqpData, out var readOnlySequence);
+            offset = AmqpWireFormatting.ReadBytes(amqpData, out var readOnlySequence);
             return new Data(readOnlySequence);
         }
     }
