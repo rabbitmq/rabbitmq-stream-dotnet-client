@@ -10,7 +10,6 @@ namespace RabbitMQ.Stream.Client.AMQP
 {
     public static class AmqpWireFormatting
     {
-        
         private static Encoding s_encoding = Encoding.UTF8;
 
         private static int ReadType(ReadOnlySequence<byte> seq, out byte value)
@@ -37,7 +36,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     value = resultString;
                     return offset;
                 case FormatCode.Ubyte:
-                    offset = ReadUbyte(seq, out var resultByte);
+                    offset = ReadUByte(seq, out var resultByte);
                     value = resultByte;
                     return offset;
             }
@@ -45,7 +44,25 @@ namespace RabbitMQ.Stream.Client.AMQP
             throw new AMQP.AmqpParseException($"can't read any {type}");
         }
 
-        private static int ReadString(ReadOnlySequence<byte> seq, out string value)
+
+        internal static int ReadTimestamp(ReadOnlySequence<byte> seq, out DateTime value)
+        {
+            var offset = ReadType(seq, out var type);
+            switch (type)
+            {
+                case FormatCode.Timestamp:
+                    offset += WireFormatting.ReadInt64(seq.Slice(offset), out var ms);
+                    DateTimeOffset dateTimeOffset = DateTimeOffset.FromUnixTimeMilliseconds(ms);
+                    value = dateTimeOffset.DateTime;
+                    return offset;
+                //TODO wire check date time
+                // return time.Unix(ms/1000, (ms%1000)*1000000).UTC(), err
+            }
+
+            throw new AMQP.AmqpParseException($"ReadTimestamp invalid type {type}");
+        }
+
+        internal static int ReadString(ReadOnlySequence<byte> seq, out string value)
         {
             var offset = ReadType(seq, out var type);
             switch (type)
@@ -66,6 +83,51 @@ namespace RabbitMQ.Stream.Client.AMQP
             throw new AMQP.AmqpParseException($"ReadString invalid type {type}");
         }
 
+        internal static int ReadUlong(ReadOnlySequence<byte> seq, out long value)
+        {
+            var offset = ReadType(seq, out var type);
+            switch (type)
+            {
+                case FormatCode.Ulong0:
+                    value = 0;
+                    return offset;
+                case FormatCode.SmallUlong:
+                    offset += WireFormatting.ReadByte(seq.Slice(offset), out var lenB);
+                    value = lenB;
+                    return offset;
+                case FormatCode.Ulong:
+                    offset += WireFormatting.ReadInt64(seq.Slice(offset), out var lenI);
+                    value = lenI;
+                    return offset;
+            }
+
+            throw new AMQP.AmqpParseException($"ReadUlong Invalid type {type}");
+        }
+
+
+        internal static int ReadBinary(ReadOnlySequence<byte> seq, out byte[] value)
+        {
+            var offset = ReadType(seq, out var type);
+            var length = 0;
+            switch (type)
+            {
+                case FormatCode.Vbin8:
+                    offset += WireFormatting.ReadByte(seq.Slice(offset), out var lenV);
+                    length = lenV;
+                    break;
+                case FormatCode.Vbin32:
+                    offset += WireFormatting.ReadInt32(seq.Slice(offset), out var lenI);
+                    length = lenI;
+                    break;
+            }
+
+            offset += WireFormatting.ReadBytes(seq.Slice(offset), length, out value);
+            return offset;
+
+            throw new AMQP.AmqpParseException($"ReadBinary Invalid type {type}");
+            //TODO Wire implement the size/len verification
+        }
+
 
         internal static int ReadMapHeader(ReadOnlySequence<byte> seq, out uint count)
         {
@@ -84,22 +146,84 @@ namespace RabbitMQ.Stream.Client.AMQP
         }
 
 
-        internal static int ReadMap(ReadOnlySequence<byte> seq, out Dictionary<string, string> dic)
+        internal static int ReadListHeader(ReadOnlySequence<byte> seq, out long lenght)
         {
-            dic = new Dictionary<string, string>();
-            var offset = ReadMapHeader(seq, out var fields);
-            for (var i = 0; i < fields; i++)
+            var offset = ReadType(seq, out var type);
+            switch (type)
             {
-                offset += AmqpWireFormatting.ReadAny(seq.Slice(offset), out var key);
-                offset += AmqpWireFormatting.ReadAny(seq.Slice(offset), out var value);
-                dic[(string) key] = (string) value;
+                case FormatCode.List0:
+                    lenght = 0;
+                    return offset;
+                case FormatCode.List8:
+                    offset += WireFormatting.ReadByte(seq.Slice(offset), out var sizeB);
+                    offset += WireFormatting.ReadByte(seq.Slice(offset), out var lenB);
+                    lenght = lenB;
+                    // size := int(buf[0])
+                    // if size > listLength-1 {
+                    //     return 0, errorNew("invalid length")
+                    // }
+                    return offset;
+                case FormatCode.List32:
+                    offset += WireFormatting.ReadInt32(seq.Slice(offset), out var sizeI);
+                    offset += WireFormatting.ReadInt32(seq.Slice(offset), out var lenI);
+                    lenght = lenI;
+                    // size := int(buf[0])
+                    // if size > listLength-1 {
+                    //     return 0, errorNew("invalid length")
+                    // }
+                    return offset;
             }
 
-            return offset;
+            throw new AMQP.AmqpParseException($"ReadCompositeHeader Invalid type {type}");
         }
 
 
-        internal static int ReadUbyte(ReadOnlySequence<byte> seq, out byte value)
+        internal static int ReadCompositeHeader(ReadOnlySequence<byte> seq, out long fields, out byte next)
+        {
+            var offset = ReadType(seq, out var type);
+
+
+            // compsites always start with 0x0
+            if (type != 0)
+            {
+                // TODO WIRE
+                throw new Exception($"invalid composite header %#02x {type}");
+            }
+
+            // next, the composite type is encoded as an AMQP uint8
+            offset += ReadUlong(seq.Slice(offset), out var nextW);
+            next = (byte) nextW;
+            // fields are represented as a list
+            offset += ReadListHeader(seq.Slice(offset), out fields);
+            return offset;
+        }
+
+        
+        
+        internal static int ReadUint32(ReadOnlySequence<byte> seq, out uint value) {
+            var offset = ReadType(seq, out var type);
+            switch (type)
+            {
+                case FormatCode.Uint0:
+                    value = 0;
+                    return offset;
+                case FormatCode.SmallUint:
+                    offset += WireFormatting.ReadByte(seq.Slice(offset), out var valueB);
+                    value = valueB;
+                    return offset;
+                case FormatCode.Uint:
+                    offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var valueUi);
+                    value = valueUi;
+                    return offset;
+
+
+            }
+
+            throw new AMQP.AmqpParseException($"ReadUint32 Invalid type {type}");
+            
+        }
+        
+        internal static int ReadUByte(ReadOnlySequence<byte> seq, out byte value)
         {
             var offset = ReadType(seq, out var type);
             switch (type)
@@ -113,6 +237,20 @@ namespace RabbitMQ.Stream.Client.AMQP
         }
 
 
+        internal static int TryReadNull(ReadOnlySequence<byte> seq, out bool value)
+        {
+            ReadType(seq, out var type);
+            if (seq.Length > 0 && type == FormatCode.Null)
+            {
+                value = true;
+                return 1;
+            }
+
+            value = false;
+            return 0;
+        }
+
+
         internal static int ReadBytes(ReadOnlySequence<byte> seq, out ReadOnlySequence<byte> value)
         {
             var offset = ReadType(seq, out var type);
@@ -121,11 +259,11 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case FormatCode.Vbin8:
                     offset += WireFormatting.ReadByte(seq.Slice(offset), out var length8);
                     value = seq.Slice(offset, length8);
-                    return offset;
+                    return offset + length8;
                 case FormatCode.Vbin32:
                     offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var length32);
                     value = seq.Slice(offset, length32);
-                    return offset;
+                    return offset + (int)length32;
             }
 
             throw new AMQP.AmqpParseException($"ReadBytes Invalid type {type}");
@@ -155,6 +293,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
             return byteCount;
         }
+
         public static int GetTableByteCount(IDictionary<string, object> val)
         {
             if (val is null || val.Count == 0)
@@ -182,7 +321,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
             return byteCount;
         }
-        
+
         public static int GetFieldValueByteCount(object value)
         {
             // Order by likelihood of occurrence
@@ -221,8 +360,8 @@ namespace RabbitMQ.Stream.Client.AMQP
                 //TODO wire
                 // case BinaryTableValue val:
                 //     return 5 + val.Bytes.Length;
-                 default:
-                return 0;
+                default:
+                    return 0;
                 //     return ThrowInvalidTableValue(value);
             }
         }

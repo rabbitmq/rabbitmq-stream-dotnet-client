@@ -155,10 +155,7 @@ namespace RabbitMQ.Stream.Client
     }
 
 
-    public readonly struct Properties
-    {
-    }
-
+   
     public readonly struct LeaderLocator
     {
         private readonly string value;

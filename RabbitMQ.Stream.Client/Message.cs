@@ -60,19 +60,25 @@ namespace RabbitMQ.Stream.Client
             var offset = 0;
             Annotations annotations = null;
             AMQP.Data? data = null;
+            Properties? properties = null;
             while (amqpData.Slice(offset).Length != 0)
             {
                 var described = AMQP.Described.Parse(amqpData.Slice(offset));
-                offset += described.Size;
                 switch (described.DataCode)
                 {
                     case Codec.ApplicationData:
+                        offset += described.Size;
                         data = AMQP.Data.Parse(amqpData.Slice(offset), out var readD);
                         offset += readD;
                         break;
                     case Codec.MessageAnnotations:
+                        offset += described.Size;
                         annotations = AMQP.Annotations.Parse(amqpData.Slice(offset), out var readA);
                         offset += readA;
+                        break;
+                    case Codec.MessageProperties:
+                        properties = AMQP.Properties.Parse(amqpData.Slice(offset), out var readP);
+                        offset += readP;
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -80,7 +86,7 @@ namespace RabbitMQ.Stream.Client
             }
             
             if (data != null)
-                return new Message(data.Value, annotations);
+                return new Message(data.Value, annotations, properties);
 
             throw new AMQP.AmqpParseException($"Can't parse data is null");
         }

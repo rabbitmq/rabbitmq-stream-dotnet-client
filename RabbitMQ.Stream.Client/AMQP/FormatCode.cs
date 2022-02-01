@@ -77,6 +77,15 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public const byte
             Array32 = 0xf0; // up to 2^32 - 1 array elements with total size less than 2^32 octets (4 + array)
+
+
+        public const byte Char = 0x73; // a UTF-32BE encoded Unicode character (4)
+
+        public const byte Timestamp
+            = 0x83; // 64-bit two's-complement integer representing milliseconds since the unix epoch
+
+        public const byte
+            UUID = 0x98; // UUID as defined in section 4.1.2 of RFC-4122
     }
 
     public static class Codec

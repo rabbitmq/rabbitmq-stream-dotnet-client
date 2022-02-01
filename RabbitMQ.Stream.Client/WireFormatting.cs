@@ -155,6 +155,13 @@ namespace RabbitMQ.Stream.Client
             data = seq.Slice(4, len).ToArray();
             return 4 + (int)len;
         }
+        
+        internal static int ReadBytes(ReadOnlySequence<byte> seq, int len, out byte[] data)
+        {
+            data = seq.Slice(0, len).ToArray();
+            return len;
+        }
+
 
         internal static int ReadInt64(ReadOnlySequence<byte> seq, out long value)
         {

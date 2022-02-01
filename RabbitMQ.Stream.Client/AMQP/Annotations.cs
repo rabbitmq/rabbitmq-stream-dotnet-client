@@ -4,10 +4,6 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public readonly struct ReadOnlyAnnotations
-    {
-    }
-
     public class Annotations : Dictionary<string, object>
     {
         private int CalculateSize()
@@ -20,7 +16,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public static Annotations Parse(ReadOnlySequence<byte> amqpData, out int offset)
         {
-             offset = AmqpWireFormatting.ReadMapHeader(amqpData, out var count);
+            offset = AmqpWireFormatting.ReadMapHeader(amqpData, out var count);
             var annotations = new Annotations();
             var values = (count / 2);
             for (var i = 0; i < values; i++)
