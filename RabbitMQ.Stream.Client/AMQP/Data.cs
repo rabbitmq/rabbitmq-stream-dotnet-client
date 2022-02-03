@@ -21,34 +21,14 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public ReadOnlySequence<byte> Contents => this.data;
 
-        public int Size
-        {
-            get
-            {
-                if (data.Length < 256)
-                    return (int) data.Length + 2;
-                return (int) data.Length + 5;
-            }
-        }
+        public int Size => AmqpWireFormatting.GetSequenceSize(this.data) + AmqpWireFormatting.DecoderSize;
 
         public int Write(Span<byte> span)
         {
-            var offset = 0;
-            // var offset = WireFormatting.WriteByte(span, 0); //descriptor marker
-            // offset += WireFormatting.WriteByte(span.Slice(offset), 0x53); //short ulong
-            // offset += WireFormatting.WriteByte(span.Slice(offset), 117); //data code number
-            if (data.Length < 256)
-            {
-                offset += WireFormatting.WriteByte(span.Slice(offset), 0xA0); //binary marker
-                offset += WireFormatting.WriteByte(span.Slice(offset), (byte) data.Length); //length
-            }
-            else
-            {
-                offset += WireFormatting.WriteByte(span.Slice(offset), 0xB0); //binary marker
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) data.Length); //length
-            }
-
-            offset += WireFormatting.Write(span.Slice(offset), data);
+            var offset = new Described(0,
+                FormatCode.SmallUlong,
+                Codec.ApplicationData).Write(span);
+            offset += AmqpWireFormatting.WriteData(span.Slice(offset), data);
             return offset;
         }
 

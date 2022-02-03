@@ -32,6 +32,8 @@ namespace RabbitMQ.Stream.Client
             BinaryPrimitives.WriteUInt16BigEndian(p, value);
             return 2;
         }
+        
+
         internal static int WriteUInt64(Span<byte> span, ulong value)
         {
             BinaryPrimitives.WriteUInt64BigEndian(span, value);

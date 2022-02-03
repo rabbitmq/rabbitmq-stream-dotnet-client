@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public struct Properties
+    public struct Properties : IWritable
     {
         public object MessageId { get; set; }
         public byte[] UserId { get; set; }
@@ -23,6 +23,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         public static Properties Parse(ReadOnlySequence<byte> amqpData, out int offset)
         {
             offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out var next);
+            //TODO WIRE check the next
             var p = new Properties();
             for (var index = 0; index < fields; index++)
             {
@@ -92,6 +93,63 @@ namespace RabbitMQ.Stream.Client.AMQP
             }
 
             return p;
+        }
+
+
+        private int PropertySize()
+        {
+            var size = AmqpWireFormatting.GetAnySize(MessageId);
+            size += AmqpWireFormatting.GetAnySize(UserId);
+            size += AmqpWireFormatting.GetAnySize(To);
+            size += AmqpWireFormatting.GetAnySize(Subject);
+            size += AmqpWireFormatting.GetAnySize(ReplyTo);
+            size += AmqpWireFormatting.GetAnySize(CorrelationId);
+            size += AmqpWireFormatting.GetAnySize(ContentType);
+            size += AmqpWireFormatting.GetAnySize(ContentEncoding);
+            size += AmqpWireFormatting.GetAnySize(AbsoluteExpiryTime);
+            size += AmqpWireFormatting.GetAnySize(CreationTime);
+            size += AmqpWireFormatting.GetAnySize(GroupId);
+            size += AmqpWireFormatting.GetAnySize(GroupSequence);
+            size += AmqpWireFormatting.GetAnySize(ReplyToGroupId);
+            return size;
+        }
+
+        public int Size
+        {
+            get
+            {
+                var size = AmqpWireFormatting.DecoderSize;
+                size += 1;
+                size += 4; // field numbers
+                size += 4; // PropertySize
+                return size + PropertySize();
+            }
+        }
+
+        public int Write(Span<byte> span)
+        {
+            var offset = new Described(0,
+                FormatCode.SmallUlong,
+                Codec.MessageProperties).Write(span);
+
+            offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.List32);
+            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)PropertySize()); // PropertySize 
+            offset += WireFormatting.WriteUInt32(span.Slice(offset), 13); // field numbers
+
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), MessageId);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), UserId);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), To);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), Subject);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), ReplyTo);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), CorrelationId);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), ContentType);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), ContentEncoding);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), AbsoluteExpiryTime);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), CreationTime);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), GroupId);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), GroupSequence);
+            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), ReplyToGroupId);
+            return offset;
         }
     }
 }

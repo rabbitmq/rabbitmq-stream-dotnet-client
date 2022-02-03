@@ -7,9 +7,12 @@ namespace RabbitMQ.Stream.Client
 {
     public readonly struct Message
     {
-        private readonly Described described;
-
         public Message(byte[] data) : this(new Data(new ReadOnlySequence<byte>(data)))
+        {
+        }
+
+        public Message(byte[] data, Annotations annotations = null, Properties? properties = null) :
+            this(new Data(new ReadOnlySequence<byte>(data)), annotations, properties)
         {
         }
 
@@ -18,9 +21,6 @@ namespace RabbitMQ.Stream.Client
             this.Data = data;
             this.Annotations = annotations;
             this.Properties = properties;
-            described = new Described(0,
-                FormatCode.Ulong,
-                Codec.ApplicationData);
         }
 
 
@@ -28,11 +28,17 @@ namespace RabbitMQ.Stream.Client
         public Properties? Properties { get; }
 
         public Data Data { get; }
-        public int Size => Data.Size + described.Size;
+        public int Size => Data.Size + (Properties?.Size ?? 0);
 
         public int Write(Span<byte> span)
         {
-            var offset = described.Write(span);
+            var offset = 0;
+            var offsetProp = Properties?.Write(span);
+            if (offsetProp != null)
+            {
+                offset += offsetProp.Value;
+            }
+
             offset += Data.Write(span.Slice(offset));
             return offset;
         }
@@ -68,12 +74,12 @@ namespace RabbitMQ.Stream.Client
                 {
                     case Codec.ApplicationData:
                         offset += described.Size;
-                        data = AMQP.Data.Parse(amqpData.Slice(offset), out var readD);
+                        data = Data.Parse(amqpData.Slice(offset), out var readD);
                         offset += readD;
                         break;
                     case Codec.MessageAnnotations:
                         offset += described.Size;
-                        annotations = AMQP.Annotations.Parse(amqpData.Slice(offset), out var readA);
+                        annotations = Annotations.Parse(amqpData.Slice(offset), out var readA);
                         offset += readA;
                         break;
                     case Codec.MessageProperties:
@@ -84,7 +90,7 @@ namespace RabbitMQ.Stream.Client
                         throw new ArgumentOutOfRangeException();
                 }
             }
-            
+
             if (data != null)
                 return new Message(data.Value, annotations, properties);
 

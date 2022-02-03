@@ -8,7 +8,7 @@ using System.Text;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public static class AmqpWireFormatting
+    public static partial class AmqpWireFormatting
     {
         private static Encoding s_encoding = Encoding.UTF8;
 
@@ -18,6 +18,39 @@ namespace RabbitMQ.Stream.Client.AMQP
             return read;
         }
 
+
+        private static int ReadBool(ReadOnlySequence<byte> seq, out bool value)
+        {
+            var offset = ReadType(seq, out var type);
+            switch (type)
+            {
+                case FormatCode.Bool:
+                    offset = WireFormatting.ReadByte(seq.Slice(offset), out var valueB);
+                    value = valueB != 0;
+                    return offset;
+                case FormatCode.BoolTrue:
+                    value = true;
+                    return offset;
+                case FormatCode.BoolFalse:
+                    value = false;
+                    return offset;
+            }
+
+            throw new AMQP.AmqpParseException($"ReadBool invalid type {type}");
+        }
+
+        internal static int ReadUshort(ReadOnlySequence<byte> seq, out ushort value)
+        {
+            var offset = ReadType(seq, out var type);
+            switch (type)
+            {
+                case FormatCode.Ushort:
+                    offset += WireFormatting.ReadUInt16(seq.Slice(offset), out value);
+                    return offset;
+            }
+
+            throw new AMQP.AmqpParseException($"ReadUshort invalid type {type}");
+        }
 
         internal static int ReadAny(ReadOnlySequence<byte> seq, out object value)
         {
@@ -38,6 +71,23 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case FormatCode.Ubyte:
                     offset = ReadUByte(seq, out var resultByte);
                     value = resultByte;
+                    return offset;
+
+                case FormatCode.Bool:
+                case FormatCode.BoolTrue:
+                case FormatCode.BoolFalse:
+                    offset = ReadBool(seq, out var resultBool);
+                    value = resultBool;
+                    return offset;
+                case FormatCode.Ushort:
+                    offset = ReadUshort(seq, out var resultUshort);
+                    value = resultUshort;
+                    return offset;
+                case FormatCode.Uint:
+                case FormatCode.SmallUint:
+                case FormatCode.Uint0:
+                    offset = ReadUint32(seq, out var resultUint);
+                    value = resultUint;
                     return offset;
             }
 
@@ -124,7 +174,6 @@ namespace RabbitMQ.Stream.Client.AMQP
             offset += WireFormatting.ReadBytes(seq.Slice(offset), length, out value);
             return offset;
 
-            throw new AMQP.AmqpParseException($"ReadBinary Invalid type {type}");
             //TODO Wire implement the size/len verification
         }
 
@@ -198,9 +247,9 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        
-        
-        internal static int ReadUint32(ReadOnlySequence<byte> seq, out uint value) {
+
+        internal static int ReadUint32(ReadOnlySequence<byte> seq, out uint value)
+        {
             var offset = ReadType(seq, out var type);
             switch (type)
             {
@@ -215,14 +264,11 @@ namespace RabbitMQ.Stream.Client.AMQP
                     offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var valueUi);
                     value = valueUi;
                     return offset;
-
-
             }
 
             throw new AMQP.AmqpParseException($"ReadUint32 Invalid type {type}");
-            
         }
-        
+
         internal static int ReadUByte(ReadOnlySequence<byte> seq, out byte value)
         {
             var offset = ReadType(seq, out var type);
@@ -263,7 +309,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case FormatCode.Vbin32:
                     offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var length32);
                     value = seq.Slice(offset, length32);
-                    return offset + (int)length32;
+                    return offset + (int) length32;
             }
 
             throw new AMQP.AmqpParseException($"ReadBytes Invalid type {type}");
