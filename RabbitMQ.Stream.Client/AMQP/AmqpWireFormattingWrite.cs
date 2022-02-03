@@ -7,8 +7,6 @@ namespace RabbitMQ.Stream.Client.AMQP
 {
     public static partial class AmqpWireFormatting
     {
-        public const int DecoderSize = 3;
-
         public static int WriteData(Span<byte> seq, ReadOnlySequence<byte> data)
         {
             var offset = 0;

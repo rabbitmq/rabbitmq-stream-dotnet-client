@@ -118,7 +118,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             get
             {
-                var size = AmqpWireFormatting.DecoderSize;
+                var size = Described.DecoderSize;
                 size += 1;
                 size += 4; // field numbers
                 size += 4; // PropertySize
