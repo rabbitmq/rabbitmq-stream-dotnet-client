@@ -67,18 +67,18 @@ namespace RabbitMQ.Stream.Client
             Annotations annotations = null;
             AMQP.Data? data = null;
             Properties? properties = null;
-            while (amqpData.Slice(offset).Length != 0)
+            while (offset != amqpData.Length)
             {
-                var described = AMQP.Described.Parse(amqpData.Slice(offset));
-                switch (described.DataCode)
+                var dataCode = Described.ExtractCode(amqpData.Slice(offset));
+                switch (dataCode)
                 {
                     case Codec.ApplicationData:
-                        offset += described.Size;
+                        offset += Described.DecoderSize;
                         data = Data.Parse(amqpData.Slice(offset), out var readD);
                         offset += readD;
                         break;
                     case Codec.MessageAnnotations:
-                        offset += described.Size;
+                        offset += Described.DecoderSize;
                         annotations = Annotations.Parse(amqpData.Slice(offset), out var readA);
                         offset += readA;
                         break;

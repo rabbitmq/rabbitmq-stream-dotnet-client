@@ -8,7 +8,7 @@ namespace RabbitMQ.Stream.Client.AMQP
     {
         private int CalculateSize()
         {
-            var size = AmqpWireFormatting.GetFieldValueByteCount(this);
+            var size = 0;
             return size;
         }
 

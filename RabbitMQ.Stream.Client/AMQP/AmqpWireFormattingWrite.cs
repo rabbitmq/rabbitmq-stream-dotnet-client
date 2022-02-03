@@ -2,6 +2,7 @@
 using System;
 using System.Buffers;
 using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
@@ -181,7 +182,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
 
         // determinate the type size
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetSequenceSize(ReadOnlySequence<byte> data)
         {
             if (data.Length < 256)

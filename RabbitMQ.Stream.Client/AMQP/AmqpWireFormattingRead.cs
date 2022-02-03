@@ -296,7 +296,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return 0;
         }
 
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int ReadBytes(ReadOnlySequence<byte> seq, out ReadOnlySequence<byte> value)
         {
             var offset = ReadType(seq, out var type);
@@ -313,103 +313,6 @@ namespace RabbitMQ.Stream.Client.AMQP
             }
 
             throw new AMQP.AmqpParseException($"ReadBytes Invalid type {type}");
-        }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#if NETCOREAPP
-        public static int GetByteCount(ReadOnlySpan<char> val) => val.IsEmpty ? 0 : s_encoding.GetByteCount(val);
-#else
-        public static int GetByteCount(string val) => string.IsNullOrEmpty(val) ? 0 : s_encoding.GetByteCount(val);
-#endif
-
-        public static int GetTableByteCount(IDictionary val)
-        {
-            if (val is null || val.Count == 0)
-            {
-                return 4;
-            }
-
-            int byteCount = 4;
-            foreach (DictionaryEntry entry in val)
-            {
-                byteCount += GetByteCount(entry.Key.ToString()) + 1;
-                byteCount += GetFieldValueByteCount(entry.Value);
-            }
-
-            return byteCount;
-        }
-
-        public static int GetTableByteCount(IDictionary<string, object> val)
-        {
-            if (val is null || val.Count == 0)
-            {
-                return 4;
-            }
-
-            int byteCount = 4;
-            if (val is Dictionary<string, object> dict)
-            {
-                foreach (KeyValuePair<string, object> entry in dict)
-                {
-                    byteCount += GetByteCount(entry.Key) + 1;
-                    byteCount += GetFieldValueByteCount(entry.Value);
-                }
-            }
-            else
-            {
-                foreach (KeyValuePair<string, object> entry in val)
-                {
-                    byteCount += GetByteCount(entry.Key) + 1;
-                    byteCount += GetFieldValueByteCount(entry.Value);
-                }
-            }
-
-            return byteCount;
-        }
-
-        public static int GetFieldValueByteCount(object value)
-        {
-            // Order by likelihood of occurrence
-            switch (value)
-            {
-                case null:
-                    return 1;
-                case string val:
-                    return 5 + GetByteCount(val);
-                case bool _:
-                    return 2;
-                case int _:
-                case float _:
-                    return 5;
-                case byte[] val:
-                    return 5 + val.Length;
-                case IDictionary<string, object> val:
-                    return 1 + GetTableByteCount(val);
-                // case IList val:
-                //     return 1 + GetArrayByteCount(val);
-                // case AmqpTimestamp _:
-                case double _:
-                case long _:
-                    return 9;
-                case byte _:
-                case sbyte _:
-                    return 2;
-                case short _:
-                    return 3;
-                case uint _:
-                    return 5;
-                case decimal _:
-                    return 6;
-                case IDictionary val:
-                    return 1 + GetTableByteCount(val);
-                //TODO wire
-                // case BinaryTableValue val:
-                //     return 5 + val.Bytes.Length;
-                default:
-                    return 0;
-                //     return ThrowInvalidTableValue(value);
-            }
         }
     }
 }
