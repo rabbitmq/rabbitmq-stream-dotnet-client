@@ -86,7 +86,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static int WriteUInt(Span<byte> seq, uint value)
+        private static int WriteUInt(Span<byte> seq, uint value)
 
         {
             var offset = 0;
@@ -105,7 +105,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static int WriteInt(Span<byte> seq, int value)
+        private static int WriteInt(Span<byte> seq, int value)
         {
             var offset = 0;
             if (value is < 128 and >= -128)
@@ -121,7 +121,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static int WriteInt64(Span<byte> seq, long value)
+        private static int WriteInt64(Span<byte> seq, long value)
         {
             var offset = 0;
             if (value is < 128 and >= -128)
@@ -137,13 +137,13 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static int WriteNull(Span<byte> seq)
+        private static int WriteNull(Span<byte> seq)
         {
             return WireFormatting.WriteByte(seq, FormatCode.Null);
         }
 
 
-        public static int WriteBytes(Span<byte> seq, byte[] value)
+        private static int WriteBytes(Span<byte> seq, byte[] value)
         {
             var len = value.Length;
             var offset = 0;
@@ -164,7 +164,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static int WriteUInt16(Span<byte> seq, ushort value)
+        private static int WriteUInt16(Span<byte> seq, ushort value)
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Ushort);
             offset += WireFormatting.WriteUInt16(seq, value);
@@ -175,14 +175,13 @@ namespace RabbitMQ.Stream.Client.AMQP
         public static int WriteTimestamp(Span<byte> seq, DateTime value)
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Timestamp);
-            var unixTime = ((DateTimeOffset) value).ToUnixTimeSeconds();
+            var unixTime = ((DateTimeOffset) value).ToUnixTimeMilliseconds();
             offset += WireFormatting.WriteUInt64(seq.Slice(offset), (ulong) unixTime);
             return offset;
         }
 
 
         // determinate the type size
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetSequenceSize(ReadOnlySequence<byte> data)
         {
             if (data.Length < 256)

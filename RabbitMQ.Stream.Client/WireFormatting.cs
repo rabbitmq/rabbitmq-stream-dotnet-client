@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Text;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace RabbitMQ.Stream.Client
 {

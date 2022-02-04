@@ -4,12 +4,12 @@ using System.Runtime.InteropServices;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public struct Properties : IWritable
+    public class Properties : IWritable
     {
-        public object MessageId { get; set; }
-        public byte[] UserId { get; set; }
-        public string To { get; set; }
-        public string Subject { get; set; }
+        public object MessageId { get;  set; }
+        public byte[] UserId { get;  set; }
+        public string To { get;  set; }
+        public string Subject { get;  set; }
         public string ReplyTo { get; set; }
         public object CorrelationId { get; set; }
         public string ContentType { get; set; }
@@ -133,7 +133,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 Codec.MessageProperties).Write(span);
 
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.List32);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)PropertySize()); // PropertySize 
+            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) PropertySize()); // PropertySize 
             offset += WireFormatting.WriteUInt32(span.Slice(offset), 13); // field numbers
 
             offset += AmqpWireFormatting.WriteAny(span.Slice(offset), MessageId);

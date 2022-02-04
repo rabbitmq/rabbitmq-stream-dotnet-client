@@ -25,15 +25,39 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public int Write(Span<byte> span)
         {
-            var offset =  Described.ApplicationDataDescribed(span);
-            offset += AmqpWireFormatting.WriteData(span.Slice(offset), data);
+            var offset = Described.ApplicationDataDescribed(span);
+            if (data.Length < 256)
+            {
+                offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin8); //binary marker
+                offset += WireFormatting.WriteByte(span.Slice(offset), (byte) data.Length); //length
+            }
+            else
+            {
+                offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin32); //binary marker
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) data.Length); //length
+            }
+
+            offset += WireFormatting.Write(span.Slice(offset), data);
             return offset;
         }
 
-        public static Data Parse(ReadOnlySequence<byte> amqpData, out int offset)
+
+        public static Data Parse(ReadOnlySequence<byte> amqpData, out int byteRead)
         {
-            offset = AmqpWireFormatting.ReadBytes(amqpData, out var readOnlySequence);
-            return new Data(readOnlySequence);
+            var offset = AmqpWireFormatting.ReadType(amqpData, out var type);
+            switch (type)
+            {
+                case FormatCode.Vbin8:
+                    offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var len8);
+                    byteRead = offset + len8;
+                    return new Data(amqpData.Slice(offset, len8));
+                case FormatCode.Vbin32:
+                    offset += WireFormatting.ReadUInt32(amqpData.Slice(offset), out var len32);
+                    byteRead = (int) (offset + len32);
+                    return new Data(amqpData.Slice(offset, len32));
+            }
+
+            throw new AMQP.AmqpParseException($"Can't parse data is type {type} not defined");
         }
     }
 }

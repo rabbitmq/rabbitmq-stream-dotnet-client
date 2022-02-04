@@ -5,38 +5,35 @@ using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct Message
+    public struct Hello
+    {
+    }
+
+    public class Message
     {
         public Message(byte[] data) : this(new Data(new ReadOnlySequence<byte>(data)))
         {
         }
 
-        public Message(byte[] data, Annotations annotations = null, Properties? properties = null) :
-            this(new Data(new ReadOnlySequence<byte>(data)), annotations, properties)
-        {
-        }
 
-        public Message(Data data, Annotations annotations = null, Properties? properties = null)
+        public Message(Data data)
         {
             this.Data = data;
-            this.Annotations = annotations;
-            this.Properties = properties;
         }
 
+        public Annotations Annotations { get; set; }
 
-        public Annotations Annotations { get; }
-        public Properties? Properties { get; }
-
+        //
+        public Properties Properties { get; set; }
         public Data Data { get; }
         public int Size => Data.Size + (Properties?.Size ?? 0);
 
         public int Write(Span<byte> span)
         {
             var offset = 0;
-            var offsetProp = Properties?.Write(span);
-            if (offsetProp != null)
+            if (Properties != null)
             {
-                offset += offsetProp.Value;
+                offset += Properties.Write(span);
             }
 
             offset += Data.Write(span.Slice(offset));
@@ -65,8 +62,8 @@ namespace RabbitMQ.Stream.Client
             //parse AMQP encoded data
             var offset = 0;
             Annotations annotations = null;
-            AMQP.Data? data = null;
-            Properties? properties = null;
+            AMQP.Data data = default;
+            Properties properties = default;
             while (offset != amqpData.Length)
             {
                 var dataCode = Described.ExtractCode(amqpData.Slice(offset));
@@ -83,7 +80,7 @@ namespace RabbitMQ.Stream.Client
                         offset += readA;
                         break;
                     case Codec.MessageProperties:
-                        properties = AMQP.Properties.Parse(amqpData.Slice(offset), out var readP);
+                        properties = Properties.Parse(amqpData.Slice(offset), out var readP);
                         offset += readP;
                         break;
                     default:
@@ -91,10 +88,12 @@ namespace RabbitMQ.Stream.Client
                 }
             }
 
-            if (data != null)
-                return new Message(data.Value, annotations, properties);
-
-            throw new AMQP.AmqpParseException($"Can't parse data is null");
+            var msg = new Message(data)
+            {
+                Annotations = annotations,
+                Properties = properties
+            };
+            return msg;
         }
     }
 }
