@@ -6,10 +6,10 @@ namespace RabbitMQ.Stream.Client.AMQP
 {
     public class Properties : IWritable
     {
-        public object MessageId { get;  set; }
-        public byte[] UserId { get;  set; }
-        public string To { get;  set; }
-        public string Subject { get;  set; }
+        public object MessageId { get; set; }
+        public byte[] UserId { get; set; }
+        public string To { get; set; }
+        public string Subject { get; set; }
         public string ReplyTo { get; set; }
         public object CorrelationId { get; set; }
         public string ContentType { get; set; }
@@ -20,9 +20,9 @@ namespace RabbitMQ.Stream.Client.AMQP
         public uint GroupSequence { get; set; }
         public string ReplyToGroupId { get; set; }
 
-        public static Properties Parse(ReadOnlySequence<byte> amqpData, out int offset)
+        public static Properties Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
         {
-            offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out var next);
+            var offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out var next);
             //TODO WIRE check the next
             var p = new Properties();
             for (var index = 0; index < fields; index++)
@@ -92,6 +92,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 }
             }
 
+            byteRead += offset;
             return p;
         }
 
@@ -119,7 +120,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             get
             {
                 var size = Described.DecoderSize;
-                size += 1;
+                size += 1; //FormatCode.List32
                 size += 4; // field numbers
                 size += 4; // PropertySize
                 return size + PropertySize();

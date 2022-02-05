@@ -46,15 +46,8 @@ namespace RabbitMQ.Stream.Client.AMQP
             return value;
 
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ApplicationDataDescribed(Span<byte> span)
-        {
-            var offset = WireFormatting.WriteByte(span, 0x00);
-            offset += WireFormatting.WriteByte(span.Slice(offset),  FormatCode.SmallUlong);
-            offset += WireFormatting.WriteByte(span.Slice(offset),  Codec.ApplicationData);
-            return offset;
-        }
+        
+        
     }
 
 

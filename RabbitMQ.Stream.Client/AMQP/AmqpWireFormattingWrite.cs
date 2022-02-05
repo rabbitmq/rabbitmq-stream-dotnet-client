@@ -179,7 +179,19 @@ namespace RabbitMQ.Stream.Client.AMQP
             offset += WireFormatting.WriteUInt64(seq.Slice(offset), (ulong) unixTime);
             return offset;
         }
+        
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int WriteDescriptor(Span<byte> span, byte data)
+        {
+            var offset = WireFormatting.WriteByte(span, 0x00);
+            offset += WireFormatting.WriteByte(span.Slice(offset),  FormatCode.SmallUlong);
+            offset += WireFormatting.WriteByte(span.Slice(offset),  data);
+            return offset;
+        }
 
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
         // determinate the type size
         public static int GetSequenceSize(ReadOnlySequence<byte> data)
@@ -192,8 +204,6 @@ namespace RabbitMQ.Stream.Client.AMQP
                    + 1 //marker 1 byte  FormatCode.Vbin32 
                    + 4; // (uint) data.Length
         }
-
-
         public static int GetStringSize(string value)
         {
             return value.Length switch

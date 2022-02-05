@@ -25,7 +25,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public int Write(Span<byte> span)
         {
-            var offset = Described.ApplicationDataDescribed(span);
+            var offset = AmqpWireFormatting.WriteDescriptor(span, Codec.ApplicationData);
             if (data.Length < 256)
             {
                 offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin8); //binary marker
@@ -42,18 +42,18 @@ namespace RabbitMQ.Stream.Client.AMQP
         }
 
 
-        public static Data Parse(ReadOnlySequence<byte> amqpData, out int byteRead)
+        public static Data Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
         {
             var offset = AmqpWireFormatting.ReadType(amqpData, out var type);
             switch (type)
             {
                 case FormatCode.Vbin8:
                     offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var len8);
-                    byteRead = offset + len8;
+                    byteRead += offset + len8;
                     return new Data(amqpData.Slice(offset, len8));
                 case FormatCode.Vbin32:
                     offset += WireFormatting.ReadUInt32(amqpData.Slice(offset), out var len32);
-                    byteRead = (int) (offset + len32);
+                    byteRead += (int) (offset + len32);
                     return new Data(amqpData.Slice(offset, len32));
             }
 

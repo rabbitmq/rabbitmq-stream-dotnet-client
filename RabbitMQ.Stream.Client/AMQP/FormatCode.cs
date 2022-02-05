@@ -93,5 +93,6 @@ namespace RabbitMQ.Stream.Client.AMQP
         public const byte ApplicationData = 0x75;
         public const byte MessageAnnotations = 0x72;
         public const byte MessageProperties = 0x73;
+        public const byte ApplicationProperties = 0x74;
     }
 }
