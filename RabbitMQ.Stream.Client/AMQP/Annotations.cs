@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public class Annotations : AmqpMap
+    public class Annotations : Map
     {
       
 

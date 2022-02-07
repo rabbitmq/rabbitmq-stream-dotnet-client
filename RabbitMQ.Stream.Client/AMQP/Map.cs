@@ -4,9 +4,9 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public class AmqpMap : Dictionary<string, object>, IWritable
+    public class Map : Dictionary<string, object>, IWritable
     {
-        public static T Parse<T>(ReadOnlySequence<byte> amqpData, ref int byteRead) where T : AmqpMap, new()
+        public static T Parse<T>(ReadOnlySequence<byte> amqpData, ref int byteRead) where T : Map, new()
         {
             var offset = AmqpWireFormatting.ReadMapHeader(amqpData, out var count);
             var amqpMap = new T();

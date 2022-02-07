@@ -1,6 +1,6 @@
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public class ApplicationProperties : AmqpMap
+    public class ApplicationProperties : Map
     {
         
         

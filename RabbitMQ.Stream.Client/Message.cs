@@ -74,7 +74,7 @@ namespace RabbitMQ.Stream.Client
             //parse AMQP encoded data
             var offset = 0;
             Annotations annotations = null;
-            AMQP.Data data = default;
+            Data data = default;
             Properties properties = null;
             ApplicationProperties applicationProperties = null;
             while (offset != amqpData.Length)
@@ -88,7 +88,7 @@ namespace RabbitMQ.Stream.Client
                         break;
                     case Codec.MessageAnnotations:
                         offset += Described.DecoderSize;
-                        annotations = AmqpMap.Parse<Annotations>(amqpData.Slice(offset), ref offset);
+                        annotations = Map.Parse<Annotations>(amqpData.Slice(offset), ref offset);
                         break;
                     case Codec.MessageProperties:
                         properties = Properties.Parse(amqpData.Slice(offset), ref offset);
@@ -96,7 +96,7 @@ namespace RabbitMQ.Stream.Client
                     case Codec.ApplicationProperties:
                         offset += Described.DecoderSize;
                         applicationProperties =
-                            AmqpMap.Parse<ApplicationProperties>(amqpData.Slice(offset), ref offset);
+                            Map.Parse<ApplicationProperties>(amqpData.Slice(offset), ref offset);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();

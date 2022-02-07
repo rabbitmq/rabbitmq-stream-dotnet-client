@@ -93,7 +93,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case FormatCode.Ulong0:
                 case FormatCode.SmallUlong:
                 case FormatCode.Ulong:
-                    offset = ReadUlong(seq, out var resultULong);
+                    offset = ReadUInt64(seq, out var resultULong);
                     value = resultULong;
                     return offset;
                 case FormatCode.Smalllong:
@@ -105,7 +105,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
             }
 
-            throw new AMQP.AmqpParseException($"can't read any {type}");
+            throw new AMQP.AmqpParseException($"Read Any: Invalid type: {type}");
         }
 
 
@@ -147,7 +147,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             throw new AMQP.AmqpParseException($"ReadString invalid type {type}");
         }
 
-        internal static int ReadUlong(ReadOnlySequence<byte> seq, out ulong value)
+        internal static int ReadUInt64(ReadOnlySequence<byte> seq, out ulong value)
         {
             var offset = ReadType(seq, out var type);
             switch (type)
@@ -201,8 +201,9 @@ namespace RabbitMQ.Stream.Client.AMQP
                     offset += WireFormatting.ReadInt32(seq.Slice(offset), out var lenI);
                     length = lenI;
                     break;
+                default:
+                    throw new AMQP.AmqpParseException($"ReadBinary Invalid type {type}");
             }
-
             offset += WireFormatting.ReadBytes(seq.Slice(offset), length, out value);
             return offset;
 
@@ -273,11 +274,11 @@ namespace RabbitMQ.Stream.Client.AMQP
             if (type != 0)
             {
                 // TODO WIRE
-                throw new Exception($"invalid composite header %#02x {type}");
+                throw new AmqpParseException($"invalid composite header %#02x {type}");
             }
 
             // next, the composite type is encoded as an AMQP uint8
-            offset += ReadUlong(seq.Slice(offset), out var nextW);
+            offset += ReadUInt64(seq.Slice(offset), out var nextW);
             next = (byte) nextW;
             // fields are represented as a list
             offset += ReadListHeader(seq.Slice(offset), out fields);
