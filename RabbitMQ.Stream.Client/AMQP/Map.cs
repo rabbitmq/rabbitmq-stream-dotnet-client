@@ -7,12 +7,7 @@ namespace RabbitMQ.Stream.Client.AMQP
     public abstract class Map<TKey> : Dictionary<TKey, object>, IWritable where TKey : class
     {
         protected byte MapCode;
-
-        protected Map()
-        {
-            MapCode = 0;
-        }
-
+        
         public static T Parse<T>(ReadOnlySequence<byte> amqpData, ref int byteRead) where T : Map<TKey>, new()
         {
             var offset = AmqpWireFormatting.ReadMapHeader(amqpData, out var count);
@@ -57,7 +52,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public int Write(Span<byte> span)
         {
-            var offset = AmqpWireFormatting.WriteDescriptor(span, MapCode);
+            var offset = Described.WriteDescriptor(span, MapCode);
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Map32);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) MapSize()); // MapSize 
             offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) this.Count * 2); // pair values

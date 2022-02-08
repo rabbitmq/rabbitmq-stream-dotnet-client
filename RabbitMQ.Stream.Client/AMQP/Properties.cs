@@ -129,9 +129,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public int Write(Span<byte> span)
         {
-            var offset = new Described(0,
-                FormatCode.SmallUlong,
-                Codec.MessageProperties).Write(span);
+            var offset = Described.WriteDescriptor(span, Codec.MessageProperties);
 
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.List32);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) PropertySize()); // PropertySize 

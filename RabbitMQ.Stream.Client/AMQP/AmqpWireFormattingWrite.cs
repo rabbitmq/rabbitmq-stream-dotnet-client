@@ -210,16 +210,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             offset += WireFormatting.WriteUInt64(seq.Slice(offset), (ulong) unixTime);
             return offset;
         }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int WriteDescriptor(Span<byte> span, byte data)
-        {
-            var offset = WireFormatting.WriteByte(span, 0x00);
-            offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.SmallUlong);
-            offset += WireFormatting.WriteByte(span.Slice(offset), data);
-            return offset;
-        }
+        
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
