@@ -14,7 +14,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return read;
         }
 
-        private static int ReadBool(ReadOnlySequence<byte> seq, out bool value)
+        internal static int ReadBool(ReadOnlySequence<byte> seq, out bool value)
         {
             var offset = ReadType(seq, out var type);
             switch (type)

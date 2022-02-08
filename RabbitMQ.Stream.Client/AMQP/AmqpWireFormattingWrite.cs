@@ -8,24 +8,6 @@ namespace RabbitMQ.Stream.Client.AMQP
 {
     public static partial class AmqpWireFormatting
     {
-        public static int WriteData(Span<byte> seq, ReadOnlySequence<byte> data)
-        {
-            var offset = 0;
-            if (data.Length < 256)
-            {
-                offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Vbin8); //binary marker
-                offset += WireFormatting.WriteByte(seq.Slice(offset), (byte) data.Length); //length
-            }
-            else
-            {
-                offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Vbin32); //binary marker
-                offset += WireFormatting.WriteUInt32(seq.Slice(offset), (uint) data.Length); //length
-            }
-
-            offset += WireFormatting.Write(seq.Slice(offset), data);
-            return offset;
-        }
-
         public static int WriteAny(Span<byte> seq, object value)
         {
             return value switch
@@ -295,14 +277,14 @@ namespace RabbitMQ.Stream.Client.AMQP
         }
 
 
-        public static int GetTimestampSize(DateTime value)
+        private static int GetTimestampSize(DateTime value)
         {
             if (value == DateTime.MinValue) return 1; // null
             return 1 // FormatCode.Timestamp
                    + 8; // long unit time
         }
 
-        public static int GetBytesSize(byte[] value)
+        private static int GetBytesSize(byte[] value)
         {
             return value.Length switch
             {
@@ -319,7 +301,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         }
 
 
-        public static int GetInt64Size(long value)
+        private static int GetInt64Size(long value)
         {
             if (value is < 128 and >= -128)
             {
@@ -332,7 +314,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         }
 
 
-        public static int GetUInt64Size(ulong value)
+        private static int GetUInt64Size(ulong value)
         {
             return value switch
             {
@@ -345,7 +327,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         }
 
 
-        public static int GetUInt16Size(ushort value)
+        private static int GetUInt16Size()
         {
             return 1 // FormatCode.Ushort
                    + 2; //value
@@ -361,7 +343,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 uint u => GetUIntSize(u),
                 ulong ul => GetUInt64Size(ul),
                 long l => GetInt64Size(l),
-                ushort ush => GetUInt16Size(ush),
+                ushort => GetUInt16Size(),
                 byte[] bArr => GetBytesSize(bArr),
                 byte => 1,
                 DateTime d => GetTimestampSize(d),

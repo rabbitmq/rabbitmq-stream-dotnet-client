@@ -100,6 +100,16 @@ namespace Tests
             {
                 AmqpWireFormatting.ReadSByte(new ReadOnlySequence<byte>(data), out var value);
             });
+            
+            Assert.Throws<AmqpParseException>(() =>
+            {
+                AmqpWireFormatting.ReadBool(new ReadOnlySequence<byte>(data), out var value);
+            });
+            
+            Assert.Throws<AmqpParseException>(() =>
+            {
+                AmqpWireFormatting.ReadInt16(new ReadOnlySequence<byte>(data), out var value);
+            });
 
             System.Diagnostics.Trace.WriteLine(" test passed");
         }
@@ -175,11 +185,17 @@ namespace Tests
             RunValidateFormatCode(intValue, intValueBin);
 
 
-            const long longValue = -111111111111; //FFFFFFE62142FE39
-            var longValueBin = new byte[] {0x81, 0xff, 0xff, 0xff, 0xe6, 0x21, 0x42, 0xfe, 0x39};
-            RunValidateFormatCode(longValue, longValueBin);
+            const long longValue64 = -111111111111; //FFFFFFE62142FE39
+            var longValueBin64 = new byte[] {0x81, 0xff, 0xff, 0xff, 0xe6, 0x21, 0x42, 0xfe, 0x39};
+            RunValidateFormatCode(longValue64, longValueBin64);
 
-
+            
+            const long longValue8 = 127; 
+            var longValueBin8 = new byte[] {0x55, 0x7F};
+            RunValidateFormatCode(longValue8, longValueBin8);
+            
+            
+            
             const float floatValue = -88.88f;
             var floatValueBin = new byte[] {0x72, 0xc2, 0xb1, 0xc2, 0x8f};
             RunValidateFormatCode(floatValue, floatValueBin);
@@ -193,9 +209,24 @@ namespace Tests
             var doubleValueBin = new byte[] {0x82, 0x42, 0xd9, 0x43, 0x84, 0x93, 0xbc, 0x71, 0xce};
             RunValidateFormatCode(doubleValue, doubleValueBin);
 
-            const string strValue = "amqp";
+            const string str8Value = "amqp";
             var str8Utf8ValueBin = new byte[] {0xa1, 0x04, 0x61, 0x6d, 0x71, 0x70};
-            RunValidateFormatCode(strValue, str8Utf8ValueBin);
+            RunValidateFormatCode(str8Value, str8Utf8ValueBin);
+
+            var str32Value = "";
+            var str32Utf8ValueBin = new byte[290 + 1 + 4];
+            str32Utf8ValueBin[0] = 0xb1;
+            str32Utf8ValueBin[1] = 0x0;
+            str32Utf8ValueBin[2] = 0x0;
+            str32Utf8ValueBin[3] = 0x1;
+            str32Utf8ValueBin[4] = 0x22;
+            for (var i = 0; i < 290; i++)
+            {
+                str32Value += "a";
+                str32Utf8ValueBin[i + 5] = 0x61;
+            }
+
+            RunValidateFormatCode(str32Value, str32Utf8ValueBin);
 
 
             var bin8Value = new byte[56];

@@ -324,12 +324,12 @@ namespace Tests
                     To = "to",
                     ContentEncoding = "contentEncoding",
                     ContentType = "contentType",
-                    CorrelationId = 1,
+                    CorrelationId = (ulong) 5_000_000_000,
                     CreationTime = DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
                     AbsoluteExpiryTime = DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
                     GroupId = "groupId",
                     GroupSequence = 1,
-                    MessageId = "messageId",
+                    MessageId = (long) 4_000_000_000,
                     ReplyTo = "replyTo",
                     UserId = new byte[] {0x0, 0xF},
                     ReplyToGroupId = "replyToGroupId"
@@ -360,14 +360,14 @@ namespace Tests
             Assert.Equal("to", testPassed.Task.Result.Properties.To);
             Assert.Equal("contentEncoding", testPassed.Task.Result.Properties.ContentEncoding);
             Assert.Equal("contentType", testPassed.Task.Result.Properties.ContentType);
-            Assert.Equal(1, testPassed.Task.Result.Properties.CorrelationId);
+            Assert.Equal((ulong) 5_000_000_000, testPassed.Task.Result.Properties.CorrelationId);
             Assert.Equal(DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
                 testPassed.Task.Result.Properties.AbsoluteExpiryTime);
             Assert.Equal(DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
                 testPassed.Task.Result.Properties.CreationTime);
             Assert.Equal("groupId", testPassed.Task.Result.Properties.GroupId);
             Assert.Equal((uint) 1, testPassed.Task.Result.Properties.GroupSequence);
-            Assert.Equal("messageId", testPassed.Task.Result.Properties.MessageId);
+            Assert.Equal((long) 4_000_000_000, testPassed.Task.Result.Properties.MessageId);
             Assert.Equal("replyTo", testPassed.Task.Result.Properties.ReplyTo);
             Assert.Equal(new byte[] {0x0, 0xF}, testPassed.Task.Result.Properties.UserId);
 
@@ -375,12 +375,55 @@ namespace Tests
             Assert.Equal(1, testPassed.Task.Result.Annotations[1]);
             Assert.Equal("value1", testPassed.Task.Result.Annotations["akey1"]);
             Assert.Equal(1_000_000, testPassed.Task.Result.Annotations[1_000_000]);
-            
+
             Assert.Equal("value1", testPassed.Task.Result.ApplicationProperties["apkey1"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey2"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey3"]);
 
             producer.Dispose();
+            consumer.Dispose();
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void Amqp091MessagesConsumer()
+        {
+            var testPassed = new TaskCompletionSource<Message>();
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = "consumer",
+                    Stream = stream,
+                    MessageHandler = async (consumer, ctx, message) =>
+                    {
+                        testPassed.SetResult(message);
+                        await Task.CompletedTask;
+                    }
+                });
+
+            // post AMQP 0-9-1 message 
+            var jsonBody =
+                "{\"properties\":{" +
+                "\"content_type\": \"json\"," +
+                "\"message_id\": \"2\"," +
+                "\"headers\":{\"hkey\" : \"hvalue\"} },\"routing_key\":" +
+                "\"" + stream + "\"" +
+                ",\"payload\":\"HI\",\"payload_encoding\":\"string\"}";
+            SystemUtils.HttpPost(jsonBody, "exchanges/%2f/amq.default/publish");
+            new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            Assert.Equal("HI", Encoding.Default.GetString(testPassed.Task.Result.Data.Contents.ToArray()));
+            Assert.Equal(stream, testPassed.Task.Result.Annotations["x-routing-key"]);
+            Assert.Equal("", testPassed.Task.Result.Annotations["x-exchange"]);
+            Assert.Equal("hvalue", testPassed.Task.Result.ApplicationProperties["hkey"]);
+            Assert.Equal("json", testPassed.Task.Result.Properties.ContentType);
+            Assert.Equal("2", testPassed.Task.Result.Properties.MessageId);
+
             consumer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();

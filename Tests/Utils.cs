@@ -97,16 +97,16 @@ namespace Tests
             producer.Dispose();
         }
 
-        public static void PostDefinition(string json)
+        public static void HttpPost(string jsonBody, string api)
         {
-            var httpWebRequest = (HttpWebRequest) WebRequest.Create("http://localhost:15672/api/definitions");
+            var httpWebRequest = (HttpWebRequest) WebRequest.Create($"http://localhost:15672/api/{api}");
             httpWebRequest.Credentials = new System.Net.NetworkCredential("guest", "guest");
             httpWebRequest.ContentType = "application/json";
             httpWebRequest.Method = "POST";
 
             using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
             {
-                streamWriter.Write(json);
+                streamWriter.Write(jsonBody);
             }
 
             var httpResponse = (HttpWebResponse) httpWebRequest.GetResponse();
