@@ -4,10 +4,12 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public class Annotations : Map
+    public class Annotations : Map<object>
     {
-      
-
         
+        public Annotations() : base()
+        {
+            MapCode = Codec.MessageAnnotations;
+        }
     }
 }

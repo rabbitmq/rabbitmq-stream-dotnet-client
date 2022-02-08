@@ -14,7 +14,6 @@ using Xunit.Sdk;
 
 namespace Tests
 {
-    
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class WaitTestBeforeAfter : BeforeAfterTestAttribute
     {
@@ -117,25 +116,20 @@ namespace Tests
             }
         }
 
-        public static string GetFileContent(string fileName)
+        public static byte[] GetFileContent(string fileName)
         {
-            
             var codeBaseUrl = new Uri(Assembly.GetExecutingAssembly().Location);
             var codeBasePath = Uri.UnescapeDataString(codeBaseUrl.AbsolutePath);
             var dirPath = Path.GetDirectoryName(codeBasePath);
             if (dirPath != null)
             {
-                var filename =  Path.Combine(dirPath, "Resources", "definition_test.json");
-
-
-                Task<string> fileTask =  File.ReadAllTextAsync(filename);
+                var filename = Path.Combine(dirPath, "Resources", fileName);
+                Task<byte[]> fileTask = File.ReadAllBytesAsync(filename);
                 fileTask.Wait(1000);
                 return fileTask.Result;
             }
 
-            return "";
+            return null;
         }
-        
-        
     }
 }
