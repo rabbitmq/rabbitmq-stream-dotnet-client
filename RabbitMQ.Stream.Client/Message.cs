@@ -24,10 +24,11 @@ namespace RabbitMQ.Stream.Client
         public Annotations Annotations { get; set; }
 
         public ApplicationProperties ApplicationProperties { get; set; }
-        
+
         public Properties Properties { get; set; }
         public Data Data { get; }
-        public int Size => Data.Size + 
+
+        public int Size => Data.Size +
                            (Properties?.Size ?? 0) +
                            (Annotations?.Size ?? 0) +
                            (ApplicationProperties?.Size ?? 0);
@@ -39,10 +40,12 @@ namespace RabbitMQ.Stream.Client
             {
                 offset += Properties.Write(span.Slice(offset));
             }
+
             if (ApplicationProperties != null)
             {
                 offset += ApplicationProperties.Write(span.Slice(offset));
             }
+
             if (Annotations != null)
             {
                 offset += Annotations.Write(span.Slice(offset));
@@ -99,7 +102,8 @@ namespace RabbitMQ.Stream.Client
                             ApplicationProperties.Parse<ApplicationProperties>(amqpData.Slice(offset), ref offset);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException();
+                        Console.WriteLine($"dataCode: {dataCode} not handled. Please open an issue.");
+                        throw new ArgumentOutOfRangeException($"dataCode: {dataCode} not handled");
                 }
             }
 
