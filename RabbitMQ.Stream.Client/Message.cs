@@ -21,7 +21,7 @@ namespace RabbitMQ.Stream.Client
             this.Data = data;
         }
 
-        public Annotations Annotations { get; set; }
+        public Annotations Annotations { get; internal set; }
 
         public ApplicationProperties ApplicationProperties { get; set; }
 

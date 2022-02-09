@@ -38,7 +38,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             var len = value.Length;
             var offset = 0;
             // Str8
-            if (len < 256)
+            if (len < byte.MaxValue)
             {
                 offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Str8);
                 offset += WireFormatting.WriteByte(seq.Slice(offset), (byte) len);
