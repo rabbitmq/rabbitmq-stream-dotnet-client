@@ -231,7 +231,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             return value.Length switch
             {
-                0 => 1,
+                0 => 1, // 0x40
                 < 256 => value.Length + 1 + //marker 1 byte FormatCode.Vbin8
                          1,
                 _ => value.Length + 1 //marker 1 byte  FormatCode.Vbin32 

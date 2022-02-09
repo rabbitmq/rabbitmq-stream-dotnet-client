@@ -7,9 +7,9 @@ namespace RabbitMQ.Stream.Client.AMQP
 {
     public readonly struct Described
     {
-        public const int DecoderSize = 3;
+        public const int Size = 3;
 
-        public static byte ExtractCode(ReadOnlySequence<byte> amqpData)
+        public static byte ReadDataCode(ReadOnlySequence<byte> amqpData)
         {
             var offset = WireFormatting.ReadByte(amqpData, out var marker);
             offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var descriptor);
@@ -17,7 +17,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return value;
         }
         
-        public static int WriteDescriptor(Span<byte> span, byte data)
+        public static int WriteDataCode(Span<byte> span, byte data)
         {
             var offset = WireFormatting.WriteByte(span, 0x00);
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.SmallUlong);

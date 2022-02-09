@@ -4,7 +4,7 @@ namespace RabbitMQ.Stream.Client.AMQP
     {
         public ApplicationProperties() : base()
         {
-            MapCode = Codec.ApplicationProperties;
+            DataCode = Codec.ApplicationProperties;
         }
         
     }
