@@ -293,12 +293,13 @@ namespace Tests
 
         [Fact]
         [WaitTestBeforeAfter]
-        public void ValidateMessagesFormGo()
+        public void ValidateMessagesFromGo()
         {
             // These files are generated with the Go AMQP 1.0 client
-            // just to have an external validation for the messages
-
-
+            // The idea is to have an external validation for the messages
+            // see: https://github.com/rabbitmq/rabbitmq-stream-go-client/tree/main/generate
+            // dump messages are included as resources.
+            // remove these tests at some point ?? 
             //  body len < 250 bytes
             var body250 = SystemUtils.GetFileContent("message_body_250");
             var msg250 = Message.From(new ReadOnlySequence<byte>(body250));

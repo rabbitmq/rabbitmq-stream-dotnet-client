@@ -343,8 +343,8 @@ namespace Tests
                 ApplicationProperties = new ApplicationProperties()
                 {
                     ["apkey1"] = "value1",
-                    ["apkey2"] = "",
-                    ["apkey3"] = null,
+                    ["apkey2"] = "", //  returns  0x40(Null)  when string is empty or null
+                    ["apkey3"] = null, //  returns  0x40(Null)  when string is empty or null 
                 }
             };
 
@@ -390,6 +390,9 @@ namespace Tests
         [WaitTestBeforeAfter]
         public async void Amqp091MessagesConsumer()
         {
+            // Amqp091 interoperability 
+            // We should be able to parse a message coming from an 
+            // amqp 901 client
             var testPassed = new TaskCompletionSource<Message>();
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
