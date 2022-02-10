@@ -30,11 +30,23 @@ namespace RabbitMQ.Stream.Client.AMQP
             var size = 0;
             foreach (var (key, value) in this)
             {
-                size += AmqpWireFormatting.GetAnySize(key);
-                size += AmqpWireFormatting.GetAnySize(value);
+                if (!IsNullOrEmptyString(key)) 
+                {
+                    size += AmqpWireFormatting.GetAnySize(key);
+                    size += AmqpWireFormatting.GetAnySize(value);
+                }
             }
 
             return size;
+        }
+        private bool IsNullOrEmptyString(object value)
+        {
+            return value switch
+            {
+                null => true, 
+                string s => string.IsNullOrEmpty(s),
+                _ => false
+            };
         }
 
         public int Size
@@ -58,8 +70,11 @@ namespace RabbitMQ.Stream.Client.AMQP
             offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) this.Count * 2); // pair values
             foreach (var (key, value) in this)
             {
-                offset += AmqpWireFormatting.WriteAny(span.Slice(offset), key);
-                offset += AmqpWireFormatting.WriteAny(span.Slice(offset), value);
+                if (!IsNullOrEmptyString(key))
+                {
+                    offset += AmqpWireFormatting.WriteAny(span.Slice(offset), key);
+                    offset += AmqpWireFormatting.WriteAny(span.Slice(offset), value);
+                }
             }
             return offset;
         }

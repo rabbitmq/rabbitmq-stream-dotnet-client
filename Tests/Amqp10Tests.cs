@@ -375,5 +375,33 @@ namespace Tests
             Assert.Equal((long) 1, msgStaticTest.Annotations[(long) 1]);
             Assert.Equal((long) 100_000, msgStaticTest.Annotations[(long) 100_000]);
         }
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public void MapEntriesWithAnEmptyKeyShouldNotBeWrittenToTheWire()
+        {
+            // Given we have an annotation with a valid key
+            Annotations annotation = new Annotations();
+            annotation.Add("valid key", "");
+
+            var expectedMapSize = annotation.Size;
+            var array = new byte[expectedMapSize];
+            var arraySpan = new Span<byte>(array);
+
+            Assert.Equal(expectedMapSize, annotation.Write(arraySpan));
+
+            // when we add a empty key and write the annotation again
+            annotation.Add("", "");
+            arraySpan.Clear();
+            var actualMapSize = annotation.Write(arraySpan);
+
+            // we do not expect the new entry to be written
+            Assert.Equal(expectedMapSize, actualMapSize);
+
+
+        }
     }
+
+   
+
 }
