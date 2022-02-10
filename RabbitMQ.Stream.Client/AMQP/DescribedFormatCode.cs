@@ -3,7 +3,7 @@ using System.Buffers;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
-    public static class DataCode
+    public static class DescribedFormatCode
     {
         public const int Size = 3;
 

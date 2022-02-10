@@ -57,18 +57,18 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             get
             {
-                var size = DataCode.Size;
-                size += 1; //FormatCode.List32
-                size += 4; // field numbers
-                size += 4; // PropertySize
-                size += MapSize(); // PropertySize
+                var size = DescribedFormatCode.Size;
+                size += sizeof(byte); //FormatCode.List32
+                size += sizeof(uint); // field numbers
+                size += sizeof(uint); // PropertySize
+                size += MapSize();
                 return size;
             }
         }
 
         public int Write(Span<byte> span)
         {
-            var offset = DataCode.Write(span, MapDataCode);
+            var offset = DescribedFormatCode.Write(span, MapDataCode);
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Map32);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) MapSize()); // MapSize 
             offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) this.Count * 2); // pair values

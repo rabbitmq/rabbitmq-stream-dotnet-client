@@ -21,11 +21,11 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public ReadOnlySequence<byte> Contents => this.data;
 
-        public int Size => AmqpWireFormatting.GetSequenceSize(this.data) + DataCode.Size;
+        public int Size => AmqpWireFormatting.GetSequenceSize(this.data) + DescribedFormatCode.Size;
 
         public int Write(Span<byte> span)
         {
-            var offset = DataCode.Write(span, DataCode.ApplicationData);
+            var offset = DescribedFormatCode.Write(span, DescribedFormatCode.ApplicationData);
             if (data.Length < byte.MaxValue)
             {
                 offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin8); //binary marker

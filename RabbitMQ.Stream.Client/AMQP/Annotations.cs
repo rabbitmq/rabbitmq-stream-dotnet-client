@@ -8,7 +8,7 @@ namespace RabbitMQ.Stream.Client.AMQP
     {
         public Annotations() : base()
         {
-            MapDataCode = AMQP.DataCode.MessageAnnotations;
+            MapDataCode = AMQP.DescribedFormatCode.MessageAnnotations;
         }
     }
 }

@@ -119,17 +119,17 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             get
             {
-                var size = DataCode.Size;
-                size += 1; //FormatCode.List32
-                size += 4; // field numbers
-                size += 4; // PropertySize
+                var size = DescribedFormatCode.Size;
+                size += sizeof(byte); //FormatCode.List32
+                size += sizeof(uint); // field numbers
+                size += sizeof(uint); // PropertySize
                 return size + PropertySize();
             }
         }
 
         public int Write(Span<byte> span)
         {
-            var offset = DataCode.Write(span, DataCode.MessageProperties);
+            var offset = DescribedFormatCode.Write(span, DescribedFormatCode.MessageProperties);
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.List32);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) PropertySize()); // PropertySize 
             offset += WireFormatting.WriteUInt32(span.Slice(offset), 13); // field numbers
