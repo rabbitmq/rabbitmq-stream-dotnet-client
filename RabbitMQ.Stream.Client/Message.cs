@@ -82,22 +82,22 @@ namespace RabbitMQ.Stream.Client
             ApplicationProperties applicationProperties = null;
             while (offset != amqpData.Length)
             {
-                var dataCode = Described.ReadDataCode(amqpData.Slice(offset));
+                var dataCode = DataCode.Read(amqpData.Slice(offset));
                 switch (dataCode)
                 {
-                    case Codec.ApplicationData:
-                        offset += Described.Size;
+                    case DataCode.ApplicationData:
+                        offset += DataCode.Size;
                         data = Data.Parse(amqpData.Slice(offset), ref offset);
                         break;
-                    case Codec.MessageAnnotations:
-                        offset += Described.Size;
+                    case DataCode.MessageAnnotations:
+                        offset += DataCode.Size;
                         annotations = Annotations.Parse<Annotations>(amqpData.Slice(offset), ref offset);
                         break;
-                    case Codec.MessageProperties:
+                    case DataCode.MessageProperties:
                         properties = Properties.Parse(amqpData.Slice(offset), ref offset);
                         break;
-                    case Codec.ApplicationProperties:
-                        offset += Described.Size;
+                    case DataCode.ApplicationProperties:
+                        offset += DataCode.Size;
                         applicationProperties =
                             ApplicationProperties.Parse<ApplicationProperties>(amqpData.Slice(offset), ref offset);
                         break;

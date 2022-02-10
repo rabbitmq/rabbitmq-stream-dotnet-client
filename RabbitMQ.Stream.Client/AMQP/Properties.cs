@@ -119,7 +119,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             get
             {
-                var size = Described.Size;
+                var size = DataCode.Size;
                 size += 1; //FormatCode.List32
                 size += 4; // field numbers
                 size += 4; // PropertySize
@@ -129,7 +129,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public int Write(Span<byte> span)
         {
-            var offset = Described.WriteDataCode(span, Codec.MessageProperties);
+            var offset = DataCode.Write(span, DataCode.MessageProperties);
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.List32);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) PropertySize()); // PropertySize 
             offset += WireFormatting.WriteUInt32(span.Slice(offset), 13); // field numbers
