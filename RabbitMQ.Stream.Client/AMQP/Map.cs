@@ -17,7 +17,10 @@ namespace RabbitMQ.Stream.Client.AMQP
             {
                 offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var key);
                 offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var value);
-                amqpMap[(key as TKey)!] = value;
+                if (!IsNullOrEmptyString(key)) // this should never occur because we never write null keys
+                {
+                 amqpMap[(key as TKey)!] = value;
+                }
             }
 
             byteRead += offset;
@@ -39,7 +42,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
             return size;
         }
-        private bool IsNullOrEmptyString(object value)
+        private static bool IsNullOrEmptyString(object value)
         {
             return value switch
             {
