@@ -26,7 +26,15 @@ namespace RabbitMQ.Stream.Client
         public ApplicationProperties ApplicationProperties { get; set; }
 
         public Properties Properties { get; set; }
+
         public Data Data { get; }
+
+        // MessageHeader and AmqpValue are only in get.
+        // Just to have the compatibility with AMQP 1.0
+        // In this specific case it is not needed
+        public Header MessageHeader { get; internal set; }
+        public object AmqpValue { get; internal set; }
+
 
         public int Size => Data.Size +
                            (Properties?.Size ?? 0) +
@@ -86,8 +94,10 @@ namespace RabbitMQ.Stream.Client
             //parse AMQP encoded data
             var offset = 0;
             Annotations annotations = null;
+            Header header = null;
             Data data = default;
             Properties properties = null;
+            object amqpValue = null;
             ApplicationProperties applicationProperties = null;
             while (offset != amqpData.Length)
             {
@@ -110,6 +120,13 @@ namespace RabbitMQ.Stream.Client
                         applicationProperties =
                             ApplicationProperties.Parse<ApplicationProperties>(amqpData.Slice(offset), ref offset);
                         break;
+                    case DescribedFormatCode.MessageHeader:
+                        header = Header.Parse(amqpData.Slice(offset), ref offset);
+                        break;
+                    case DescribedFormatCode.AmqpValue:
+                        offset += DescribedFormatCode.Size;
+                        offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out amqpValue);
+                        break;
                     default:
                         Console.WriteLine($"dataCode: {dataCode} not handled. Please open an issue.");
                         throw new ArgumentOutOfRangeException($"dataCode: {dataCode} not handled");
@@ -120,7 +137,9 @@ namespace RabbitMQ.Stream.Client
             {
                 Annotations = annotations,
                 Properties = properties,
-                ApplicationProperties = applicationProperties
+                ApplicationProperties = applicationProperties,
+                AmqpValue = amqpValue,
+                MessageHeader = header
             };
             return msg;
         }
