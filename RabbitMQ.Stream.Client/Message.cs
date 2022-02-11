@@ -72,7 +72,16 @@ namespace RabbitMQ.Stream.Client
             // +--------+-------------+-------------+------------+--------------+--------------+--------
             // | header | delivery-   | message-    | properties | application- | application- | footer |
             // |        | annotations | annotations |             | properties  | data         |        |
-            // +--------+-------------+-------------+------------+--------------+--------------+--------+            
+            // +--------+-------------+-------------+------------+--------------+--------------+--------+ 
+            // Altogether a message consists of the following sections:
+            // • Zero or one header.
+            // • Zero or one delivery-annotations.
+            // • Zero or one message-annotations.
+            // • Zero or one properties.
+            // • Zero or one application-properties.
+            // • The body consists of either: one or more data sections, one or more amqp-sequence sections,
+            // or a single amqp-value section.
+            // • Zero or one footer.
 
             //parse AMQP encoded data
             var offset = 0;
