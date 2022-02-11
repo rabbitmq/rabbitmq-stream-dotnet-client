@@ -2,6 +2,6 @@ namespace RabbitMQ.Stream.Client
 {
     public static class Consts
     {
-        public const string ClientVersion = "1.0.0-alpha9";
+        public const string ClientVersion = "1.0.0-alpha10";
     }
 }
