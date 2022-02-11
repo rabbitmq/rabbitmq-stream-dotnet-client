@@ -5,7 +5,9 @@ namespace RabbitMQ.Stream.Client
 {
     public record StreamSpec
     {
-        private readonly IDictionary<string, string> args = new Dictionary<string, string>();
+        private readonly IDictionary<string, string> args = new Dictionary<string, string>() {
+            ["queue-leader-locator"] = LeaderLocator.LeastLeaders.ToString()
+        };
 
         public StreamSpec(string name)
         {
@@ -16,17 +18,17 @@ namespace RabbitMQ.Stream.Client
 
         public TimeSpan MaxAge
         {
-            set => Args.Add("max-age", $"{value.TotalSeconds}s");
+            set => Args["max-age"] = $"{value.TotalSeconds}s";
         }
 
         public int MaxLengthBytes
         {
-            set => Args.Add("max-length-bytes", $"{value}");
+            set => Args["max-length-bytes"] = $"{value}";
         }
         
         public LeaderLocator LeaderLocator
         {
-            set => Args.Add("queue-leader-locator", $"{value.ToString()}");
+            set => Args["queue-leader-locator"] = $"{value.ToString()}";
         }
 
         public IDictionary<string, string> Args => args;
