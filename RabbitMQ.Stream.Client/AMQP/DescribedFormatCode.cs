@@ -22,10 +22,12 @@ namespace RabbitMQ.Stream.Client.AMQP
             offset += WireFormatting.WriteByte(span.Slice(offset), data);
             return offset;
         }
-        
+
         public const byte ApplicationData = 0x75;
         public const byte MessageAnnotations = 0x72;
         public const byte MessageProperties = 0x73;
         public const byte ApplicationProperties = 0x74;
+        public const byte MessageHeader = 0x70;
+        public const byte AmqpValue = 0x77;
     }
 }

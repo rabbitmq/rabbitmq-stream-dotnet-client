@@ -100,12 +100,12 @@ namespace Tests
             {
                 AmqpWireFormatting.ReadSByte(new ReadOnlySequence<byte>(data), out var value);
             });
-            
+
             Assert.Throws<AmqpParseException>(() =>
             {
                 AmqpWireFormatting.ReadBool(new ReadOnlySequence<byte>(data), out var value);
             });
-            
+
             Assert.Throws<AmqpParseException>(() =>
             {
                 AmqpWireFormatting.ReadInt16(new ReadOnlySequence<byte>(data), out var value);
@@ -189,13 +189,12 @@ namespace Tests
             var longValueBin64 = new byte[] {0x81, 0xff, 0xff, 0xff, 0xe6, 0x21, 0x42, 0xfe, 0x39};
             RunValidateFormatCode(longValue64, longValueBin64);
 
-            
-            const long longValue8 = 127; 
+
+            const long longValue8 = 127;
             var longValueBin8 = new byte[] {0x55, 0x7F};
             RunValidateFormatCode(longValue8, longValueBin8);
-            
-            
-            
+
+
             const float floatValue = -88.88f;
             var floatValueBin = new byte[] {0x72, 0xc2, 0xb1, 0xc2, 0x8f};
             RunValidateFormatCode(floatValue, floatValueBin);
@@ -374,6 +373,19 @@ namespace Tests
             Assert.Equal("test", msgStaticTest.Annotations["test"]);
             Assert.Equal((long) 1, msgStaticTest.Annotations[(long) 1]);
             Assert.Equal((long) 100_000, msgStaticTest.Annotations[(long) 100_000]);
+
+
+            var header = SystemUtils.GetFileContent("header_amqpvalue_message");
+            var msgHeader = Message.From(new ReadOnlySequence<byte>(header));
+            Assert.NotNull(msgHeader);
+            Assert.NotNull(msgHeader.MessageHeader);
+            Assert.NotNull(msgHeader.AmqpValue);
+            Assert.True(msgHeader.MessageHeader.Durable);
+            Assert.True(msgHeader.MessageHeader.FirstAcquirer);
+            Assert.Equal(100, msgHeader.MessageHeader.Priority);
+            Assert.Equal((uint) 300, msgHeader.MessageHeader.DeliveryCount);
+            Assert.True(msgHeader.MessageHeader.Ttl == 0);
+            Assert.Equal("amqpValue", msgHeader.AmqpValue);
         }
 
         [Fact]
@@ -397,11 +409,6 @@ namespace Tests
 
             // we do not expect the new entry to be written
             Assert.Equal(expectedMapSize, actualMapSize);
-
-
         }
     }
-
-   
-
 }
