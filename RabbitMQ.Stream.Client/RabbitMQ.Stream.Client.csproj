@@ -17,6 +17,13 @@
     <PackageLicenseUrl>https://raw.githubusercontent.com/rabbitmq/rabbitmq-stream-dotnet-client/main/LICENSE</PackageLicenseUrl>
     <PackageIconUrl>https://github.com/rabbitmq/rabbitmq-website/raw/live/site/img/rabbitmq_logo_30x30.png</PackageIconUrl>
   </PropertyGroup>
+  
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+    <_Parameter1>Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="system.io.pipelines" Version="5.0.1" />

@@ -9,7 +9,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         public int Size { get; }
         public int Write(Span<byte> span);
     }
-    
+
     public readonly struct Data : IWritable
     {
         private readonly ReadOnlySequence<byte> data;
@@ -21,57 +21,43 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public ReadOnlySequence<byte> Contents => this.data;
 
-        public int Size
-        {
-            get
-            {
-                if (data.Length < 256)
-                    return (int)data.Length + 5;
-                return (int) data.Length + 8;
-            }
-        }
+        public int Size => AmqpWireFormatting.GetSequenceSize(this.data) + DescribedFormatCode.Size;
 
         public int Write(Span<byte> span)
         {
-            var offset = WireFormatting.WriteByte(span, 0); //descriptor marker
-            offset += WireFormatting.WriteByte(span.Slice(offset), 0x53); //short ulong
-            offset += WireFormatting.WriteByte(span.Slice(offset), 117); //data code number
-            if (data.Length < 256)
+            var offset = DescribedFormatCode.Write(span, DescribedFormatCode.ApplicationData);
+            if (data.Length < byte.MaxValue)
             {
-                offset += WireFormatting.WriteByte(span.Slice(offset), 0xA0); //binary marker
-                offset += WireFormatting.WriteByte(span.Slice(offset), (byte)data.Length); //length
+                offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin8); //binary marker
+                offset += WireFormatting.WriteByte(span.Slice(offset), (byte) data.Length); //length
             }
             else
             {
-                offset += WireFormatting.WriteByte(span.Slice(offset), 0xB0); //binary marker
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)data.Length); //length
+                offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin32); //binary marker
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) data.Length); //length
             }
 
             offset += WireFormatting.Write(span.Slice(offset), data);
             return offset;
         }
 
-        public static Data Parse(ReadOnlySequence<byte> amqpData)
+
+        public static Data Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
         {
-            var offset = WireFormatting.ReadByte(amqpData, out var marker);
-            offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var descriptor);
-            offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var dataCode);
-            offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var binaryMarker);
-            switch (binaryMarker)
+            var offset = AmqpWireFormatting.ReadType(amqpData, out var type);
+            switch (type)
             {
-                case 0xA0:
-                {
-                    offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var length);
-                    return new Data(amqpData.Slice(offset, length));
-                }
-                case 0xB0:
-                {
-                    offset += WireFormatting.ReadUInt32(amqpData.Slice(offset), out var length);
-                    return new Data(amqpData.Slice(offset, (int)length));
-                }
+                case FormatCode.Vbin8:
+                    offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var len8);
+                    byteRead += offset + len8;
+                    return new Data(amqpData.Slice(offset, len8));
+                case FormatCode.Vbin32:
+                    offset += WireFormatting.ReadUInt32(amqpData.Slice(offset), out var len32);
+                    byteRead += (int) (offset + len32);
+                    return new Data(amqpData.Slice(offset, len32));
             }
 
-            throw new AmqpParseException("failed to parse data");
+            throw new AMQP.AmqpParseException($"Can't parse data is type {type} not defined");
         }
     }
 }

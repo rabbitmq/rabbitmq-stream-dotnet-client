@@ -23,7 +23,9 @@ namespace Tests
         [WaitTestBeforeAfter]
         public async void AccessToStreamWithoutGrantsShouldRaiseErrorTest()
         {
-            SystemUtils.PostDefinition(SystemUtils.GetFileContent("definition_test.json"));
+            SystemUtils.HttpPost(
+                System.Text.Encoding.Default.GetString(
+                    SystemUtils.GetFileContent("definition_test.json")), "definitions");
             // load definition creates users and streams to test the access
             // the user "test" can't access on "no_access_stream"
             const string stream = "no_access_stream";
@@ -59,8 +61,7 @@ namespace Tests
                 }
             );
 
-            
-            
+
             await system.Close();
         }
     }

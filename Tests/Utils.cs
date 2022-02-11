@@ -14,7 +14,6 @@ using Xunit.Sdk;
 
 namespace Tests
 {
-    
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class WaitTestBeforeAfter : BeforeAfterTestAttribute
     {
@@ -98,16 +97,16 @@ namespace Tests
             producer.Dispose();
         }
 
-        public static void PostDefinition(string json)
+        public static void HttpPost(string jsonBody, string api)
         {
-            var httpWebRequest = (HttpWebRequest) WebRequest.Create("http://localhost:15672/api/definitions");
+            var httpWebRequest = (HttpWebRequest) WebRequest.Create($"http://localhost:15672/api/{api}");
             httpWebRequest.Credentials = new System.Net.NetworkCredential("guest", "guest");
             httpWebRequest.ContentType = "application/json";
             httpWebRequest.Method = "POST";
 
             using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
             {
-                streamWriter.Write(json);
+                streamWriter.Write(jsonBody);
             }
 
             var httpResponse = (HttpWebResponse) httpWebRequest.GetResponse();
@@ -117,25 +116,20 @@ namespace Tests
             }
         }
 
-        public static string GetFileContent(string fileName)
+        public static byte[] GetFileContent(string fileName)
         {
-            
             var codeBaseUrl = new Uri(Assembly.GetExecutingAssembly().Location);
             var codeBasePath = Uri.UnescapeDataString(codeBaseUrl.AbsolutePath);
             var dirPath = Path.GetDirectoryName(codeBasePath);
             if (dirPath != null)
             {
-                var filename =  Path.Combine(dirPath, "Resources", "definition_test.json");
-
-
-                Task<string> fileTask =  File.ReadAllTextAsync(filename);
+                var filename = Path.Combine(dirPath, "Resources", fileName);
+                Task<byte[]> fileTask = File.ReadAllBytesAsync(filename);
                 fileTask.Wait(1000);
                 return fileTask.Result;
             }
 
-            return "";
+            return null;
         }
-        
-        
     }
 }

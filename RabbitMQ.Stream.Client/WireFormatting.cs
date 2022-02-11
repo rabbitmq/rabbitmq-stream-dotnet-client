@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Text;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -32,6 +33,14 @@ namespace RabbitMQ.Stream.Client
             BinaryPrimitives.WriteUInt16BigEndian(p, value);
             return 2;
         }
+        
+        internal static int WriteInt16(Span<byte> p, short value)
+        {
+            BinaryPrimitives.WriteInt16BigEndian(p, value);
+            return 2;
+        }
+        
+
         internal static int WriteUInt64(Span<byte> span, ulong value)
         {
             BinaryPrimitives.WriteUInt64BigEndian(span, value);
@@ -119,6 +128,22 @@ namespace RabbitMQ.Stream.Client
 
             return 2;
         }
+        
+        internal static int ReadInt16(ReadOnlySequence<byte> seq, out short value)
+        {
+            if (seq.FirstSpan.Length >= 2)
+            {
+                value = BinaryPrimitives.ReadInt16BigEndian(seq.FirstSpan);
+            }
+            else
+            {
+                Span<byte> tempSpan = stackalloc byte[2];
+                seq.Slice(0, 2).CopyTo(tempSpan);
+                value = BinaryPrimitives.ReadInt16BigEndian(tempSpan);
+            }
+
+            return 2;
+        }
 
         internal static int ReadUInt64(ReadOnlySequence<byte> seq, out ulong value)
         {
@@ -155,6 +180,13 @@ namespace RabbitMQ.Stream.Client
             data = seq.Slice(4, len).ToArray();
             return 4 + (int)len;
         }
+        
+        internal static int ReadBytes(ReadOnlySequence<byte> seq, int len, out byte[] data)
+        {
+            data = seq.Slice(0, len).ToArray();
+            return len;
+        }
+
 
         internal static int ReadInt64(ReadOnlySequence<byte> seq, out long value)
         {

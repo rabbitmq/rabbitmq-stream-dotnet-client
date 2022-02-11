@@ -1,29 +1,58 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct Message
+    public struct Hello
     {
-        private readonly Properties properties;
-        
+    }
+
+    public class Message
+    {
         public Message(byte[] data) : this(new Data(new ReadOnlySequence<byte>(data)))
         {
         }
 
-        public Message(Data data, Properties properties = new Properties())
+
+        public Message(Data data)
         {
             this.Data = data;
-            this.properties = properties;
         }
 
+        public Annotations Annotations { get; internal set; }
+
+        public ApplicationProperties ApplicationProperties { get; set; }
+
+        public Properties Properties { get; set; }
         public Data Data { get; }
-        public int Size => Data.Size;
+
+        public int Size => Data.Size +
+                           (Properties?.Size ?? 0) +
+                           (Annotations?.Size ?? 0) +
+                           (ApplicationProperties?.Size ?? 0);
 
         public int Write(Span<byte> span)
         {
-            return Data.Write(span);
+            var offset = 0;
+            if (Properties != null)
+            {
+                offset += Properties.Write(span.Slice(offset));
+            }
+
+            if (ApplicationProperties != null)
+            {
+                offset += ApplicationProperties.Write(span.Slice(offset));
+            }
+
+            if (Annotations != null)
+            {
+                offset += Annotations.Write(span.Slice(offset));
+            }
+
+            offset += Data.Write(span.Slice(offset));
+            return offset;
         }
 
         public ReadOnlySequence<byte> Serialize()
@@ -36,9 +65,64 @@ namespace RabbitMQ.Stream.Client
 
         public static Message From(ReadOnlySequence<byte> amqpData)
         {
+            //                                                         Bare Message
+            //                                                             |
+            //                                       .---------------------+--------------------.
+            //                                      |                                           |
+            // +--------+-------------+-------------+------------+--------------+--------------+--------
+            // | header | delivery-   | message-    | properties | application- | application- | footer |
+            // |        | annotations | annotations |             | properties  | data         |        |
+            // +--------+-------------+-------------+------------+--------------+--------------+--------+ 
+            // Altogether a message consists of the following sections:
+            // • Zero or one header.
+            // • Zero or one delivery-annotations.
+            // • Zero or one message-annotations.
+            // • Zero or one properties.
+            // • Zero or one application-properties.
+            // • The body consists of either: one or more data sections, one or more amqp-sequence sections,
+            // or a single amqp-value section.
+            // • Zero or one footer.
+
             //parse AMQP encoded data
-            var data = AMQP.Data.Parse(amqpData);
-            return new Message(data);
+            var offset = 0;
+            Annotations annotations = null;
+            Data data = default;
+            Properties properties = null;
+            ApplicationProperties applicationProperties = null;
+            while (offset != amqpData.Length)
+            {
+                var dataCode = DescribedFormatCode.Read(amqpData.Slice(offset));
+                switch (dataCode)
+                {
+                    case DescribedFormatCode.ApplicationData:
+                        offset += DescribedFormatCode.Size;
+                        data = Data.Parse(amqpData.Slice(offset), ref offset);
+                        break;
+                    case DescribedFormatCode.MessageAnnotations:
+                        offset += DescribedFormatCode.Size;
+                        annotations = Annotations.Parse<Annotations>(amqpData.Slice(offset), ref offset);
+                        break;
+                    case DescribedFormatCode.MessageProperties:
+                        properties = Properties.Parse(amqpData.Slice(offset), ref offset);
+                        break;
+                    case DescribedFormatCode.ApplicationProperties:
+                        offset += DescribedFormatCode.Size;
+                        applicationProperties =
+                            ApplicationProperties.Parse<ApplicationProperties>(amqpData.Slice(offset), ref offset);
+                        break;
+                    default:
+                        Console.WriteLine($"dataCode: {dataCode} not handled. Please open an issue.");
+                        throw new ArgumentOutOfRangeException($"dataCode: {dataCode} not handled");
+                }
+            }
+
+            var msg = new Message(data)
+            {
+                Annotations = annotations,
+                Properties = properties,
+                ApplicationProperties = applicationProperties
+            };
+            return msg;
         }
     }
 }
