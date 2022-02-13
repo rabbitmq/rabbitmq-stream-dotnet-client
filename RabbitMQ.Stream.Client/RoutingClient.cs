@@ -58,8 +58,7 @@ namespace RabbitMQ.Stream.Client
                 // In this case we just return the node (leader for producer, random for consumer)
                 // since there is not load balancer configuration
 
-                return routing.CreateClient(clientParameters with {Endpoint = endPoint});
-                ;
+                return routing.CreateClient(clientParameters with { Endpoint = endPoint });
             }
 
             // here it means that there is a AddressResolver configuration
