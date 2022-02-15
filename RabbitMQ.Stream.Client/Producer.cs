@@ -52,7 +52,13 @@ namespace RabbitMQ.Stream.Client
             this.semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }
 
-        public Client Client => client;
+        //public Client Client => client;
+
+        public int MessagesSent => client.MessagesSent;
+        public int ConfirmFrames => client.ConfirmFrames;
+        public int IncomingFrames => client.IncomingFrames;
+
+        public int PublishCommandsSent => client.PublishCommandsSent;
 
         private async Task Init()
         {
