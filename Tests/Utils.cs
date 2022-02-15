@@ -92,8 +92,10 @@ namespace Tests
             }
 
             testPassed.Task.Wait(10000);
-            Assert.Equal(producer.Client.MessagesSent, numberOfMessages);
-            Assert.True(producer.Client.ConfirmFrames >= 1);
+            Assert.Equal(producer.MessagesSent, numberOfMessages);
+            Assert.True(producer.ConfirmFrames >= 1);
+            Assert.True(producer.IncomingFrames >= 1);
+            Assert.True(producer.PublishCommandsSent >= 1);
             producer.Dispose();
         }
 

@@ -53,11 +53,11 @@ let main argv =
     async{
         while run do
             do! Async.Sleep 1000
-            let p = prod.Client.MessagesSent
-            let f = prod.Client.PublishCommandsSent
+            let p = prod.MessagesSent
+            let f = prod.PublishCommandsSent
             let c = confirmed
             let cs = consumed;
-            printfn $"published %i{p - lastPublishingId} msg/s in %i{f - lastFrames} publish frames, confirmed %i{c - lastConfirmed} msg/s, consumed: %i{c - lastConsumed} msg/sec total confirm frames %i{prod.Client.ConfirmFrames} %i{prod.Client.IncomingFrames} pending commands: {prod.PendingCount} "
+            printfn $"published %i{p - lastPublishingId} msg/s in %i{f - lastFrames} publish frames, confirmed %i{c - lastConfirmed} msg/s, consumed: %i{c - lastConsumed} msg/sec total confirm frames %i{prod.ConfirmFrames} %i{prod.IncomingFrames} pending commands: {prod.PendingCount} "
             lastConsumed <- cs
             lastFrames <- f
             lastPublishingId <- p
