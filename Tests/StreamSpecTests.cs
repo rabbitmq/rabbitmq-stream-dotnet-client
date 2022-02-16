@@ -13,8 +13,6 @@ using Xunit.Sdk;
 
 namespace Tests
 {
-
-
     [Collection("Sequential")]
     public class StreamSpecTests
     {

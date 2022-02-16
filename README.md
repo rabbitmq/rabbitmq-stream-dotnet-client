@@ -3,7 +3,8 @@
 ---
 <div style="text-align:center;">
 
-![tests](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions/workflows/nuget.yml//badge.svg)	
+[![Build Status](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/workflows/main.yaml/badge.svg)](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions)
+
 [![codecov](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client/branch/main/graph/badge.svg?token=OIA04ZQD79)](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client)
 </div>
 
