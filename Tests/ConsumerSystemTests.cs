@@ -431,5 +431,50 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
+
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ConsumerQueryOffset()
+        {
+            var testPassed = new TaskCompletionSource<int>();
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            const int numberOfMessages = 10;
+            const int numberOfMessagesToStore = 4;
+            await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
+            var count = 0;
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = "consumer_offset",
+                    Stream = stream,
+                    OffsetSpec = new OffsetTypeOffset(),
+                    
+                    MessageHandler = async (consumer, ctx, message) =>
+                    {
+                        testOutputHelper.WriteLine($"ConsumerStoreOffset receiving.. {count}");
+                        count++;
+                        if (count == numberOfMessagesToStore)
+                        {
+                            await consumer.StoreOffset(ctx.Offset);
+                            testOutputHelper.WriteLine($"ConsumerStoreOffset done: {count}");
+                            testPassed.SetResult(numberOfMessagesToStore);
+                        }
+
+                        await Task.CompletedTask;
+                    }
+                });
+
+            new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
+            // index 0
+            Assert.Equal((ulong) (numberOfMessagesToStore - 1), await system.QueryOffset("consumer_offset", stream));
+            await consumer.Close();
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
     }
 }

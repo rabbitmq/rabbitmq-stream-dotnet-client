@@ -85,6 +85,7 @@ namespace RabbitMQ.Stream.Client
             {
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
+
             return await Producer.Create(clientParameters, producerConfig, metaStreamInfo);
         }
 
@@ -105,6 +106,13 @@ namespace RabbitMQ.Stream.Client
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
+        public async Task<ulong> QueryOffset(string reference, string stream)
+        {
+            var response = await client.QueryOffset(reference, stream);
+            ClientExceptions.MaybeThrowException(response.ResponseCode, "fail to query offset");
+            return response.Offset;
+        }
+
         public async Task DeleteStream(string stream)
         {
             var response = await client.DeleteStream(stream);
@@ -121,6 +129,7 @@ namespace RabbitMQ.Stream.Client
             {
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
             }
+
             return await Consumer.Create(clientParameters, consumerConfig, metaStreamInfo);
         }
     }
@@ -155,7 +164,6 @@ namespace RabbitMQ.Stream.Client
     }
 
 
-   
     public readonly struct LeaderLocator
     {
         private readonly string value;
