@@ -1,0 +1,948 @@
+﻿[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Tests")]
+namespace RabbitMQ.Stream.Client.AMQP
+{
+    public class AmqpParseException : System.Exception
+    {
+        public AmqpParseException(string s) { }
+    }
+    public static class AmqpWireFormatting
+    {
+        public static int GetAnySize(object value) { }
+        public static int GetSequenceSize(System.Buffers.ReadOnlySequence<byte> data) { }
+        public static int WriteAny(System.Span<byte> seq, object value) { }
+        public static int WriteString(System.Span<byte> seq, string value) { }
+        public static int WriteTimestamp(System.Span<byte> seq, System.DateTime value) { }
+        public static int WriteUInt64(System.Span<byte> seq, ulong value) { }
+    }
+    public class Annotations : RabbitMQ.Stream.Client.AMQP.Map<object>
+    {
+        public Annotations() { }
+    }
+    public class ApplicationProperties : RabbitMQ.Stream.Client.AMQP.Map<string>
+    {
+        public ApplicationProperties() { }
+    }
+    public readonly struct Data : RabbitMQ.Stream.Client.AMQP.IWritable
+    {
+        public Data(System.Buffers.ReadOnlySequence<byte> data) { }
+        public System.Buffers.ReadOnlySequence<byte> Contents { get; }
+        public int Size { get; }
+        public int Write(System.Span<byte> span) { }
+        public static RabbitMQ.Stream.Client.AMQP.Data Parse(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) { }
+    }
+    public static class DescribedFormatCode
+    {
+        public const byte AmqpValue = 119;
+        public const byte ApplicationData = 117;
+        public const byte ApplicationProperties = 116;
+        public const byte MessageAnnotations = 114;
+        public const byte MessageHeader = 112;
+        public const byte MessageProperties = 115;
+        public const int Size = 3;
+        public static byte Read(System.Buffers.ReadOnlySequence<byte> amqpData) { }
+        public static int Write(System.Span<byte> span, byte data) { }
+    }
+    public static class FormatCode
+    {
+        public const byte Array32 = 240;
+        public const byte Array8 = 224;
+        public const byte Bool = 86;
+        public const byte BoolFalse = 66;
+        public const byte BoolTrue = 65;
+        public const byte Byte = 81;
+        public const byte Char = 115;
+        public const byte Decimal128 = 148;
+        public const byte Decimal32 = 116;
+        public const byte Decimal64 = 132;
+        public const byte Described = 0;
+        public const byte Double = 130;
+        public const byte Float = 114;
+        public const byte Int = 113;
+        public const byte List0 = 69;
+        public const byte List32 = 208;
+        public const byte List8 = 192;
+        public const byte Long = 129;
+        public const byte Map32 = 209;
+        public const byte Map8 = 193;
+        public const byte Null = 64;
+        public const byte Short = 97;
+        public const byte SmallUint = 82;
+        public const byte SmallUlong = 83;
+        public const byte Smallint = 84;
+        public const byte Smalllong = 85;
+        public const byte Str32 = 177;
+        public const byte Str8 = 161;
+        public const byte Sym32 = 179;
+        public const byte Sym8 = 163;
+        public const byte Timestamp = 131;
+        public const byte UUID = 152;
+        public const byte Ubyte = 80;
+        public const byte Uint = 112;
+        public const byte Uint0 = 67;
+        public const byte Ulong = 128;
+        public const byte Ulong0 = 68;
+        public const byte Ushort = 96;
+        public const byte Vbin32 = 176;
+        public const byte Vbin8 = 160;
+    }
+    public class Header
+    {
+        public Header() { }
+        public uint DeliveryCount { get; }
+        public bool Durable { get; }
+        public bool FirstAcquirer { get; }
+        public byte Priority { get; }
+        public uint Ttl { get; }
+        public static RabbitMQ.Stream.Client.AMQP.Header Parse(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) { }
+    }
+    public interface IWritable
+    {
+        int Size { get; }
+        int Write(System.Span<byte> span);
+    }
+    public abstract class Map<TKey> : System.Collections.Generic.Dictionary<TKey, object>, RabbitMQ.Stream.Client.AMQP.IWritable
+        where TKey :  class
+    {
+        protected byte MapDataCode;
+        protected Map() { }
+        public int Size { get; }
+        public int Write(System.Span<byte> span) { }
+        public static T Parse<T>(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead)
+            where T : RabbitMQ.Stream.Client.AMQP.Map<TKey>, new () { }
+    }
+    public class Properties : RabbitMQ.Stream.Client.AMQP.IWritable
+    {
+        public Properties() { }
+        public System.DateTime AbsoluteExpiryTime { get; set; }
+        public string ContentEncoding { get; set; }
+        public string ContentType { get; set; }
+        public object CorrelationId { get; set; }
+        public System.DateTime CreationTime { get; set; }
+        public string GroupId { get; set; }
+        public uint GroupSequence { get; set; }
+        public object MessageId { get; set; }
+        public string ReplyTo { get; set; }
+        public string ReplyToGroupId { get; set; }
+        public int Size { get; }
+        public string Subject { get; set; }
+        public string To { get; set; }
+        public byte[] UserId { get; set; }
+        public int Write(System.Span<byte> span) { }
+        public static RabbitMQ.Stream.Client.AMQP.Properties Parse(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) { }
+    }
+}
+namespace RabbitMQ.Stream.Client
+{
+    public abstract class AbstractEntity
+    {
+        protected RabbitMQ.Stream.Client.Client client;
+        protected AbstractEntity() { }
+    }
+    public class AddressResolver
+    {
+        public AddressResolver(System.Net.IPEndPoint endPoint) { }
+        public bool Enabled { get; set; }
+        public System.Net.IPEndPoint EndPoint { get; set; }
+    }
+    public class AuthenticationFailureException : RabbitMQ.Stream.Client.ProtocolException
+    {
+        public AuthenticationFailureException(string s) { }
+    }
+    public class AuthenticationFailureLoopback : RabbitMQ.Stream.Client.ProtocolException
+    {
+        public AuthenticationFailureLoopback(string s) { }
+    }
+    public readonly struct Broker
+    {
+        public Broker(string host, uint port) { }
+        public string Host { get; }
+        public uint Port { get; }
+    }
+    public readonly struct Chunk
+    {
+        public ulong ChunkId { get; }
+        public int Crc { get; }
+        public System.Buffers.ReadOnlySequence<byte> Data { get; }
+        public ulong Epoch { get; }
+        public bool HasSubEntries { get; }
+        public byte MagicVersion { get; }
+        public ushort NumEntries { get; }
+        public uint NumRecords { get; }
+        public long Timestamp { get; }
+    }
+    public class Client : RabbitMQ.Stream.Client.IClient
+    {
+        public int ConfirmFrames { get; }
+        public System.Collections.Generic.IDictionary<string, string> ConnectionProperties { get; }
+        public int IncomingFrames { get; }
+        public bool IsClosed { get; }
+        public int MessagesSent { get; }
+        public RabbitMQ.Stream.Client.ClientParameters Parameters { get; set; }
+        public int PublishCommandsSent { get; }
+        public event RabbitMQ.Stream.Client.Client.ConnectionCloseHandler ConnectionClosed;
+        public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse> Close(string reason) { }
+        public System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.CreateResponse> CreateStream(string stream, System.Collections.Generic.IDictionary<string, string> args) { }
+        public System.Threading.Tasks.ValueTask<bool> Credit(byte subscriptionId, ushort credit) { }
+        public System.Threading.Tasks.Task<System.ValueTuple<byte, RabbitMQ.Stream.Client.DeclarePublisherResponse>> DeclarePublisher(string publisherRef, string stream, System.Action<System.ReadOnlyMemory<ulong>> confirmCallback, System.Action<System.ValueTuple<, >[]> errorCallback) { }
+        public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.DeletePublisherResponse> DeletePublisher(byte publisherId) { }
+        public System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.DeleteResponse> DeleteStream(string stream) { }
+        public System.Threading.Tasks.ValueTask<bool> Publish(RabbitMQ.Stream.Client.Publish publishMsg) { }
+        public System.Threading.Tasks.ValueTask<bool> Publish<T>(T msg)
+            where T :  struct, RabbitMQ.Stream.Client.ICommand { }
+        public System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.MetaDataResponse> QueryMetadata(string[] streams) { }
+        public System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.QueryOffsetResponse> QueryOffset(string reference, string stream) { }
+        public System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.QueryPublisherResponse> QueryPublisherSequence(string publisherRef, string stream) { }
+        public System.Threading.Tasks.ValueTask<bool> StoreOffset(string reference, string stream, ulong offsetValue) { }
+        public System.Threading.Tasks.Task<System.ValueTuple<byte, RabbitMQ.Stream.Client.SubscribeResponse>> Subscribe(string stream, RabbitMQ.Stream.Client.IOffsetType offsetType, ushort initialCredit, System.Collections.Generic.Dictionary<string, string> properties, System.Func<RabbitMQ.Stream.Client.Deliver, System.Threading.Tasks.Task> deliverHandler) { }
+        public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.UnsubscribeResponse> Unsubscribe(byte subscriptionId) { }
+        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Client> Create(RabbitMQ.Stream.Client.ClientParameters parameters) { }
+        public delegate System.Threading.Tasks.Task ConnectionCloseHandler(string reason);
+    }
+    public class ClientParameters : System.IEquatable<RabbitMQ.Stream.Client.ClientParameters>
+    {
+        public ClientParameters() { }
+        protected ClientParameters(RabbitMQ.Stream.Client.ClientParameters original) { }
+        public RabbitMQ.Stream.Client.AddressResolver AddressResolver { get; set; }
+        public System.Net.EndPoint Endpoint { get; set; }
+        protected virtual System.Type EqualityContract { get; }
+        public System.Action<RabbitMQ.Stream.Client.MetaDataUpdate> MetadataHandler { get; set; }
+        public string Password { get; set; }
+        public System.Collections.Generic.IDictionary<string, string> Properties { get; }
+        public RabbitMQ.Stream.Client.SslOption Ssl { get; set; }
+        public System.Action<System.Exception> UnhandledExceptionHandler { get; set; }
+        public string UserName { get; set; }
+        public string VirtualHost { get; set; }
+        public virtual RabbitMQ.Stream.Client.ClientParameters <Clone>$() { }
+        public virtual bool Equals(RabbitMQ.Stream.Client.ClientParameters? other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder) { }
+        public override string ToString() { }
+        public static bool operator !=(RabbitMQ.Stream.Client.ClientParameters? left, RabbitMQ.Stream.Client.ClientParameters? right) { }
+        public static bool operator ==(RabbitMQ.Stream.Client.ClientParameters? left, RabbitMQ.Stream.Client.ClientParameters? right) { }
+    }
+    public readonly struct CloseRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 22;
+        public CloseRequest(uint correlationId, string reason) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct CloseResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 22;
+        public CloseResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode) { }
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public class CodecAlreadyExistException : System.Exception
+    {
+        public CodecAlreadyExistException(string s) { }
+    }
+    public class CodecNotFoundException : System.Exception
+    {
+        public CodecNotFoundException(string s) { }
+    }
+    public static class CompressionHelper
+    {
+        public static RabbitMQ.Stream.Client.ICompressionCodec Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) { }
+        public static System.Buffers.ReadOnlySequence<byte> UnCompress(RabbitMQ.Stream.Client.CompressionType compressionType, System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) { }
+    }
+    public enum CompressionType : byte
+    {
+        None = 0,
+        Gzip = 1,
+        Snappy = 2,
+        Lz4 = 3,
+        Zstd = 4,
+    }
+    public struct Confirmation
+    {
+        public RabbitMQ.Stream.Client.ResponseCode Code { get; set; }
+        public ulong PublishingId { get; set; }
+    }
+    public class Connection : System.IDisposable
+    {
+        public void Dispose() { }
+        public System.Threading.Tasks.ValueTask<bool> Write<T>(T command)
+            where T :  struct, RabbitMQ.Stream.Client.ICommand { }
+        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection> Create(System.Net.EndPoint ipEndpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption) { }
+    }
+    public static class Consts
+    {
+        public const string ClientVersion = "1.0.0-beta.3";
+    }
+    public class Consumer : RabbitMQ.Stream.Client.AbstractEntity, System.IDisposable
+    {
+        public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode> Close() { }
+        public void Dispose() { }
+        public System.Threading.Tasks.Task StoreOffset(ulong offset) { }
+        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Consumer> Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ConsumerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) { }
+    }
+    public class ConsumerConfig : System.IEquatable<RabbitMQ.Stream.Client.ConsumerConfig>
+    {
+        public ConsumerConfig() { }
+        protected ConsumerConfig(RabbitMQ.Stream.Client.ConsumerConfig original) { }
+        public System.Func<string, System.Threading.Tasks.Task> ConnectionClosedHandler { get; set; }
+        protected virtual System.Type EqualityContract { get; }
+        public System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task> MessageHandler { get; set; }
+        public RabbitMQ.Stream.Client.IOffsetType OffsetSpec { get; set; }
+        public string Reference { get; set; }
+        public string Stream { get; set; }
+        public virtual RabbitMQ.Stream.Client.ConsumerConfig <Clone>$() { }
+        public virtual bool Equals(RabbitMQ.Stream.Client.ConsumerConfig? other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder) { }
+        public override string ToString() { }
+        public static bool operator !=(RabbitMQ.Stream.Client.ConsumerConfig? left, RabbitMQ.Stream.Client.ConsumerConfig? right) { }
+        public static bool operator ==(RabbitMQ.Stream.Client.ConsumerConfig? left, RabbitMQ.Stream.Client.ConsumerConfig? right) { }
+    }
+    public class CreateConsumerException : System.Exception
+    {
+        public CreateConsumerException(string s) { }
+    }
+    public class CreateProducerException : System.Exception
+    {
+        public CreateProducerException(string s) { }
+    }
+    public readonly struct CreateRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 13;
+        public CreateRequest(uint correlationId, string stream, System.Collections.Generic.IDictionary<string, string> arguments) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct CreateResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 13;
+        public CreateResponse(uint correlationId, ushort responseCode) { }
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public class CreateStreamException : System.Exception
+    {
+        public CreateStreamException(string s) { }
+    }
+    public readonly struct CreditRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 9;
+        public CreditRequest(byte subscriptionId, ushort credit) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct DeclarePublisherRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 1;
+        public DeclarePublisherRequest(uint correlationId, byte publisherId, string publisherRef, string stream) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct DeclarePublisherResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 1;
+        public DeclarePublisherResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode) { }
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct DeletePublisherRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 6;
+        public DeletePublisherRequest(uint correlationId, byte publisherId) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct DeletePublisherResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 6;
+        public DeletePublisherResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode) { }
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct DeleteRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 14;
+        public DeleteRequest(uint correlationId, string stream) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct DeleteResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 14;
+        public DeleteResponse(uint correlationId, ushort responseCode) { }
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public class DeleteStreamException : System.Exception
+    {
+        public DeleteStreamException(string s) { }
+    }
+    public readonly struct Deliver : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 8;
+        public RabbitMQ.Stream.Client.Chunk Chunk { get; }
+        public System.Collections.Generic.IEnumerable<RabbitMQ.Stream.Client.MsgEntry> Messages { get; }
+        public int SizeNeeded { get; }
+        public byte SubscriptionId { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public class GenericProtocolException : RabbitMQ.Stream.Client.ProtocolException
+    {
+        public GenericProtocolException(RabbitMQ.Stream.Client.ResponseCode responseCode, string s) { }
+    }
+    public class GzipCompressionCodec : RabbitMQ.Stream.Client.ICompressionCodec
+    {
+        public GzipCompressionCodec() { }
+        public int CompressedSize { get; }
+        public RabbitMQ.Stream.Client.CompressionType CompressionType { get; }
+        public int MessagesCount { get; }
+        public int UnCompressedSize { get; }
+        public void Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) { }
+        public System.Buffers.ReadOnlySequence<byte> UnCompress(System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public struct Hello { }
+    public interface IClient
+    {
+        System.Collections.Generic.IDictionary<string, string> ConnectionProperties { get; }
+        RabbitMQ.Stream.Client.ClientParameters Parameters { get; set; }
+        System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse> Close(string reason);
+    }
+    public interface ICommand
+    {
+        uint CorrelationId { get; }
+        int SizeNeeded { get; }
+        ushort Version { get; }
+        int Write(System.Span<byte> span);
+    }
+    public interface ICompressionCodec
+    {
+        int CompressedSize { get; }
+        RabbitMQ.Stream.Client.CompressionType CompressionType { get; }
+        int MessagesCount { get; }
+        int UnCompressedSize { get; }
+        void Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages);
+        System.Buffers.ReadOnlySequence<byte> UnCompress(System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize);
+        int Write(System.Span<byte> span);
+    }
+    public interface IOffsetType
+    {
+        RabbitMQ.Stream.Client.OffsetTypeEnum OffsetType { get; }
+        int Size { get; }
+        int Write(System.Span<byte> span);
+    }
+    public interface IRouting
+    {
+        bool ValidateDns { get; set; }
+        RabbitMQ.Stream.Client.IClient CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters);
+    }
+    public readonly struct LeaderLocator
+    {
+        public static RabbitMQ.Stream.Client.LeaderLocator ClientLocal { get; }
+        public static RabbitMQ.Stream.Client.LeaderLocator LeastLeaders { get; }
+        public static RabbitMQ.Stream.Client.LeaderLocator Random { get; }
+        public override string ToString() { }
+    }
+    public sealed class ManualResetValueTaskSource<T> : System.Threading.Tasks.Sources.IValueTaskSource, System.Threading.Tasks.Sources.IValueTaskSource<T>
+    {
+        public ManualResetValueTaskSource() { }
+        public bool RunContinuationsAsynchronously { get; set; }
+        public short Version { get; }
+        public void Reset() { }
+        public void SetException(System.Exception error) { }
+        public void SetResult(T result) { }
+    }
+    public class Message
+    {
+        public Message(RabbitMQ.Stream.Client.AMQP.Data data) { }
+        public Message(byte[] data) { }
+        public object AmqpValue { get; }
+        public RabbitMQ.Stream.Client.AMQP.Annotations Annotations { get; }
+        public RabbitMQ.Stream.Client.AMQP.ApplicationProperties ApplicationProperties { get; set; }
+        public RabbitMQ.Stream.Client.AMQP.Data Data { get; }
+        public RabbitMQ.Stream.Client.AMQP.Header MessageHeader { get; }
+        public RabbitMQ.Stream.Client.AMQP.Properties Properties { get; set; }
+        public int Size { get; }
+        public System.Buffers.ReadOnlySequence<byte> Serialize() { }
+        public int Write(System.Span<byte> span) { }
+        public static RabbitMQ.Stream.Client.Message From(System.Buffers.ReadOnlySequence<byte> amqpData) { }
+    }
+    public struct MessageContext
+    {
+        public MessageContext(ulong offset, System.TimeSpan timestamp) { }
+        public ulong Offset { get; }
+        public System.TimeSpan Timestamp { get; }
+    }
+    public readonly struct MetaDataQuery : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 15;
+        public MetaDataQuery(uint correlationId, System.Collections.Generic.IList<string> streams) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct MetaDataResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 15;
+        public MetaDataResponse(uint correlationId, System.Collections.Generic.IDictionary<string, RabbitMQ.Stream.Client.StreamInfo> streamInfos) { }
+        public uint CorrelationId { get; }
+        public int SizeNeeded { get; }
+        public System.Collections.Generic.IDictionary<string, RabbitMQ.Stream.Client.StreamInfo> StreamInfos { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct MetaDataUpdate : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 16;
+        public MetaDataUpdate(string stream, RabbitMQ.Stream.Client.ResponseCode code) { }
+        public RabbitMQ.Stream.Client.ResponseCode Code { get; }
+        public int SizeNeeded { get; }
+        public string Stream { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct MsgEntry
+    {
+        public MsgEntry(ulong offset, ulong epoch, System.Buffers.ReadOnlySequence<byte> data) { }
+        public System.Buffers.ReadOnlySequence<byte> Data { get; }
+        public ulong Epoch { get; }
+        public ulong Offset { get; }
+    }
+    public class NoneCompressionCodec : RabbitMQ.Stream.Client.ICompressionCodec
+    {
+        public NoneCompressionCodec() { }
+        public int CompressedSize { get; }
+        public RabbitMQ.Stream.Client.CompressionType CompressionType { get; }
+        public int MessagesCount { get; }
+        public int UnCompressedSize { get; }
+        public void Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) { }
+        public System.Buffers.ReadOnlySequence<byte> UnCompress(System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public enum OffsetTypeEnum
+    {
+        First = 1,
+        Last = 2,
+        Next = 3,
+        Offset = 4,
+        Timestamp = 5,
+    }
+    public readonly struct OffsetTypeFirst : RabbitMQ.Stream.Client.IOffsetType
+    {
+        public RabbitMQ.Stream.Client.OffsetTypeEnum OffsetType { get; }
+        public int Size { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct OffsetTypeLast : RabbitMQ.Stream.Client.IOffsetType
+    {
+        public RabbitMQ.Stream.Client.OffsetTypeEnum OffsetType { get; }
+        public int Size { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct OffsetTypeNext : RabbitMQ.Stream.Client.IOffsetType
+    {
+        public RabbitMQ.Stream.Client.OffsetTypeEnum OffsetType { get; }
+        public int Size { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct OffsetTypeOffset : RabbitMQ.Stream.Client.IOffsetType
+    {
+        public OffsetTypeOffset(ulong offset) { }
+        public RabbitMQ.Stream.Client.OffsetTypeEnum OffsetType { get; }
+        public int Size { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct OffsetTypeTimestamp : RabbitMQ.Stream.Client.IOffsetType
+    {
+        public OffsetTypeTimestamp(long timestamp) { }
+        public RabbitMQ.Stream.Client.OffsetTypeEnum OffsetType { get; }
+        public int Size { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct OpenRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 21;
+        public OpenRequest(uint correlationId, string vhost) { }
+        public int SizeNeeded { get; }
+        public void Dispose() { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct OpenResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 21;
+        public System.Collections.Generic.IDictionary<string, string> ConnectionProperties { get; }
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public class OutOfBoundsException : System.Exception
+    {
+        public OutOfBoundsException(string s) { }
+    }
+    public readonly struct OutgoingMsg : RabbitMQ.Stream.Client.ICommand
+    {
+        public OutgoingMsg(byte publisherId, ulong publishingId, RabbitMQ.Stream.Client.Message data) { }
+        public RabbitMQ.Stream.Client.Message Data { get; }
+        public byte PublisherId { get; }
+        public ulong PublishingId { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct PeerPropertiesRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 17;
+        public PeerPropertiesRequest(uint correlationId, System.Collections.Generic.IDictionary<string, string> properties) { }
+        public int SizeNeeded { get; }
+        public void Dispose() { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct PeerPropertiesResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 17;
+        public PeerPropertiesResponse(uint correlationId, System.Collections.Generic.IDictionary<string, string> properties, ushort responseCode) { }
+        public uint CorrelationId { get; }
+        public System.Collections.Generic.IDictionary<string, string> Properties { get; }
+        public ushort ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public static class PooledTaskSource<T>
+    {
+        public static RabbitMQ.Stream.Client.ManualResetValueTaskSource<T> Rent() { }
+        public static void Return(RabbitMQ.Stream.Client.ManualResetValueTaskSource<T> task) { }
+    }
+    public class Producer : RabbitMQ.Stream.Client.AbstractEntity, System.IDisposable
+    {
+        public int ConfirmFrames { get; }
+        public int IncomingFrames { get; }
+        public int MessagesSent { get; }
+        public int PendingCount { get; }
+        public int PublishCommandsSent { get; }
+        public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode> Close() { }
+        public void Dispose() { }
+        public System.Threading.Tasks.ValueTask Send(ulong publishingId, RabbitMQ.Stream.Client.Message message) { }
+        public System.Threading.Tasks.ValueTask Send(ulong publishingId, System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> subEntryMessages, RabbitMQ.Stream.Client.CompressionType compressionType) { }
+        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Producer> Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ProducerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) { }
+    }
+    public class ProducerConfig : System.IEquatable<RabbitMQ.Stream.Client.ProducerConfig>
+    {
+        public ProducerConfig() { }
+        protected ProducerConfig(RabbitMQ.Stream.Client.ProducerConfig original) { }
+        public System.Action<RabbitMQ.Stream.Client.Confirmation> ConfirmHandler { get; set; }
+        public System.Func<string, System.Threading.Tasks.Task> ConnectionClosedHandler { get; set; }
+        protected virtual System.Type EqualityContract { get; }
+        public int MaxInFlight { get; set; }
+        public string Reference { get; set; }
+        public string Stream { get; set; }
+        public virtual RabbitMQ.Stream.Client.ProducerConfig <Clone>$() { }
+        public virtual bool Equals(RabbitMQ.Stream.Client.ProducerConfig? other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder) { }
+        public override string ToString() { }
+        public static bool operator !=(RabbitMQ.Stream.Client.ProducerConfig? left, RabbitMQ.Stream.Client.ProducerConfig? right) { }
+        public static bool operator ==(RabbitMQ.Stream.Client.ProducerConfig? left, RabbitMQ.Stream.Client.ProducerConfig? right) { }
+    }
+    public class ProtocolException : System.Exception
+    {
+        protected ProtocolException(string s) { }
+    }
+    public readonly struct Publish : RabbitMQ.Stream.Client.ICommand
+    {
+        public Publish(byte publisherId, System.Collections.Generic.List<System.ValueTuple<ulong, RabbitMQ.Stream.Client.Message>> messages) { }
+        public int MessageCount { get; }
+        public int SizeNeeded { get; }
+        public byte Version { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct PublishConfirm : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 3;
+        public byte PublisherId { get; }
+        public System.ReadOnlyMemory<ulong> PublishingIds { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct PublishError : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 4;
+        public byte PublisherId { get; }
+        public System.ValueTuple<, >[] PublishingErrors { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct QueryOffsetRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 11;
+        public QueryOffsetRequest(string stream, uint corrId, string reference) { }
+        public int SizeNeeded { get; }
+        public void Dispose() { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct QueryOffsetResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 11;
+        public QueryOffsetResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode, ulong offsetValue) { }
+        public uint CorrelationId { get; }
+        public ulong Offset { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct QueryPublisherRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 5;
+        public QueryPublisherRequest(uint correlationId, string publisherRef, string stream) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct QueryPublisherResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 5;
+        public QueryPublisherResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode, ulong sequence) { }
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public ulong Sequence { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public enum ResponseCode : ushort
+    {
+        Ok = 1,
+        StreamDoesNotExist = 2,
+        SubscriptionIdAlreadyExists = 3,
+        SubscriptionIdDoesNotExist = 4,
+        StreamAlreadyExists = 5,
+        StreamNotAvailable = 6,
+        SaslMechanismNotSupported = 7,
+        AuthenticationFailure = 8,
+        SaslError = 9,
+        SaslChallenge = 10,
+        SaslAuthenticationFailureLoopback = 11,
+        VirtualHostAccessFailure = 12,
+        UnknownFrame = 13,
+        FrameTooLarge = 14,
+        InternalError = 15,
+        AccessRefused = 16,
+        PreconditionFailed = 17,
+        PublisherDoesNotExist = 18,
+    }
+    public class Routing : RabbitMQ.Stream.Client.IRouting
+    {
+        public Routing() { }
+        public bool ValidateDns { get; set; }
+        public RabbitMQ.Stream.Client.IClient CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters) { }
+    }
+    [System.Serializable]
+    public class RoutingClientException : System.Exception
+    {
+        public RoutingClientException(string message) { }
+    }
+    public static class RoutingHelper<T>
+        where T : RabbitMQ.Stream.Client.IRouting, new ()
+    {
+        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient> LookupLeaderConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo) { }
+        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient> LookupRandomConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo) { }
+    }
+    public readonly struct SaslAuthenticateRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 19;
+        public SaslAuthenticateRequest(uint correlationId, string mechanism, byte[] data) { }
+        public int SizeNeeded { get; }
+        public void Dispose() { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct SaslAuthenticateResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 19;
+        public SaslAuthenticateResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode code, byte[] data) { }
+        public uint CorrelationId { get; }
+        public byte[] Data { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct SaslHandshakeRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 18;
+        public SaslHandshakeRequest(uint correlationId) { }
+        public int SizeNeeded { get; }
+        public void Dispose() { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct SaslHandshakeResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 18;
+        public SaslHandshakeResponse(uint correlationId, System.Collections.Generic.IEnumerable<string> mechanisms) { }
+        public uint CorrelationId { get; }
+        public System.Collections.Generic.IList<string> Mechanisms { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public class SslException : System.Exception
+    {
+        public SslException(string message) { }
+    }
+    public class SslOption
+    {
+        public SslOption() { }
+        public SslOption(string serverName, string certificatePath = "", bool enabled = false) { }
+        public System.Net.Security.SslPolicyErrors AcceptablePolicyErrors { get; set; }
+        public string CertPassphrase { get; set; }
+        public string CertPath { get; set; }
+        public System.Net.Security.LocalCertificateSelectionCallback CertificateSelectionCallback { get; set; }
+        public System.Net.Security.RemoteCertificateValidationCallback CertificateValidationCallback { get; set; }
+        public System.Security.Cryptography.X509Certificates.X509CertificateCollection Certs { get; set; }
+        public bool CheckCertificateRevocation { get; set; }
+        public bool Enabled { get; set; }
+        public string ServerName { get; set; }
+        public System.Security.Authentication.SslProtocols Version { get; set; }
+    }
+    public readonly struct StoreOffsetRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 10;
+        public StoreOffsetRequest(string stream, string reference, ulong offsetValue) { }
+        public int SizeNeeded { get; }
+        public void Dispose() { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public static class StreamCompressionCodecs
+    {
+        public static RabbitMQ.Stream.Client.ICompressionCodec GetCompressionCodec(RabbitMQ.Stream.Client.CompressionType compressionType) { }
+        public static void RegisterCodec<T>(RabbitMQ.Stream.Client.CompressionType compressionType)
+            where T : RabbitMQ.Stream.Client.ICompressionCodec, new () { }
+        public static void UnRegisterCodec(RabbitMQ.Stream.Client.CompressionType compressionType) { }
+    }
+    public readonly struct StreamInfo
+    {
+        public StreamInfo(string stream, RabbitMQ.Stream.Client.ResponseCode responseCode) { }
+        public StreamInfo(string stream, RabbitMQ.Stream.Client.ResponseCode responseCode, RabbitMQ.Stream.Client.Broker leader, System.Collections.Generic.IList<RabbitMQ.Stream.Client.Broker> replicas) { }
+        public RabbitMQ.Stream.Client.Broker Leader { get; }
+        public System.Collections.Generic.IList<RabbitMQ.Stream.Client.Broker> Replicas { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public string Stream { get; }
+    }
+    public class StreamSpec : System.IEquatable<RabbitMQ.Stream.Client.StreamSpec>
+    {
+        protected StreamSpec(RabbitMQ.Stream.Client.StreamSpec original) { }
+        public StreamSpec(string name) { }
+        public System.Collections.Generic.IDictionary<string, string> Args { get; }
+        protected virtual System.Type EqualityContract { get; }
+        public RabbitMQ.Stream.Client.LeaderLocator LeaderLocator { set; }
+        public System.TimeSpan MaxAge { set; }
+        public int MaxLengthBytes { set; }
+        public string Name { get; set; }
+        public virtual RabbitMQ.Stream.Client.StreamSpec <Clone>$() { }
+        public virtual bool Equals(RabbitMQ.Stream.Client.StreamSpec? other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder) { }
+        public override string ToString() { }
+        public static bool operator !=(RabbitMQ.Stream.Client.StreamSpec? left, RabbitMQ.Stream.Client.StreamSpec? right) { }
+        public static bool operator ==(RabbitMQ.Stream.Client.StreamSpec? left, RabbitMQ.Stream.Client.StreamSpec? right) { }
+    }
+    public class StreamSystem
+    {
+        public bool IsClosed { get; }
+        public System.Threading.Tasks.Task Close() { }
+        public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Consumer> CreateConsumer(RabbitMQ.Stream.Client.ConsumerConfig consumerConfig) { }
+        public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Producer> CreateProducer(RabbitMQ.Stream.Client.ProducerConfig producerConfig) { }
+        public System.Threading.Tasks.Task CreateStream(RabbitMQ.Stream.Client.StreamSpec spec) { }
+        public System.Threading.Tasks.Task DeleteStream(string stream) { }
+        public System.Threading.Tasks.Task<ulong> QueryOffset(string reference, string stream) { }
+        public System.Threading.Tasks.Task<bool> StreamExists(string stream) { }
+        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamSystem> Create(RabbitMQ.Stream.Client.StreamSystemConfig config) { }
+    }
+    public class StreamSystemConfig : System.IEquatable<RabbitMQ.Stream.Client.StreamSystemConfig>
+    {
+        public StreamSystemConfig() { }
+        protected StreamSystemConfig(RabbitMQ.Stream.Client.StreamSystemConfig original) { }
+        public RabbitMQ.Stream.Client.AddressResolver AddressResolver { get; set; }
+        public System.Collections.Generic.IList<System.Net.EndPoint> Endpoints { get; set; }
+        protected virtual System.Type EqualityContract { get; }
+        public string Password { get; set; }
+        public RabbitMQ.Stream.Client.SslOption Ssl { get; set; }
+        public string UserName { get; set; }
+        public string VirtualHost { get; set; }
+        public virtual RabbitMQ.Stream.Client.StreamSystemConfig <Clone>$() { }
+        public virtual bool Equals(RabbitMQ.Stream.Client.StreamSystemConfig? other) { }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder) { }
+        public override string ToString() { }
+        public static bool operator !=(RabbitMQ.Stream.Client.StreamSystemConfig? left, RabbitMQ.Stream.Client.StreamSystemConfig? right) { }
+        public static bool operator ==(RabbitMQ.Stream.Client.StreamSystemConfig? left, RabbitMQ.Stream.Client.StreamSystemConfig? right) { }
+    }
+    public class StreamSystemInitialisationException : System.Exception
+    {
+        public StreamSystemInitialisationException(string error) { }
+    }
+    public readonly struct SubEntryPublish : RabbitMQ.Stream.Client.ICommand
+    {
+        public SubEntryPublish(byte publisherId, ulong publishingId, RabbitMQ.Stream.Client.ICompressionCodec compressionCodec) { }
+        public int SizeNeeded { get; }
+        public byte Version { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct SubscribeRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 7;
+        public SubscribeRequest(uint correlationId, byte subscriptionId, string stream, RabbitMQ.Stream.Client.IOffsetType offsetType, ushort credit, System.Collections.Generic.IDictionary<string, string> properties) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct SubscribeResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 7;
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct TuneRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 20;
+        public TuneRequest(uint frameMax, uint heartbeat) { }
+        public uint FrameMax { get; }
+        public uint Heartbeat { get; }
+        public int SizeNeeded { get; }
+        public void Dispose() { }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct TuneResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 20;
+        public TuneResponse(uint frameMax, uint heartbeat) { }
+        public uint FrameMax { get; }
+        public uint Heartbeat { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct UnsubscribeRequest : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 12;
+        public UnsubscribeRequest(uint correlationId, byte subscriptionId) { }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public readonly struct UnsubscribeResponse : RabbitMQ.Stream.Client.ICommand
+    {
+        public const ushort Key = 12;
+        public uint CorrelationId { get; }
+        public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
+        public int SizeNeeded { get; }
+        public int Write(System.Span<byte> span) { }
+    }
+    public class VirtualHostAccessFailureException : RabbitMQ.Stream.Client.ProtocolException
+    {
+        public VirtualHostAccessFailureException(string s) { }
+    }
+}

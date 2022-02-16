@@ -13,9 +13,6 @@ using Xunit.Sdk;
 
 namespace Tests
 {
-
-
-
     [Collection("Sequential")]
     public class ClientTests
     {
@@ -25,7 +22,6 @@ namespace Tests
         {
             this.testOutputHelper = testOutputHelper;
         }
-
         
         [Fact]
         [WaitTestBeforeAfter]
