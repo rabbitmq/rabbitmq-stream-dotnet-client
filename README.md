@@ -19,6 +19,8 @@
     - [Multi Host](#multi-host)
     - [TLS](#tls)
     - [Load Balancer](#load-balancer)
+  - [Manage Streams](#manage-streams)
+  - [Producer](#producer)
   - [Publish Messages](#publish-messages)
   - [Consume Messages](#consume-messages)
   - [Build from source](#build-from-source)
@@ -31,14 +33,13 @@ Dotnet client for [RabbitMQ Stream Queues](https://github.com/rabbitmq/rabbitmq-
 ### Installing via NuGet
 The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.Stream.Client/).
 ### Getting started
-
+A rapid getting started
 ```csharp
  var config = new StreamSystemConfig
 {
     UserName = "guest",
     Password = "guest",
-    VirtualHost = "/",
-    ClientProvidedName = "custom-locator-name"
+    VirtualHost = "/"
 };
 // Connect to the broker 
 var system = await StreamSystem.Create(config);
@@ -61,8 +62,7 @@ var producer = await system.CreateProducer(
         ConfirmHandler = conf =>
         {
             Console.WriteLine($"message: {conf.PublishingId} - confirmed");        
-        },
-        ClientProvidedName = "custom-producer-name"
+        }
     });
 
 // Publish the messages and set the publishingId that
@@ -90,8 +90,7 @@ var consumer = await system.CreateConsumer(
         {
             Console.WriteLine($"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())} - consumed");
             await Task.CompletedTask;
-        },
-        ClientProvidedName = "custom-consumer-name"
+        }
     });
 Console.WriteLine($"Press to stop");
 Console.ReadLine();
@@ -147,28 +146,57 @@ var config = new StreamSystemConfig
     Endpoints = new List<EndPoint> {addressResolver.EndPoint},
 }    
 ```
+### Manage Streams
 
-### Publish Messages
+```csharp
+await system.CreateStream(new StreamSpec(stream));
+```
 
-Standard publish:
+`system.CreateStream` is idempotent: trying to re-create a stream with the same name and same properties (e.g. maximum size) will not throw an exception. <br/>
+In other words, you can be sure the stream has been created once `system.CreateStream` returns. <br/>
+Note it is not possible to create a stream with the same name as an existing stream but with different properties. Such a request will result in an exception.
+
+It is possible to set up the retention policy when creating the stream, based on size or time:<br/>
+```csharp
+await system.CreateStream(new StreamSpec(stream)
+{
+    MaxLengthBytes = 200000,
+    MaxAge = TimeSpan.FromHours(8),
+    
+});
+```
+
+Set a policy is highly recommended. 
+
+### Producer
+A Producer instance is created from the `System`.
 ```csharp
 var producer = await system.CreateProducer(
     new ProducerConfig
     {
-        Reference = Guid.NewGuid().ToString(),
-        Stream = stream,
-        ConfirmHandler = conf =>
-        {
-         // messages confirmed    
-        },
+        Stream = "my_stream",
     });
+```
+Consider a Producer instance like a long-lived object, do not create one to send just one message.
 
+| Parameter               | Description                            | Default                        |
+|-------------------------|----------------------------------------|--------------------------------|
+| Stream                  | The stream to publish to.              | No default, mandatory setting. | 
+| Reference               | The logical name of the producer.      | null (no deduplication)        | 
+ | ClientProvidedName      | Set the TCP Client Name                | `dotnet-stream-producer`       | 
+ | ConfirmHandler          | Handler with confirmed messages        | It is an event                 |
+ | ConnectionClosedHandler | Event when the client is disconnected  | It is an event                 | 
+ | MaxInFlight             | Max Number of messages before send     | 1000                           | 
+
+### Publish Messages
+
+Standard publish: <br/>
+```csharp
     var message = new Message(Encoding.UTF8.GetBytes($"hello {i}"));
     await producer.Send(i, message);
-
 ```
 
-Sub Entries Batching:
+Sub Entries Batching:<br/>
 A sub-entry is one "slot" in a publishing frame, meaning outbound messages are not only batched in publishing frames, but in sub-entries as well. Use this feature to increase throughput at the cost of increased latency.
 
 `CompressionType.None` and `CompressionType.GZip` codecs compression are built-in.
@@ -185,7 +213,7 @@ await producer.Send(1, subEntryMessages, CompressionType.Gzip);
 messages.Clear();
 ```
 
-Note:
+Note:<br/>
 `CompressionType.Lz4`,`CompressionType.Snappy`,`CompressionType.Zstd`
 are not provided by default.<br>
 See the section: "Implement a Custom Compression Codec" for more details.
