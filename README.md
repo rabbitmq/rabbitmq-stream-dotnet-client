@@ -11,29 +11,35 @@
 
 
 ---
+
 - [Overview](#overview)
 - [Installing via NuGet](#installing-via-nuget)
 - [Getting started](#getting-started)
-  - [Usage](#usage)
-    - [Connect](#connect)
-    - [Multi Host](#multi-host)
-    - [TLS](#tls)
-    - [Load Balancer](#load-balancer)
-  - [Manage Streams](#manage-streams)
-  - [Producer](#producer)
-  - [Publish Messages](#publish-messages)
-  - [Consume Messages](#consume-messages)
-  - [Build from source](#build-from-source)
-  - [Project Status](#project-status)
+    - [Usage](#usage)
+        - [Connect](#connect)
+        - [Multi Host](#multi-host)
+        - [TLS](#tls)
+        - [Load Balancer](#load-balancer)
+    - [Manage Streams](#manage-streams)
+    - [Producer](#producer)
+    - [Publish Messages](#publish-messages)
+    - [Deduplication](#Deduplication)
+    - [Consume Messages](#consume-messages)
+    - [Build from source](#build-from-source)
+    - [Project Status](#project-status)
 
 ### Overview
 
-Dotnet client for [RabbitMQ Stream Queues](https://github.com/rabbitmq/rabbitmq-server/tree/master/deps/rabbitmq_stream)
+Dotnet client for [RabbitMQ Stream Queues](https://www.rabbitmq.com/stream.html)
 
 ### Installing via NuGet
+
 The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.Stream.Client/).
+
 ### Getting started
+
 A rapid getting started
+
 ```csharp
  var config = new StreamSystemConfig
 {
@@ -118,9 +124,11 @@ var config = new StreamSystemConfig
 ```
 
 ### Multi Host
+
 // TODO
 
 ### Tls
+
 ```csharp
 var config = new StreamSystemConfig
 {
@@ -134,6 +142,7 @@ var config = new StreamSystemConfig
 ```
 
 ### Load Balancer
+
 ```csharp
 
 var lbAddressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("<<loadBalancerIP>>"), 5552));
@@ -146,30 +155,35 @@ var config = new StreamSystemConfig
     Endpoints = new List<EndPoint> {addressResolver.EndPoint},
 }    
 ```
+
 ### Manage Streams
 
 ```csharp
 await system.CreateStream(new StreamSpec(stream));
 ```
 
-`system.CreateStream` is idempotent: trying to re-create a stream with the same name and same properties (e.g. maximum size) will not throw an exception. <br/>
+`system.CreateStream` is idempotent: trying to re-create a stream with the same name and same properties (e.g. maximum
+size) will not throw an exception. <br/>
 In other words, you can be sure the stream has been created once `system.CreateStream` returns. <br/>
-Note it is not possible to create a stream with the same name as an existing stream but with different properties. Such a request will result in an exception.
+Note it is not possible to create a stream with the same name as an existing stream but with different properties. Such
+a request will result in an exception.
 
 It is possible to set up the retention policy when creating the stream, based on size or time:<br/>
+
 ```csharp
 await system.CreateStream(new StreamSpec(stream)
 {
     MaxLengthBytes = 200000,
     MaxAge = TimeSpan.FromHours(8),
-    
 });
 ```
 
-Set a policy is highly recommended. 
+Set a policy is highly recommended.
 
 ### Producer
+
 A Producer instance is created from the `System`.
+
 ```csharp
 var producer = await system.CreateProducer(
     new ProducerConfig
@@ -177,29 +191,33 @@ var producer = await system.CreateProducer(
         Stream = "my_stream",
     });
 ```
+
 Consider a Producer instance like a long-lived object, do not create one to send just one message.
 
 | Parameter               | Description                            | Default                        |
 |-------------------------|----------------------------------------|--------------------------------|
 | Stream                  | The stream to publish to.              | No default, mandatory setting. | 
 | Reference               | The logical name of the producer.      | null (no deduplication)        | 
- | ClientProvidedName      | Set the TCP Client Name                | `dotnet-stream-producer`       | 
- | ConfirmHandler          | Handler with confirmed messages        | It is an event                 |
- | ConnectionClosedHandler | Event when the client is disconnected  | It is an event                 | 
- | MaxInFlight             | Max Number of messages before send     | 1000                           | 
+| ClientProvidedName      | Set the TCP Client Name                | `dotnet-stream-producer`       | 
+| ConfirmHandler          | Handler with confirmed messages        | It is an event                 |
+| ConnectionClosedHandler | Event when the client is disconnected  | It is an event                 | 
+| MaxInFlight             | Max Number of messages before send     | 1000                           | 
 
 ### Publish Messages
 
-Standard publish: <br/>
+#### Standard publish
+
 ```csharp
-    var message = new Message(Encoding.UTF8.GetBytes($"hello {i}"));
-    await producer.Send(i, message);
+    var publishingId = 0;
+    var message = new Message(Encoding.UTF8.GetBytes("hello"));
+    await producer.Send(publishingId, message);
 ```
 
-Sub Entries Batching:<br/>
-A sub-entry is one "slot" in a publishing frame, meaning outbound messages are not only batched in publishing frames, but in sub-entries as well. Use this feature to increase throughput at the cost of increased latency.
+`publishingId` must be incremented for each send.
 
-`CompressionType.None` and `CompressionType.GZip` codecs compression are built-in.
+#### Sub Entries Batching
+A sub-entry is one "slot" in a publishing frame, meaning outbound messages are not only batched in publishing frames,
+but in sub-entries as well. Use this feature to increase throughput at the cost of increased latency.
 
 ```csharp
 var subEntryMessages = List<Messages>();
@@ -208,23 +226,49 @@ for (var i = 1; i <= 500; i++)
     var message = new Message(Encoding.UTF8.GetBytes($"SubBatchMessage_{i}"));
     subEntryMessages.Add(message);
 }
-
-await producer.Send(1, subEntryMessages, CompressionType.Gzip);
+var publishingId = 1; 
+await producer.Send(publishingId, subEntryMessages, CompressionType.Gzip);
 messages.Clear();
 ```
 
-Note:<br/>
-`CompressionType.Lz4`,`CompressionType.Snappy`,`CompressionType.Zstd`
-are not provided by default.<br>
+| Compression            | Description    | Provided by client |
+|------------------------|----------------|--------------------|
+| CompressionType.None   | No compression | yes                |
+| CompressionType.GZip   | GZip           | yes                |
+| CompressionType.Lz4    | Lz4            | No                 |
+| CompressionType.Snappy | Snappy         | No                 |
+| CompressionType.Zstd   | Zstd           | No                 |
+
 See the section: "Implement a Custom Compression Codec" for more details.
 
+### Deduplication
+[See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
+Set a producer reference to enable the deduplication:
+
+```csharp
+var producer = await system.CreateProducer(
+    new ProducerConfig
+    {
+        Reference = "my_producer",
+        Stream = "my_stream",
+    });
+```
+Then:
+```
+var publishingId = 0;
+var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
+await producer.Send(publishingId, message);
+```
 
 ### Consume Messages
+
 // TODO
 
 ### Build from source
+
 // TODO
 
 ### Project Status
+
 The client is work in progress. The API(s) could change
 
