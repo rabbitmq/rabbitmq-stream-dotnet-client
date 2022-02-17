@@ -183,7 +183,7 @@ namespace RabbitMQ.Stream.Client
         public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse> Close(string reason) { }
         public System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.CreateResponse> CreateStream(string stream, System.Collections.Generic.IDictionary<string, string> args) { }
         public System.Threading.Tasks.ValueTask<bool> Credit(byte subscriptionId, ushort credit) { }
-        public System.Threading.Tasks.Task<System.ValueTuple<byte, RabbitMQ.Stream.Client.DeclarePublisherResponse>> DeclarePublisher(string publisherRef, string stream, System.Action<System.ReadOnlyMemory<ulong>> confirmCallback, System.Action<System.ValueTuple<, >[]> errorCallback) { }
+        public System.Threading.Tasks.Task<System.ValueTuple<byte, RabbitMQ.Stream.Client.DeclarePublisherResponse>> DeclarePublisher(string publisherRef, string stream, System.Action<System.ReadOnlyMemory<ulong>> confirmCallback, System.Action<System.ValueTuple<ulong, RabbitMQ.Stream.Client.ResponseCode>[]> errorCallback) { }
         public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.DeletePublisherResponse> DeletePublisher(byte publisherId) { }
         public System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.DeleteResponse> DeleteStream(string stream) { }
         public System.Threading.Tasks.ValueTask<bool> Publish(RabbitMQ.Stream.Client.Publish publishMsg) { }
@@ -203,6 +203,7 @@ namespace RabbitMQ.Stream.Client
         public ClientParameters() { }
         protected ClientParameters(RabbitMQ.Stream.Client.ClientParameters original) { }
         public RabbitMQ.Stream.Client.AddressResolver AddressResolver { get; set; }
+        public string ClientProvidedName { get; set; }
         public System.Net.EndPoint Endpoint { get; set; }
         protected virtual System.Type EqualityContract { get; }
         public System.Action<RabbitMQ.Stream.Client.MetaDataUpdate> MetadataHandler { get; set; }
@@ -272,7 +273,7 @@ namespace RabbitMQ.Stream.Client
     }
     public static class Consts
     {
-        public const string ClientVersion = "1.0.0-beta.3";
+        public const string ClientVersion = "1.0.0-beta.4";
     }
     public class Consumer : RabbitMQ.Stream.Client.AbstractEntity, System.IDisposable
     {
@@ -281,10 +282,11 @@ namespace RabbitMQ.Stream.Client
         public System.Threading.Tasks.Task StoreOffset(ulong offset) { }
         public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Consumer> Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ConsumerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) { }
     }
-    public class ConsumerConfig : System.IEquatable<RabbitMQ.Stream.Client.ConsumerConfig>
+    public class ConsumerConfig : RabbitMQ.Stream.Client.INamedEntity, System.IEquatable<RabbitMQ.Stream.Client.ConsumerConfig>
     {
         public ConsumerConfig() { }
         protected ConsumerConfig(RabbitMQ.Stream.Client.ConsumerConfig original) { }
+        public string ClientProvidedName { get; set; }
         public System.Func<string, System.Threading.Tasks.Task> ConnectionClosedHandler { get; set; }
         protected virtual System.Type EqualityContract { get; }
         public System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task> MessageHandler { get; set; }
@@ -435,6 +437,10 @@ namespace RabbitMQ.Stream.Client
         System.Buffers.ReadOnlySequence<byte> UnCompress(System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize);
         int Write(System.Span<byte> span);
     }
+    public interface INamedEntity
+    {
+        string ClientProvidedName { get; set; }
+    }
     public interface IOffsetType
     {
         RabbitMQ.Stream.Client.OffsetTypeEnum OffsetType { get; }
@@ -525,6 +531,10 @@ namespace RabbitMQ.Stream.Client
         public void Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) { }
         public System.Buffers.ReadOnlySequence<byte> UnCompress(System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) { }
         public int Write(System.Span<byte> span) { }
+    }
+    public class OffsetNotFoundException : RabbitMQ.Stream.Client.ProtocolException
+    {
+        public OffsetNotFoundException(string s) { }
     }
     public enum OffsetTypeEnum
     {
@@ -632,10 +642,11 @@ namespace RabbitMQ.Stream.Client
         public System.Threading.Tasks.ValueTask Send(ulong publishingId, System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> subEntryMessages, RabbitMQ.Stream.Client.CompressionType compressionType) { }
         public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Producer> Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ProducerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) { }
     }
-    public class ProducerConfig : System.IEquatable<RabbitMQ.Stream.Client.ProducerConfig>
+    public class ProducerConfig : RabbitMQ.Stream.Client.INamedEntity, System.IEquatable<RabbitMQ.Stream.Client.ProducerConfig>
     {
         public ProducerConfig() { }
         protected ProducerConfig(RabbitMQ.Stream.Client.ProducerConfig original) { }
+        public string ClientProvidedName { get; set; }
         public System.Action<RabbitMQ.Stream.Client.Confirmation> ConfirmHandler { get; set; }
         public System.Func<string, System.Threading.Tasks.Task> ConnectionClosedHandler { get; set; }
         protected virtual System.Type EqualityContract { get; }
@@ -675,7 +686,7 @@ namespace RabbitMQ.Stream.Client
     {
         public const ushort Key = 4;
         public byte PublisherId { get; }
-        public System.ValueTuple<, >[] PublishingErrors { get; }
+        public System.ValueTuple<ulong, RabbitMQ.Stream.Client.ResponseCode>[] PublishingErrors { get; }
         public int SizeNeeded { get; }
         public int Write(System.Span<byte> span) { }
     }
@@ -734,6 +745,7 @@ namespace RabbitMQ.Stream.Client
         AccessRefused = 16,
         PreconditionFailed = 17,
         PublisherDoesNotExist = 18,
+        OffsetNotFound = 19,
     }
     public class Routing : RabbitMQ.Stream.Client.IRouting
     {
@@ -861,11 +873,12 @@ namespace RabbitMQ.Stream.Client
         public System.Threading.Tasks.Task<bool> StreamExists(string stream) { }
         public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamSystem> Create(RabbitMQ.Stream.Client.StreamSystemConfig config) { }
     }
-    public class StreamSystemConfig : System.IEquatable<RabbitMQ.Stream.Client.StreamSystemConfig>
+    public class StreamSystemConfig : RabbitMQ.Stream.Client.INamedEntity, System.IEquatable<RabbitMQ.Stream.Client.StreamSystemConfig>
     {
         public StreamSystemConfig() { }
         protected StreamSystemConfig(RabbitMQ.Stream.Client.StreamSystemConfig original) { }
         public RabbitMQ.Stream.Client.AddressResolver AddressResolver { get; set; }
+        public string ClientProvidedName { get; set; }
         public System.Collections.Generic.IList<System.Net.EndPoint> Endpoints { get; set; }
         protected virtual System.Type EqualityContract { get; }
         public string Password { get; set; }

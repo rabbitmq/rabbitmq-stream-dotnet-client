@@ -104,6 +104,8 @@ namespace RabbitMQ.Stream.Client
 
     public class Client : IClient
     {
+        private readonly TimeSpan defaultTimeout = TimeSpan.FromSeconds(10);
+
         private uint correlationId = 0; // allow for some pre-amble
 
         private byte nextPublisherId = 0;
@@ -278,14 +280,14 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
 
-        private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, int timeout = 10000)
+        private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
             where TIn : struct, ICommand where TOut : struct, ICommand
         {
             var corr = NextCorrelationId();
             var tcs = PooledTaskSource<TOut>.Rent();
             requests.TryAdd(corr, tcs);
             await Publish(request(corr));
-            using CancellationTokenSource cts = new CancellationTokenSource(timeout);
+            using CancellationTokenSource cts = new CancellationTokenSource(timeout ?? defaultTimeout);
             await using (cts.Token.Register(
                              valueTaskSource =>
                                  ((ManualResetValueTaskSource<TOut>) valueTaskSource).SetException(
@@ -450,7 +452,8 @@ namespace RabbitMQ.Stream.Client
                 return (CloseResponse) closeResponse;
             }
 
-            var result = await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason));
+            // TODO LRB timeout
+            var result = await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason), TimeSpan.FromSeconds(30));
             closeResponse = result;
 
             try
