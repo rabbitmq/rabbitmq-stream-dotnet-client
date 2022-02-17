@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -18,13 +17,14 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public record ConsumerConfig
+    public record ConsumerConfig : INamedEntity
     {
         public string Stream { get; set; }
         public string Reference { get; set; }
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
+        public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
     }
 
     public class Consumer : AbstractEntity, IDisposable

@@ -37,6 +37,8 @@ namespace RabbitMQ.Stream.Client
     // }
     public record ClientParameters
     {
+        private string _clientProvidedName;
+
         public IDictionary<string, string> Properties { get; } =
             new Dictionary<string, string>
             {
@@ -44,7 +46,8 @@ namespace RabbitMQ.Stream.Client
                 {"version", Consts.ClientVersion},
                 {"platform", ".NET"},
                 {"copyright", "Copyright (c) 2020-2021 VMware, Inc. or its affiliates."},
-                {"information", "Licensed under the MPL 2.0. See https://www.rabbitmq.com/"}
+                {"information", "Licensed under the MPL 2.0. See https://www.rabbitmq.com/"},
+                {"connection_name", "Unknown"}
             };
 
         public string UserName { get; set; } = "guest";
@@ -53,6 +56,17 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
+        public string ClientProvidedName
+        {
+            get
+            {
+                return _clientProvidedName ??= Properties["connection_name"];
+            }
+            set
+            {
+                _clientProvidedName = Properties["connection_name"] = value;
+            }
+        }
 
         /// <summary>
         /// TLS options setting.

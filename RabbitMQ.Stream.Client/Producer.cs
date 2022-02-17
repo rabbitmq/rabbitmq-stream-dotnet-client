@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -16,7 +13,7 @@ namespace RabbitMQ.Stream.Client
         public ResponseCode Code { get; set; }
     }
 
-    public record ProducerConfig
+    public record ProducerConfig : INamedEntity
     {
         public string Stream { get; set; }
         public string Reference { get; set; }
@@ -24,6 +21,8 @@ namespace RabbitMQ.Stream.Client
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
 
         public Func<string, Task> ConnectionClosedHandler { get; set; }
+
+        public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
     }
 
     public class Producer : AbstractEntity, IDisposable

@@ -1,14 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
 using System.Net;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
-    public record StreamSystemConfig
+    public record StreamSystemConfig : INamedEntity
     {
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
@@ -19,9 +16,10 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
-        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
+        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
 
         public AddressResolver AddressResolver { get; set; } = null;
+        public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
     }
 
     public class StreamSystem
@@ -47,7 +45,8 @@ namespace RabbitMQ.Stream.Client
                 Password = config.Password,
                 VirtualHost = config.VirtualHost,
                 Ssl = config.Ssl,
-                AddressResolver = config.AddressResolver
+                AddressResolver = config.AddressResolver,
+                ClientProvidedName = config.ClientProvidedName
             };
             // create the metadata client connection
             foreach (var endPoint in config.Endpoints)
@@ -79,14 +78,14 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
         {
-            var meta = await client.QueryMetadata(new[] {producerConfig.Stream});
+            var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
             var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Producer.Create(clientParameters, producerConfig, metaStreamInfo);
+            return await Producer.Create(clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName }, producerConfig, metaStreamInfo);
         }
 
         public async Task CreateStream(StreamSpec spec)
@@ -124,14 +123,14 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
-            var meta = await client.QueryMetadata(new[] {consumerConfig.Stream});
+            var meta = await client.QueryMetadata(new[] { consumerConfig.Stream });
             var metaStreamInfo = meta.StreamInfos[consumerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Consumer.Create(clientParameters, consumerConfig, metaStreamInfo);
+            return await Consumer.Create(clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName }, consumerConfig, metaStreamInfo);
         }
     }
 

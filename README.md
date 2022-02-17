@@ -37,7 +37,8 @@ The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.St
 {
     UserName = "guest",
     Password = "guest",
-    VirtualHost = "/"
+    VirtualHost = "/",
+    ClientProvidedName = "custom-locator-name"
 };
 // Connect to the broker 
 var system = await StreamSystem.Create(config);
@@ -61,6 +62,7 @@ var producer = await system.CreateProducer(
         {
             Console.WriteLine($"message: {conf.PublishingId} - confirmed");        
         },
+        ClientProvidedName = "custom-producer-name"
     });
 
 // Publish the messages and set the publishingId that
@@ -88,7 +90,8 @@ var consumer = await system.CreateConsumer(
         {
             Console.WriteLine($"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())} - consumed");
             await Task.CompletedTask;
-        }
+        },
+        ClientProvidedName = "custom-consumer-name"
     });
 Console.WriteLine($"Press to stop");
 Console.ReadLine();
