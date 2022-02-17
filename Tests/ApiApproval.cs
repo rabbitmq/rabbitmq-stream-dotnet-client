@@ -29,6 +29,7 @@
 //  Copyright (c) 2007-2020 VMware, Inc.  All rights reserved.
 //---------------------------------------------------------------------------
 
+using System;
 using System.Threading.Tasks;
 
 using RabbitMQ.Stream.Client;
@@ -43,9 +44,11 @@ namespace Tests
     [UsesVerify]
     public class ApiApproval
     {
-        [Fact(Skip="Fails on Linux")]
+        [SkippableFact]
         public Task Approve()
         {
+            Skip.IfNot(OperatingSystem.IsWindows());
+
             string publicApi = typeof(Client).Assembly.GeneratePublicApi(new ApiGeneratorOptions
             {
                 ExcludeAttributes = new[]
