@@ -109,7 +109,8 @@ namespace RabbitMQ.Stream.Client
         public async Task<ulong> QueryOffset(string reference, string stream)
         {
             var response = await client.QueryOffset(reference, stream);
-            ClientExceptions.MaybeThrowException(response.ResponseCode, "fail to query offset");
+            ClientExceptions.MaybeThrowException(response.ResponseCode,
+                $"stream: {stream}, reference: {reference}");
             return response.Offset;
         }
 

@@ -62,7 +62,7 @@ namespace Tests
     {
         public static void Wait()
         {
-            Thread.Sleep(500);
+            Thread.Sleep(300);
         }
 
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,

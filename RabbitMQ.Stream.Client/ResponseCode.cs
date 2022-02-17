@@ -21,7 +21,8 @@ namespace RabbitMQ.Stream.Client
         InternalError = 15,
         AccessRefused = 16,
         PreconditionFailed = 17,
-        PublisherDoesNotExist = 18
+        PublisherDoesNotExist = 18,
+        OffsetNotFound = 19,
     }
     
 
