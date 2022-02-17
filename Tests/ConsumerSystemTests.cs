@@ -446,22 +446,30 @@ namespace Tests
             const int numberOfMessagesToStore = 4;
             await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
             var count = 0;
+            const string reference = "consumer_offset";
             var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
-                    Reference = "consumer_offset",
+                    Reference = reference,
                     Stream = stream,
                     OffsetSpec = new OffsetTypeOffset(),
-                    
+
                     MessageHandler = async (consumer, ctx, message) =>
                     {
                         testOutputHelper.WriteLine($"ConsumerStoreOffset receiving.. {count}");
                         count++;
                         if (count == numberOfMessagesToStore)
                         {
+                            // store the the offset after numberOfMessagesToStore messages
+                            // so when we query the offset we should (must) have the same
+                            // values
                             await consumer.StoreOffset(ctx.Offset);
                             testOutputHelper.WriteLine($"ConsumerStoreOffset done: {count}");
-                            testPassed.SetResult(numberOfMessagesToStore);
+                        }
+
+                        if (count == numberOfMessages)
+                        {
+                            testPassed.SetResult(numberOfMessages);
                         }
 
                         await Task.CompletedTask;
@@ -470,8 +478,18 @@ namespace Tests
 
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            // index 0
-            Assert.Equal((ulong) (numberOfMessagesToStore - 1), await system.QueryOffset("consumer_offset", stream));
+
+            // it may need some time to store the offset
+            SystemUtils.Wait();
+            // numberOfMessagesToStore index 0
+            Assert.Equal((ulong) (numberOfMessagesToStore - 1),
+                await system.QueryOffset(reference, stream));
+
+            // this has to raise OffsetNotFoundException in case the offset 
+            // does not exist like in this case.
+            await Assert.ThrowsAsync<OffsetNotFoundException>(() =>
+                system.QueryOffset("reference_does_not_exist", stream));
+           
             await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();

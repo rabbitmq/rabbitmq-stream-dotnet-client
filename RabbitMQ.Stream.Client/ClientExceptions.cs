@@ -13,6 +13,7 @@ namespace RabbitMQ.Stream.Client
                     ResponseCode.VirtualHostAccessFailure => new VirtualHostAccessFailureException(message),
                     ResponseCode.SaslAuthenticationFailureLoopback => new AuthenticationFailureLoopback(message),
                     ResponseCode.AuthenticationFailure => new AuthenticationFailureException(message),
+                    ResponseCode.OffsetNotFound => new OffsetNotFoundException(message),
                     //TODO Implement for all the response code
                     _ => new GenericProtocolException(responseCode, message)
                 };
@@ -43,7 +44,7 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
-    
+
     public class AuthenticationFailureLoopback : ProtocolException
     {
         public AuthenticationFailureLoopback(string s) :
@@ -51,10 +52,19 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
-    
+
     public class VirtualHostAccessFailureException : ProtocolException
     {
         public VirtualHostAccessFailureException(string s) :
+            base(s)
+        {
+        }
+    }
+
+
+    public class OffsetNotFoundException : ProtocolException
+    {
+        public OffsetNotFoundException(string s) :
             base(s)
         {
         }
