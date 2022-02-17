@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 
@@ -23,7 +27,7 @@ namespace RabbitMQ.Stream.Client
         public int Write(Span<byte> span)
         {
             var command = (ICommand)this;
-            int offset = WireFormatting.WriteUInt16(span, Key);
+            var offset = WireFormatting.WriteUInt16(span, Key);
             offset += WireFormatting.WriteUInt16(span.Slice(offset), command.Version);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), frameMax);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), heartbeat);
@@ -32,12 +36,10 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out TuneResponse command)
         {
-            ushort tag;
-            ushort version;
             uint frameMax;
             uint heartbeat;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
+            var offset = WireFormatting.ReadUInt16(frame, out _);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out frameMax);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out heartbeat);
             command = new TuneResponse(frameMax, heartbeat);

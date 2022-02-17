@@ -43,6 +43,8 @@ jobs:
         run: dotnet restore --verbosity=normal
       - name: Build
         run: dotnet build --no-restore --verbosity=normal
+      - name: Verify
+        run: dotnet format --no-restore --verbosity=diagnostic --verify-no-changes
       - name: Test
         run: dotnet test --no-build --logger "console;verbosity=detailed"
 
@@ -85,6 +87,8 @@ jobs:
         run: dotnet restore --verbosity=normal
       - name: Build
         run: dotnet build --no-restore --verbosity=normal
+      - name: Verify
+        run: dotnet format --no-restore --verbosity=diagnostic --verify-no-changes
       - name: Test
         run: dotnet test --no-build --logger "console;verbosity=detailed" /p:AltCover=true
       - name: Upload code coverage to Codecov

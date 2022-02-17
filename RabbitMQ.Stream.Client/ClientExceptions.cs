@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 
 namespace RabbitMQ.Stream.Client
@@ -23,49 +27,48 @@ namespace RabbitMQ.Stream.Client
 
     public class ProtocolException : Exception
     {
-        protected ProtocolException(string s) :
-            base(s)
+        protected ProtocolException(string s)
+            : base(s)
         {
         }
     }
 
     public class GenericProtocolException : ProtocolException
     {
-        public GenericProtocolException(ResponseCode responseCode, string s) :
-            base($"response code: {responseCode} - {s}")
+        public GenericProtocolException(ResponseCode responseCode, string s)
+            : base($"response code: {responseCode} - {s}")
         {
         }
     }
 
     public class AuthenticationFailureException : ProtocolException
     {
-        public AuthenticationFailureException(string s) :
-            base(s)
+        public AuthenticationFailureException(string s)
+            : base(s)
         {
         }
     }
 
     public class AuthenticationFailureLoopback : ProtocolException
     {
-        public AuthenticationFailureLoopback(string s) :
-            base(s)
+        public AuthenticationFailureLoopback(string s)
+            : base(s)
         {
         }
     }
 
     public class VirtualHostAccessFailureException : ProtocolException
     {
-        public VirtualHostAccessFailureException(string s) :
-            base(s)
+        public VirtualHostAccessFailureException(string s)
+            : base(s)
         {
         }
     }
 
-
     public class OffsetNotFoundException : ProtocolException
     {
-        public OffsetNotFoundException(string s) :
-            base(s)
+        public OffsetNotFoundException(string s)
+            : base(s)
         {
         }
     }

@@ -1,7 +1,9 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
-using System.Buffers;
 using System.Collections.Generic;
-using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,9 +48,7 @@ namespace Tests
             var message = new Message(new Data(readonlySequence));
             await producer.Send(1, message);
 
-
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
 
             Assert.True(testPassed.Task.Result);
             producer.Dispose();
@@ -96,7 +96,6 @@ namespace Tests
             await system.Close();
         }
 
-
         [Fact]
         [WaitTestBeforeAfter]
         public async void NotifyProducerClose()
@@ -119,13 +118,11 @@ namespace Tests
                     }
                 });
 
-
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await system.DeleteStream(stream);
             await system.Close();
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -156,7 +153,6 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -210,7 +206,7 @@ namespace Tests
             Thread.Sleep(500);
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            Assert.Equal((ulong) 52, count);
+            Assert.Equal((ulong)52, count);
             await system.DeleteStream(stream);
             await system.Close();
         }

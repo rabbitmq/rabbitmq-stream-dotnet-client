@@ -1,6 +1,9 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
-using System.Text;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -22,15 +25,15 @@ namespace RabbitMQ.Stream.Client
 
         public int Write(Span<byte> span)
         {
-            int offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand) this).Version);
+            var offset = WireFormatting.WriteUInt16(span, Key);
+            offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand)this).Version);
             offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
             offset += WireFormatting.WriteString(span.Slice(offset), mechanism);
             offset += WireFormatting.WriteBytes(span.Slice(offset), new ReadOnlySequence<byte>(data));
             return offset;
         }
 
-        public void Dispose()
+        public static void Dispose()
         {
         }
     }

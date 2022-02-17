@@ -1,6 +1,9 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
@@ -15,10 +18,9 @@ namespace RabbitMQ.Stream.Client
         {
         }
 
-
         public Message(Data data)
         {
-            this.Data = data;
+            Data = data;
         }
 
         public Annotations Annotations { get; internal set; }
@@ -34,7 +36,6 @@ namespace RabbitMQ.Stream.Client
         // In this specific case it is not needed
         public Header MessageHeader { get; internal set; }
         public object AmqpValue { get; internal set; }
-
 
         public int Size => Data.Size +
                            (Properties?.Size ?? 0) +

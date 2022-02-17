@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -26,7 +30,6 @@ namespace RabbitMQ.Stream.Client.AMQP
             byteRead += offset;
             return amqpMap;
         }
-
 
         private int MapSize()
         {
@@ -70,8 +73,8 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             var offset = DescribedFormatCode.Write(span, MapDataCode);
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Map32);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) MapSize()); // MapSize 
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) this.Count * 2); // pair values
+            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)MapSize()); // MapSize 
+            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)Count * 2); // pair values
             foreach (var (key, value) in this)
             {
                 if (!IsNullOrEmptyString(key))

@@ -1,14 +1,15 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Security;
 using System.Text;
-using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
-using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Tests
 {
@@ -55,7 +56,7 @@ namespace Tests
                 async () => { await StreamSystem.Create(config); }
             );
         }
-        
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateSslExceptionThrowsWhenEndPointIsNotSsl()
@@ -66,8 +67,8 @@ namespace Tests
                 Ssl = new SslOption()
                 {
                     Enabled = true,
-                    AcceptablePolicyErrors = SslPolicyErrors.RemoteCertificateNotAvailable | 
-                                             SslPolicyErrors.RemoteCertificateChainErrors | 
+                    AcceptablePolicyErrors = SslPolicyErrors.RemoteCertificateNotAvailable |
+                                             SslPolicyErrors.RemoteCertificateChainErrors |
                                              SslPolicyErrors.RemoteCertificateNameMismatch
                 },
             };
@@ -94,7 +95,7 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-        
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
@@ -104,11 +105,10 @@ namespace Tests
                 VirtualHost = "DOES_NOT_EXIST"
             };
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
-                async () => {  await StreamSystem.Create(config); }
+                async () => { await StreamSystem.Create(config); }
             );
         }
-        
-        
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenAuthenticationAccess()
@@ -118,10 +118,10 @@ namespace Tests
                 UserName = "user_does_not_exist"
             };
             await Assert.ThrowsAsync<AuthenticationFailureException>(
-                async () => {  await StreamSystem.Create(config); }
+                async () => { await StreamSystem.Create(config); }
             );
         }
-        
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateExistStreamIdempotentShouldNoRaiseExceptions()
@@ -141,8 +141,7 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-        
-        
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateExistStreamPreconditionFailShouldRaiseExceptions()
@@ -168,6 +167,5 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-
     }
 }

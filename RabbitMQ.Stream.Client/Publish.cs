@@ -1,5 +1,8 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
@@ -7,7 +10,7 @@ namespace RabbitMQ.Stream.Client
     public readonly struct Publish : ICommand
     {
         private const ushort Key = 2;
-        public byte Version => 1;
+        public static byte Version => 1;
 
         public int SizeNeeded
         {
@@ -31,7 +34,7 @@ namespace RabbitMQ.Stream.Client
         {
             this.publisherId = publisherId;
             this.messages = messages;
-            this.MessageCount = messages.Count;
+            MessageCount = messages.Count;
         }
 
         public int Write(Span<byte> span)
@@ -46,7 +49,7 @@ namespace RabbitMQ.Stream.Client
                 offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
                 // this only write "simple" messages, we assume msg is just the binary body
                 // not stream encoded data
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)msg.Size);
                 offset += msg.Write(span.Slice(offset));
             }
 

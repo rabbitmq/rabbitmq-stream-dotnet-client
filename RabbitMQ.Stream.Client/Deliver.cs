@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -47,7 +51,7 @@ namespace RabbitMQ.Stream.Client
                                 out var len);
                             var entry = new MsgEntry(chunk.ChunkId + z, chunk.Epoch,
                                 unCompressedData.Slice(offsetSub, len));
-                            offsetSub += (int) len;
+                            offsetSub += (int)len;
                             yield return entry;
                         }
 
@@ -62,7 +66,7 @@ namespace RabbitMQ.Stream.Client
                         offset += WireFormatting.ReadUInt32(data.Slice(offset), out var len);
                         //TODO: assuming only simple entries for now
                         var entry = new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
-                        offset += (int) len;
+                        offset += (int)len;
                         yield return entry;
                     }
                 }
@@ -80,8 +84,8 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out Deliver command)
         {
-            var offset = WireFormatting.ReadUInt16(frame, out var tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            var offset = WireFormatting.ReadUInt16(frame, out _);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             offset += WireFormatting.ReadByte(frame.Slice(offset), out var subscriptionId);
             offset += Chunk.Read(frame.Slice(offset), out var chunk);
             command = new Deliver(subscriptionId, chunk);
@@ -105,7 +109,7 @@ namespace RabbitMQ.Stream.Client
             Data = data;
         }
 
-        public CompressionType CompressionType => (CompressionType) compressValue;
+        public CompressionType CompressionType => (CompressionType)compressValue;
 
         public ushort NumRecordsInBatch { get; }
 
@@ -123,15 +127,14 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var dataLen);
             // Determinate what kind of the compression it is using
             // See Compress:CompressMode
-            var compress = (byte) ((byte) (compression & 0x70) >> 4);
+            var compress = (byte)((byte)(compression & 0x70) >> 4);
             var data = seq.Slice(offset, dataLen);
             subEntryChunk =
                 new SubEntryChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, data);
-            offset += (int) dataLen;
+            offset += (int)dataLen;
             return offset;
         }
     }
-
 
     public readonly struct MsgEntry
     {
@@ -177,7 +180,6 @@ namespace RabbitMQ.Stream.Client
 
         public bool HasSubEntries { get; }
 
-
         public byte MagicVersion { get; }
 
         public ushort NumEntries { get; }
@@ -191,7 +193,7 @@ namespace RabbitMQ.Stream.Client
         internal static int Read(ReadOnlySequence<byte> seq, out Chunk chunk)
         {
             var offset = WireFormatting.ReadByte(seq, out var magicVersion);
-            offset += WireFormatting.ReadByte(seq.Slice(offset), out var chunkType);
+            offset += WireFormatting.ReadByte(seq.Slice(offset), out _);
             offset += WireFormatting.ReadUInt16(seq.Slice(offset), out var numEntries);
             offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var numRecords);
             offset += WireFormatting.ReadInt64(seq.Slice(offset), out var timestamp);
@@ -199,7 +201,7 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt64(seq.Slice(offset), out var chunkId);
             offset += WireFormatting.ReadInt32(seq.Slice(offset), out var crc);
             offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var dataLen);
-            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var trailerLen);
+            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out _);
             offset += 4; // reserved
 
             // don't move the offset. It is a "peek" to determinate the entry type
@@ -208,7 +210,7 @@ namespace RabbitMQ.Stream.Client
             WireFormatting.ReadByte(seq.Slice(offset), out var entryType);
             var hasSubEntries = (entryType & 0x80) != 0;
             var data = seq.Slice(offset, dataLen);
-            offset += (int) dataLen;
+            offset += (int)dataLen;
             chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data,
                 hasSubEntries);
             return offset;

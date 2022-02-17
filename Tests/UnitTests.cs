@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -21,7 +25,7 @@ namespace Tests
 
         public FakeClient(ClientParameters clientParameters)
         {
-            this.Parameters = clientParameters;
+            Parameters = clientParameters;
         }
     }
 
@@ -55,7 +59,6 @@ namespace Tests
         public bool ValidateDns { get; set; } = false;
     }
 
-
     //advertised_host is is missed
     public class MissingFieldsRouting : IRouting
     {
@@ -74,7 +77,6 @@ namespace Tests
         public bool ValidateDns { get; set; } = false;
     }
 
-
     public class ReplicaRouting : IRouting
     {
         public IClient CreateClient(ClientParameters clientParameters)
@@ -92,7 +94,6 @@ namespace Tests
 
         public bool ValidateDns { get; set; } = false;
     }
-
 
     // This class is only for unit tests
     [Collection("Sequential")]
@@ -124,7 +125,7 @@ namespace Tests
                 AddressResolver = addressResolver,
             };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("node2", 5552),
-                new List<Broker>() {new Broker("replica", 5552)});
+                new List<Broker>() { new Broker("replica", 5552) });
             // run more than one time just to be sure to use all the IP with random
             for (var i = 0; i < 4; i++)
             {
@@ -133,7 +134,6 @@ namespace Tests
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -153,7 +153,6 @@ namespace Tests
                        client.Result.ConnectionProperties["advertised_host"] == "replica");
             Assert.True(res);
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -181,8 +180,8 @@ namespace Tests
                 var unCompress = CompressionHelper.UnCompress(
                     compressionType,
                     b,
-                    (uint) codec.CompressedSize,
-                    (uint) codec.UnCompressedSize
+                    (uint)codec.CompressedSize,
+                    (uint)codec.UnCompressedSize
                 );
                 Assert.True(unCompress.Length == codec.UnCompressedSize);
             }
@@ -192,7 +191,6 @@ namespace Tests
             AssertCompress(messagesTest, CompressionType.Gzip);
             AssertCompress(messagesTest, CompressionType.None);
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -213,7 +211,6 @@ namespace Tests
             Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
                 CompressionType.Zstd));
         }
-
 
         private class FakeCodec : ICompressionCodec
         {
@@ -271,7 +268,6 @@ namespace Tests
             }
         }
 
-
         [Fact]
         [WaitTestBeforeAfter]
         public void CodecAlreadyExistException()
@@ -288,10 +284,9 @@ namespace Tests
             {
                 var messages = new List<Message>();
 
-
                 // Add codec first time. Ok.
                 StreamCompressionCodecs.RegisterCodec<FakeCodec>(compressionType);
-                
+
                 // Exception for the second time
                 Assert.Throws<CodecAlreadyExistException>(() =>
                     StreamCompressionCodecs.RegisterCodec<FakeCodec>(compressionType));

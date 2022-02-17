@@ -1,5 +1,6 @@
-using System;
-using System.Buffers;
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
@@ -44,7 +45,6 @@ namespace RabbitMQ.Stream.Client.AMQP
         public const byte
             Decimal128 = 0x94; // IEEE 754-2008 decimal128 using the Binary Integer Decimal encoding (16)
 
-
         public const byte Vbin8 = 0xa0; // up to 2^8 - 1 octets of binary data (1 + variable)
         public const byte Vbin32 = 0xb0; // up to 2^32 - 1 octets of binary data (4 + variable)
 
@@ -62,7 +62,6 @@ namespace RabbitMQ.Stream.Client.AMQP
         public const byte
             Sym32 =
                 0xb3; // up to 2^32 - 1 seven bit ASCII characters representing a symbolic value (4 + variable)
-
 
         // Compound
         public const byte List0 = 0x45; // the empty list (i.e. the list with no elements) (0)
@@ -82,7 +81,6 @@ namespace RabbitMQ.Stream.Client.AMQP
         public const byte
             Array32 = 0xf0; // up to 2^32 - 1 array elements with total size less than 2^32 octets (4 + array)
 
-
         public const byte Char = 0x73; // a UTF-32BE encoded Unicode character (4)
 
         public const byte Timestamp
@@ -91,6 +89,4 @@ namespace RabbitMQ.Stream.Client.AMQP
         public const byte
             UUID = 0x98; // UUID as defined in section 4.1.2 of RFC-4122
     }
-
-    
 }

@@ -581,8 +581,8 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 21;
         public OpenRequest(uint correlationId, string vhost) { }
         public int SizeNeeded { get; }
-        public void Dispose() { }
         public int Write(System.Span<byte> span) { }
+        public static void Dispose() { }
     }
     public readonly struct OpenResponse : RabbitMQ.Stream.Client.ICommand
     {
@@ -611,8 +611,8 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 17;
         public PeerPropertiesRequest(uint correlationId, System.Collections.Generic.IDictionary<string, string> properties) { }
         public int SizeNeeded { get; }
-        public void Dispose() { }
         public int Write(System.Span<byte> span) { }
+        public static void Dispose() { }
     }
     public readonly struct PeerPropertiesResponse : RabbitMQ.Stream.Client.ICommand
     {
@@ -671,7 +671,7 @@ namespace RabbitMQ.Stream.Client
         public Publish(byte publisherId, System.Collections.Generic.List<System.ValueTuple<ulong, RabbitMQ.Stream.Client.Message>> messages) { }
         public int MessageCount { get; }
         public int SizeNeeded { get; }
-        public byte Version { get; }
+        public static byte Version { get; }
         public int Write(System.Span<byte> span) { }
     }
     public readonly struct PublishConfirm : RabbitMQ.Stream.Client.ICommand
@@ -695,8 +695,8 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 11;
         public QueryOffsetRequest(string stream, uint corrId, string reference) { }
         public int SizeNeeded { get; }
-        public void Dispose() { }
         public int Write(System.Span<byte> span) { }
+        public static void Dispose() { }
     }
     public readonly struct QueryOffsetResponse : RabbitMQ.Stream.Client.ICommand
     {
@@ -769,8 +769,8 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 19;
         public SaslAuthenticateRequest(uint correlationId, string mechanism, byte[] data) { }
         public int SizeNeeded { get; }
-        public void Dispose() { }
         public int Write(System.Span<byte> span) { }
+        public static void Dispose() { }
     }
     public readonly struct SaslAuthenticateResponse : RabbitMQ.Stream.Client.ICommand
     {
@@ -787,8 +787,8 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 18;
         public SaslHandshakeRequest(uint correlationId) { }
         public int SizeNeeded { get; }
-        public void Dispose() { }
         public int Write(System.Span<byte> span) { }
+        public static void Dispose() { }
     }
     public readonly struct SaslHandshakeResponse : RabbitMQ.Stream.Client.ICommand
     {
@@ -823,8 +823,8 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 10;
         public StoreOffsetRequest(string stream, string reference, ulong offsetValue) { }
         public int SizeNeeded { get; }
-        public void Dispose() { }
         public int Write(System.Span<byte> span) { }
+        public static void Dispose() { }
     }
     public static class StreamCompressionCodecs
     {
@@ -902,7 +902,7 @@ namespace RabbitMQ.Stream.Client
     {
         public SubEntryPublish(byte publisherId, ulong publishingId, RabbitMQ.Stream.Client.ICompressionCodec compressionCodec) { }
         public int SizeNeeded { get; }
-        public byte Version { get; }
+        public static byte Version { get; }
         public int Write(System.Span<byte> span) { }
     }
     public readonly struct SubscribeRequest : RabbitMQ.Stream.Client.ICommand
@@ -927,8 +927,8 @@ namespace RabbitMQ.Stream.Client
         public uint FrameMax { get; }
         public uint Heartbeat { get; }
         public int SizeNeeded { get; }
-        public void Dispose() { }
         public int Write(System.Span<byte> span) { }
+        public static void Dispose() { }
     }
     public readonly struct TuneResponse : RabbitMQ.Stream.Client.ICommand
     {

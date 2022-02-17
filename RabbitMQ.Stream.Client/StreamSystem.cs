@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -24,13 +28,11 @@ namespace RabbitMQ.Stream.Client
 
     public class StreamSystem
     {
-        private readonly StreamSystemConfig config;
         private readonly ClientParameters clientParameters;
         private readonly Client client;
 
-        private StreamSystem(StreamSystemConfig config, ClientParameters clientParameters, Client client)
+        private StreamSystem(ClientParameters clientParameters, Client client)
         {
-            this.config = config;
             this.clientParameters = clientParameters;
             this.client = client;
         }
@@ -53,9 +55,11 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with {Endpoint = endPoint});
+                    var client = await Client.Create(clientParams with { Endpoint = endPoint });
                     if (!client.IsClosed)
-                        return new StreamSystem(config, clientParams, client);
+                    {
+                        return new StreamSystem(clientParams, client);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -92,16 +96,18 @@ namespace RabbitMQ.Stream.Client
         {
             var response = await client.CreateStream(spec.Name, spec.Args);
             if (response.ResponseCode is ResponseCode.Ok or ResponseCode.StreamAlreadyExists)
+            {
                 return;
+            }
+
             throw new CreateStreamException($"Failed to create stream, error code: {response.ResponseCode.ToString()}");
         }
 
-
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] {stream};
+            var streams = new[] { stream };
             var response = await client.QueryMetadata(streams);
-            return response.StreamInfos is {Count: >= 1} &&
+            return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -117,7 +123,10 @@ namespace RabbitMQ.Stream.Client
         {
             var response = await client.DeleteStream(stream);
             if (response.ResponseCode == ResponseCode.Ok)
+            {
                 return;
+            }
+
             throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
         }
 
@@ -141,7 +150,6 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-
     public class CreateStreamException : Exception
     {
         public CreateStreamException(string s) : base(s)
@@ -162,7 +170,6 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
-
 
     public readonly struct LeaderLocator
     {

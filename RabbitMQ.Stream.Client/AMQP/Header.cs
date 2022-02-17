@@ -1,4 +1,7 @@
-using System;
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System.Buffers;
 
 namespace RabbitMQ.Stream.Client.AMQP
@@ -11,10 +14,9 @@ namespace RabbitMQ.Stream.Client.AMQP
         public bool FirstAcquirer { get; internal set; }
         public uint DeliveryCount { get; internal set; }
 
-
         public static Header Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
         {
-            var offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out var next);
+            var offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out _);
             //TODO WIRE check the next
             var h = new Header();
             for (var index = 0; index < fields; index++)
@@ -27,7 +29,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     {
                         case 0:
                             offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var durable);
-                            h.Durable = (bool) durable;
+                            h.Durable = (bool)durable;
                             break;
                         case 1:
                             offset += AmqpWireFormatting.ReadUByte(amqpData.Slice(offset), out var priority);
@@ -35,7 +37,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                             break;
                         case 2:
                             offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var ttl);
-                            h.Ttl = (uint) ttl;
+                            h.Ttl = (uint)ttl;
                             break;
                         case 3:
                             offset += AmqpWireFormatting.ReadBool(amqpData.Slice(offset), out var firstAcquirer);
@@ -48,7 +50,6 @@ namespace RabbitMQ.Stream.Client.AMQP
                     }
                 }
             }
-
 
             byteRead += offset;
             return h;

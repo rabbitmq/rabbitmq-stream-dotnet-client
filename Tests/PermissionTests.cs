@@ -1,24 +1,14 @@
-using System;
-using System.IO;
-using System.Reflection;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using RabbitMQ.Stream.Client;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Tests
 {
     public class PermissionTests
     {
-        private readonly ITestOutputHelper testOutputHelper;
-
-        public PermissionTests(ITestOutputHelper testOutputHelper)
-        {
-            this.testOutputHelper = testOutputHelper;
-        }
-
-
         [Fact]
         [WaitTestBeforeAfter]
         public async void AccessToStreamWithoutGrantsShouldRaiseErrorTest()
@@ -60,7 +50,6 @@ namespace Tests
                         });
                 }
             );
-
 
             await system.Close();
         }

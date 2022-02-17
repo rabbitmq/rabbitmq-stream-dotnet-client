@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -46,7 +50,7 @@ namespace RabbitMQ.Stream.Client
                 {"version", Consts.ClientVersion},
                 {"platform", ".NET"},
                 {"copyright", "Copyright (c) 2020-2021 VMware, Inc. or its affiliates."},
-                {"information", "Licensed under the MPL 2.0. See https://www.rabbitmq.com/"},
+                {"information", "Licensed under the Apache 2.0 and MPL 2.0 licenses. See https://www.rabbitmq.com/"},
                 {"connection_name", "Unknown"}
             };
 
@@ -58,14 +62,8 @@ namespace RabbitMQ.Stream.Client
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
         public string ClientProvidedName
         {
-            get
-            {
-                return _clientProvidedName ??= Properties["connection_name"];
-            }
-            set
-            {
-                _clientProvidedName = Properties["connection_name"] = value;
-            }
+            get => _clientProvidedName ??= Properties["connection_name"];
+            set => _clientProvidedName = Properties["connection_name"] = value;
         }
 
         /// <summary>
@@ -118,7 +116,7 @@ namespace RabbitMQ.Stream.Client
 
         private readonly ConcurrentDictionary<uint, IValueTaskSource> requests = new();
 
-        private TaskCompletionSource<TuneResponse> tuneReceived =
+        private readonly TaskCompletionSource<TuneResponse> tuneReceived =
             new TaskCompletionSource<TuneResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private byte nextSubscriptionId;
@@ -127,8 +125,6 @@ namespace RabbitMQ.Stream.Client
             new ConcurrentDictionary<byte, Func<Deliver, Task>>();
 
         private object closeResponse;
-        private readonly Task outgoingTask;
-        private readonly Task incomingTask;
         private int publishCommandsSent;
 
         public int PublishCommandsSent => publishCommandsSent;
@@ -140,10 +136,9 @@ namespace RabbitMQ.Stream.Client
         public IDictionary<string, string> ConnectionProperties { get; private set; }
         public ClientParameters Parameters { get; set; }
 
-
         public int ConfirmFrames => confirmFrames;
 
-        public int IncomingFrames => this.connection.NumFrames;
+        public int IncomingFrames => connection.NumFrames;
 
         //public int IncomingChannelCount => this.incoming.Reader.Count;
         private static readonly object Obj = new();
@@ -186,14 +181,18 @@ namespace RabbitMQ.Stream.Client
                 await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                     new PeerPropertiesRequest(corr, parameters.Properties));
             foreach (var (k, v) in peerPropertiesResponse.Properties)
+            {
                 Debug.WriteLine($"server Props {k} {v}");
+            }
 
             //auth
             var saslHandshakeResponse =
                 await client.Request<SaslHandshakeRequest, SaslHandshakeResponse>(
                     corr => new SaslHandshakeRequest(corr));
             foreach (var m in saslHandshakeResponse.Mechanisms)
+            {
                 Debug.WriteLine($"sasl mechanism: {m}");
+            }
 
             var saslData = Encoding.UTF8.GetBytes($"\0{parameters.UserName}\0{parameters.Password}");
             var authResponse =
@@ -213,7 +212,10 @@ namespace RabbitMQ.Stream.Client
 
             Debug.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
             foreach (var (k, v) in open.ConnectionProperties)
+            {
                 Debug.WriteLine($"open prop: {k} {v}");
+            }
+
             client.ConnectionProperties = open.ConnectionProperties;
 
             client.correlationId = 100;
@@ -228,14 +230,14 @@ namespace RabbitMQ.Stream.Client
                 await publishTask.ConfigureAwait(false);
             }
 
-            this.publishCommandsSent += 1;
-            this.messagesSent += publishMsg.MessageCount;
+            publishCommandsSent += 1;
+            messagesSent += publishMsg.MessageCount;
             return publishTask.Result;
         }
 
         public ValueTask<bool> Publish<T>(T msg) where T : struct, ICommand
         {
-            return this.connection.Write(msg);
+            return connection.Write(msg);
         }
 
         public async Task<(byte, DeclarePublisherResponse)> DeclarePublisher(string publisherRef,
@@ -257,7 +259,6 @@ namespace RabbitMQ.Stream.Client
             publishers.Remove(publisherId);
             return result;
         }
-
 
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType,
             ushort initialCredit,
@@ -287,10 +288,10 @@ namespace RabbitMQ.Stream.Client
             var tcs = PooledTaskSource<TOut>.Rent();
             requests.TryAdd(corr, tcs);
             await Publish(request(corr));
-            using CancellationTokenSource cts = new CancellationTokenSource(timeout ?? defaultTimeout);
+            using var cts = new CancellationTokenSource(timeout ?? defaultTimeout);
             await using (cts.Token.Register(
                              valueTaskSource =>
-                                 ((ManualResetValueTaskSource<TOut>) valueTaskSource).SetException(
+                                 ((ManualResetValueTaskSource<TOut>)valueTaskSource).SetException(
                                      new TimeoutException()), tcs))
             {
                 var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
@@ -313,41 +314,41 @@ namespace RabbitMQ.Stream.Client
         private async Task HandleIncoming(Memory<byte> frameMemory)
         {
             var frame = new ReadOnlySequence<byte>(frameMemory);
-            WireFormatting.ReadUInt16(frame, out ushort tag);
+            WireFormatting.ReadUInt16(frame, out var tag);
             if ((tag & 0x8000) != 0)
             {
-                tag = (ushort) (tag ^ 0x8000);
+                tag = (ushort)(tag ^ 0x8000);
             }
 
             switch (tag)
             {
                 case PublishConfirm.Key:
-                    PublishConfirm.Read(frame, out PublishConfirm confirm);
-                    this.confirmFrames += 1;
+                    PublishConfirm.Read(frame, out var confirm);
+                    confirmFrames += 1;
                     var (confirmCallback, _) = publishers[confirm.PublisherId];
                     confirmCallback(confirm.PublishingIds);
-                    if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out ArraySegment<ulong> confirmSegment))
+                    if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out var confirmSegment))
                     {
                         ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
                     }
 
                     break;
                 case Deliver.Key:
-                    Deliver.Read(frame, out Deliver deliver);
+                    Deliver.Read(frame, out var deliver);
                     var deliverHandler = consumers[deliver.SubscriptionId];
                     await deliverHandler(deliver).ConfigureAwait(false);
                     break;
                 case PublishError.Key:
-                    PublishError.Read(frame, out PublishError error);
+                    PublishError.Read(frame, out var error);
                     var (_, errorCallback) = publishers[error.PublisherId];
                     errorCallback(error.PublishingErrors);
                     break;
                 case MetaDataUpdate.Key:
-                    MetaDataUpdate.Read(frame, out MetaDataUpdate metaDataUpdate);
+                    MetaDataUpdate.Read(frame, out var metaDataUpdate);
                     Parameters.MetadataHandler(metaDataUpdate);
                     break;
                 case TuneResponse.Key:
-                    TuneResponse.Read(frame, out TuneResponse tuneResponse);
+                    TuneResponse.Read(frame, out var tuneResponse);
                     tuneReceived.SetResult(tuneResponse);
                     break;
                 default:
@@ -422,7 +423,7 @@ namespace RabbitMQ.Stream.Client
                     HandleCorrelatedResponse(closeResponse);
                     break;
                 default:
-                    if (MemoryMarshal.TryGetArray(frame.First, out ArraySegment<byte> segment))
+                    if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
                         ArrayPool<byte>.Shared.Return(segment.Array);
                     }
@@ -440,16 +441,15 @@ namespace RabbitMQ.Stream.Client
 
             if (requests.TryRemove(command.CorrelationId, out var tsc))
             {
-                ((ManualResetValueTaskSource<T>) tsc).SetResult(command);
+                ((ManualResetValueTaskSource<T>)tsc).SetResult(command);
             }
         }
-
 
         public async Task<CloseResponse> Close(string reason)
         {
             if (closeResponse != null)
             {
-                return (CloseResponse) closeResponse;
+                return (CloseResponse)closeResponse;
             }
 
             // TODO LRB timeout
@@ -475,7 +475,7 @@ namespace RabbitMQ.Stream.Client
         {
             if (publishers.Count == 0 && consumers.Count == 0)
             {
-                return this.Close(reason).Result;
+                return Close(reason).Result;
             }
 
             var result = new CloseResponse(0, ResponseCode.Ok);
@@ -520,21 +520,20 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-
     public static class PooledTaskSource<T>
     {
-        private static ConcurrentStack<ManualResetValueTaskSource<T>> stack =
+        private static readonly ConcurrentStack<ManualResetValueTaskSource<T>> stack =
             new ConcurrentStack<ManualResetValueTaskSource<T>>();
 
         public static ManualResetValueTaskSource<T> Rent()
         {
-            if (stack.TryPop(out ManualResetValueTaskSource<T> task))
+            if (stack.TryPop(out var task))
             {
                 return task;
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
+                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
             }
         }
 
