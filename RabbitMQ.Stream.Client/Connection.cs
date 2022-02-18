@@ -1,11 +1,13 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Net;
-using System.Net.Security;
 using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -15,9 +17,8 @@ namespace RabbitMQ.Stream.Client
         private readonly Socket socket;
         private readonly PipeWriter writer;
         private readonly PipeReader reader;
-        private readonly Task readerTask;
         private Func<Memory<byte>, Task> commandCallback;
-        private Func<string, Task> closedCallback;
+        private readonly Func<string, Task> closedCallback;
         private int numFrames;
         private readonly object writeLock = new object();
         internal int NumFrames => numFrames;
@@ -28,10 +29,9 @@ namespace RabbitMQ.Stream.Client
             set => commandCallback = value;
         }
 
-
-        private System.IO.Stream MaybeTcpUpgrade(NetworkStream networkStream, SslOption sslOption)
+        private static System.IO.Stream MaybeTcpUpgrade(NetworkStream networkStream, SslOption sslOption)
         {
-            return sslOption is {Enabled: false} ? networkStream : SslHelper.TcpUpgrade(networkStream, sslOption);
+            return sslOption is { Enabled: false } ? networkStream : SslHelper.TcpUpgrade(networkStream, sslOption);
         }
 
         private Connection(Socket socket, Func<Memory<byte>, Task> callback,
@@ -39,13 +39,14 @@ namespace RabbitMQ.Stream.Client
         {
             this.socket = socket;
 
-            this.commandCallback = callback;
-            this.closedCallback = closedCallBack;
+            commandCallback = callback;
+            closedCallback = closedCallBack;
             var networkStream = new NetworkStream(socket);
             var stream = MaybeTcpUpgrade(networkStream, sslOption);
             writer = PipeWriter.Create(stream);
             reader = PipeReader.Create(stream);
-            readerTask = Task.Run(ProcessIncomingFrames);
+            // TODO LRB this task needs to be shut down
+            Task.Run(ProcessIncomingFrames);
         }
 
         public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback,
@@ -75,7 +76,6 @@ namespace RabbitMQ.Stream.Client
             WriteCommand(command);
             var flushTask = FlushAsync();
 
-
             // Let's check if this completed synchronously befor invoking the async state mahcine
             if (!flushTask.IsCompletedSuccessfully)
             {
@@ -92,13 +92,12 @@ namespace RabbitMQ.Stream.Client
             {
                 var size = command.SizeNeeded;
                 var mem = writer.GetSpan(4 + size); // + 4 to write the size
-                WireFormatting.WriteUInt32(mem, (uint) size);
+                WireFormatting.WriteUInt32(mem, (uint)size);
                 var written = command.Write(mem.Slice(4));
                 Debug.Assert(size == written);
                 writer.Advance(4 + written);
             }
         }
-
 
         private async Task ProcessIncomingFrames()
         {
@@ -106,11 +105,10 @@ namespace RabbitMQ.Stream.Client
             {
                 while (true)
                 {
-                    if (!reader.TryRead(out ReadResult result))
+                    if (!reader.TryRead(out var result))
                     {
                         result = await reader.ReadAsync().ConfigureAwait(false);
                     }
-
 
                     var buffer = result.Buffer;
                     if (buffer.Length == 0)
@@ -120,21 +118,20 @@ namespace RabbitMQ.Stream.Client
                         break;
                     }
 
-
                     // Let's try to read some frames!
 
-                    while (TryReadFrame(ref buffer, out ReadOnlySequence<byte> frame))
+                    while (TryReadFrame(ref buffer, out var frame))
                     {
                         // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
 
                         // Console.WriteLine(
                         //     $"B TryReadFrame {buffer.Length} {result.IsCompleted} {result.Buffer.IsEmpty} {frame.Length}");
 
-                        Memory<byte> memory =
-                            ArrayPool<byte>.Shared.Rent((int) frame.Length).AsMemory(0, (int) frame.Length);
+                        var memory =
+                            ArrayPool<byte>.Shared.Rent((int)frame.Length).AsMemory(0, (int)frame.Length);
                         frame.CopyTo(memory.Span);
                         await commandCallback(memory).ConfigureAwait(false);
-                        this.numFrames += 1;
+                        numFrames += 1;
                     }
 
                     reader.AdvanceTo(buffer.Start, buffer.End);
@@ -153,12 +150,12 @@ namespace RabbitMQ.Stream.Client
                 Debug.WriteLine($"Error reading the socket, error: {e}");
             }
 
-            await this.closedCallback?.Invoke("TCP Connection Closed")!;
+            await closedCallback?.Invoke("TCP Connection Closed")!;
 
             Debug.WriteLine("TCP Connection Closed");
         }
 
-        private bool TryReadFrame(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> frame)
+        private static bool TryReadFrame(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> frame)
         {
             // Do we have enough bytes in the buffer to begin parsing a frame?
 

@@ -1,10 +1,13 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
@@ -22,7 +25,6 @@ namespace Tests
         {
             this.testOutputHelper = testOutputHelper;
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -57,7 +59,6 @@ namespace Tests
 
             new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
             producer.Dispose();
             consumer.Dispose();
@@ -87,7 +88,6 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -124,7 +124,6 @@ namespace Tests
 
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-
             // // Here we use the standard client to check the offest
             // // since client.QueryOffset/2 is hidden in the System
             //
@@ -137,7 +136,6 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -168,14 +166,13 @@ namespace Tests
             await system.Close();
         }
 
-
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateProducerConsumerAddressResolver()
         {
             var testPassed = new TaskCompletionSource<Data>();
             var stream = Guid.NewGuid().ToString();
-            AddressResolver addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
+            var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
             var config = new StreamSystemConfig()
             {
                 AddressResolver = addressResolver,
@@ -206,14 +203,12 @@ namespace Tests
 
             new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
             producer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -258,7 +253,6 @@ namespace Tests
                         await Task.CompletedTask;
                     }
                 });
-
 
             var producer = await system.CreateProducer(
                 new ProducerConfig
@@ -324,14 +318,14 @@ namespace Tests
                     To = "to",
                     ContentEncoding = "contentEncoding",
                     ContentType = "contentType",
-                    CorrelationId = (ulong) 5_000_000_000,
+                    CorrelationId = (ulong)5_000_000_000,
                     CreationTime = DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
                     AbsoluteExpiryTime = DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
                     GroupId = "groupId",
                     GroupSequence = 1,
-                    MessageId = (long) 4_000_000_000,
+                    MessageId = (long)4_000_000_000,
                     ReplyTo = "replyTo",
-                    UserId = new byte[] {0x0, 0xF},
+                    UserId = new byte[] { 0x0, 0xF },
                     ReplyToGroupId = "replyToGroupId"
                 },
                 Annotations = new Annotations
@@ -348,28 +342,26 @@ namespace Tests
                 }
             };
 
-
             await producer.Send(1, message);
             //wait for sent message to be delivered
 
             new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
 
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Data.Contents.ToArray());
             Assert.Equal("subject", testPassed.Task.Result.Properties.Subject);
             Assert.Equal("to", testPassed.Task.Result.Properties.To);
             Assert.Equal("contentEncoding", testPassed.Task.Result.Properties.ContentEncoding);
             Assert.Equal("contentType", testPassed.Task.Result.Properties.ContentType);
-            Assert.Equal((ulong) 5_000_000_000, testPassed.Task.Result.Properties.CorrelationId);
+            Assert.Equal((ulong)5_000_000_000, testPassed.Task.Result.Properties.CorrelationId);
             Assert.Equal(DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
                 testPassed.Task.Result.Properties.AbsoluteExpiryTime);
             Assert.Equal(DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
                 testPassed.Task.Result.Properties.CreationTime);
             Assert.Equal("groupId", testPassed.Task.Result.Properties.GroupId);
-            Assert.Equal((uint) 1, testPassed.Task.Result.Properties.GroupSequence);
-            Assert.Equal((long) 4_000_000_000, testPassed.Task.Result.Properties.MessageId);
+            Assert.Equal((uint)1, testPassed.Task.Result.Properties.GroupSequence);
+            Assert.Equal((long)4_000_000_000, testPassed.Task.Result.Properties.MessageId);
             Assert.Equal("replyTo", testPassed.Task.Result.Properties.ReplyTo);
-            Assert.Equal(new byte[] {0x0, 0xF}, testPassed.Task.Result.Properties.UserId);
+            Assert.Equal(new byte[] { 0x0, 0xF }, testPassed.Task.Result.Properties.UserId);
 
             Assert.True(testPassed.Task.Result.Annotations.ContainsKey(1));
             Assert.Equal(1, testPassed.Task.Result.Annotations[1]);
@@ -432,7 +424,6 @@ namespace Tests
             await system.Close();
         }
 
-
         [Fact]
         [WaitTestBeforeAfter]
         public async void ConsumerQueryOffset()
@@ -478,18 +469,17 @@ namespace Tests
 
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-
             // it may need some time to store the offset
             SystemUtils.Wait();
             // numberOfMessagesToStore index 0
-            Assert.Equal((ulong) (numberOfMessagesToStore - 1),
+            Assert.Equal((ulong)(numberOfMessagesToStore - 1),
                 await system.QueryOffset(reference, stream));
 
             // this has to raise OffsetNotFoundException in case the offset 
             // does not exist like in this case.
             await Assert.ThrowsAsync<OffsetNotFoundException>(() =>
                 system.QueryOffset("reference_does_not_exist", stream));
-           
+
             await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();

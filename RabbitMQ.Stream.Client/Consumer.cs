@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -12,8 +16,8 @@ namespace RabbitMQ.Stream.Client
 
         public MessageContext(ulong offset, TimeSpan timestamp)
         {
-            this.Offset = offset;
-            this.Timestamp = timestamp;
+            Offset = offset;
+            Timestamp = timestamp;
         }
     }
 
@@ -49,7 +53,7 @@ namespace RabbitMQ.Stream.Client
             StreamInfo metaStreamInfo)
         {
             var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo);
-            var consumer = new Consumer((Client) client, config);
+            var consumer = new Consumer((Client)client, config);
             await consumer.Init();
             return consumer;
         }
@@ -85,7 +89,7 @@ namespace RabbitMQ.Stream.Client
                 });
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                this.subscriberId = consumerId;
+                subscriberId = consumerId;
                 return;
             }
 
@@ -95,12 +99,14 @@ namespace RabbitMQ.Stream.Client
         public async Task<ResponseCode> Close()
         {
             if (_disposed)
+            {
                 return ResponseCode.Ok;
+            }
 
-            var deleteConsumerResponse = await this.client.Unsubscribe(this.subscriberId);
+            var deleteConsumerResponse = await client.Unsubscribe(subscriberId);
             var result = deleteConsumerResponse.ResponseCode;
-            var closed = this.client.MaybeClose($"client-close-subscriber: {this.subscriberId}");
-            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {this.subscriberId}");
+            var closed = client.MaybeClose($"client-close-subscriber: {subscriberId}");
+            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {subscriberId}");
             _disposed = true;
             return result;
         }
@@ -108,14 +114,20 @@ namespace RabbitMQ.Stream.Client
         //
         private void Dispose(bool disposing)
         {
-            if (!disposing) return;
-            if (_disposed)
+            if (!disposing)
+            {
                 return;
+            }
 
-            var closeConsumer = this.Close();
+            if (_disposed)
+            {
+                return;
+            }
+
+            var closeConsumer = Close();
             closeConsumer.Wait(1000);
             ClientExceptions.MaybeThrowException(closeConsumer.Result,
-                $"Error during remove producer. Subscriber: {this.subscriberId}");
+                $"Error during remove producer. Subscriber: {subscriberId}");
         }
 
         public void Dispose()
@@ -126,7 +138,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error during disposing Consumer: {this.subscriberId}, " +
+                Console.WriteLine($"Error during disposing Consumer: {subscriberId}, " +
                                   $"error: {e}");
             }
 

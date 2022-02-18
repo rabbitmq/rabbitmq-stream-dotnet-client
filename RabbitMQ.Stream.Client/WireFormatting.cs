@@ -1,15 +1,18 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Text;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace RabbitMQ.Stream.Client
 {
     internal static class WireFormatting
     {
-        private static Encoding s_encoding = Encoding.UTF8;
+        private static readonly Encoding s_encoding = Encoding.UTF8;
 
         internal static int StringSize(string s)
         {
@@ -33,13 +36,12 @@ namespace RabbitMQ.Stream.Client
             BinaryPrimitives.WriteUInt16BigEndian(p, value);
             return 2;
         }
-        
+
         internal static int WriteInt16(Span<byte> p, short value)
         {
             BinaryPrimitives.WriteInt16BigEndian(p, value);
             return 2;
         }
-        
 
         internal static int WriteUInt64(Span<byte> span, ulong value)
         {
@@ -78,7 +80,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             // I'm sure there are better ways
-            int bytecount = s_encoding.GetBytes(s, span.Slice(2));
+            var bytecount = s_encoding.GetBytes(s, span.Slice(2));
             WriteUInt16(span, (ushort)bytecount);
             return 2 + bytecount;
         }
@@ -128,7 +130,7 @@ namespace RabbitMQ.Stream.Client
 
             return 2;
         }
-        
+
         internal static int ReadInt16(ReadOnlySequence<byte> seq, out short value)
         {
             if (seq.FirstSpan.Length >= 2)
@@ -160,7 +162,7 @@ namespace RabbitMQ.Stream.Client
 
             return 8;
         }
-        
+
         internal static int ReadByte(ReadOnlySequence<byte> seq, out byte b)
         {
             b = seq.FirstSpan[0];
@@ -180,13 +182,12 @@ namespace RabbitMQ.Stream.Client
             data = seq.Slice(4, len).ToArray();
             return 4 + (int)len;
         }
-        
+
         internal static int ReadBytes(ReadOnlySequence<byte> seq, int len, out byte[] data)
         {
             data = seq.Slice(0, len).ToArray();
             return len;
         }
-
 
         internal static int ReadInt64(ReadOnlySequence<byte> seq, out long value)
         {

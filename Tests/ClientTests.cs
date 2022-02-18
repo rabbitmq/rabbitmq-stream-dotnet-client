@@ -1,15 +1,17 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using Xunit;
 using Xunit.Abstractions;
-using Xunit.Sdk;
 
 namespace Tests
 {
@@ -22,7 +24,7 @@ namespace Tests
         {
             this.testOutputHelper = testOutputHelper;
         }
-        
+
         [Fact]
         [WaitTestBeforeAfter]
         public async void CreateDeleteStream()
@@ -59,16 +61,16 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, streamInfo.ResponseCode);
             Assert.Equal(5552, (int)streamInfo.Leader.Port);
             Assert.Empty(streamInfo.Replicas);
-            
+
             // Test result when the Stream Does Not Exist
             const string streamNotExist = "StreamNotExist";
-            var metaDataResponseNo = await client.QueryMetadata(new[] { streamNotExist});
+            var metaDataResponseNo = await client.QueryMetadata(new[] { streamNotExist });
             Assert.Equal(1, metaDataResponseNo.StreamInfos.Count);
             var streamInfoPairNo = metaDataResponseNo.StreamInfos.First();
             Assert.Equal(streamNotExist, streamInfoPairNo.Key);
             var streamInfoNo = streamInfoPairNo.Value;
             Assert.Equal(ResponseCode.StreamDoesNotExist, streamInfoNo.ResponseCode);
-            
+
             await client.Close("done");
         }
 
@@ -86,7 +88,7 @@ namespace Tests
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, result) = await client.DeclarePublisher(publisherRef, stream, confirmed, errored);
             Assert.Equal(ResponseCode.Ok, result.ResponseCode);
-            
+
             await client.DeleteStream(stream);
             Assert.True(testPassed.Task.Wait(5000));
             var mdu = testPassed.Task.Result;
@@ -131,7 +133,7 @@ namespace Tests
                 testOutputHelper.WriteLine($"publish error code ${errors[0]}");
                 testPassed.SetResult(true);
             };
-            
+
             var publisherRef = Guid.NewGuid().ToString();
 
             var (publisherId, result) = await client.DeclarePublisher(publisherRef, stream, confirmed, errored);
@@ -179,10 +181,13 @@ namespace Tests
             for (var i = from; i < to; i++)
             {
                 var msgData = new Message(Encoding.UTF8.GetBytes("asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
-                await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, msgData)}));
+                await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, msgData) }));
                 if ((int)i - numConfirmed > 1000)
+                {
                     await Task.Delay(10);
+                }
             }
+
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Debug.WriteLine($"num confirmed {numConfirmed}");
@@ -210,8 +215,11 @@ namespace Tests
             Func<Deliver, Task> deliverHandler = deliver =>
             {
                 msgs.AddRange(deliver.Messages);
-                if(msgs.Count == 2)
+                if (msgs.Count == 2)
+                {
                     testPassed.SetResult(deliver);
+                }
+
                 return Task.CompletedTask;
             };
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
@@ -230,7 +238,6 @@ namespace Tests
             await client.DeleteStream(stream);
             await client.Close("done");
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
@@ -257,8 +264,9 @@ namespace Tests
                 foreach (var msg in deliver.Messages)
                 {
                     if (msg.Offset >= offset) //a chunk may contain messages before offset
+                    {
                         messageCount++;
-                        
+                    }
                 }
 
                 testOutputHelper.WriteLine("GotDelivery: {0}", deliver.Messages.Count());
@@ -290,6 +298,7 @@ namespace Tests
             {
                 Assert.True(false, "MessageHandler was not hit");
             }
+
             Assert.Equal(10, messageCount);
 
             await client.StoreOffset(reference, stream, 5);
@@ -313,9 +322,10 @@ namespace Tests
             {
                 Assert.True(false, "MessageHandler was not hit");
             }
+
             Assert.Equal(10, messageCount);
             await client.Unsubscribe(subId);
-           // await client.Close("done");
+            // await client.Close("done");
         }
 
         [Fact]
@@ -376,7 +386,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
 
             var unsubscribeResponse = await client.Unsubscribe(subId);
-            
+
             Assert.Equal(ResponseCode.Ok, unsubscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
@@ -387,7 +397,6 @@ namespace Tests
             await client.Close("done");
         }
 
-
         [Fact]
         [WaitTestBeforeAfter]
         public async void VirtualHostFailureAccess()
@@ -397,7 +406,7 @@ namespace Tests
                 VirtualHost = "DOES_NOT_EXIST"
             };
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
-                async () => {  await Client.Create(clientParameters); }
+                async () => { await Client.Create(clientParameters); }
             );
         }
     }

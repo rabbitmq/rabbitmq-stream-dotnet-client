@@ -1,5 +1,8 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Channels;
@@ -35,20 +38,19 @@ namespace RabbitMQ.Stream.Client
 
         public int PendingCount => config.MaxInFlight - semaphore.CurrentCount;
 
-        private readonly ConcurrentQueue<TaskCompletionSource> flows = new();
-        private Task publishTask;
-
         private Producer(Client client, ProducerConfig config)
         {
             this.client = client;
             this.config = config;
-            this.messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
+            messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
             {
-                AllowSynchronousContinuations = false, SingleReader = true, SingleWriter = false,
+                AllowSynchronousContinuations = false,
+                SingleReader = true,
+                SingleWriter = false,
                 FullMode = BoundedChannelFullMode.Wait
             });
-            this.publishTask = Task.Run(ProcessBuffer);
-            this.semaphore = new(config.MaxInFlight, config.MaxInFlight);
+            Task.Run(ProcessBuffer);
+            semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }
 
         public int MessagesSent => client.MessagesSent;
@@ -84,7 +86,7 @@ namespace RabbitMQ.Stream.Client
                 },
                 errors =>
                 {
-                    foreach ((ulong id, ResponseCode code) in errors)
+                    foreach ((var id, var code) in errors)
                     {
                         config.ConfirmHandler(new Confirmation
                         {
@@ -160,7 +162,7 @@ namespace RabbitMQ.Stream.Client
             var messages = new List<(ulong, Message)>(100);
             while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
             {
-                while (messageBuffer.Reader.TryRead(out OutgoingMsg msg))
+                while (messageBuffer.Reader.TryRead(out var msg))
                 {
                     messages.Add((msg.PublishingId, msg.Data));
                     if (messages.Count == 100)
@@ -190,12 +192,14 @@ namespace RabbitMQ.Stream.Client
         public async Task<ResponseCode> Close()
         {
             if (_disposed)
+            {
                 return ResponseCode.Ok;
+            }
 
-            var deletePublisherResponse = await this.client.DeletePublisher(this.publisherId);
+            var deletePublisherResponse = await client.DeletePublisher(publisherId);
             var result = deletePublisherResponse.ResponseCode;
-            var closed = this.client.MaybeClose($"client-close-publisher: {this.publisherId}");
-            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {this.publisherId}");
+            var closed = client.MaybeClose($"client-close-publisher: {publisherId}");
+            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {publisherId}");
             _disposed = true;
             return result;
         }
@@ -205,22 +209,28 @@ namespace RabbitMQ.Stream.Client
             StreamInfo metaStreamInfo)
         {
             var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new Producer((Client) client, config);
+            var producer = new Producer((Client)client, config);
             await producer.Init();
             return producer;
         }
 
         private void Dispose(bool disposing)
         {
-            if (!disposing) return;
-            if (_disposed) return;
+            if (!disposing)
+            {
+                return;
+            }
 
-            var closeProducer = this.Close();
+            if (_disposed)
+            {
+                return;
+            }
+
+            var closeProducer = Close();
             closeProducer.Wait(1000);
             ClientExceptions.MaybeThrowException(closeProducer.Result,
-                $"Error during remove producer. Producer: {this.publisherId}");
+                $"Error during remove producer. Producer: {publisherId}");
         }
-
 
         public void Dispose()
         {
@@ -230,7 +240,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error during disposing producer: {this.publisherId}, " +
+                Console.WriteLine($"Error during disposing producer: {publisherId}, " +
                                   $"error: {e}");
             }
 

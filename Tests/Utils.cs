@@ -1,6 +1,8 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Reflection;
@@ -37,7 +39,6 @@ namespace Tests
             this.testOutputHelper = testOutputHelper;
         }
 
-
         // Added this generic function to trap error during the 
         // tests
         public void WaitUntilTaskCompletes(TaskCompletionSource<TResult> tasks,
@@ -56,7 +57,6 @@ namespace Tests
             }
         }
     }
-
 
     public static class SystemUtils
     {
@@ -79,7 +79,11 @@ namespace Tests
                     {
                         count++;
                         testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
-                        if (count != numberOfMessages) return;
+                        if (count != numberOfMessages)
+                        {
+                            return;
+                        }
+
                         testPassed.SetResult(count);
                     }
                 });
@@ -101,7 +105,7 @@ namespace Tests
 
         public static void HttpPost(string jsonBody, string api)
         {
-            var httpWebRequest = (HttpWebRequest) WebRequest.Create($"http://localhost:15672/api/{api}");
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create($"http://localhost:15672/api/{api}");
             httpWebRequest.Credentials = new System.Net.NetworkCredential("guest", "guest");
             httpWebRequest.ContentType = "application/json";
             httpWebRequest.Method = "POST";
@@ -111,7 +115,7 @@ namespace Tests
                 streamWriter.Write(jsonBody);
             }
 
-            var httpResponse = (HttpWebResponse) httpWebRequest.GetResponse();
+            var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
             using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
             {
                 streamReader.ReadToEnd();
@@ -126,7 +130,7 @@ namespace Tests
             if (dirPath != null)
             {
                 var filename = Path.Combine(dirPath, "Resources", fileName);
-                Task<byte[]> fileTask = File.ReadAllBytesAsync(filename);
+                var fileTask = File.ReadAllBytesAsync(filename);
                 fileTask.Wait(1000);
                 return fileTask.Result;
             }

@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -34,12 +38,12 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out OpenResponse command)
         {
-            var offset = WireFormatting.ReadUInt16(frame, out var tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            var offset = WireFormatting.ReadUInt16(frame, out _);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
             var props = new Dictionary<string, string>();
-            if (ResponseCode.Ok == (ResponseCode) responseCode)
+            if (ResponseCode.Ok == (ResponseCode)responseCode)
             {
                 offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numProps);
                 for (var i = 0; i < numProps; i++)
@@ -50,7 +54,7 @@ namespace RabbitMQ.Stream.Client
                 }
             }
 
-            command = new OpenResponse(correlation, (ResponseCode) responseCode, props);
+            command = new OpenResponse(correlation, (ResponseCode)responseCode, props);
             return offset;
         }
     }

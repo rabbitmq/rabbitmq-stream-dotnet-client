@@ -1,10 +1,13 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Threading;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -55,7 +58,7 @@ namespace RabbitMQ.Stream.Client
             var offset = 0;
             foreach (var msg in rMessages)
             {
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)msg.Size);
                 offset += msg.Write(span.Slice(offset));
             }
 
@@ -86,7 +89,7 @@ namespace RabbitMQ.Stream.Client
             var offset = 0;
             foreach (var msg in messages)
             {
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) msg.Size);
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)msg.Size);
                 offset += msg.Write(span.Slice(offset));
             }
 
@@ -96,6 +99,7 @@ namespace RabbitMQ.Stream.Client
             {
                 gZipStream.Write(span);
             }
+
             compressedReadOnlySequence = new ReadOnlySequence<byte>(compressedMemory.ToArray());
         }
 
@@ -104,21 +108,21 @@ namespace RabbitMQ.Stream.Client
             return WireFormatting.Write(span, compressedReadOnlySequence);
         }
 
-        public int CompressedSize => (int) compressedReadOnlySequence.Length;
+        public int CompressedSize => (int)compressedReadOnlySequence.Length;
         public int UnCompressedSize { get; private set; }
         public int MessagesCount { get; private set; }
         public CompressionType CompressionType => CompressionType.Gzip;
 
-
         public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
         {
-            using var sourceMemoryStream = new MemoryStream(source.ToArray(), 0, (int) dataLen);
-            using var resultMemoryStream = new MemoryStream((int) unCompressedDataSize);
+            using var sourceMemoryStream = new MemoryStream(source.ToArray(), 0, (int)dataLen);
+            using var resultMemoryStream = new MemoryStream((int)unCompressedDataSize);
             using (var gZipStream =
                    new GZipStream(sourceMemoryStream, CompressionMode.Decompress))
             {
                 gZipStream.CopyTo(resultMemoryStream);
             }
+
             return new ReadOnlySequence<byte>(resultMemoryStream.ToArray());
         }
     }
@@ -132,8 +136,8 @@ namespace RabbitMQ.Stream.Client
         private static readonly Dictionary<CompressionType, Type> AvailableCompressCodecs =
             new()
             {
-                {CompressionType.Gzip, typeof(GzipCompressionCodec)},
-                {CompressionType.None, typeof(NoneCompressionCodec)},
+                { CompressionType.Gzip, typeof(GzipCompressionCodec) },
+                { CompressionType.None, typeof(NoneCompressionCodec) },
             };
 
         public static void RegisterCodec<T>(CompressionType compressionType) where T : ICompressionCodec, new()
@@ -161,7 +165,7 @@ namespace RabbitMQ.Stream.Client
                 throw new CodecNotFoundException($"codec for {compressionType} not found");
             }
 
-            return (ICompressionCodec) Activator.CreateInstance(AvailableCompressCodecs[compressionType]);
+            return (ICompressionCodec)Activator.CreateInstance(AvailableCompressCodecs[compressionType]);
         }
     }
 
@@ -189,27 +193,26 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-
     public class OutOfBoundsException : Exception
     {
-        public OutOfBoundsException(string s) :
-            base(s)
+        public OutOfBoundsException(string s)
+            : base(s)
         {
         }
     }
 
     public class CodecNotFoundException : Exception
     {
-        public CodecNotFoundException(string s) :
-            base(s)
+        public CodecNotFoundException(string s)
+            : base(s)
         {
         }
     }
 
     public class CodecAlreadyExistException : Exception
     {
-        public CodecAlreadyExistException(string s) :
-            base(s)
+        public CodecAlreadyExistException(string s)
+            : base(s)
         {
         }
     }

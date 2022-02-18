@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -25,18 +29,15 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out SaslHandshakeResponse command)
         {
-            ushort tag;
-            ushort version;
             uint correlation;
-            ushort responseCode;
-            var offset = WireFormatting.ReadUInt16(frame, out tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out version);
+            var offset = WireFormatting.ReadUInt16(frame, out _);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out correlation);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out responseCode);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             uint numMechs;
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out numMechs);
             var mechs = new List<string>();
-            for (int i = 0; i < numMechs; i++)
+            for (var i = 0; i < numMechs; i++)
             {
                 string mech;
                 offset += WireFormatting.ReadString(frame.Slice(offset), out mech);

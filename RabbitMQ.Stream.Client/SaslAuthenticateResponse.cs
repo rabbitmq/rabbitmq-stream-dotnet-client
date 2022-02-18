@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 
@@ -13,7 +17,7 @@ namespace RabbitMQ.Stream.Client
         public SaslAuthenticateResponse(uint correlationId, ResponseCode code, byte[] data)
         {
             this.correlationId = correlationId;
-            this.responseCode = code;
+            responseCode = code;
             this.data = data;
         }
 
@@ -27,12 +31,12 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out SaslAuthenticateResponse command)
         {
-            var offset = WireFormatting.ReadUInt16(frame, out var tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            var offset = WireFormatting.ReadUInt16(frame, out _);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
-            byte[] data = new byte[0];
-            if(frame.Length > offset)
+            var data = new byte[0];
+            if (frame.Length > offset)
             {
                 offset += WireFormatting.ReadBytes(frame.Slice(offset), out data);
             }

@@ -1,8 +1,11 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,10 +28,7 @@ namespace RabbitMQ.Stream.Client
             taskClient.Wait(1000);
             return taskClient.Result;
         }
-
-       
     }
-
 
     /// <summary>
     /// Routes the client connection to the correct node.
@@ -44,12 +44,12 @@ namespace RabbitMQ.Stream.Client
         {
             var routing = new T();
 
-            var endPoint = new IPEndPoint(IPAddress.Loopback, (int) broker.Port);
+            var endPoint = new IPEndPoint(IPAddress.Loopback, (int)broker.Port);
 
             if (routing.ValidateDns)
             {
                 var hostEntry = await Dns.GetHostEntryAsync(broker.Host);
-                endPoint = new IPEndPoint(hostEntry.AddressList.First(), (int) broker.Port);
+                endPoint = new IPEndPoint(hostEntry.AddressList.First(), (int)broker.Port);
             }
 
             if (clientParameters.AddressResolver == null
@@ -65,7 +65,7 @@ namespace RabbitMQ.Stream.Client
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
             endPoint = clientParameters.AddressResolver.EndPoint;
-            var client = routing.CreateClient(clientParameters with {Endpoint = endPoint});
+            var client = routing.CreateClient(clientParameters with { Endpoint = endPoint });
 
             string GetPropertyValue(IDictionary<string, string> connectionProperties, string key)
             {
@@ -85,7 +85,7 @@ namespace RabbitMQ.Stream.Client
             {
                 await client.Close("advertised_host or advertised_port doesn't mach");
 
-                client = routing.CreateClient(clientParameters with {Endpoint = endPoint});
+                client = routing.CreateClient(clientParameters with { Endpoint = endPoint });
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
                 advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
@@ -111,7 +111,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<IClient> LookupRandomConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
-            var brokers = new List<Broker>() {metaDataInfo.Leader};
+            var brokers = new List<Broker>() { metaDataInfo.Leader };
             brokers.AddRange(metaDataInfo.Replicas);
 
             // pick one random node from leader and replicas.
@@ -124,7 +124,6 @@ namespace RabbitMQ.Stream.Client
             return await LookupConnection(clientParameters, broker);
         }
     }
-
 
     [Serializable]
     public class RoutingClientException : Exception

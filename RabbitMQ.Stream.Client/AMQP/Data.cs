@@ -1,6 +1,9 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
-using System.Threading;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
@@ -19,9 +22,9 @@ namespace RabbitMQ.Stream.Client.AMQP
             this.data = data;
         }
 
-        public ReadOnlySequence<byte> Contents => this.data;
+        public ReadOnlySequence<byte> Contents => data;
 
-        public int Size => AmqpWireFormatting.GetSequenceSize(this.data) + DescribedFormatCode.Size;
+        public int Size => AmqpWireFormatting.GetSequenceSize(data) + DescribedFormatCode.Size;
 
         public int Write(Span<byte> span)
         {
@@ -29,18 +32,17 @@ namespace RabbitMQ.Stream.Client.AMQP
             if (data.Length < byte.MaxValue)
             {
                 offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin8); //binary marker
-                offset += WireFormatting.WriteByte(span.Slice(offset), (byte) data.Length); //length
+                offset += WireFormatting.WriteByte(span.Slice(offset), (byte)data.Length); //length
             }
             else
             {
                 offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin32); //binary marker
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) data.Length); //length
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)data.Length); //length
             }
 
             offset += WireFormatting.Write(span.Slice(offset), data);
             return offset;
         }
-
 
         public static Data Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
         {
@@ -53,7 +55,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return new Data(amqpData.Slice(offset, len8));
                 case FormatCode.Vbin32:
                     offset += WireFormatting.ReadUInt32(amqpData.Slice(offset), out var len32);
-                    byteRead += (int) (offset + len32);
+                    byteRead += (int)(offset + len32);
                     return new Data(amqpData.Slice(offset, len32));
             }
 

@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Net.Security;
 using System.Security.Authentication;
@@ -31,9 +35,9 @@ namespace RabbitMQ.Stream.Client
         public static System.IO.Stream TcpUpgrade(System.IO.Stream tcpStream, SslOption options)
         {
             var helper = new SslHelper(options);
-            RemoteCertificateValidationCallback remoteCertValidator =
+            var remoteCertValidator =
                 options.CertificateValidationCallback ?? helper.CertificateValidationCallback;
-            LocalCertificateSelectionCallback localCertSelector =
+            var localCertSelector =
                 options.CertificateSelectionCallback ?? helper.CertificateSelectionCallback;
 
             var sslStream = new SslStream(tcpStream, false, remoteCertValidator, localCertSelector);
@@ -72,7 +76,7 @@ namespace RabbitMQ.Stream.Client
             if (acceptableIssuers != null && acceptableIssuers.Length > 0 &&
                 localCertificates != null && localCertificates.Count > 0)
             {
-                foreach (X509Certificate certificate in localCertificates)
+                foreach (var certificate in localCertificates)
                 {
                     if (Array.IndexOf(acceptableIssuers, certificate.Issuer) != -1)
                     {

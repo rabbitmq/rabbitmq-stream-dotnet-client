@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 
@@ -23,8 +27,8 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> frame, out PublishError command)
         {
-            var offset = WireFormatting.ReadUInt16(frame, out var tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            var offset = WireFormatting.ReadUInt16(frame, out _);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             offset += WireFormatting.ReadByte(frame.Slice(offset), out var publisherId);
             offset += WireFormatting.ReadInt32(frame.Slice(offset), out var numErrors);
             var publishingIds = new (ulong, ResponseCode)[numErrors];
@@ -34,6 +38,7 @@ namespace RabbitMQ.Stream.Client
                 offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var code);
                 publishingIds[i] = (pubId, (ResponseCode)code);
             }
+
             command = new PublishError(publisherId, publishingIds);
             return offset;
         }

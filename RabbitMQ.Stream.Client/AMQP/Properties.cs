@@ -1,6 +1,9 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
-using System.Runtime.InteropServices;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
@@ -22,7 +25,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         public static Properties Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
         {
-            var offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out var next);
+            var offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out _);
             //TODO WIRE check the next
             var p = new Properties();
             for (var index = 0; index < fields; index++)
@@ -96,7 +99,6 @@ namespace RabbitMQ.Stream.Client.AMQP
             return p;
         }
 
-
         private int PropertySize()
         {
             var size = AmqpWireFormatting.GetAnySize(MessageId);
@@ -131,7 +133,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             var offset = DescribedFormatCode.Write(span, DescribedFormatCode.MessageProperties);
             offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.List32);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint) PropertySize()); // PropertySize 
+            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)PropertySize()); // PropertySize 
             offset += WireFormatting.WriteUInt32(span.Slice(offset), 13); // field numbers
             offset += AmqpWireFormatting.WriteAny(span.Slice(offset), MessageId);
             offset += AmqpWireFormatting.WriteAny(span.Slice(offset), UserId);

@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Collections.Generic;
 
@@ -5,7 +9,8 @@ namespace RabbitMQ.Stream.Client
 {
     public record StreamSpec
     {
-        private readonly IDictionary<string, string> args = new Dictionary<string, string>() {
+        private readonly IDictionary<string, string> args = new Dictionary<string, string>()
+        {
             ["queue-leader-locator"] = LeaderLocator.LeastLeaders.ToString()
         };
 
@@ -25,7 +30,7 @@ namespace RabbitMQ.Stream.Client
         {
             set => Args["max-length-bytes"] = $"{value}";
         }
-        
+
         public LeaderLocator LeaderLocator
         {
             set => Args["queue-leader-locator"] = $"{value.ToString()}";

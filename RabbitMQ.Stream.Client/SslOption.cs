@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
@@ -76,17 +80,19 @@ namespace RabbitMQ.Stream.Client
                 {
                     return _certificateCollection;
                 }
+
                 if (string.IsNullOrEmpty(CertPath))
                 {
                     return null;
                 }
+
                 var collection = new X509CertificateCollection
                 {
                     new X509Certificate2(CertPath, CertPassphrase)
                 };
                 return collection;
             }
-            set { _certificateCollection = value; }
+            set => _certificateCollection = value;
         }
 
         /// <summary>

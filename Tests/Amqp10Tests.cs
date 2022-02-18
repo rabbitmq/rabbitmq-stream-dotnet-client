@@ -1,3 +1,7 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
 using System.Text;
@@ -114,102 +118,94 @@ namespace Tests
             System.Diagnostics.Trace.WriteLine(" test passed");
         }
 
-
         [Fact]
         [WaitTestBeforeAfter]
         public void ValidateFormatCode()
         {
             const bool boolTrue = true;
-            var boolTrueBin = new byte[] {0x41};
+            var boolTrueBin = new byte[] { 0x41 };
             RunValidateFormatCode(boolTrue, boolTrueBin);
 
             const bool boolFalse = false;
-            var boolFalseBin = new byte[] {0x42};
+            var boolFalseBin = new byte[] { 0x42 };
             RunValidateFormatCode(boolFalse, boolFalseBin);
 
             const ulong ulong0Value = 0x00;
-            var ulong0ValueBin = new byte[] {0x44};
+            var ulong0ValueBin = new byte[] { 0x44 };
 
             const ulong ulongSmallValue = 0xf2;
-            var ulongSmallValueBin = new byte[] {0x53, 0xf2};
+            var ulongSmallValueBin = new byte[] { 0x53, 0xf2 };
 
             const ulong ulongValue = 0x12345678edcba098;
-            var ulongValueBin = new byte[] {0x80, 0x12, 0x34, 0x56, 0x78, 0xed, 0xcb, 0xa0, 0x98};
+            var ulongValueBin = new byte[] { 0x80, 0x12, 0x34, 0x56, 0x78, 0xed, 0xcb, 0xa0, 0x98 };
 
             RunValidateFormatCode(ulong0Value, ulong0ValueBin);
             RunValidateFormatCode(ulongSmallValue, ulongSmallValueBin);
             RunValidateFormatCode(ulongValue, ulongValueBin);
 
             const byte ubyteValue = 0x33;
-            var ubyteValueBin = new byte[] {0x50, 0x33};
+            var ubyteValueBin = new byte[] { 0x50, 0x33 };
 
             RunValidateFormatCode(ubyteValue, ubyteValueBin);
 
             const ushort ushortValue = 0x1234;
-            var ushortValueBin = new byte[] {0x60, 0x12, 0x34};
+            var ushortValueBin = new byte[] { 0x60, 0x12, 0x34 };
 
             RunValidateFormatCode(ushortValue, ushortValueBin);
 
-
             const uint uint0Value = 0x00;
-            var uint0ValueBin = new byte[] {0x43};
+            var uint0ValueBin = new byte[] { 0x43 };
 
             const uint uintSmallValue = 0xe1;
-            var uintSmallValueBin = new byte[] {0x52, 0xe1};
+            var uintSmallValueBin = new byte[] { 0x52, 0xe1 };
 
             const uint uintValue = 0xedcba098;
-            var uintValueBin = new byte[] {0x70, 0xed, 0xcb, 0xa0, 0x98};
+            var uintValueBin = new byte[] { 0x70, 0xed, 0xcb, 0xa0, 0x98 };
 
             RunValidateFormatCode(uint0Value, uint0ValueBin);
             RunValidateFormatCode(uintSmallValue, uintSmallValueBin);
             RunValidateFormatCode(uintValue, uintValueBin);
 
             const sbyte byteValue = -20;
-            var byteValueBin = new byte[] {0x51, 0xec};
+            var byteValueBin = new byte[] { 0x51, 0xec };
 
             RunValidateFormatCode(byteValue, byteValueBin);
 
             const short shortValue = 0x5678;
-            var shortValueBin = new byte[] {0x61, 0x56, 0x78};
+            var shortValueBin = new byte[] { 0x61, 0x56, 0x78 };
             RunValidateFormatCode(shortValue, shortValueBin);
-
 
             // int intSmallValue = -77;
             // byte[] intSmallValueBin = new byte[] {0x54, 0xb3};
             // ValueTest(intSmallValue, intSmallValueBin);
             // //TODO Need to write another kind of the test since the intSmallValue is cast to byte so = 0xb3
 
-
             const int intValue = 0x56789a00;
-            var intValueBin = new byte[] {0x71, 0x56, 0x78, 0x9a, 0x00};
+            var intValueBin = new byte[] { 0x71, 0x56, 0x78, 0x9a, 0x00 };
             RunValidateFormatCode(intValue, intValueBin);
 
-
             const long longValue64 = -111111111111; //FFFFFFE62142FE39
-            var longValueBin64 = new byte[] {0x81, 0xff, 0xff, 0xff, 0xe6, 0x21, 0x42, 0xfe, 0x39};
+            var longValueBin64 = new byte[] { 0x81, 0xff, 0xff, 0xff, 0xe6, 0x21, 0x42, 0xfe, 0x39 };
             RunValidateFormatCode(longValue64, longValueBin64);
 
-
             const long longValue8 = 127;
-            var longValueBin8 = new byte[] {0x55, 0x7F};
+            var longValueBin8 = new byte[] { 0x55, 0x7F };
             RunValidateFormatCode(longValue8, longValueBin8);
 
-
             const float floatValue = -88.88f;
-            var floatValueBin = new byte[] {0x72, 0xc2, 0xb1, 0xc2, 0x8f};
+            var floatValueBin = new byte[] { 0x72, 0xc2, 0xb1, 0xc2, 0x8f };
             RunValidateFormatCode(floatValue, floatValueBin);
 
-
             var dtValue = DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime();
-            var dtValueBin = new byte[] {0x83, 0x00, 0x00, 0x01, 0x1d, 0x59, 0x8d, 0x1e, 0xa0};
+            var dtValueBin = new byte[] { 0x83, 0x00, 0x00, 0x01, 0x1d, 0x59, 0x8d, 0x1e, 0xa0 };
             RunValidateFormatCode(dtValue, dtValueBin);
 
             const double doubleValue = 111111111111111.22222222222;
-            var doubleValueBin = new byte[] {0x82, 0x42, 0xd9, 0x43, 0x84, 0x93, 0xbc, 0x71, 0xce};
+            var doubleValueBin = new byte[] { 0x82, 0x42, 0xd9, 0x43, 0x84, 0x93, 0xbc, 0x71, 0xce };
             RunValidateFormatCode(doubleValue, doubleValueBin);
 
             const string str8Value = "amqp";
-            var str8Utf8ValueBin = new byte[] {0xa1, 0x04, 0x61, 0x6d, 0x71, 0x70};
+            var str8Utf8ValueBin = new byte[] { 0xa1, 0x04, 0x61, 0x6d, 0x71, 0x70 };
             RunValidateFormatCode(str8Value, str8Utf8ValueBin);
 
             var str32Value = "";
@@ -227,14 +223,12 @@ namespace Tests
 
             RunValidateFormatCode(str32Value, str32Utf8ValueBin);
 
-
             var bin8Value = new byte[56];
             var bin32Value = new byte[500]; //
             var bin8ValueBin = new byte[1 + 1 + 56];
             var bin32ValueBin = new byte[1 + 4 + 500]; //
             RunValidateFormatCode(bin32Value, bin32ValueBin);
             RunValidateFormatCode(bin8Value, bin8ValueBin);
-
 
             // Guid uuidValue = new Guid("f275ea5e-0c57-4ad7-b11a-b20c563d3b71");
             // byte[] uuidValueBin = new byte[] { 0x98, 0xf2, 0x75, 0xea, 0x5e, 0x0c, 0x57, 0x4a, 0xd7, 0xb1, 0x1a, 0xb2, 0x0c, 0x56, 0x3d, 0x3b, 0x71 };
@@ -250,8 +244,8 @@ namespace Tests
             AmqpWireFormatting.ReadAny(arrayRead, out var decodeValue);
             if (typeof(T) == typeof(byte[]))
             {
-                var b1 = (byte[]) (object) value;
-                var b2 = (byte[]) (object) decodeValue;
+                var b1 = (byte[])(object)value;
+                var b2 = (byte[])(object)decodeValue;
                 Assert.Equal(b1, b2);
             }
             else
@@ -261,23 +255,21 @@ namespace Tests
             }
         }
 
-
         [Fact]
         [WaitTestBeforeAfter]
         public void Validate32Bytes8BytesLists()
         {
-            var value32Bin = new byte[] {0xD0, 0x0, 0x0, 0x0, 0xF, 0x0, 0x0, 0x1, 0xF};
+            var value32Bin = new byte[] { 0xD0, 0x0, 0x0, 0x0, 0xF, 0x0, 0x0, 0x1, 0xF };
             AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value32Bin), out var len32);
             Assert.Equal(271, len32);
 
-            var value8Bin = new byte[] {0xc0, 0xF, 0xF0};
+            var value8Bin = new byte[] { 0xc0, 0xF, 0xF0 };
             AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value8Bin), out var len8);
             Assert.Equal(240, len8);
 
-            var value0Bin = new byte[] {0x45};
+            var value0Bin = new byte[] { 0x45 };
             AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value0Bin), out var len0);
             Assert.Equal(0, len0);
-
 
             var valueComposite8Bin = new byte[]
             {
@@ -286,7 +278,7 @@ namespace Tests
                 0xc0, 0xF, 0xF0
             };
             AmqpWireFormatting.ReadCompositeHeader(new ReadOnlySequence<byte>(valueComposite8Bin),
-                out var compositeLen32, out var next);
+                out var compositeLen32, out _);
             Assert.Equal(240, compositeLen32);
         }
 
@@ -339,8 +331,8 @@ namespace Tests
             Assert.NotNull(msgProp900.ApplicationProperties);
             foreach (var (key, value) in msgProp900.ApplicationProperties)
             {
-                Assert.True(((string) key).Length >= 900);
-                Assert.True(((string) value).Length >= 900);
+                Assert.True(((string)key).Length >= 900);
+                Assert.True(((string)value).Length >= 900);
             }
 
             Assert.NotNull(msgProp900.Properties);
@@ -371,9 +363,8 @@ namespace Tests
             }
 
             Assert.Equal("test", msgStaticTest.Annotations["test"]);
-            Assert.Equal((long) 1, msgStaticTest.Annotations[(long) 1]);
-            Assert.Equal((long) 100_000, msgStaticTest.Annotations[(long) 100_000]);
-
+            Assert.Equal((long)1, msgStaticTest.Annotations[(long)1]);
+            Assert.Equal((long)100_000, msgStaticTest.Annotations[(long)100_000]);
 
             var header = SystemUtils.GetFileContent("header_amqpvalue_message");
             var msgHeader = Message.From(new ReadOnlySequence<byte>(header));
@@ -383,7 +374,7 @@ namespace Tests
             Assert.True(msgHeader.MessageHeader.Durable);
             Assert.True(msgHeader.MessageHeader.FirstAcquirer);
             Assert.Equal(100, msgHeader.MessageHeader.Priority);
-            Assert.Equal((uint) 300, msgHeader.MessageHeader.DeliveryCount);
+            Assert.Equal((uint)300, msgHeader.MessageHeader.DeliveryCount);
             Assert.True(msgHeader.MessageHeader.Ttl == 0);
             Assert.Equal("amqpValue", msgHeader.AmqpValue);
         }
@@ -393,7 +384,7 @@ namespace Tests
         public void MapEntriesWithAnEmptyKeyShouldNotBeWrittenToTheWire()
         {
             // Given we have an annotation with a valid key
-            Annotations annotation = new Annotations();
+            var annotation = new Annotations();
             annotation.Add("valid key", "");
 
             var expectedMapSize = annotation.Size;

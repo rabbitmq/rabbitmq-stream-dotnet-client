@@ -1,6 +1,9 @@
+﻿// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2007-2020 VMware, Inc.
+
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -9,7 +12,7 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 22;
         private readonly uint correlationId;
         private readonly ResponseCode responseCode;
-        
+
         public CloseResponse(uint correlationId, ResponseCode responseCode)
         {
             this.correlationId = correlationId;
@@ -28,8 +31,8 @@ namespace RabbitMQ.Stream.Client
         }
         internal static int Read(ReadOnlySequence<byte> frame, out CloseResponse command)
         {
-            var offset = WireFormatting.ReadUInt16(frame, out var tag);
-            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var version);
+            var offset = WireFormatting.ReadUInt16(frame, out _);
+            offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
             command = new CloseResponse(correlation, (ResponseCode)responseCode);
