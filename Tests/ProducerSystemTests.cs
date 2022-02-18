@@ -187,7 +187,7 @@ namespace Tests
                     ConfirmHandler = confirmation =>
                     {
                         count = Interlocked.Increment(ref count);
-                        if (count == 52)
+                        if (confirmation.PublishingId == 52)
                         {
                             testPassed.SetResult(true);
                         }
@@ -203,10 +203,10 @@ namespace Tests
             }
 
             await producer.Send(++pid, messages, CompressionType.Gzip);
-            Thread.Sleep(500);
-            Assert.Equal(ResponseCode.Ok, await producer.Close());
+            SystemUtils.Wait();
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             Assert.Equal((ulong)52, count);
+            Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);
             await system.Close();
         }

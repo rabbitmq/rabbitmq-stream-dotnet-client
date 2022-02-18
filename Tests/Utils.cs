@@ -21,12 +21,12 @@ namespace Tests
     {
         public override void Before(MethodInfo methodUnderTest)
         {
-            Thread.Sleep(200);
+            Thread.Sleep(300);
         }
 
         public override void After(MethodInfo methodUnderTest)
         {
-            Thread.Sleep(200);
+            Thread.Sleep(300);
         }
     }
 

@@ -254,7 +254,7 @@ var producer = await system.CreateProducer(
     });
 ```
 Then:
-```
+```csharp
 var publishingId = 0;
 var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
 await producer.Send(publishingId, message);
