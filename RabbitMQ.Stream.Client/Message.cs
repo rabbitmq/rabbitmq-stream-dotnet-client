@@ -4,6 +4,7 @@
 
 using System;
 using System.Buffers;
+
 using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
@@ -129,7 +130,7 @@ namespace RabbitMQ.Stream.Client
                         offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out amqpValue);
                         break;
                     default:
-                        Console.WriteLine($"dataCode: {dataCode} not handled. Please open an issue.");
+                        LogEventSource.Log.LogError($"dataCode: {dataCode} not handled. Please open an issue.");
                         throw new ArgumentOutOfRangeException($"dataCode: {dataCode} not handled");
                 }
             }
