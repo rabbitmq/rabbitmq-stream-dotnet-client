@@ -37,7 +37,7 @@ namespace RabbitMQ.Stream.Client
         {
             for (var i = 0; i < eventData.Payload.Count; i++)
             {
-                Console.WriteLine("{0}: {1}: {2}", eventData.Level, eventData.PayloadNames[i], eventData.Payload[i]);
+                Console.WriteLine("{0}: {1}: {2}", eventData.Level, eventData.Message, eventData.Payload[i]);
             }
 
             base.OnEventWritten(eventData);

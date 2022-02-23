@@ -462,7 +462,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                LogEventSource.Log.LogError($"An error occurred while calling { nameof(connection.Dispose) }.", e);
             }
 
             return result;

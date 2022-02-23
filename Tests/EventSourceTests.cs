@@ -49,7 +49,11 @@ namespace Tests
                 resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Informational, ExpectedPayloadName, new string[] { nameof(GenerateInfoEvent) }));
             };
 
+            // Simple message.
             LogEventSource.Log.LogInformation(nameof(GenerateInfoEvent));
+
+            // Simple message formatted with string.Format().
+            LogEventSource.Log.LogInformation("{0}{1}{2}", "Generate", "Info", "Event");
 
             Assert.Null(resultException);
         }
@@ -69,7 +73,11 @@ namespace Tests
                 resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Warning, ExpectedPayloadName, new string[] { nameof(GenerateWarningEvent) }));
             };
 
+            // Simple message.
             LogEventSource.Log.LogWarning(nameof(GenerateWarningEvent));
+
+            // Simple message formatted with string.Format().
+            LogEventSource.Log.LogWarning("{0}{1}{2}", "Generate", "Warning", "Event");
 
             Assert.Null(resultException);
         }
@@ -89,8 +97,14 @@ namespace Tests
                 resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Error, ExpectedPayloadName, new string[] { nameof(GenerateErrorEvent) }));
             };
 
+            // Simple message.
             LogEventSource.Log.LogError(nameof(GenerateErrorEvent));
+
+            // Simple message with null exception.
             LogEventSource.Log.LogError(nameof(GenerateErrorEvent), default);
+
+            // Simple message formatted with string.Format().
+            LogEventSource.Log.LogError("{0}{1}{2}", default, "Generate", "Error", "Event");
 
             Assert.Null(resultException);
         }
@@ -103,20 +117,18 @@ namespace Tests
         [Fact]
         public void GenerateErrorWithExceptionEvent()
         {
-            const string exception1Message = "TextExceptionMessage1";
-            const string exception2Message = "TextExceptionMessage2";
-
-            var message = $"GenerateErrorEvent{ Environment.NewLine }System.Exception: { exception2Message }{ Environment.NewLine } ---> System.Exception: { exception1Message }{ Environment.NewLine }   --- End of inner exception stack trace ---";
+            const string Exception1Message = "TextExceptionMessage1";
+            const string Exception2Message = "TextExceptionMessage2";
 
             Exception resultException = default;
 
             var exception =
-                new Exception(exception2Message,
-                new Exception(exception1Message));
+                new Exception(Exception2Message,
+                new Exception(Exception1Message));
 
             new LogEventListener().EventWritten += (sender, args) =>
             {
-                resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Error, ExpectedPayloadName, new string[] { message }));
+                resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Error, ExpectedPayloadName, new string[] { nameof(GenerateErrorEvent), Exception1Message, Exception2Message }));
             };
 
             LogEventSource.Log.LogError(nameof(GenerateErrorEvent), exception);
