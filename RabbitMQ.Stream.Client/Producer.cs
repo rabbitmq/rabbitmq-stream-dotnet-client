@@ -137,7 +137,7 @@ namespace RabbitMQ.Stream.Client
                 // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
                 if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
                 {
-                    Console.WriteLine("Semaphore Wait timeout during publishing.");
+                    LogEventSource.Log.LogWarning("Semaphore Wait timeout during publishing.");
                 }
             }
         }
@@ -240,8 +240,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error during disposing producer: {publisherId}, " +
-                                  $"error: {e}");
+                LogEventSource.Log.LogError($"Error during disposing Consumer: {publisherId}.", e);
             }
 
             GC.SuppressFinalize(this);

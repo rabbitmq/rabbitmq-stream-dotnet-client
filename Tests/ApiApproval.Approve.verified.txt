@@ -452,12 +452,22 @@ namespace RabbitMQ.Stream.Client
         bool ValidateDns { get; set; }
         RabbitMQ.Stream.Client.IClient CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters);
     }
+    public static class Keywords
+    {
+        public const System.Diagnostics.Tracing.EventKeywords Log = 1;
+    }
     public readonly struct LeaderLocator
     {
         public static RabbitMQ.Stream.Client.LeaderLocator ClientLocal { get; }
         public static RabbitMQ.Stream.Client.LeaderLocator LeastLeaders { get; }
         public static RabbitMQ.Stream.Client.LeaderLocator Random { get; }
         public override string ToString() { }
+    }
+    public sealed class LogEventListener : System.Diagnostics.Tracing.EventListener, System.IDisposable
+    {
+        public LogEventListener() { }
+        public override void Dispose() { }
+        protected override void OnEventWritten(System.Diagnostics.Tracing.EventWrittenEventArgs eventData) { }
     }
     public sealed class ManualResetValueTaskSource<T> : System.Threading.Tasks.Sources.IValueTaskSource, System.Threading.Tasks.Sources.IValueTaskSource<T>
     {

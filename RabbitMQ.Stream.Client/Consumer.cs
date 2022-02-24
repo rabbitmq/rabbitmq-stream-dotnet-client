@@ -138,8 +138,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error during disposing Consumer: {subscriberId}, " +
-                                  $"error: {e}");
+                LogEventSource.Log.LogError($"Error during disposing Consumer: {subscriberId}.", e);
             }
 
             GC.SuppressFinalize(this);
