@@ -231,6 +231,9 @@ await producer.Send(publishingId, subEntryMessages, CompressionType.Gzip);
 messages.Clear();
 ```
 
+Not all the compressions are implemented by defaults, to avoid to many dependencies.
+See the table:
+
 | Compression            | Description    | Provided by client |
 |------------------------|----------------|--------------------|
 | CompressionType.None   | No compression | yes                |
@@ -239,7 +242,8 @@ messages.Clear();
 | CompressionType.Snappy | Snappy         | No                 |
 | CompressionType.Zstd   | Zstd           | No                 |
 
-See the section: "Implement a Custom Compression Codec" for more details.
+You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
+See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
 
 ### Deduplication
 [See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
