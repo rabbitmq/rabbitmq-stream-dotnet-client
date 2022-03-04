@@ -154,61 +154,61 @@ namespace Tests
             await system.Close();
         }
 
-        [Fact]
-        [WaitTestBeforeAfter]
-        public async void ProducerMixingDifferentConfirmations()
-        {
-            // we send 150 messages using three different ways:
-            // 1- 50 messages subEntry with compress None 
-            // 2- 50 messages with standard send 
-            // 3- subEntry with compress Gzip
-            // we should receive only 52 conformations
-            // one for the point 1
-            // 50 for the point 2
-            // one for the point 3
-            var messages = new List<Message>();
-            for (var i = 0; i < 50; i++)
-            {
-                messages.Add(new Message(Encoding.UTF8.GetBytes($"sub{i}")));
-            }
-
-            var testPassed = new TaskCompletionSource<bool>();
-
-            var stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig();
-            var system = await StreamSystem.Create(config);
-            await system.CreateStream(new StreamSpec(stream));
-            ulong count = 0;
-            var producer = await system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = stream,
-                    ConfirmHandler = confirmation =>
-                    {
-                        count = Interlocked.Increment(ref count);
-                        if (confirmation.PublishingId == 52)
-                        {
-                            testPassed.SetResult(true);
-                        }
-                    }
-                });
-
-            ulong pid = 0;
-            await producer.Send(++pid, messages, CompressionType.None);
-
-            foreach (var message in messages)
-            {
-                await producer.Send(++pid, message);
-            }
-
-            await producer.Send(++pid, messages, CompressionType.Gzip);
-            SystemUtils.Wait();
-            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            Assert.Equal((ulong)52, count);
-            Assert.Equal(ResponseCode.Ok, await producer.Close());
-            await system.DeleteStream(stream);
-            await system.Close();
-        }
+        // [Fact]
+        // [WaitTestBeforeAfter]
+        // public async void ProducerMixingDifferentConfirmations()
+        // {
+        //     // we send 150 messages using three different ways:
+        //     // 1- 50 messages subEntry with compress None 
+        //     // 2- 50 messages with standard send 
+        //     // 3- subEntry with compress Gzip
+        //     // we should receive only 52 conformations
+        //     // one for the point 1
+        //     // 50 for the point 2
+        //     // one for the point 3
+        //     var messages = new List<Message>();
+        //     for (var i = 0; i < 50; i++)
+        //     {
+        //         messages.Add(new Message(Encoding.UTF8.GetBytes($"sub{i}")));
+        //     }
+        //
+        //     var testPassed = new TaskCompletionSource<bool>();
+        //
+        //     var stream = Guid.NewGuid().ToString();
+        //     var config = new StreamSystemConfig();
+        //     var system = await StreamSystem.Create(config);
+        //     await system.CreateStream(new StreamSpec(stream));
+        //     ulong count = 0;
+        //     var producer = await system.CreateProducer(
+        //         new ProducerConfig
+        //         {
+        //             Reference = "producer",
+        //             Stream = stream,
+        //             ConfirmHandler = confirmation =>
+        //             {
+        //                 count = Interlocked.Increment(ref count);
+        //                 if (confirmation.PublishingId == 52)
+        //                 {
+        //                     testPassed.SetResult(true);
+        //                 }
+        //             }
+        //         });
+        //
+        //     ulong pid = 0;
+        //     await producer.Send(++pid, messages, CompressionType.None);
+        //
+        //     foreach (var message in messages)
+        //     {
+        //         await producer.Send(++pid, message);
+        //     }
+        //
+        //     await producer.Send(++pid, messages, CompressionType.Gzip);
+        //     SystemUtils.Wait();
+        //     new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        //     Assert.Equal((ulong)52, count);
+        //     Assert.Equal(ResponseCode.Ok, await producer.Close());
+        //     await system.DeleteStream(stream);
+        //     await system.Close();
+        // }
     }
 }
