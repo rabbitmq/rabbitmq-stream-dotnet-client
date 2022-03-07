@@ -127,7 +127,20 @@ var config = new StreamSystemConfig
 
 ### Multi Host
 
-// TODO
+```csharp
+var config = new StreamSystemConfig
+{
+    UserName = "myuser",
+    Password = "mypassword",
+    VirtualHost = "myhost",
+    Endpoints = new List<EndPoint>
+    {
+        new IPEndPoint(IPAddress.Parse("<<brokerip1>>"), 5552),
+        new IPEndPoint(IPAddress.Parse("<<brokerip2>>"), 5552),
+        new IPEndPoint(IPAddress.Parse("<<brokerip3>>"), 5552)
+    },
+};
+```
 
 ### Tls
 
@@ -320,12 +333,12 @@ Producers/Consumers raise and event when the client is disconnected:
 
 ```csharp
  new ProducerConfig/ConsumerConfig
-    {
-        ConnectionClosedHandler = s =>
-            {
-                Console.WriteLine($"Connection Closed: {s}");
-                return Task.CompletedTask;
-            },
+ {
+  ConnectionClosedHandler = s =>
+   {
+    Console.WriteLine($"Connection Closed: {s}");
+    return Task.CompletedTask;
+   },
 ```
 
 ### Build from source
