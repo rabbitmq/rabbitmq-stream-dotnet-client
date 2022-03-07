@@ -25,6 +25,7 @@
     - [Publish Messages](#publish-messages)
     - [Deduplication](#Deduplication)
     - [Consume Messages](#consume-messages)
+      - [Track Offset](#track-offset)
     - [Build from source](#build-from-source)
     - [Project Status](#project-status)
 
@@ -265,12 +266,68 @@ await producer.Send(publishingId, message);
 ```
 
 ### Consume Messages
+Define a consumer:
+```csharp
+var consumer = await system.CreateConsumer(
+    new ConsumerConfig
+    {
+        Reference = "my_consumer",
+        Stream = stream,
+        MessageHandler = async (consumer, ctx, message) =>
+        {
+            Console.WriteLine(
+                $"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())}");
+            await Task.CompletedTask;
+        }
+});
+```
+### Track Offset
 
-// TODO
+The server can store the current delivered offset given a consumer with `StoreOffset` in this way:
+```csharp
+var messagesConsumed = 0;
+var consumer = await system.CreateConsumer(
+    new ConsumerConfig
+    {
+        Reference = "my_consumer",
+        Stream = stream,
+        MessageHandler = async (consumer, ctx, message) =>
+        {
+            if (++messagesConsumed % 1000 == 0)
+            {
+                await consumer.StoreOffset(ctx.Offset);
+            }
+```
+
+Note: </b> 
+**Avoid** to store the offset for each single message, it can reduce the performances.
+
+It is possible to retrieve the offset with `QueryOffset`:
+```chsarp
+var trackedOffset = await system.QueryOffset("my_consumer", stream);
+var consumer = await system.CreateConsumer(
+    new ConsumerConfig
+    {
+        Reference = "my_consumer",
+        Stream = stream,
+        OffsetSpec = new OffsetTypeOffset(trackedOffset),    
+```
 
 ### Build from source
+Build:
+```shell
+make build
+```
 
-// TODO
+Test:
+```shell
+make test
+```
+
+Run test in docker:
+```shell
+make run-test-in-docker
+```
 
 ### Project Status
 
