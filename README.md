@@ -26,6 +26,7 @@
     - [Deduplication](#Deduplication)
     - [Consume Messages](#consume-messages)
       - [Track Offset](#track-offset)
+    - [Handle Close](#handle-close)
     - [Build from source](#build-from-source)
     - [Project Status](#project-status)
 
@@ -258,7 +259,7 @@ var producer = await system.CreateProducer(
         Stream = "my_stream",
     });
 ```
-Then:
+then:
 ```csharp
 var publishingId = 0;
 var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
@@ -303,7 +304,8 @@ Note: </b>
 **Avoid** to store the offset for each single message, it can reduce the performances.
 
 It is possible to retrieve the offset with `QueryOffset`:
-```chsarp
+
+```csharp
 var trackedOffset = await system.QueryOffset("my_consumer", stream);
 var consumer = await system.CreateConsumer(
     new ConsumerConfig
@@ -311,6 +313,19 @@ var consumer = await system.CreateConsumer(
         Reference = "my_consumer",
         Stream = stream,
         OffsetSpec = new OffsetTypeOffset(trackedOffset),    
+```
+
+### Handle Close
+Producers/Consumers raise and event when the client is disconnected:
+
+```csharp
+ new ProducerConfig/ConsumerConfig
+    {
+        ConnectionClosedHandler = s =>
+            {
+                Console.WriteLine($"Connection Closed: {s}");
+                return Task.CompletedTask;
+            },
 ```
 
 ### Build from source
@@ -332,4 +347,3 @@ make run-test-in-docker
 ### Project Status
 
 The client is work in progress. The API(s) could change
-
