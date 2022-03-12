@@ -77,6 +77,11 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var messageEntry in deliver.Messages)
                     {
+                        if (config.OffsetSpec is OffsetTypeOffset offset && messageEntry.Offset < offset.OffsetValue)
+                        {
+                            continue;
+                        }
+
                         var message = Message.From(messageEntry.Data); //data should be AMQP 1.0 encoded
                         await config.MessageHandler(this,
                             new MessageContext(messageEntry.Offset,
