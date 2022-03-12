@@ -485,7 +485,6 @@ namespace Tests
             await system.Close();
         }
 
-
         [Fact]
         [WaitTestBeforeAfter]
         public async void ShouldConsumeFromStoredOffset()
