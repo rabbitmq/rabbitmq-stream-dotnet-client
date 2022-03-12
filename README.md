@@ -25,6 +25,8 @@
     - [Publish Messages](#publish-messages)
     - [Deduplication](#Deduplication)
     - [Consume Messages](#consume-messages)
+      - [Track Offset](#track-offset)
+    - [Handle Close](#handle-close)
     - [Build from source](#build-from-source)
     - [Project Status](#project-status)
 
@@ -125,7 +127,20 @@ var config = new StreamSystemConfig
 
 ### Multi Host
 
-// TODO
+```csharp
+var config = new StreamSystemConfig
+{
+    UserName = "myuser",
+    Password = "mypassword",
+    VirtualHost = "myhost",
+    Endpoints = new List<EndPoint>
+    {
+        new IPEndPoint(IPAddress.Parse("<<brokerip1>>"), 5552),
+        new IPEndPoint(IPAddress.Parse("<<brokerip2>>"), 5552),
+        new IPEndPoint(IPAddress.Parse("<<brokerip3>>"), 5552)
+    },
+};
+```
 
 ### Tls
 
@@ -231,6 +246,9 @@ await producer.Send(publishingId, subEntryMessages, CompressionType.Gzip);
 messages.Clear();
 ```
 
+Not all the compressions are implemented by defaults, to avoid to many dependencies.
+See the table:
+
 | Compression            | Description    | Provided by client |
 |------------------------|----------------|--------------------|
 | CompressionType.None   | No compression | yes                |
@@ -239,7 +257,8 @@ messages.Clear();
 | CompressionType.Snappy | Snappy         | No                 |
 | CompressionType.Zstd   | Zstd           | No                 |
 
-See the section: "Implement a Custom Compression Codec" for more details.
+You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
+See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
 
 ### Deduplication
 [See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
@@ -253,7 +272,7 @@ var producer = await system.CreateProducer(
         Stream = "my_stream",
     });
 ```
-Then:
+then:
 ```csharp
 var publishingId = 0;
 var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
@@ -261,14 +280,83 @@ await producer.Send(publishingId, message);
 ```
 
 ### Consume Messages
+Define a consumer:
+```csharp
+var consumer = await system.CreateConsumer(
+    new ConsumerConfig
+    {
+        Reference = "my_consumer",
+        Stream = stream,
+        MessageHandler = async (consumer, ctx, message) =>
+        {
+            Console.WriteLine(
+                $"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())}");
+            await Task.CompletedTask;
+        }
+});
+```
+### Track Offset
 
-// TODO
+The server can store the current delivered offset given a consumer with `StoreOffset` in this way:
+```csharp
+var messagesConsumed = 0;
+var consumer = await system.CreateConsumer(
+    new ConsumerConfig
+    {
+        Reference = "my_consumer",
+        Stream = stream,
+        MessageHandler = async (consumer, ctx, message) =>
+        {
+            if (++messagesConsumed % 1000 == 0)
+            {
+                await consumer.StoreOffset(ctx.Offset);
+            }
+```
+
+Note: </b> 
+**Avoid** to store the offset for each single message, it can reduce the performances.
+
+It is possible to retrieve the offset with `QueryOffset`:
+
+```csharp
+var trackedOffset = await system.QueryOffset("my_consumer", stream);
+var consumer = await system.CreateConsumer(
+    new ConsumerConfig
+    {
+        Reference = "my_consumer",
+        Stream = stream,
+        OffsetSpec = new OffsetTypeOffset(trackedOffset),    
+```
+
+### Handle Close
+Producers/Consumers raise and event when the client is disconnected:
+
+```csharp
+ new ProducerConfig/ConsumerConfig
+ {
+  ConnectionClosedHandler = s =>
+   {
+    Console.WriteLine($"Connection Closed: {s}");
+    return Task.CompletedTask;
+   },
+```
 
 ### Build from source
+Build:
+```shell
+make build
+```
 
-// TODO
+Test:
+```shell
+make test
+```
+
+Run test in docker:
+```shell
+make run-test-in-docker
+```
 
 ### Project Status
 
 The client is work in progress. The API(s) could change
-

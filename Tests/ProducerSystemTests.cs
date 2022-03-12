@@ -65,11 +65,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
 
             await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = stream,
-                }));
+                new ProducerConfig { Reference = "producer", Stream = stream, }));
 
             await system.Close();
         }
@@ -83,11 +79,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = stream,
-                });
+                new ProducerConfig { Reference = "producer", Stream = stream, });
 
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             Assert.Equal(ResponseCode.Ok, await producer.Close());
@@ -140,11 +132,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = stream,
-                });
+                new ProducerConfig { Reference = "producer", Stream = stream, });
 
             await Assert.ThrowsAsync<OutOfBoundsException>(() =>
                 producer.Send(1, messages, CompressionType.Gzip).AsTask());
@@ -182,14 +170,19 @@ namespace Tests
             var producer = await system.CreateProducer(
                 new ProducerConfig
                 {
-                    Reference = "producer",
+                    Reference = Guid.NewGuid().ToString(),
                     Stream = stream,
-                    ConfirmHandler = confirmation =>
+                    ConfirmHandler = conf =>
                     {
-                        count = Interlocked.Increment(ref count);
-                        if (confirmation.PublishingId == 52)
+                        if (conf.Code != ResponseCode.Ok)
                         {
-                            testPassed.SetResult(true);
+                            testOutputHelper.WriteLine($"error confirmation {conf.Code}");
+                            testPassed.SetResult(false);
+                        }
+
+                        if (Interlocked.Increment(ref count) == 52)
+                        {
+                            testPassed.SetResult(conf.Code == ResponseCode.Ok);
                         }
                     }
                 });
