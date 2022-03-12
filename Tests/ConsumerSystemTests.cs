@@ -484,5 +484,80 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
+
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ShouldConsumeFromStoredOffset()
+        {
+            var storedOffset = new TaskCompletionSource<ulong>();
+            var firstMessageAfterRestart = new TaskCompletionSource<ulong>();
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            const int numberOfMessages = 10;
+            const int numberOfMessageToStore = 7; // a random number in the interval.
+
+            await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
+            const string reference = "consumer_offset";
+
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = reference,
+                    Stream = stream,
+                    OffsetSpec = new OffsetTypeOffset(),
+
+                    MessageHandler = async (consumer, ctx, message) =>
+                    {
+                        if (ctx.Offset == numberOfMessageToStore)
+                        {
+                            await consumer.StoreOffset(ctx.Offset);
+                            storedOffset.SetResult(ctx.Offset);
+                        }
+
+                        await Task.CompletedTask;
+                    }
+                });
+
+            new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(storedOffset);
+
+            await consumer.Close();
+
+            // new consumer that should start from stored offset
+            var offset = await system.QueryOffset(reference, stream);
+            var offsetSpec = new OffsetTypeOffset(offset);
+            var isFirstMessageReceived = true;
+            var consumerWithOffset = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = reference,
+                    Stream = stream,
+                    OffsetSpec = offsetSpec,
+
+                    MessageHandler = async (consumer2, ctx, message) =>
+                    {
+                        if (isFirstMessageReceived)
+                        {
+                            // set the result of the first message
+                            firstMessageAfterRestart.SetResult(ctx.Offset);
+                            isFirstMessageReceived = false;
+                        }
+
+                        await Task.CompletedTask;
+                    }
+                });
+
+            new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(firstMessageAfterRestart);
+
+            SystemUtils.Wait();
+
+            Assert.Equal(storedOffset.Task.Result, firstMessageAfterRestart.Task.Result);
+
+            await consumer.Close();
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
     }
 }
