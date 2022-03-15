@@ -43,6 +43,16 @@ namespace RabbitMQ.Stream.Client
             this.config = config;
         }
 
+        // if a user specify a custom offset 
+        // the client must filter messages
+        // and dispatch only the messages starting from the 
+        // user offset.
+        private bool MaybeDispatch(ulong offset)
+        {
+            return !(config.OffsetSpec is OffsetTypeOffset offsetSpec
+                     && offset < offsetSpec.OffsetValue);
+        }
+
         public async Task StoreOffset(ulong offset)
         {
             await client.StoreOffset(config.Reference, config.Stream, offset);
@@ -77,11 +87,14 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var messageEntry in deliver.Messages)
                     {
-                        var message = Message.From(messageEntry.Data); //data should be AMQP 1.0 encoded
-                        await config.MessageHandler(this,
-                            new MessageContext(messageEntry.Offset,
-                                TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
-                            message);
+                        if (MaybeDispatch(messageEntry.Offset))
+                        {
+                            var message = Message.From(messageEntry.Data);
+                            await config.MessageHandler(this,
+                                new MessageContext(messageEntry.Offset,
+                                    TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
+                                message);
+                        }
                     }
 
                     // give one credit after each chunk

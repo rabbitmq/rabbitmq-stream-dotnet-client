@@ -66,6 +66,8 @@ namespace RabbitMQ.Stream.Client
             offsetValue = offset;
         }
 
+        internal ulong OffsetValue => offsetValue;
+
         public int Size => 2 + 8;
 
         public int Write(Span<byte> span)

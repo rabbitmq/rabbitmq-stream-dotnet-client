@@ -36,11 +36,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = stream
-                });
+                new ProducerConfig { Reference = "producer", Stream = stream });
             var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
@@ -173,18 +169,11 @@ namespace Tests
             var testPassed = new TaskCompletionSource<Data>();
             var stream = Guid.NewGuid().ToString();
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
-            var config = new StreamSystemConfig()
-            {
-                AddressResolver = addressResolver,
-            };
+            var config = new StreamSystemConfig() { AddressResolver = addressResolver, };
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = stream
-                });
+                new ProducerConfig { Reference = "producer", Stream = stream });
             var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
@@ -255,11 +244,7 @@ namespace Tests
                 });
 
             var producer = await system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = stream
-                });
+                new ProducerConfig { Reference = "producer", Stream = stream });
 
             var messagesNone = new List<Message>();
             PumpMessages(messagesNone, "None");
@@ -293,11 +278,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = stream
-                });
+                new ProducerConfig { Reference = "producer", Stream = stream });
             var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
@@ -328,12 +309,7 @@ namespace Tests
                     UserId = new byte[] { 0x0, 0xF },
                     ReplyToGroupId = "replyToGroupId"
                 },
-                Annotations = new Annotations
-                {
-                    ["akey1"] = "value1",
-                    [1] = 1,
-                    [1_000_000] = 1_000_000,
-                },
+                Annotations = new Annotations { ["akey1"] = "value1", [1] = 1, [1_000_000] = 1_000_000, },
                 ApplicationProperties = new ApplicationProperties()
                 {
                     ["apkey1"] = "value1",
@@ -444,7 +420,6 @@ namespace Tests
                     Reference = reference,
                     Stream = stream,
                     OffsetSpec = new OffsetTypeOffset(),
-
                     MessageHandler = async (consumer, ctx, message) =>
                     {
                         testOutputHelper.WriteLine($"ConsumerStoreOffset receiving.. {count}");
@@ -481,6 +456,89 @@ namespace Tests
                 system.QueryOffset("reference_does_not_exist", stream));
 
             await consumer.Close();
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ShouldConsumeFromStoredOffset()
+        {
+            // validate restart consume offset
+            // When a consumer from a stored offset with:
+            // await system.QueryOffset(Reference, stream);
+            // the user has to receive the messages for that offset.
+            // The client receive the chuck this is why we need
+            // to filter the value client side
+            // see Consumer:MaybeDispatch/1
+            // For example given 10 messages in a chuck
+            // the stored is 7 we need to skip client side the first
+            // 6 messages 
+
+            var storedOffset = new TaskCompletionSource<ulong>();
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            const int NumberOfMessages = 10;
+            const int NumberOfMessageToStore = 7; // a random number in the interval.
+
+            await SystemUtils.PublishMessages(system, stream, NumberOfMessages, testOutputHelper);
+            const string Reference = "consumer_offset";
+
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = Reference,
+                    Stream = stream,
+                    OffsetSpec = new OffsetTypeOffset(),
+                    MessageHandler = async (consumer, ctx, _) =>
+                    {
+                        if (ctx.Offset == NumberOfMessageToStore)
+                        {
+                            await consumer.StoreOffset(ctx.Offset);
+                            storedOffset.SetResult(ctx.Offset);
+                        }
+
+                        await Task.CompletedTask;
+                    }
+                });
+
+            new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(storedOffset);
+
+            await consumer.Close();
+
+            // new consumer that should start from stored offset
+            var offset = await system.QueryOffset(Reference, stream);
+            // the offset received must be the same from the last stored
+            Assert.Equal(offset, storedOffset.Task.Result);
+            var messagesConsumed = new TaskCompletionSource<ulong>();
+            var consumerWithOffset = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = Reference,
+                    Stream = stream,
+                    OffsetSpec = new OffsetTypeOffset(offset),
+                    MessageHandler = async (_, ctx, _) =>
+                    {
+                        if (ctx.Offset == 7)
+                        {
+                            // check if the the offset is actually 7
+                            messagesConsumed.SetResult(ctx.Offset);
+                        }
+
+                        await Task.CompletedTask;
+                    }
+                });
+
+            new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(messagesConsumed);
+
+            SystemUtils.Wait();
+            // just a double check 
+            Assert.Equal(storedOffset.Task.Result, messagesConsumed.Task.Result);
+
+            await consumer.Close();
+            await consumerWithOffset.Close();
             await system.DeleteStream(stream);
             await system.Close();
         }
