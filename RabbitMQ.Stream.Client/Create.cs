@@ -43,10 +43,10 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteString(span.Slice(offset), stream);
             offset += WireFormatting.WriteInt32(span.Slice(offset), arguments.Count);
 
-            foreach (var (k, v) in arguments)
+            foreach (var (key, value) in arguments)
             {
-                offset += WireFormatting.WriteString(span.Slice(offset), k);
-                offset += WireFormatting.WriteString(span.Slice(offset), v);
+                offset += WireFormatting.WriteString(span.Slice(offset), key);
+                offset += WireFormatting.WriteString(span.Slice(offset), value);
             }
 
             return offset;
