@@ -20,7 +20,7 @@ namespace RabbitMQ.Stream.Client
         private Func<Memory<byte>, Task> commandCallback;
         private readonly Func<string, Task> closedCallback;
         private int numFrames;
-        private readonly object writeLock = new object();
+        private readonly object writeLock = new();
         internal int NumFrames => numFrames;
 
         internal Func<Memory<byte>, Task> CommandCallback
