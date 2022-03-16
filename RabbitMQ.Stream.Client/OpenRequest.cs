@@ -27,9 +27,5 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteString(span.Slice(offset), vhost);
             return offset;
         }
-
-        public static void Dispose()
-        {
-        }
     }
 }
