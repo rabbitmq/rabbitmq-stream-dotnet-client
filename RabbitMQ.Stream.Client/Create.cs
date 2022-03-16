@@ -26,9 +26,9 @@ namespace RabbitMQ.Stream.Client
             get
             {
                 var argSize = 0;
-                foreach (var (k, v) in arguments)
+                foreach (var (key, value) in arguments)
                 {
-                    argSize += (WireFormatting.StringSize(k) + WireFormatting.StringSize(v));
+                    argSize += (WireFormatting.StringSize(key) + WireFormatting.StringSize(value));
                 }
 
                 return 8 + WireFormatting.StringSize(stream) + 4 + argSize;
