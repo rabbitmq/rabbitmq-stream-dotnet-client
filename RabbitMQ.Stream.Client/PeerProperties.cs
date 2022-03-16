@@ -34,10 +34,6 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public static void Dispose()
-        {
-        }
-
         public int Write(Span<byte> span)
         {
             var command = (ICommand)this;
