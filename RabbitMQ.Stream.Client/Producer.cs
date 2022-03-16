@@ -60,7 +60,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
-            client.ConnectionClosed += async (reason) =>
+            client.ConnectionClosed += async reason =>
             {
                 if (config.ConnectionClosedHandler != null)
                 {
