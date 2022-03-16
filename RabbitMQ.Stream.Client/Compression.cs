@@ -30,13 +30,13 @@ namespace RabbitMQ.Stream.Client
     public interface ICompressionCodec
     {
         void Compress(List<Message> messages);
-        public int Write(Span<byte> span);
-        public int CompressedSize { get; }
-        public int UnCompressedSize { get; }
+        int Write(Span<byte> span);
+        int CompressedSize { get; }
+        int UnCompressedSize { get; }
 
-        public int MessagesCount { get; }
+        int MessagesCount { get; }
 
-        public CompressionType CompressionType { get; }
+        CompressionType CompressionType { get; }
 
         ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize);
     }
