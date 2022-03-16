@@ -14,9 +14,9 @@ namespace RabbitMQ.Stream.Client
     {
         private static readonly Encoding s_encoding = Encoding.UTF8;
 
-        internal static int StringSize(string s)
+        internal static int StringSize(string @string)
         {
-            return string.IsNullOrEmpty(s) ? 2 : 2 + s_encoding.GetByteCount(s);
+            return string.IsNullOrEmpty(@string) ? 2 : 2 + s_encoding.GetByteCount(@string);
         }
 
         internal static int WriteByte(Span<byte> span, byte value)

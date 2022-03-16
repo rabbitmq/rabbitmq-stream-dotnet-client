@@ -9,10 +9,6 @@ using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
 {
-    public struct Hello
-    {
-    }
-
     public class Message
     {
         public Message(byte[] data) : this(new Data(new ReadOnlySequence<byte>(data)))

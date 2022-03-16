@@ -24,18 +24,14 @@ namespace RabbitMQ.Stream.Client
             get
             {
                 var size = 12;
-                foreach (var (k, v) in properties)
+                foreach (var (key, value) in properties)
                 {
                     // TODO: unnecessary conversion work here to work out the correct size of the frame
-                    size += WireFormatting.StringSize(k) + WireFormatting.StringSize(v); //
+                    size += WireFormatting.StringSize(key) + WireFormatting.StringSize(value); //
                 }
 
                 return size;
             }
-        }
-
-        public static void Dispose()
-        {
         }
 
         public int Write(Span<byte> span)
@@ -89,11 +85,9 @@ namespace RabbitMQ.Stream.Client
             var props = new Dictionary<string, string>();
             for (var i = 0; i < numProps; i++)
             {
-                string k;
-                string v;
-                offset += WireFormatting.ReadString(frame.Slice(offset), out k);
-                offset += WireFormatting.ReadString(frame.Slice(offset), out v);
-                props.Add(k, v);
+                offset += WireFormatting.ReadString(frame.Slice(offset), out var key);
+                offset += WireFormatting.ReadString(frame.Slice(offset), out var value);
+                props.Add(key, value);
             }
 
             command = new PeerPropertiesResponse(correlation, props, responseCode);

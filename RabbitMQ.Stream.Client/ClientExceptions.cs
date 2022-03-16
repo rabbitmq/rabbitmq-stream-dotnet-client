@@ -10,18 +10,20 @@ namespace RabbitMQ.Stream.Client
     {
         public static void MaybeThrowException(ResponseCode responseCode, string message)
         {
-            if (responseCode != ResponseCode.Ok)
+            if (responseCode is ResponseCode.Ok)
             {
-                throw responseCode switch
-                {
-                    ResponseCode.VirtualHostAccessFailure => new VirtualHostAccessFailureException(message),
-                    ResponseCode.SaslAuthenticationFailureLoopback => new AuthenticationFailureLoopback(message),
-                    ResponseCode.AuthenticationFailure => new AuthenticationFailureException(message),
-                    ResponseCode.OffsetNotFound => new OffsetNotFoundException(message),
-                    //TODO Implement for all the response code
-                    _ => new GenericProtocolException(responseCode, message)
-                };
+                return;
             }
+
+            throw responseCode switch
+            {
+                ResponseCode.VirtualHostAccessFailure => new VirtualHostAccessFailureException(message),
+                ResponseCode.SaslAuthenticationFailureLoopback => new AuthenticationFailureLoopback(message),
+                ResponseCode.AuthenticationFailure => new AuthenticationFailureException(message),
+                ResponseCode.OffsetNotFound => new OffsetNotFoundException(message),
+                //TODO Implement for all the response code
+                _ => new GenericProtocolException(responseCode, message)
+            };
         }
     }
 

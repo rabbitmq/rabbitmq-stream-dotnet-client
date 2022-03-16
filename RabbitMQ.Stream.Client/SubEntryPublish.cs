@@ -16,8 +16,7 @@ namespace RabbitMQ.Stream.Client
             get
             {
                 const int headerSize = 2 + 2 + 1 + 4;
-                var len = headerSize + (8 + 1 + 2 + 4 + 4) +
-                          compressionCodec.CompressedSize;
+                var len = headerSize + 8 + 1 + 2 + 4 + 4 + compressionCodec.CompressedSize;
                 return len;
             }
         }
