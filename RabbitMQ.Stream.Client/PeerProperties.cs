@@ -85,11 +85,9 @@ namespace RabbitMQ.Stream.Client
             var props = new Dictionary<string, string>();
             for (var i = 0; i < numProps; i++)
             {
-                string k;
-                string v;
-                offset += WireFormatting.ReadString(frame.Slice(offset), out k);
-                offset += WireFormatting.ReadString(frame.Slice(offset), out v);
-                props.Add(k, v);
+                offset += WireFormatting.ReadString(frame.Slice(offset), out var key);
+                offset += WireFormatting.ReadString(frame.Slice(offset), out var value);
+                props.Add(key, value);
             }
 
             command = new PeerPropertiesResponse(correlation, props, responseCode);
