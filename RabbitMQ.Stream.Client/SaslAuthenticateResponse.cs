@@ -35,7 +35,7 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
             offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
-            var data = new byte[0];
+            var data = Array.Empty<byte>();
             if (frame.Length > offset)
             {
                 offset += WireFormatting.ReadBytes(frame.Slice(offset), out data);
