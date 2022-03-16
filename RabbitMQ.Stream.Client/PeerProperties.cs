@@ -24,10 +24,10 @@ namespace RabbitMQ.Stream.Client
             get
             {
                 var size = 12;
-                foreach (var (k, v) in properties)
+                foreach (var (key, value) in properties)
                 {
                     // TODO: unnecessary conversion work here to work out the correct size of the frame
-                    size += WireFormatting.StringSize(k) + WireFormatting.StringSize(v); //
+                    size += WireFormatting.StringSize(key) + WireFormatting.StringSize(value); //
                 }
 
                 return size;
