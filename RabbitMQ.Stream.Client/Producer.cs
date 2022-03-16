@@ -86,7 +86,7 @@ namespace RabbitMQ.Stream.Client
                 },
                 errors =>
                 {
-                    foreach ((var id, var code) in errors)
+                    foreach (var (id, code) in errors)
                     {
                         config.ConfirmHandler(new Confirmation
                         {
