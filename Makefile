@@ -1,7 +1,10 @@
 all: test build
 
 
-build: 
+format:
+	dotnet format
+
+build: format
 	dotnet build
 
 test: build
