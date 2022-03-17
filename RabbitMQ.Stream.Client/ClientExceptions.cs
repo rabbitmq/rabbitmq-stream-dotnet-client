@@ -14,13 +14,13 @@ namespace RabbitMQ.Stream.Client
             {
                 return;
             }
-            
+
             throw responseCode switch
             {
-                ResponseCode.VirtualHostAccessFailure          => new VirtualHostAccessFailureException(message),
+                ResponseCode.VirtualHostAccessFailure => new VirtualHostAccessFailureException(message),
                 ResponseCode.SaslAuthenticationFailureLoopback => new AuthenticationFailureLoopback(message),
-                ResponseCode.AuthenticationFailure             => new AuthenticationFailureException(message),
-                ResponseCode.OffsetNotFound                    => new OffsetNotFoundException(message),
+                ResponseCode.AuthenticationFailure => new AuthenticationFailureException(message),
+                ResponseCode.OffsetNotFound => new OffsetNotFoundException(message),
                 //TODO Implement for all the response code
                 _ => new GenericProtocolException(responseCode, message)
             };
