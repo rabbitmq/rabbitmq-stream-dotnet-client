@@ -26,9 +26,9 @@ namespace RabbitMQ.Stream.Client
             get
             {
                 var argSize = 0;
-                foreach (var (k, v) in arguments)
+                foreach (var (key, value) in arguments)
                 {
-                    argSize += (WireFormatting.StringSize(k) + WireFormatting.StringSize(v));
+                    argSize += WireFormatting.StringSize(key) + WireFormatting.StringSize(value);
                 }
 
                 return 8 + WireFormatting.StringSize(stream) + 4 + argSize;
@@ -43,10 +43,10 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteString(span.Slice(offset), stream);
             offset += WireFormatting.WriteInt32(span.Slice(offset), arguments.Count);
 
-            foreach (var (k, v) in arguments)
+            foreach (var (key, value) in arguments)
             {
-                offset += WireFormatting.WriteString(span.Slice(offset), k);
-                offset += WireFormatting.WriteString(span.Slice(offset), v);
+                offset += WireFormatting.WriteString(span.Slice(offset), key);
+                offset += WireFormatting.WriteString(span.Slice(offset), value);
             }
 
             return offset;

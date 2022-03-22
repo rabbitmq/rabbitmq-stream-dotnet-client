@@ -30,24 +30,24 @@ namespace RabbitMQ.Stream.Client
     public interface ICompressionCodec
     {
         void Compress(List<Message> messages);
-        public int Write(Span<byte> span);
-        public int CompressedSize { get; }
-        public int UnCompressedSize { get; }
+        int Write(Span<byte> span);
+        int CompressedSize { get; }
+        int UnCompressedSize { get; }
 
-        public int MessagesCount { get; }
+        int MessagesCount { get; }
 
-        public CompressionType CompressionType { get; }
+        CompressionType CompressionType { get; }
 
         ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize);
     }
 
     public class NoneCompressionCodec : ICompressionCodec
     {
-        private List<Message> rMessages;
+        private List<Message> messages;
 
         public void Compress(List<Message> messages)
         {
-            rMessages = messages;
+            this.messages = messages ?? throw new ArgumentNullException(nameof(messages));
             UnCompressedSize = messages.Sum(msg => 4 + msg.Size);
             // since the buffer is not compressed CompressedSize is ==UnCompressedSize 
             CompressedSize = UnCompressedSize;
@@ -56,7 +56,7 @@ namespace RabbitMQ.Stream.Client
         public int Write(Span<byte> span)
         {
             var offset = 0;
-            foreach (var msg in rMessages)
+            foreach (var msg in messages)
             {
                 offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)msg.Size);
                 offset += msg.Write(span.Slice(offset));
@@ -67,7 +67,7 @@ namespace RabbitMQ.Stream.Client
 
         public int CompressedSize { get; private set; }
         public int UnCompressedSize { get; private set; }
-        public int MessagesCount => rMessages.Count;
+        public int MessagesCount => messages.Count;
         public CompressionType CompressionType => CompressionType.None;
 
         public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen,

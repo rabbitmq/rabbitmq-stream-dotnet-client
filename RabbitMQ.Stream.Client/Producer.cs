@@ -60,7 +60,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
-            client.ConnectionClosed += async (reason) =>
+            client.ConnectionClosed += async reason =>
             {
                 if (config.ConnectionClosedHandler != null)
                 {
@@ -86,7 +86,7 @@ namespace RabbitMQ.Stream.Client
                 },
                 errors =>
                 {
-                    foreach ((var id, var code) in errors)
+                    foreach (var (id, code) in errors)
                     {
                         config.ConfirmHandler(new Confirmation
                         {

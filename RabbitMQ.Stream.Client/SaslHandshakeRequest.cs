@@ -25,9 +25,5 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
             return offset;
         }
-
-        public static void Dispose()
-        {
-        }
     }
 }

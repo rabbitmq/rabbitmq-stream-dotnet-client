@@ -32,9 +32,5 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteBytes(span.Slice(offset), new ReadOnlySequence<byte>(data));
             return offset;
         }
-
-        public static void Dispose()
-        {
-        }
     }
 }

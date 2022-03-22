@@ -70,7 +70,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
-            client.ConnectionClosed += async (reason) =>
+            client.ConnectionClosed += async reason =>
             {
                 if (config.ConnectionClosedHandler != null)
                 {
@@ -87,14 +87,16 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var messageEntry in deliver.Messages)
                     {
-                        if (MaybeDispatch(messageEntry.Offset))
+                        if (!MaybeDispatch(messageEntry.Offset))
                         {
-                            var message = Message.From(messageEntry.Data);
-                            await config.MessageHandler(this,
-                                new MessageContext(messageEntry.Offset,
-                                    TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
-                                message);
+                            continue;
                         }
+
+                        var message = Message.From(messageEntry.Data);
+                        await config.MessageHandler(this,
+                                                    new MessageContext(messageEntry.Offset,
+                                                                       TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
+                                                    message);
                     }
 
                     // give one credit after each chunk

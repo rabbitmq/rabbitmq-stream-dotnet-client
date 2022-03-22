@@ -20,7 +20,7 @@ namespace RabbitMQ.Stream.Client
         private Func<Memory<byte>, Task> commandCallback;
         private readonly Func<string, Task> closedCallback;
         private int numFrames;
-        private readonly object writeLock = new object();
+        private readonly object writeLock = new();
         internal int NumFrames => numFrames;
 
         internal Func<Memory<byte>, Task> CommandCallback
@@ -76,7 +76,7 @@ namespace RabbitMQ.Stream.Client
             WriteCommand(command);
             var flushTask = FlushAsync();
 
-            // Let's check if this completed synchronously befor invoking the async state mahcine
+            // Let's check if this is completed synchronously before invoking the async state machine
             if (!flushTask.IsCompletedSuccessfully)
             {
                 await flushTask.ConfigureAwait(false);

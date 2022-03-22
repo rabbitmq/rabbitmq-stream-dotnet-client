@@ -7,19 +7,12 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
-    public record StreamSpec
+    public record StreamSpec(string Name)
     {
         private readonly IDictionary<string, string> args = new Dictionary<string, string>()
         {
             ["queue-leader-locator"] = LeaderLocator.LeastLeaders.ToString()
         };
-
-        public StreamSpec(string name)
-        {
-            Name = name;
-        }
-
-        public string Name { get; init; }
 
         public TimeSpan MaxAge
         {

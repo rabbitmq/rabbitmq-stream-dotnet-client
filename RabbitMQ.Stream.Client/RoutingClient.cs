@@ -13,8 +13,8 @@ namespace RabbitMQ.Stream.Client
 {
     public interface IRouting
     {
-        public IClient CreateClient(ClientParameters clientParameters);
-        public bool ValidateDns { get; set; }
+        IClient CreateClient(ClientParameters clientParameters);
+        bool ValidateDns { get; set; }
     }
 
     public class Routing : IRouting
