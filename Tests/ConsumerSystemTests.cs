@@ -505,7 +505,7 @@ namespace Tests
                 });
 
             new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(storedOffset);
-            
+
             // we need to wait a bit because the StoreOffset is async
             // and `QueryOffset` could raise NoOffsetFound
             SystemUtils.Wait();
