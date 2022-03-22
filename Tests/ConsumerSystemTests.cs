@@ -506,8 +506,9 @@ namespace Tests
 
             new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(storedOffset);
 
-            await consumer.Close();
-
+            // we need to wait a bit because the StoreOffset is async
+            // and `QueryOffset` could raise NoOffsetFound
+            SystemUtils.Wait();
             // new consumer that should start from stored offset
             var offset = await system.QueryOffset(Reference, stream);
             // the offset received must be the same from the last stored
@@ -538,6 +539,7 @@ namespace Tests
             Assert.Equal(storedOffset.Task.Result, messagesConsumed.Task.Result);
 
             await consumerWithOffset.Close();
+            await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();
         }
