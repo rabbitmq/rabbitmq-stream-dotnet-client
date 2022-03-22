@@ -505,8 +505,7 @@ namespace Tests
                 });
 
             new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(storedOffset);
-
-            await consumer.Close();
+            
 
             // new consumer that should start from stored offset
             var offset = await system.QueryOffset(Reference, stream);
@@ -538,6 +537,7 @@ namespace Tests
             Assert.Equal(storedOffset.Task.Result, messagesConsumed.Task.Result);
 
             await consumerWithOffset.Close();
+            await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();
         }
