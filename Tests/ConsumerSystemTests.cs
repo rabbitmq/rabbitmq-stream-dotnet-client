@@ -505,7 +505,10 @@ namespace Tests
                 });
 
             new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(storedOffset);
-
+            
+            // we need to wait a bit because the StoreOffset is async
+            // and `QueryOffset` could raise NoOffsetFound
+            SystemUtils.Wait();
             // new consumer that should start from stored offset
             var offset = await system.QueryOffset(Reference, stream);
             // the offset received must be the same from the last stored
