@@ -537,7 +537,6 @@ namespace Tests
             // just a double check 
             Assert.Equal(storedOffset.Task.Result, messagesConsumed.Task.Result);
 
-            await consumer.Close();
             await consumerWithOffset.Close();
             await system.DeleteStream(stream);
             await system.Close();
