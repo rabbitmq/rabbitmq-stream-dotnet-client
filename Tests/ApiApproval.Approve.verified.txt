@@ -290,6 +290,7 @@ namespace RabbitMQ.Stream.Client
         public System.Func<string, System.Threading.Tasks.Task> ConnectionClosedHandler { get; set; }
         protected virtual System.Type EqualityContract { get; }
         public System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task> MessageHandler { get; set; }
+        public System.Action<RabbitMQ.Stream.Client.MetaDataUpdate> MetadataHandler { get; set; }
         public RabbitMQ.Stream.Client.IOffsetType OffsetSpec { get; set; }
         public string Reference { get; set; }
         public string Stream { get; set; }
@@ -658,6 +659,7 @@ namespace RabbitMQ.Stream.Client
         public System.Func<string, System.Threading.Tasks.Task> ConnectionClosedHandler { get; set; }
         protected virtual System.Type EqualityContract { get; }
         public int MaxInFlight { get; set; }
+        public System.Action<RabbitMQ.Stream.Client.MetaDataUpdate> MetadataHandler { get; set; }
         public string Reference { get; set; }
         public string Stream { get; set; }
         public virtual RabbitMQ.Stream.Client.ProducerConfig <Clone>$() { }

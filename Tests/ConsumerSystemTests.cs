@@ -543,5 +543,39 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ConsumerMetadataHandlerUpdate()
+        {
+            // test the Consumer metadata update
+            // metadata update can happen when a stream is deleted
+            // or when the stream topology is changed.
+            // here we test the deleted part
+            // with the event: ConsumerConfig:MetadataHandler/1
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var testPassed = new TaskCompletionSource<bool>();
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig()
+                {
+                    Reference = "consumer",
+                    Stream = stream,
+                    MetadataHandler = update =>
+                    {
+                        if (update.Stream == stream)
+                        {
+                            testPassed.SetResult(true);
+                        }
+                    }
+                });
+            SystemUtils.Wait();
+            await system.DeleteStream(stream);
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            await consumer.Close();
+            await system.Close();
+        }
     }
 }

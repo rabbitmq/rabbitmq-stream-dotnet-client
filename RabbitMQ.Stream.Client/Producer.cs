@@ -26,6 +26,8 @@ namespace RabbitMQ.Stream.Client
         public Func<string, Task> ConnectionClosedHandler { get; set; }
 
         public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
+
+        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
     }
 
     public class Producer : AbstractEntity, IDisposable
@@ -67,6 +69,11 @@ namespace RabbitMQ.Stream.Client
                     await config.ConnectionClosedHandler(reason);
                 }
             };
+
+            if (config.MetadataHandler != null)
+            {
+                client.Parameters.MetadataHandler += config.MetadataHandler;
+            }
 
             var (pubId, response) = await client.DeclarePublisher(
                 config.Reference,
