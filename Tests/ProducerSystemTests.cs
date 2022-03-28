@@ -65,7 +65,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
 
             await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig {Reference = "producer", Stream = stream,}));
+                new ProducerConfig { Reference = "producer", Stream = stream, }));
 
             await system.Close();
         }
@@ -79,7 +79,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig {Reference = "producer", Stream = stream,});
+                new ProducerConfig { Reference = "producer", Stream = stream, });
 
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             Assert.Equal(ResponseCode.Ok, await producer.Close());
@@ -132,7 +132,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig {Reference = "producer", Stream = stream,});
+                new ProducerConfig { Reference = "producer", Stream = stream, });
 
             await Assert.ThrowsAsync<OutOfBoundsException>(() =>
                 producer.Send(1, messages, CompressionType.Gzip).AsTask());
@@ -203,7 +203,6 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]

@@ -36,7 +36,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig {Reference = "producer", Stream = stream});
+                new ProducerConfig { Reference = "producer", Stream = stream });
             var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
@@ -169,11 +169,11 @@ namespace Tests
             var testPassed = new TaskCompletionSource<Data>();
             var stream = Guid.NewGuid().ToString();
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
-            var config = new StreamSystemConfig() {AddressResolver = addressResolver,};
+            var config = new StreamSystemConfig() { AddressResolver = addressResolver, };
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig {Reference = "producer", Stream = stream});
+                new ProducerConfig { Reference = "producer", Stream = stream });
             var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
@@ -244,7 +244,7 @@ namespace Tests
                 });
 
             var producer = await system.CreateProducer(
-                new ProducerConfig {Reference = "producer", Stream = stream});
+                new ProducerConfig { Reference = "producer", Stream = stream });
 
             var messagesNone = new List<Message>();
             PumpMessages(messagesNone, "None");
@@ -278,7 +278,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig {Reference = "producer", Stream = stream});
+                new ProducerConfig { Reference = "producer", Stream = stream });
             var consumer = await system.CreateConsumer(
                 new ConsumerConfig
                 {
@@ -306,10 +306,10 @@ namespace Tests
                     GroupSequence = 1,
                     MessageId = (long)4_000_000_000,
                     ReplyTo = "replyTo",
-                    UserId = new byte[] {0x0, 0xF},
+                    UserId = new byte[] { 0x0, 0xF },
                     ReplyToGroupId = "replyToGroupId"
                 },
-                Annotations = new Annotations {["akey1"] = "value1", [1] = 1, [1_000_000] = 1_000_000,},
+                Annotations = new Annotations { ["akey1"] = "value1", [1] = 1, [1_000_000] = 1_000_000, },
                 ApplicationProperties = new ApplicationProperties()
                 {
                     ["apkey1"] = "value1",
@@ -337,7 +337,7 @@ namespace Tests
             Assert.Equal((uint)1, testPassed.Task.Result.Properties.GroupSequence);
             Assert.Equal((long)4_000_000_000, testPassed.Task.Result.Properties.MessageId);
             Assert.Equal("replyTo", testPassed.Task.Result.Properties.ReplyTo);
-            Assert.Equal(new byte[] {0x0, 0xF}, testPassed.Task.Result.Properties.UserId);
+            Assert.Equal(new byte[] { 0x0, 0xF }, testPassed.Task.Result.Properties.UserId);
 
             Assert.True(testPassed.Task.Result.Annotations.ContainsKey(1));
             Assert.Equal(1, testPassed.Task.Result.Annotations[1]);
@@ -543,7 +543,6 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
-
 
         [Fact]
         [WaitTestBeforeAfter]
