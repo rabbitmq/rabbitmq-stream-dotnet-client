@@ -27,6 +27,7 @@
     - [Consume Messages](#consume-messages)
       - [Track Offset](#track-offset)
     - [Handle Close](#handle-close)
+    - [Handle Metadata Update](#handle-metadata-update)
     - [Build from source](#build-from-source)
     - [Project Status](#project-status)
 
@@ -339,6 +340,19 @@ Producers/Consumers raise and event when the client is disconnected:
     Console.WriteLine($"Connection Closed: {s}");
     return Task.CompletedTask;
    },
+```
+
+### Handle Metadata Update
+Stream metadata update is raised when the stream topology changes or the stream is deleted. 
+You can use `MetadataHandler` to handle it:
+```csharp
+ new ProducerConfig/ConsumerConfig
+ {
+  MetadataHandler = update =>
+   {
+   ......  
+   },
+ }
 ```
 
 ### Build from source

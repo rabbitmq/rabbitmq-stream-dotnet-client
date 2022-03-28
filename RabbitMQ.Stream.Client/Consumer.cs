@@ -29,6 +29,8 @@ namespace RabbitMQ.Stream.Client
         public Func<string, Task> ConnectionClosedHandler { get; set; }
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
         public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
+
+        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
     }
 
     public class Consumer : AbstractEntity, IDisposable
@@ -77,6 +79,10 @@ namespace RabbitMQ.Stream.Client
                     await config.ConnectionClosedHandler(reason);
                 }
             };
+            if (config.MetadataHandler != null)
+            {
+                client.Parameters.MetadataHandler += config.MetadataHandler;
+            }
 
             ushort initialCredit = 2;
             var (consumerId, response) = await client.Subscribe(
@@ -94,9 +100,9 @@ namespace RabbitMQ.Stream.Client
 
                         var message = Message.From(messageEntry.Data);
                         await config.MessageHandler(this,
-                                                    new MessageContext(messageEntry.Offset,
-                                                                       TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
-                                                    message);
+                            new MessageContext(messageEntry.Offset,
+                                TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
+                            message);
                     }
 
                     // give one credit after each chunk
