@@ -65,7 +65,6 @@ namespace Tests
             Thread.Sleep(400);
         }
 
-
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
              ITestOutputHelper testOutputHelper)
         {
