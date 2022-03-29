@@ -699,6 +699,10 @@ namespace RabbitMQ.Stream.Client
         public int SizeNeeded { get; }
         public int Write(System.Span<byte> span) { }
     }
+    public class QueryException : System.Exception
+    {
+        public QueryException(string s) { }
+    }
     public readonly struct QueryOffsetRequest : RabbitMQ.Stream.Client.ICommand
     {
         public const ushort Key = 11;
@@ -876,6 +880,7 @@ namespace RabbitMQ.Stream.Client
         public System.Threading.Tasks.Task CreateStream(RabbitMQ.Stream.Client.StreamSpec spec) { }
         public System.Threading.Tasks.Task DeleteStream(string stream) { }
         public System.Threading.Tasks.Task<ulong> QueryOffset(string reference, string stream) { }
+        public System.Threading.Tasks.Task<ulong> QuerySequence(string reference, string stream) { }
         public System.Threading.Tasks.Task<bool> StreamExists(string stream) { }
         public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamSystem> Create(RabbitMQ.Stream.Client.StreamSystemConfig config) { }
     }
