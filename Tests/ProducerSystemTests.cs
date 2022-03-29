@@ -65,7 +65,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
 
             await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream, }));
+                new ProducerConfig {Reference = "producer", Stream = stream,}));
 
             await system.Close();
         }
@@ -79,7 +79,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream, });
+                new ProducerConfig {Reference = "producer", Stream = stream,});
 
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             Assert.Equal(ResponseCode.Ok, await producer.Close());
@@ -132,7 +132,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer = await system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream, });
+                new ProducerConfig {Reference = "producer", Stream = stream,});
 
             await Assert.ThrowsAsync<OutOfBoundsException>(() =>
                 producer.Send(1, messages, CompressionType.Gzip).AsTask());
@@ -235,6 +235,33 @@ namespace Tests
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await producer.Close();
+            await system.Close();
+        }
+
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ProducerQuerySequence()
+        {
+            // test the producer sequence
+            // with an empty stream the QuerySequence/2 return must be = 0
+            var stream = Guid.NewGuid().ToString();
+            const string ProducerName = "myProducer";
+            const int NumberOfMessages = 10;
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var res = await system.QuerySequence(ProducerName, stream);
+            Assert.True(res == 0);
+            await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
+                ProducerName, testOutputHelper);
+            SystemUtils.Wait();
+            var resAfter = await system.QuerySequence(ProducerName, stream);
+            // sequence start from zero
+            Assert.True(resAfter == (NumberOfMessages - 1));
+            await SystemUtils.PublishMessages(system, stream, 10,
+                ProducerName, testOutputHelper);
+
             await system.Close();
         }
     }

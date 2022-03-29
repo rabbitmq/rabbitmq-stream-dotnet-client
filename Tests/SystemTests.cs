@@ -20,6 +20,7 @@ namespace Tests
             return new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(s));
         }
     }
+
     [Collection("Sequential")]
     public class SystemTests
     {
@@ -84,11 +85,7 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
-            var spec = new StreamSpec(stream)
-            {
-                MaxAge = TimeSpan.FromHours(8),
-                LeaderLocator = LeaderLocator.Random
-            };
+            var spec = new StreamSpec(stream) {MaxAge = TimeSpan.FromHours(8), LeaderLocator = LeaderLocator.Random};
             Assert.Equal("28800s", spec.Args["max-age"]);
             Assert.Equal("random", spec.Args["queue-leader-locator"]);
             await system.CreateStream(spec);
@@ -100,10 +97,7 @@ namespace Tests
         [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
-            var config = new StreamSystemConfig
-            {
-                VirtualHost = "DOES_NOT_EXIST"
-            };
+            var config = new StreamSystemConfig {VirtualHost = "DOES_NOT_EXIST"};
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
                 async () => { await StreamSystem.Create(config); }
             );
@@ -113,10 +107,7 @@ namespace Tests
         [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenAuthenticationAccess()
         {
-            var config = new StreamSystemConfig
-            {
-                UserName = "user_does_not_exist"
-            };
+            var config = new StreamSystemConfig {UserName = "user_does_not_exist"};
             await Assert.ThrowsAsync<AuthenticationFailureException>(
                 async () => { await StreamSystem.Create(config); }
             );
@@ -150,21 +141,46 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
-            await system.CreateStream(new StreamSpec(stream)
-            {
-                MaxLengthBytes = 20,
-            });
+            await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 20,});
 
             await Assert.ThrowsAsync<CreateStreamException>(
                 async () =>
                 {
-                    await system.CreateStream(new StreamSpec(stream)
-                    {
-                        MaxLengthBytes = 10000,
-                    });
+                    await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 10000,});
                 }
             );
             await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ValidateQuery()
+        {
+            // here we just validate the Query for Offset and Sequence
+            // if the reference is == "" return must be 0
+            // stream name is mandatory
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            var res = await system.QueryOffset("", "stream_we_don_t_care");
+            Assert.True(res == 0);
+
+            res = await system.QuerySequence("", "stream_we_don_t_care");
+            Assert.True(res == 0);
+            
+            await Assert.ThrowsAsync<QueryException>(
+                async () =>
+                {
+                    await system.QueryOffset("reference_we_don_care", "");
+                }
+            );
+
+            await Assert.ThrowsAsync<QueryException>(
+                async () =>
+                {
+                    await system.QuerySequence("reference_we_don_care", "");
+                }
+            );
             await system.Close();
         }
     }

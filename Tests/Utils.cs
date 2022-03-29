@@ -65,15 +65,22 @@ namespace Tests
             Thread.Sleep(400);
         }
 
+
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
-            ITestOutputHelper testOutputHelper)
+             ITestOutputHelper testOutputHelper)
+        {
+            await PublishMessages(system, stream, numberOfMessages, "producer", testOutputHelper);
+        }
+
+        public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
+            string producerName, ITestOutputHelper testOutputHelper)
         {
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
             var producer = await system.CreateProducer(
                 new ProducerConfig
                 {
-                    Reference = "producer",
+                    Reference = producerName,
                     Stream = stream,
                     ConfirmHandler = confirmation =>
                     {

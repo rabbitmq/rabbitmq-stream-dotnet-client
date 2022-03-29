@@ -20,7 +20,7 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
-        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
+        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
 
         public AddressResolver AddressResolver { get; set; } = null;
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
@@ -55,7 +55,7 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with { Endpoint = endPoint });
+                    var client = await Client.Create(clientParams with {Endpoint = endPoint});
                     if (!client.IsClosed)
                     {
                         return new StreamSystem(clientParams, client);
@@ -82,14 +82,15 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
         {
-            var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
+            var meta = await client.QueryMetadata(new[] {producerConfig.Stream});
             var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Producer.Create(clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName }, producerConfig, metaStreamInfo);
+            return await Producer.Create(clientParameters with {ClientProvidedName = producerConfig.ClientProvidedName},
+                producerConfig, metaStreamInfo);
         }
 
         public async Task CreateStream(StreamSpec spec)
@@ -105,18 +106,60 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] { stream };
+            var streams = new[] {stream};
             var response = await client.QueryMetadata(streams);
-            return response.StreamInfos is { Count: >= 1 } &&
+            return response.StreamInfos is {Count: >= 1} &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
+        /// <summary>
+        /// QueryOffset retrieves the last consumer offset stored
+        /// given a consumer name and stream name 
+        /// </summary>
+        /// <param name="reference">Consumer name</param>
+        /// <param name="stream">Stream name</param>
+        /// <returns></returns>
         public async Task<ulong> QueryOffset(string reference, string stream)
         {
+            if (string.IsNullOrEmpty(reference))
+            {
+                return 0;
+            }
+
+            if (string.IsNullOrEmpty(stream))
+            {
+                throw new QueryException("Stream name can't be empty");
+            }
+            
             var response = await client.QueryOffset(reference, stream);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
-                $"stream: {stream}, reference: {reference}");
+                $"QueryOffset stream: {stream}, reference: {reference}");
             return response.Offset;
+        }
+
+        /// <summary>
+        /// QuerySequence retrieves the last producer sequence
+        /// given a producer name and stream 
+        /// </summary>
+        /// <param name="reference">Producer name</param>
+        /// <param name="stream">Stream name</param>
+        /// <returns></returns>
+        public async Task<ulong> QuerySequence(string reference, string stream)
+        {
+            if (string.IsNullOrEmpty(reference))
+            {
+                return 0;
+            }
+
+            if (string.IsNullOrEmpty(stream))
+            {
+                throw new QueryException("Stream name can't be empty");
+            }
+
+            var response = await client.QueryPublisherSequence(reference, stream);
+            ClientExceptions.MaybeThrowException(response.ResponseCode,
+                $"QuerySequence stream: {stream}, reference: {reference}");
+            return response.Sequence;
         }
 
         public async Task DeleteStream(string stream)
@@ -132,14 +175,15 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
-            var meta = await client.QueryMetadata(new[] { consumerConfig.Stream });
+            var meta = await client.QueryMetadata(new[] {consumerConfig.Stream});
             var metaStreamInfo = meta.StreamInfos[consumerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Consumer.Create(clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName }, consumerConfig, metaStreamInfo);
+            return await Consumer.Create(clientParameters with {ClientProvidedName = consumerConfig.ClientProvidedName},
+                consumerConfig, metaStreamInfo);
         }
     }
 
@@ -160,6 +204,13 @@ namespace RabbitMQ.Stream.Client
     public class DeleteStreamException : Exception
     {
         public DeleteStreamException(string s) : base(s)
+        {
+        }
+    }
+
+    public class QueryException : Exception
+    {
+        public QueryException(string s) : base(s)
         {
         }
     }
