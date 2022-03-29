@@ -258,9 +258,6 @@ namespace Tests
             var resAfter = await system.QuerySequence(ProducerName, stream);
             // sequence start from zero
             Assert.True(resAfter == (NumberOfMessages - 1));
-            await SystemUtils.PublishMessages(system, stream, 10,
-                ProducerName, testOutputHelper);
-
             await system.Close();
         }
     }
