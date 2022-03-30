@@ -237,5 +237,28 @@ namespace Tests
             await producer.Close();
             await system.Close();
         }
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ProducerQuerySequence()
+        {
+            // test the producer sequence
+            // with an empty stream the QuerySequence/2 return must be = 0
+            var stream = Guid.NewGuid().ToString();
+            const string ProducerName = "myProducer";
+            const int NumberOfMessages = 10;
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var res = await system.QuerySequence(ProducerName, stream);
+            Assert.True(res == 0);
+            await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
+                ProducerName, testOutputHelper);
+            SystemUtils.Wait();
+            var resAfter = await system.QuerySequence(ProducerName, stream);
+            // sequence start from zero
+            Assert.True(resAfter == (NumberOfMessages - 1));
+            await system.Close();
+        }
     }
 }

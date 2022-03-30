@@ -89,7 +89,8 @@ namespace RabbitMQ.Stream.Client
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Producer.Create(clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName }, producerConfig, metaStreamInfo);
+            return await Producer.Create(clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName },
+                producerConfig, metaStreamInfo);
         }
 
         public async Task CreateStream(StreamSpec spec)
@@ -111,12 +112,54 @@ namespace RabbitMQ.Stream.Client
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
+        /// <summary>
+        /// QueryOffset retrieves the last consumer offset stored
+        /// given a consumer name and stream name 
+        /// </summary>
+        /// <param name="reference">Consumer name</param>
+        /// <param name="stream">Stream name</param>
+        /// <returns></returns>
         public async Task<ulong> QueryOffset(string reference, string stream)
         {
+            if (string.IsNullOrEmpty(reference))
+            {
+                return 0;
+            }
+
+            if (string.IsNullOrEmpty(stream))
+            {
+                throw new QueryException("Stream name can't be empty");
+            }
+
             var response = await client.QueryOffset(reference, stream);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
-                $"stream: {stream}, reference: {reference}");
+                $"QueryOffset stream: {stream}, reference: {reference}");
             return response.Offset;
+        }
+
+        /// <summary>
+        /// QuerySequence retrieves the last producer sequence
+        /// given a producer name and stream 
+        /// </summary>
+        /// <param name="reference">Producer name</param>
+        /// <param name="stream">Stream name</param>
+        /// <returns></returns>
+        public async Task<ulong> QuerySequence(string reference, string stream)
+        {
+            if (string.IsNullOrEmpty(reference))
+            {
+                return 0;
+            }
+
+            if (string.IsNullOrEmpty(stream))
+            {
+                throw new QueryException("Stream name can't be empty");
+            }
+
+            var response = await client.QueryPublisherSequence(reference, stream);
+            ClientExceptions.MaybeThrowException(response.ResponseCode,
+                $"QuerySequence stream: {stream}, reference: {reference}");
+            return response.Sequence;
         }
 
         public async Task DeleteStream(string stream)
@@ -139,7 +182,8 @@ namespace RabbitMQ.Stream.Client
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Consumer.Create(clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName }, consumerConfig, metaStreamInfo);
+            return await Consumer.Create(clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName },
+                consumerConfig, metaStreamInfo);
         }
     }
 
@@ -160,6 +204,13 @@ namespace RabbitMQ.Stream.Client
     public class DeleteStreamException : Exception
     {
         public DeleteStreamException(string s) : base(s)
+        {
+        }
+    }
+
+    public class QueryException : Exception
+    {
+        public QueryException(string s) : base(s)
         {
         }
     }
