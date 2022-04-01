@@ -32,7 +32,7 @@ namespace RabbitMQ.Stream.Client
 
     public class Producer : AbstractEntity, IDisposable
     {
-        private bool _disposed;
+        private readonly bool _disposed;
         private byte publisherId;
         private readonly ProducerConfig config;
         private readonly Channel<OutgoingMsg> messageBuffer;
@@ -82,11 +82,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var id in publishingIds.Span)
                     {
-                        config.ConfirmHandler(new Confirmation
-                        {
-                            PublishingId = id,
-                            Code = ResponseCode.Ok,
-                        });
+                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = ResponseCode.Ok, });
                     }
 
                     semaphore.Release(publishingIds.Length);
@@ -95,11 +91,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var (id, code) in errors)
                     {
-                        config.ConfirmHandler(new Confirmation
-                        {
-                            PublishingId = id,
-                            Code = code,
-                        });
+                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = code, });
                     }
 
                     semaphore.Release(errors.Length);
@@ -198,7 +190,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<ResponseCode> Close()
         {
-            if (_disposed)
+            if (client.IsClosed)
             {
                 return ResponseCode.Ok;
             }
@@ -207,7 +199,6 @@ namespace RabbitMQ.Stream.Client
             var result = deletePublisherResponse.ResponseCode;
             var closed = client.MaybeClose($"client-close-publisher: {publisherId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {publisherId}");
-            _disposed = true;
             return result;
         }
 

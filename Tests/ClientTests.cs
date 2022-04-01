@@ -15,7 +15,6 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
-    [Collection("Sequential")]
     public class ClientTests
     {
         private readonly ITestOutputHelper testOutputHelper;
@@ -26,7 +25,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateDeleteStream()
         {
             var stream = Guid.NewGuid().ToString();
@@ -45,7 +43,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void MetaDataShouldReturn()
         {
             var stream = Guid.NewGuid().ToString();
@@ -75,7 +72,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void MetadataUpdateIsHandled()
         {
             var stream = Guid.NewGuid().ToString();
@@ -98,7 +94,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void DeclarePublisherShouldReturnErrorCode()
         {
             var clientParameters = new ClientParameters { };
@@ -114,7 +109,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void PublishShouldError()
         {
             var stream = Guid.NewGuid().ToString();
@@ -151,7 +145,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void PublishShouldConfirm()
         {
             testOutputHelper.WriteLine("PublishShouldConfirm");
@@ -201,7 +194,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ConsumerShouldReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
@@ -240,7 +232,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ConsumerStoreOffsetShouldReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
@@ -329,7 +320,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ConsumerShouldReceiveDeliveryAfterCredit()
         {
             var stream = Guid.NewGuid().ToString();
@@ -366,7 +356,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void UnsubscribedConsumerShouldNotReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
@@ -398,7 +387,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void VirtualHostFailureAccess()
         {
             var clientParameters = new ClientParameters

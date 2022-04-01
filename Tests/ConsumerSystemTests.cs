@@ -16,7 +16,6 @@ using Xunit.Abstractions;
 
 namespace Tests
 {
-    [Collection("Sequential")]
     public class ConsumerSystemTests
     {
         private readonly ITestOutputHelper testOutputHelper;
@@ -27,7 +26,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateConsumer()
         {
             var testPassed = new TaskCompletionSource<Data>();
@@ -63,7 +61,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CloseProducerTwoTimesShouldBeOk()
         {
             var stream = Guid.NewGuid().ToString();
@@ -86,7 +83,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ConsumerStoreOffset()
         {
             var testPassed = new TaskCompletionSource<int>();
@@ -134,7 +130,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void NotifyConsumerClose()
         {
             var stream = Guid.NewGuid().ToString();
@@ -163,7 +158,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateProducerConsumerAddressResolver()
         {
             var testPassed = new TaskCompletionSource<Data>();
@@ -200,7 +194,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ProducerAndConsumerCompressShouldHaveTheSameMessages()
         {
             void PumpMessages(ICollection<Message> messages, string prefix)
@@ -269,7 +262,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ConsumerValidationAmqpAttributes()
         {
             var testPassed = new TaskCompletionSource<Message>();
@@ -355,7 +347,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void Amqp091MessagesConsumer()
         {
             // Amqp091 interoperability 
@@ -401,7 +392,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ConsumerQueryOffset()
         {
             var testPassed = new TaskCompletionSource<int>();
@@ -461,7 +451,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ShouldConsumeFromStoredOffset()
         {
             // validate restart consume offset
@@ -545,7 +534,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ConsumerMetadataHandlerUpdate()
         {
             // test the Consumer metadata update

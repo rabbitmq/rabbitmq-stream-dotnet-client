@@ -96,11 +96,9 @@ namespace Tests
     }
 
     // This class is only for unit tests
-    [Collection("Sequential")]
     public class UnitTests
     {
         [Fact]
-        [WaitTestBeforeAfter]
         public void AddressResolverShouldRaiseAnExceptionIfAdvIsNull()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
@@ -116,7 +114,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void AddressResolverLoadBalancerSimulate()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
@@ -136,7 +133,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void RandomReplicaLeader()
         {
             // this test is not completed yet should add also some replicas
@@ -155,7 +151,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void CompressUnCompressShouldHaveTheSize()
         {
             void PumpMessages(ICollection<Message> messages)
@@ -193,7 +188,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void CodeNotFoundException()
         {
             // Raise an exception for the codec not implemented.
@@ -237,7 +231,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void AddRemoveCodecsForType()
         {
             // the following codec aren't provided by builtin.
@@ -269,7 +262,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void CodecAlreadyExistException()
         {
             // the following codec aren't provided by builtin.
