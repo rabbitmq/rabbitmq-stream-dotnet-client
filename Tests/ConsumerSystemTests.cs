@@ -511,14 +511,10 @@ namespace Tests
                 });
 
             new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(storedOffset);
+            SystemUtils.Wait();
 
             Assert.Equal(NumberOfMessageToStore,
                 await system.QueryOffsetWithDefaultValue(Reference, stream));
-
-            // this has to raise OffsetNotFoundException in case the offset 
-            // does not exist like in this case.
-            await Assert.ThrowsAsync<OffsetNotFoundException>(() =>
-                system.QueryOffset("reference_does_not_exist", stream));
 
             await consumer.Close();
             await system.DeleteStream(stream);
