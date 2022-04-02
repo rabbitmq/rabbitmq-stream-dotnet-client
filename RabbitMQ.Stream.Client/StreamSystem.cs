@@ -115,7 +115,7 @@ namespace RabbitMQ.Stream.Client
         {
             if (string.IsNullOrEmpty(reference) || string.IsNullOrEmpty(stream))
             {
-                throw new QueryException("Stream name can't be empty");
+                throw new QueryException("Stream name and reference can't be empty or null");
             }
         }
 
@@ -144,19 +144,20 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// QueryOffsetWithDefaultValue retrieves the last consumer offset stored
         /// given a consumer name and stream name 
-        /// or 0 as default value if thre is no stored value
+        /// or defaultValue if there is no stored value
         /// </summary>
         /// <param name="reference">Consumer name</param>
         /// <param name="stream">Stream name</param>
+        /// <param name="defaultValue">Default value (if not passed = 0)</param>
         /// <returns></returns>
-        public async Task<ulong> QueryOffsetWithDefaultValue(string reference, string stream)
+        public async Task<ulong> QueryOffsetWithDefaultValue(string reference, string stream, ulong defaultValue=0)
         {
             MaybeThrowQueryException(reference, stream);
 
             var response = await client.QueryOffset(reference, stream);
             if (IsDefaultQueryValueToReturn(response.ResponseCode))
             {
-                return 0;
+                return defaultValue;
             }
 
             ClientExceptions.MaybeThrowException(response.ResponseCode,
