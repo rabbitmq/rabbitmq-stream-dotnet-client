@@ -475,7 +475,7 @@ namespace Tests
                          await system.QueryOffsetWithDefaultValue(consumerReference, stream));
 
             ulong defaultValue = 10;
-            Assert.Equal(defaultValue, 
+            Assert.Equal(defaultValue,
                          await system.QueryOffsetWithDefaultValue(consumerReference, stream, defaultValue));
 
             await system.DeleteStream(stream);

@@ -150,7 +150,7 @@ namespace RabbitMQ.Stream.Client
         /// <param name="stream">Stream name</param>
         /// <param name="defaultValue">Default value (if not passed = 0)</param>
         /// <returns></returns>
-        public async Task<ulong> QueryOffsetWithDefaultValue(string reference, string stream, ulong defaultValue=0)
+        public async Task<ulong> QueryOffsetWithDefaultValue(string reference, string stream, ulong defaultValue = 0)
         {
             MaybeThrowQueryException(reference, stream);
 
