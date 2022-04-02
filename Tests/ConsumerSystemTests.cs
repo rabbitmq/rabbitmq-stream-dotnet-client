@@ -462,6 +462,71 @@ namespace Tests
 
         [Fact]
         [WaitTestBeforeAfter]
+        public async void QueryOffsetWithDefaultValueShouldGetDefaultOffset()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var consumerReference = $"consumer-{Guid.NewGuid()}";
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+
+            await system.CreateStream(new StreamSpec(stream));
+
+            Assert.Equal((ulong)0, await system.QueryOffsetWithDefaultValue(consumerReference, stream));
+
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void QueryOffsetWithDefaultValueShouldGetStoredOffset()
+        {
+            var storedOffset = new TaskCompletionSource<ulong>();
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            const int NumberOfMessages = 10;
+            const ulong NumberOfMessageToStore = 7; // a random number in the interval.
+
+            await SystemUtils.PublishMessages(system, stream, NumberOfMessages, testOutputHelper);
+            const string Reference = "consumer_offset_with_default";
+
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig
+                {
+                    Reference = Reference,
+                    Stream = stream,
+                    OffsetSpec = new OffsetTypeOffset(),
+                    MessageHandler = async (consumer, ctx, _) =>
+                    {
+                        if (ctx.Offset == NumberOfMessageToStore)
+                        {
+                            await consumer.StoreOffset(ctx.Offset);
+                            storedOffset.SetResult(ctx.Offset);
+                        }
+
+                        await Task.CompletedTask;
+                    }
+                });
+
+            new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(storedOffset);
+
+            Assert.Equal(NumberOfMessageToStore,
+                await system.QueryOffsetWithDefaultValue(Reference, stream));
+
+            // this has to raise OffsetNotFoundException in case the offset 
+            // does not exist like in this case.
+            await Assert.ThrowsAsync<OffsetNotFoundException>(() =>
+                system.QueryOffset("reference_does_not_exist", stream));
+
+            await consumer.Close();
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
+        [WaitTestBeforeAfter]
         public async void ShouldConsumeFromStoredOffset()
         {
             // validate restart consume offset
