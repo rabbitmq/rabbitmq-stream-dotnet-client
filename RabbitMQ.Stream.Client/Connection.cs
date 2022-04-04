@@ -22,6 +22,9 @@ namespace RabbitMQ.Stream.Client
         private int numFrames;
         private readonly object writeLock = new();
         internal int NumFrames => numFrames;
+        private bool isClosed = false;
+
+        public bool IsClosed => isClosed;
 
         internal Func<Memory<byte>, Task> CommandCallback
         {
@@ -141,18 +144,20 @@ namespace RabbitMQ.Stream.Client
 
                 await reader.CompleteAsync();
             }
-            // The exception is needed mostly to raise the 
-            // closedCallback event.
-            // It is useful to trace the error, but at this point
-            // the socket is closed maybe not in the correct way
             catch (Exception e)
             {
+                // The exception is needed mostly to raise the 
+                // closedCallback event.
+                // It is useful to trace the error, but at this point
+                // the socket is closed maybe not in the correct way
                 Debug.WriteLine($"Error reading the socket, error: {e}");
             }
-
-            await closedCallback?.Invoke("TCP Connection Closed")!;
-
-            Debug.WriteLine("TCP Connection Closed");
+            finally
+            {
+                isClosed = true;
+                await closedCallback?.Invoke("TCP Connection Closed")!;
+                Debug.WriteLine("TCP Connection Closed");
+            }
         }
 
         private static bool TryReadFrame(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> frame)

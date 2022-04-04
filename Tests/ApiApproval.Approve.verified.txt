@@ -266,6 +266,7 @@ namespace RabbitMQ.Stream.Client
     }
     public class Connection : System.IDisposable
     {
+        public bool IsClosed { get; }
         public void Dispose() { }
         public System.Threading.Tasks.ValueTask<bool> Write<T>(T command)
             where T :  struct, RabbitMQ.Stream.Client.ICommand { }

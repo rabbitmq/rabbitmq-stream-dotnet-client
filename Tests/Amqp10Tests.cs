@@ -14,7 +14,6 @@ namespace Tests
     public class Amqp10Tests
     {
         [Fact]
-        [WaitTestBeforeAfter]
         public void ReadsThrowsExceptionInvalidType()
         {
             var data = new byte[10];
@@ -119,7 +118,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void ValidateFormatCode()
         {
             const bool boolTrue = true;
@@ -256,7 +254,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void Validate32Bytes8BytesLists()
         {
             var value32Bin = new byte[] { 0xD0, 0x0, 0x0, 0x0, 0xF, 0x0, 0x0, 0x1, 0xF };
@@ -278,7 +275,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void ValidateMessagesFromGo()
         {
             // These files are generated with the Go AMQP 1.0 client
@@ -379,7 +375,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void MapEntriesWithAnEmptyKeyShouldNotBeWrittenToTheWire()
         {
             // Given we have an annotation with a valid key

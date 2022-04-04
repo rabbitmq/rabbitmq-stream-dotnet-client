@@ -119,7 +119,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<ResponseCode> Close()
         {
-            if (_disposed)
+            if (client.IsClosed)
             {
                 return ResponseCode.Ok;
             }

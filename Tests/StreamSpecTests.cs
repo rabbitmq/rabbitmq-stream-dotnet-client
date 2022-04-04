@@ -8,11 +8,9 @@ using Xunit;
 
 namespace Tests
 {
-    [Collection("Sequential")]
     public class StreamSpecTests
     {
         [Fact]
-        [WaitTestBeforeAfter]
         public void DefaultStreamSpecMustHaveAtLeastQueueLeaderLocator()
         {
             var actualSpec = new StreamSpec("theStreamName");
@@ -25,7 +23,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public void CanOverrideAnyStreamSpecAttributes()
         {
             var spec = new StreamSpec("theStreamName");

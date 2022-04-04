@@ -17,28 +17,6 @@ using System.Threading.Tasks.Sources;
 
 namespace RabbitMQ.Stream.Client
 {
-    // internal static class TaskExtensions
-    // {
-    //     public static async Task TimeoutAfter(this Task task, TimeSpan timeout)
-    //     {
-    //         if (task == await Task.WhenAny(task, Task.Delay(timeout)).ConfigureAwait(false))
-    //         {
-    //             await task.ConfigureAwait(false);
-    //         }
-    //         else
-    //         {
-    //             var supressErrorTask = task.ContinueWith((t, s) =>
-    //             {
-    //                 t.Exception?.Handle(e => true);
-    //             },
-    //                 null,
-    //                 CancellationToken.None,
-    //                 TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-    //                 TaskScheduler.Default);
-    //             throw new TimeoutException();
-    //         }
-    //     }
-    // }
     public record ClientParameters
     {
         private string _clientProvidedName;
@@ -50,7 +28,10 @@ namespace RabbitMQ.Stream.Client
                 {"version", Consts.ClientVersion},
                 {"platform", ".NET"},
                 {"copyright", "Copyright (c) 2020-2021 VMware, Inc. or its affiliates."},
-                {"information", "Licensed under the Apache 2.0 and MPL 2.0 licenses. See https://www.rabbitmq.com/"},
+                {
+                    "information",
+                    "Licensed under the Apache 2.0 and MPL 2.0 licenses. See https://www.rabbitmq.com/"
+                },
                 {"connection_name", "Unknown"}
             };
 
@@ -60,6 +41,7 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
+
         public string ClientProvidedName
         {
             get => _clientProvidedName ??= Properties["connection_name"];
@@ -102,6 +84,8 @@ namespace RabbitMQ.Stream.Client
 
     public class Client : IClient
     {
+        private bool isClosed = false;
+
         private readonly TimeSpan defaultTimeout = TimeSpan.FromSeconds(10);
 
         private uint correlationId = 0; // allow for some pre-amble
@@ -124,7 +108,6 @@ namespace RabbitMQ.Stream.Client
         private readonly IDictionary<byte, Func<Deliver, Task>> consumers =
             new ConcurrentDictionary<byte, Func<Deliver, Task>>();
 
-        private object closeResponse;
         private int publishCommandsSent;
 
         public int PublishCommandsSent => publishCommandsSent;
@@ -154,11 +137,25 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
 
-        public bool IsClosed => closeResponse != null;
+        public bool IsClosed
+        {
+            get
+            {
+                if (connection.IsClosed)
+                {
+                    isClosed = true;
+                }
+
+                return isClosed;
+            }
+
+            private set => isClosed = value;
+        }
 
         private Client(ClientParameters parameters)
         {
             Parameters = parameters;
+            IsClosed = false;
         }
 
         public delegate Task ConnectionCloseHandler(string reason);
@@ -167,12 +164,16 @@ namespace RabbitMQ.Stream.Client
 
         private async Task OnConnectionClosed(string reason)
         {
-            await ConnectionClosed?.Invoke(reason)!;
+            if (ConnectionClosed != null)
+            {
+                await ConnectionClosed?.Invoke(reason)!;
+            }
         }
 
         public static async Task<Client> Create(ClientParameters parameters)
         {
             var client = new Client(parameters);
+
             client.connection = await Connection.Create(parameters.Endpoint,
                 client.HandleIncoming, client.HandleClosed, parameters.Ssl);
 
@@ -308,6 +309,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task HandleClosed(string reason)
         {
+            IsClosed = true;
             await OnConnectionClosed(reason);
         }
 
@@ -421,6 +423,7 @@ namespace RabbitMQ.Stream.Client
                 case CloseResponse.Key:
                     CloseResponse.Read(frame, out var closeResponse);
                     HandleCorrelatedResponse(closeResponse);
+                    IsClosed = true;
                     break;
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
@@ -447,14 +450,15 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<CloseResponse> Close(string reason)
         {
-            if (closeResponse != null)
+            if (IsClosed)
             {
-                return (CloseResponse)closeResponse;
+                return new CloseResponse(0, ResponseCode.Ok);
             }
 
             // TODO LRB timeout
-            var result = await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason), TimeSpan.FromSeconds(30));
-            closeResponse = result;
+            var result =
+                await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
+                    TimeSpan.FromSeconds(30));
 
             try
             {
@@ -462,9 +466,10 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"An error occurred while calling { nameof(connection.Dispose) }.", e);
+                LogEventSource.Log.LogError($"An error occurred while calling {nameof(connection.Dispose)}.", e);
             }
 
+            IsClosed = true;
             return result;
         }
 

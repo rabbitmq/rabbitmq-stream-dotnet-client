@@ -3,33 +3,22 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
 using Xunit.Abstractions;
-using Xunit.Sdk;
 
 namespace Tests
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-    public class WaitTestBeforeAfter : BeforeAfterTestAttribute
-    {
-        public override void Before(MethodInfo methodUnderTest)
-        {
-            Thread.Sleep(300);
-        }
-
-        public override void After(MethodInfo methodUnderTest)
-        {
-            Thread.Sleep(300);
-        }
-    }
-
     public class Utils<TResult>
     {
         private readonly ITestOutputHelper testOutputHelper;
@@ -62,11 +51,16 @@ namespace Tests
     {
         public static void Wait()
         {
-            Thread.Sleep(400);
+            Thread.Sleep(TimeSpan.FromMilliseconds(500));
+        }
+
+        public static void Wait(TimeSpan wait)
+        {
+            Thread.Sleep(wait);
         }
 
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
-             ITestOutputHelper testOutputHelper)
+            ITestOutputHelper testOutputHelper)
         {
             await PublishMessages(system, stream, numberOfMessages, "producer", testOutputHelper);
         }
@@ -107,6 +101,35 @@ namespace Tests
             Assert.True(producer.IncomingFrames >= 1);
             Assert.True(producer.PublishCommandsSent >= 1);
             producer.Dispose();
+        }
+
+        private class Connecction
+        {
+            public string name { get; set; }
+            public Dictionary<string, string> client_properties { get; set; }
+        }
+
+        public static async Task<int> HttpKillConnections()
+        {
+            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var client = new HttpClient(handler);
+            var result = await client.GetAsync("http://localhost:15672/api/connections");
+            var json = await result.Content.ReadAsStringAsync();
+            var connections = JsonSerializer.Deserialize<IEnumerable<Connecction>>(json);
+            if (connections == null)
+            {
+                return 0;
+            }
+            // we kill _only_ producer and consumer connections
+            // leave the locator up and running to delete the stream
+
+            var iEnumerable = connections.Where(x => x.client_properties["connection_name"].Contains("to_kill"));
+            foreach (var conn in iEnumerable)
+            {
+                await client.DeleteAsync($"http://localhost:15672/api/connections/{conn.name}");
+            }
+
+            return iEnumerable.Count();
         }
 
         public static void HttpPost(string jsonBody, string api)

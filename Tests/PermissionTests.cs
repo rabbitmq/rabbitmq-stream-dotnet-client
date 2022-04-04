@@ -10,7 +10,6 @@ namespace Tests
     public class PermissionTests
     {
         [Fact]
-        [WaitTestBeforeAfter]
         public async void AccessToStreamWithoutGrantsShouldRaiseErrorTest()
         {
             SystemUtils.HttpPost(

@@ -21,11 +21,9 @@ namespace Tests
         }
     }
 
-    [Collection("Sequential")]
     public class SystemTests
     {
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateSystem()
         {
             var config = new StreamSystemConfig
@@ -43,7 +41,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenNoEndpointsAreReachable()
         {
             var config = new StreamSystemConfig
@@ -59,7 +56,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateSslExceptionThrowsWhenEndPointIsNotSsl()
         {
             // Try to connect to an NoTLS port to using TLS parameters
@@ -79,7 +75,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void Create_Delete_Stream()
         {
             var stream = Guid.NewGuid().ToString();
@@ -94,7 +89,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
             var config = new StreamSystemConfig { VirtualHost = "DOES_NOT_EXIST" };
@@ -104,7 +98,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateSystemThrowsWhenAuthenticationAccess()
         {
             var config = new StreamSystemConfig { UserName = "user_does_not_exist" };
@@ -114,7 +107,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateExistStreamIdempotentShouldNoRaiseExceptions()
         {
             // Create the stream in idempotent way
@@ -125,7 +117,7 @@ namespace Tests
             // Stream does not exist
             Assert.False(await system.StreamExists(stream));
             await system.CreateStream(spec);
-            // Stream just created 
+            // Stream just created
             Assert.True(await system.StreamExists(stream));
             await system.CreateStream(spec);
             Assert.True(await system.StreamExists(stream));
@@ -134,7 +126,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateExistStreamPreconditionFailShouldRaiseExceptions()
         {
             // Create the stream in idempotent way
@@ -154,7 +145,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ValidateQueryOffset()
         {
             // here we just validate the Query for Offset and Sequence
@@ -187,7 +177,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ValidateQuerySequence()
         {
             // here we just validate the Query for Offset and Sequence
@@ -216,6 +205,39 @@ namespace Tests
                     await system.QuerySequence(string.Empty, string.Empty);
                 }
             );
+            await system.Close();
+        }
+
+        [Fact]
+        public async void CloseProducerConsumerAfterForceCloseShouldNotRaiseError()
+        {
+            // This tests that the producers and consumers
+            // don't raise an exception if the connection is closed
+            // by a network problem or forced by the management UI
+            // see issues/97
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            var producer = await system.CreateProducer(new ProducerConfig { Stream = stream, ClientProvidedName = "to_kill" });
+            SystemUtils.Wait();
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig { Stream = stream, ClientProvidedName = "to_kill" });
+            SystemUtils.Wait();
+
+            // Here we have to wait the management stats refresh time before killing the connections.
+            SystemUtils.Wait(TimeSpan.FromSeconds(6));
+
+            // we kill _only_ producer and consumer connection
+            // leave the locator up and running to delete the stream
+            Assert.Equal(2, SystemUtils.HttpKillConnections().Result);
+            Assert.Equal(ResponseCode.Ok, await producer.Close());
+            Assert.Equal(ResponseCode.Ok, await producer.Close());
+            // close two time it should not raise an exception
+            Assert.Equal(ResponseCode.Ok, await consumer.Close());
+            Assert.Equal(ResponseCode.Ok, await consumer.Close());
+
+            await system.DeleteStream(stream);
             await system.Close();
         }
     }

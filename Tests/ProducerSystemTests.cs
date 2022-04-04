@@ -24,7 +24,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void CreateProducer()
         {
             var testPassed = new TaskCompletionSource<bool>();
@@ -57,7 +56,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async Task CreateProducerStreamDoesNotExist()
         {
             const string stream = "StreamNotExist";
@@ -71,7 +69,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async Task CloseProducerTwoTimesShouldReturnOk()
         {
             var stream = Guid.NewGuid().ToString();
@@ -89,7 +86,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void NotifyProducerClose()
         {
             var stream = Guid.NewGuid().ToString();
@@ -117,7 +113,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ProducerMessagesListLenValidation()
         {
             // by protocol the subEntryList is ushort
@@ -143,7 +138,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ProducerMixingDifferentConfirmations()
         {
             // we send 150 messages using three different ways:
@@ -205,7 +199,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ProducerMetadataHandlerUpdate()
         {
             // test the producer metadata update
@@ -239,7 +232,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async void ProducerQuerySequence()
         {
             // test the producer sequence
