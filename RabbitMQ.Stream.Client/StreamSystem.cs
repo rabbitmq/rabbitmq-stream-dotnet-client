@@ -119,11 +119,6 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private static bool IsDefaultQueryValueToReturn(ResponseCode responseCode)
-        {
-            return responseCode == ResponseCode.OffsetNotFound;
-        }
-
         /// <summary>
         /// QueryOffset retrieves the last consumer offset stored
         /// given a consumer name and stream name 
@@ -136,30 +131,6 @@ namespace RabbitMQ.Stream.Client
             MaybeThrowQueryException(reference, stream);
 
             var response = await client.QueryOffset(reference, stream);
-            ClientExceptions.MaybeThrowException(response.ResponseCode,
-                $"QueryOffset stream: {stream}, reference: {reference}");
-            return response.Offset;
-        }
-
-        /// <summary>
-        /// QueryOffsetWithDefaultValue retrieves the last consumer offset stored
-        /// given a consumer name and stream name 
-        /// or defaultValue if there is no stored value
-        /// </summary>
-        /// <param name="reference">Consumer name</param>
-        /// <param name="stream">Stream name</param>
-        /// <param name="defaultValue">Default value (if not passed = 0)</param>
-        /// <returns></returns>
-        public async Task<ulong> QueryOffsetWithDefaultValue(string reference, string stream, ulong defaultValue = 0)
-        {
-            MaybeThrowQueryException(reference, stream);
-
-            var response = await client.QueryOffset(reference, stream);
-            if (IsDefaultQueryValueToReturn(response.ResponseCode))
-            {
-                return defaultValue;
-            }
-
             ClientExceptions.MaybeThrowException(response.ResponseCode,
                 $"QueryOffset stream: {stream}, reference: {reference}");
             return response.Offset;
