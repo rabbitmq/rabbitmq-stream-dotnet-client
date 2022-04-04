@@ -55,7 +55,8 @@ jobs:
 
     services:
       rabbitmq:
-        image: pivotalrabbitmq/rabbitmq-stream
+        image: rabbitmq:3-management
+        options: --name rabbitmq-service
         env:
           RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_stream advertised_host localhost
         ports:
@@ -83,6 +84,8 @@ jobs:
             ${{ runner.os }}-v2-nuget-
       - name: List NuGet sources
         run: dotnet nuget locals all --list
+      - name: Enable RabbitMQ Plugins
+        run: docker exec rabbitmq-service rabbitmq-plugins enable rabbitmq_stream rabbitmq_stream_management
       - name: Restore
         run: dotnet restore --verbosity=normal
       - name: Build
