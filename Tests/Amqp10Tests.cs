@@ -271,12 +271,7 @@ namespace Tests
             AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value0Bin), out var len0);
             Assert.Equal(0, len0);
 
-            var valueComposite8Bin = new byte[]
-            {
-                0x0,
-                0x53, 0x73,
-                0xc0, 0xF, 0xF0
-            };
+            var valueComposite8Bin = new byte[] { 0x0, 0x53, 0x73, 0xc0, 0xF, 0xF0 };
             AmqpWireFormatting.ReadCompositeHeader(new ReadOnlySequence<byte>(valueComposite8Bin),
                 out var compositeLen32, out _);
             Assert.Equal(240, compositeLen32);
@@ -340,6 +335,10 @@ namespace Tests
             Assert.True(!string.IsNullOrEmpty(msgProp900.Properties.ContentEncoding));
             Assert.True(!string.IsNullOrEmpty(msgProp900.Properties.ContentType));
             Assert.True(!string.IsNullOrEmpty(msgProp900.Properties.GroupId));
+            Assert.Equal((ulong)33333333, msgProp900.Properties.MessageId);
+            Assert.Equal("json", msgProp900.Properties.ContentType);
+            Assert.Equal("myCoding", msgProp900.Properties.ContentEncoding);
+            Assert.Equal((uint)10, msgProp900.Properties.GroupSequence);
             Assert.True(msgProp900.Properties.CreationTime != DateTime.MinValue);
             Assert.True(msgProp900.Properties.AbsoluteExpiryTime != DateTime.MinValue);
 
