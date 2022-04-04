@@ -155,30 +155,65 @@ namespace Tests
 
         [Fact]
         [WaitTestBeforeAfter]
-        public async void ValidateQuery()
+        public async void ValidateQueryOffset()
         {
             // here we just validate the Query for Offset and Sequence
             // if the reference is == "" return must be 0
             // stream name is mandatory
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
-            var res = await system.QueryOffset("", "stream_we_don_t_care");
-            Assert.True(res == 0);
-
-            res = await system.QuerySequence("", "stream_we_don_t_care");
-            Assert.True(res == 0);
 
             await Assert.ThrowsAsync<QueryException>(
                 async () =>
                 {
-                    await system.QueryOffset("reference_we_don_care", "");
+                    await system.QueryOffset(string.Empty, "stream_we_don_t_care");
                 }
             );
 
             await Assert.ThrowsAsync<QueryException>(
                 async () =>
                 {
-                    await system.QuerySequence("reference_we_don_care", "");
+                    await system.QueryOffset("reference_we_don_care", string.Empty);
+                }
+            );
+
+            await Assert.ThrowsAsync<QueryException>(
+                async () =>
+                {
+                    await system.QueryOffset(string.Empty, string.Empty);
+                }
+            );
+            await system.Close();
+        }
+
+        [Fact]
+        [WaitTestBeforeAfter]
+        public async void ValidateQuerySequence()
+        {
+            // here we just validate the Query for Offset and Sequence
+            // if the reference is == "" return must be 0
+            // stream name is mandatory
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+
+            await Assert.ThrowsAsync<QueryException>(
+                async () =>
+                {
+                    await system.QuerySequence(string.Empty, "stream_we_don_t_care");
+                }
+            );
+
+            await Assert.ThrowsAsync<QueryException>(
+                async () =>
+                {
+                    await system.QuerySequence("reference_we_don_care", string.Empty);
+                }
+            );
+
+            await Assert.ThrowsAsync<QueryException>(
+                async () =>
+                {
+                    await system.QuerySequence(string.Empty, string.Empty);
                 }
             );
             await system.Close();

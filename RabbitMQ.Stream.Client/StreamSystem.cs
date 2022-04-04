@@ -111,6 +111,13 @@ namespace RabbitMQ.Stream.Client
             return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
+        private static void MaybeThrowQueryException(string reference, string stream)
+        {
+            if (string.IsNullOrEmpty(reference) || string.IsNullOrEmpty(stream))
+            {
+                throw new QueryException("Stream name and reference can't be empty or null");
+            }
+        }
 
         /// <summary>
         /// QueryOffset retrieves the last consumer offset stored
@@ -121,15 +128,7 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         public async Task<ulong> QueryOffset(string reference, string stream)
         {
-            if (string.IsNullOrEmpty(reference))
-            {
-                return 0;
-            }
-
-            if (string.IsNullOrEmpty(stream))
-            {
-                throw new QueryException("Stream name can't be empty");
-            }
+            MaybeThrowQueryException(reference, stream);
 
             var response = await client.QueryOffset(reference, stream);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
@@ -146,15 +145,7 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         public async Task<ulong> QuerySequence(string reference, string stream)
         {
-            if (string.IsNullOrEmpty(reference))
-            {
-                return 0;
-            }
-
-            if (string.IsNullOrEmpty(stream))
-            {
-                throw new QueryException("Stream name can't be empty");
-            }
+            MaybeThrowQueryException(reference, stream);
 
             var response = await client.QueryPublisherSequence(reference, stream);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
