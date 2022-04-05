@@ -12,7 +12,6 @@ jobs:
     services:
       rabbitmq:
         image: rabbitmq:3-management
-        options: --name rabbitmq-service
         env:
           RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_stream advertised_host localhost
         ports:
@@ -29,7 +28,7 @@ jobs:
       with:
         dotnet-version: 6.0.x
     - name: Enable RabbitMQ Plugins
-      run: docker exec rabbitmq-service rabbitmq-plugins enable rabbitmq_stream rabbitmq_stream_management
+      run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_stream rabbitmq_stream_management
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
