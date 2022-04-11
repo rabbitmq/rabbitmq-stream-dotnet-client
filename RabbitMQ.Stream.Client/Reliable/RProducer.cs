@@ -3,13 +3,9 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using System.Timers;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -60,7 +56,6 @@ public class RProducer
     private readonly ConfirmationPipe _confirmationPipe;
     private bool _needReconnect = true;
 
-
     private RProducer(RProducerConfig rProducerConfig)
     {
         _autoPublishingId = new AutoPublishingId();
@@ -68,7 +63,6 @@ public class RProducer
         _confirmationPipe = new ConfirmationPipe(rProducerConfig.ConfirmationHandler);
         _confirmationPipe.Start();
     }
-
 
     public static async Task<RProducer> CreateRProducer(RProducerConfig rProducerConfig)
     {
@@ -153,8 +147,7 @@ public class RProducer
         }
     }
 
-
-    public async ValueTask Send(List<Message> messages,  CompressionType compressionType)
+    public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
         var pid = _autoPublishingId.GetPublishingId();
 

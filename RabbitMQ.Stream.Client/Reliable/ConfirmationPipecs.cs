@@ -35,12 +35,10 @@ public class ConfirmationPipe
     private readonly Timer _invalidateTimer = new();
     private Func<ConfirmationMessage, Task> ConfirmHandler { get; }
 
-
     public ConfirmationPipe(Func<ConfirmationMessage, Task> confirmHandler)
     {
         ConfirmHandler = confirmHandler;
     }
-
 
     public void Start()
     {
@@ -61,7 +59,7 @@ public class ConfirmationPipe
 
                         break;
                 }
-            }, new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 1, BoundedCapacity = 20_000});
+            }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 20_000 });
 
         _invalidateTimer.Elapsed += OnTimedEvent;
         _invalidateTimer.Interval = 1000;
@@ -89,20 +87,22 @@ public class ConfirmationPipe
         _waitForConfirmation.TryAdd(publishingId,
             new ConfirmationMessage()
             {
-                Messages = new List<Message>() {message}, PublishingId = publishingId, DateTime = DateTime.Now
+                Messages = new List<Message>() { message },
+                PublishingId = publishingId,
+                DateTime = DateTime.Now
             });
     }
 
     public void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
     {
         _waitForConfirmation.TryAdd(publishingId,
-            new ConfirmationMessage() {Messages = messages, PublishingId = publishingId, DateTime = DateTime.Now});
+            new ConfirmationMessage() { Messages = messages, PublishingId = publishingId, DateTime = DateTime.Now });
     }
 
     public Task RemoveUnConfirmedMessage(ulong publishingId, ConfirmationStatus confirmationStatus)
     {
         return _waitForConfirmationActionBlock.SendAsync(
             Tuple.Create(confirmationStatus,
-                new ConfirmationMessage() {PublishingId = publishingId}));
+                new ConfirmationMessage() { PublishingId = publishingId }));
     }
 }
