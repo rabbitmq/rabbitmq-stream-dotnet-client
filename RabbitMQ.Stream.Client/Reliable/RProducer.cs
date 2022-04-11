@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -90,8 +91,8 @@ public class RProducer
                 },
                 ConfirmHandler = confirmation =>
                 {
-                    // _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
-                    // ConfirmationStatus.Confirmed);
+                    _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
+                        ConfirmationStatus.Confirmed);
                 }
             });
             _rProducerConfig.ReconnectStrategy.WhenConnected();
@@ -135,11 +136,33 @@ public class RProducer
     {
         var pid = _autoPublishingId.GetPublishingId();
 
-        await _confirmationPipe.AddUnConfirmedMessage(pid, message);
+        _confirmationPipe.AddUnConfirmedMessage(pid, message);
         await _semProducer.WaitAsync();
         try
         {
             await _producer.Send(pid, message);
+        }
+
+        catch (Exception e)
+        {
+            Console.WriteLine($"Send error {e.Message}");
+        }
+        finally
+        {
+            _semProducer.Release();
+        }
+    }
+
+
+    public async ValueTask Send(List<Message> messages,  CompressionType compressionType)
+    {
+        var pid = _autoPublishingId.GetPublishingId();
+
+        _confirmationPipe.AddUnConfirmedMessage(pid, messages);
+        await _semProducer.WaitAsync();
+        try
+        {
+            await _producer.Send(pid, messages, compressionType);
         }
 
         catch (Exception e)
