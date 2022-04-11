@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -20,7 +21,7 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
-        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
+        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
 
         public AddressResolver AddressResolver { get; set; } = null;
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
@@ -29,7 +30,7 @@ namespace RabbitMQ.Stream.Client
     public class StreamSystem
     {
         private readonly ClientParameters clientParameters;
-        private readonly Client client;
+        private Client client;
 
         private StreamSystem(ClientParameters clientParameters, Client client)
         {
@@ -55,7 +56,7 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with { Endpoint = endPoint });
+                    var client = await Client.Create(clientParams with {Endpoint = endPoint});
                     if (!client.IsClosed)
                     {
                         return new StreamSystem(clientParams, client);
@@ -80,16 +81,40 @@ namespace RabbitMQ.Stream.Client
             await client.Close("system close");
         }
 
+        private readonly SemaphoreSlim _semLocatorConnection = new(1);
+
+        private async Task MayBeReconnectLocator()
+        {
+            try
+            {
+                await _semLocatorConnection.WaitAsync();
+                {
+                    if (client.IsClosed)
+                    {
+                        client = await Client.Create(clientParameters with
+                        {
+                            ClientProvidedName = clientParameters.ClientProvidedName
+                        });
+                    }
+                }
+            }
+            finally
+            {
+                _semLocatorConnection.Release();
+            }
+        }
+
         public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
         {
-            var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
+            await MayBeReconnectLocator();
+            var meta = await client.QueryMetadata(new[] {producerConfig.Stream});
             var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Producer.Create(clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName },
+            return await Producer.Create(clientParameters with {ClientProvidedName = producerConfig.ClientProvidedName},
                 producerConfig, metaStreamInfo);
         }
 
@@ -106,11 +131,12 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] { stream };
+            var streams = new[] {stream};
             var response = await client.QueryMetadata(streams);
-            return response.StreamInfos is { Count: >= 1 } &&
+            return response.StreamInfos is {Count: >= 1} &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
+
         private static void MaybeThrowQueryException(string reference, string stream)
         {
             if (string.IsNullOrEmpty(reference) || string.IsNullOrEmpty(stream))
@@ -166,14 +192,14 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
-            var meta = await client.QueryMetadata(new[] { consumerConfig.Stream });
+            var meta = await client.QueryMetadata(new[] {consumerConfig.Stream});
             var metaStreamInfo = meta.StreamInfos[consumerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Consumer.Create(clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName },
+            return await Consumer.Create(clientParameters with {ClientProvidedName = consumerConfig.ClientProvidedName},
                 consumerConfig, metaStreamInfo);
         }
     }
