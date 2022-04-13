@@ -67,12 +67,15 @@ public class ConfirmationPipe
                             message.Status = confirmationStatus;
                             ConfirmHandler?.Invoke(message);
                         }
+
                         break;
                 }
-            }, new ExecutionDataflowBlockOptions { 
+            }, new ExecutionDataflowBlockOptions
+            {
                 MaxDegreeOfParallelism = 1,
                 // throttling
-                BoundedCapacity = 50_000 });
+                BoundedCapacity = 50_000
+            });
 
         _invalidateTimer.Elapsed += OnTimedEvent;
         _invalidateTimer.Interval = 2000;

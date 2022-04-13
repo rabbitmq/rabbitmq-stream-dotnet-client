@@ -59,7 +59,6 @@ namespace Tests
             Thread.Sleep(wait);
         }
 
-
         public static void InitStreamSystemWithRandomStream(out StreamSystem system, out string stream)
         {
             stream = Guid.NewGuid().ToString();
@@ -121,7 +120,7 @@ namespace Tests
 
         public static async Task<int> HttpKillConnections(string connectionName)
         {
-            using var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
+            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             var json = await result.Content.ReadAsStringAsync();

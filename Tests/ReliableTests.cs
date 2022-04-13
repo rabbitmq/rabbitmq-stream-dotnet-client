@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,7 +43,7 @@ public class ReliableTests
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() {message});
+        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
         new Utils<List<Confirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
@@ -72,7 +71,7 @@ public class ReliableTests
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() {message});
+        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
         confirmationPipe.RemoveUnConfirmedMessage(1, ConfirmationStatus.Confirmed);
         confirmationPipe.RemoveUnConfirmedMessage(2, ConfirmationStatus.Confirmed);
         new Utils<List<Confirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
@@ -80,7 +79,6 @@ public class ReliableTests
         Assert.Equal(ConfirmationStatus.Confirmed, confirmationTask.Task.Result[1].Status);
         confirmationPipe.Stop();
     }
-
 
     [Fact]
     public async void ConfirmRProducerMessages()
@@ -109,7 +107,7 @@ public class ReliableTests
             await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
         }
 
-        List<Message> messages = new() {new Message(Encoding.UTF8.GetBytes($"hello list"))};
+        List<Message> messages = new() { new Message(Encoding.UTF8.GetBytes($"hello list")) };
 
         for (var i = 0; i < 5; i++)
         {
@@ -158,10 +156,9 @@ public class ReliableTests
         Assert.Equal(1, SystemUtils.HttpKillConnections("producer_to_kill").Result);
         Assert.Equal(1, SystemUtils.HttpKillConnections("dotnet-stream-locator").Result);
 
-
         for (var i = 0; i < 5; i++)
         {
-            List<Message> messages = new() {new Message(Encoding.UTF8.GetBytes($"hello list"))};
+            List<Message> messages = new() { new Message(Encoding.UTF8.GetBytes($"hello list")) };
             await rProducer.Send(messages, CompressionType.None);
         }
 
