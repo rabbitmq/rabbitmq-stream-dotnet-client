@@ -25,9 +25,9 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
 
     public void WhenDisconnected(out bool reconnect)
     {
+        Console.WriteLine($"WhenDisconnected raised - Going to reconnect, tentative: {Tentatives}");
         Tentatives <<= 1;
         Thread.Sleep(TimeSpan.FromMilliseconds(Tentatives * 100));
-        Console.WriteLine($"WhenDisconnected raised - Tent {Tentatives}");
         reconnect = true;
     }
 
@@ -42,7 +42,7 @@ public record RProducerConfig
     public StreamSystem StreamSystem { get; set; }
     public string Stream { get; set; }
     public string Reference { get; set; }
-    public Func<ConfirmationMessage, Task> ConfirmationHandler { get; init; }
+    public Func<Confirmation, Task> ConfirmationHandler { get; init; }
     public string ClientProvidedName { get; set; }
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 }
@@ -52,7 +52,7 @@ public class RProducer
     private Producer _producer;
     private readonly AutoPublishingId _autoPublishingId;
     private readonly RProducerConfig _rProducerConfig;
-    private readonly SemaphoreSlim _semProducer = new(1000);
+    private readonly SemaphoreSlim _semProducer = new(1);
     private readonly ConfirmationPipe _confirmationPipe;
     private bool _needReconnect = true;
 
@@ -79,6 +79,7 @@ public class RProducer
             _producer = await _rProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
             {
                 Stream = _rProducerConfig.Stream,
+                ClientProvidedName = _rProducerConfig.ClientProvidedName,
                 ConnectionClosedHandler = async _ =>
                 {
                     await TryToReconnect();
@@ -93,7 +94,7 @@ public class RProducer
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Init Error. e: {e.Message}");
+            LogEventSource.Log.LogError($"Error during initialization: {e}.");
             _semProducer.Release();
             await TryToReconnect();
         }
@@ -107,7 +108,6 @@ public class RProducer
         if (reconnect && _needReconnect)
         {
             await Init();
-            Console.WriteLine($"End Reconnect {DateTime.Now}");
         }
     }
 
@@ -139,7 +139,7 @@ public class RProducer
 
         catch (Exception e)
         {
-            Console.WriteLine($"Send error {e.Message}");
+            LogEventSource.Log.LogError($"Error sending message: {e}.");
         }
         finally
         {
@@ -160,7 +160,7 @@ public class RProducer
 
         catch (Exception e)
         {
-            Console.WriteLine($"Send error {e.Message}");
+            LogEventSource.Log.LogError($"Error sending messages: {e}.");
         }
         finally
         {
