@@ -25,8 +25,9 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
 
     public void WhenDisconnected(out bool reconnect)
     {
-        Console.WriteLine($"WhenDisconnected raised - Going to reconnect, tentative: {Tentatives}");
         Tentatives <<= 1;
+        LogEventSource.Log.LogInformation(
+            $"Producer disconnected, reconnection in {Tentatives * 100} ms.");
         Thread.Sleep(TimeSpan.FromMilliseconds(Tentatives * 100));
         reconnect = true;
     }
@@ -43,7 +44,7 @@ public record RProducerConfig
     public string Stream { get; set; }
     public string Reference { get; set; }
     public Func<Confirmation, Task> ConfirmationHandler { get; init; }
-    public string ClientProvidedName { get; set; }
+    public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 }
 
@@ -80,6 +81,7 @@ public class RProducer
             {
                 Stream = _rProducerConfig.Stream,
                 ClientProvidedName = _rProducerConfig.ClientProvidedName,
+                Reference = _rProducerConfig.Reference,
                 ConnectionClosedHandler = async _ =>
                 {
                     await TryToReconnect();
@@ -129,7 +131,6 @@ public class RProducer
     public async ValueTask Send(Message message)
     {
         var pid = _autoPublishingId.GetPublishingId();
-
         _confirmationPipe.AddUnConfirmedMessage(pid, message);
         await _semProducer.WaitAsync();
         try
