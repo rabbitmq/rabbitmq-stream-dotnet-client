@@ -545,7 +545,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
+                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
             }
         }
 
