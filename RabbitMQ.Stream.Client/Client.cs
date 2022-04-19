@@ -254,10 +254,10 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
         {
+            publishers.Remove(publisherId);
             var result =
                 await Request<DeletePublisherRequest, DeletePublisherResponse>(corr =>
                     new DeletePublisherRequest(corr, publisherId));
-            publishers.Remove(publisherId);
             return result;
         }
 

@@ -27,7 +27,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
     {
         Tentatives <<= 1;
         LogEventSource.Log.LogInformation(
-            $"Producer disconnected, reconnection in {Tentatives * 100} ms.");
+            $"Producer disconnected, check if reconnection needed in {Tentatives * 100} ms.");
         Thread.Sleep(TimeSpan.FromMilliseconds(Tentatives * 100));
         reconnect = true;
     }
@@ -43,7 +43,7 @@ public record RProducerConfig
     public StreamSystem StreamSystem { get; set; }
     public string Stream { get; set; }
     public string Reference { get; set; }
-    public Func<Confirmation, Task> ConfirmationHandler { get; init; }
+    public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 }
@@ -82,17 +82,36 @@ public class RProducer
                 Stream = _rProducerConfig.Stream,
                 ClientProvidedName = _rProducerConfig.ClientProvidedName,
                 Reference = _rProducerConfig.Reference,
+                MetadataHandler = update =>
+                {
+                    HandleMetaDataMaybeReconnect(update.Stream).Wait();
+                },
                 ConnectionClosedHandler = async _ =>
                 {
                     await TryToReconnect();
                 },
                 ConfirmHandler = confirmation =>
                 {
+                    var confirmationStatus = confirmation.Code switch
+                    {
+                        ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
+                        ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
+                        ResponseCode.InternalError => ConfirmationStatus.InternalError,
+                        ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
+                        ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
+                        _ => ConfirmationStatus.Confirmed
+                    };
+
                     _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
-                        ConfirmationStatus.Confirmed);
+                        confirmationStatus);
                 }
             });
             _rProducerConfig.ReconnectStrategy.WhenConnected();
+        }
+
+        catch (CreateProducerException ce)
+        {
+            LogEventSource.Log.LogError($"{ce}. RProducer closed");
         }
         catch (Exception e)
         {
@@ -113,6 +132,60 @@ public class RProducer
         }
     }
 
+    /// <summary>
+    /// When the clients receives a meta data update, it doesn't know
+    /// the reason.
+    /// Metadata update can be raised when:
+    /// - stream is deleted
+    /// - change the stream topology (ex: add a follower)
+    ///
+    /// HandleMetaDataMaybeReconnect checks if the stream still exists
+    /// and try to reconnect.
+    /// (internal because it is needed for tests)
+    /// </summary>
+    internal async Task HandleMetaDataMaybeReconnect(string stream)
+    {
+        LogEventSource.Log.LogInformation(
+            $"Meta data update for the stream: {stream} " +
+            $"Producer {_rProducerConfig.Reference} closed.");
+
+        // This sleep is needed. When a stream is deleted it takes sometime.
+        // The StreamExists/1 could return true even the stream doesn't exist anymore.
+        Thread.Sleep(500);
+        if (await _rProducerConfig.StreamSystem.StreamExists(stream))
+        {
+            LogEventSource.Log.LogInformation(
+                $"Meta data update, the stream {stream} still exist. " +
+                $"Producer {_rProducerConfig.Reference} will try to reconnect.");
+            // Here we just close the producer connection
+            // the func TryToReconnect/0 will be called. 
+            await CloseProducer();
+        }
+        else
+        {
+            // In this case the stream doesn't exist anymore
+            // the RProducer is just closed.
+            await Close();
+        }
+    }
+
+    private async Task CloseProducer()
+    {
+        await _semProducer.WaitAsync();
+        try
+        {
+            await _producer.Close();
+        }
+        finally
+        {
+            _semProducer.Release();
+        }
+    }
+
+    public bool IsOpen()
+    {
+        return _needReconnect;
+    }
     public async Task Close()
     {
         await _semProducer.WaitAsync();

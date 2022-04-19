@@ -32,7 +32,7 @@ namespace RabbitMQ.Stream.Client
 
     public class Producer : AbstractEntity, IDisposable
     {
-        private readonly bool _disposed;
+        private bool _disposed;
         private byte publisherId;
         private readonly ProducerConfig config;
         private readonly Channel<OutgoingMsg> messageBuffer;
@@ -131,7 +131,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SemaphoreWait()
         {
-            if (!semaphore.Wait(0))
+            if (!semaphore.Wait(0) && !client.IsClosed)
             {
                 // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
                 if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
@@ -159,7 +159,7 @@ namespace RabbitMQ.Stream.Client
         {
             // TODO: make the batch size configurable.
             var messages = new List<(ulong, Message)>(100);
-            while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+            while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false) && !client.IsClosed)
             {
                 while (messageBuffer.Reader.TryRead(out var msg))
                 {
@@ -188,18 +188,35 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<ResponseCode> Close()
+        public Task<ResponseCode> Close()
         {
             if (client.IsClosed)
             {
-                return ResponseCode.Ok;
+                return Task.FromResult(ResponseCode.Ok);
             }
 
-            var deletePublisherResponse = await client.DeletePublisher(publisherId);
-            var result = deletePublisherResponse.ResponseCode;
+            var result = ResponseCode.Ok;
+            try
+            {
+                var deletePublisherResponseTask = client.DeletePublisher(publisherId);
+                // The  default timeout is usually 10 seconds 
+                // in this case we reduce the waiting time
+                // the producer could be removed because of stream deleted 
+                // so it is not necessary to wait.
+                deletePublisherResponseTask.Wait(TimeSpan.FromSeconds(3));
+                if (deletePublisherResponseTask.IsCompletedSuccessfully)
+                {
+                    result = deletePublisherResponseTask.Result.ResponseCode;
+                }
+            }
+            catch (Exception e)
+            {
+                LogEventSource.Log.LogError($"Error removing the producer id: {publisherId} from the server. {e}");
+            }
+
             var closed = client.MaybeClose($"client-close-publisher: {publisherId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {publisherId}");
-            return result;
+            return Task.FromResult(result);
         }
 
         public static async Task<Producer> Create(ClientParameters clientParameters,
@@ -228,6 +245,7 @@ namespace RabbitMQ.Stream.Client
             closeProducer.Wait(1000);
             ClientExceptions.MaybeThrowException(closeProducer.Result,
                 $"Error during remove producer. Producer: {publisherId}");
+            _disposed = true;
         }
 
         public void Dispose()

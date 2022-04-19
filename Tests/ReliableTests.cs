@@ -11,7 +11,6 @@ using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
-using Confirmation = RabbitMQ.Stream.Client.Reliable.Confirmation;
 
 namespace Tests;
 
@@ -27,8 +26,8 @@ public class ReliableTests
     [Fact]
     public void MessageWithoutConfirmationRaiseTimeout()
     {
-        var confirmationTask = new TaskCompletionSource<List<Confirmation>>();
-        var l = new List<Confirmation>();
+        var confirmationTask = new TaskCompletionSource<List<MessagesConfirmation>>();
+        var l = new List<MessagesConfirmation>();
         var confirmationPipe = new ConfirmationPipe(confirmation =>
             {
                 l.Add(confirmation);
@@ -44,7 +43,7 @@ public class ReliableTests
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
         confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
-        new Utils<List<Confirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
+        new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
         Assert.Equal(ConfirmationStatus.TimeoutError, confirmationTask.Task.Result[0].Status);
@@ -55,8 +54,8 @@ public class ReliableTests
     [Fact]
     public void MessageConfirmationShouldHaveTheSameMessages()
     {
-        var confirmationTask = new TaskCompletionSource<List<Confirmation>>();
-        var l = new List<Confirmation>();
+        var confirmationTask = new TaskCompletionSource<List<MessagesConfirmation>>();
+        var l = new List<MessagesConfirmation>();
         var confirmationPipe = new ConfirmationPipe(confirmation =>
             {
                 l.Add(confirmation);
@@ -74,7 +73,7 @@ public class ReliableTests
         confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
         confirmationPipe.RemoveUnConfirmedMessage(1, ConfirmationStatus.Confirmed);
         confirmationPipe.RemoveUnConfirmedMessage(2, ConfirmationStatus.Confirmed);
-        new Utils<List<Confirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
+        new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         Assert.Equal(ConfirmationStatus.Confirmed, confirmationTask.Task.Result[0].Status);
         Assert.Equal(ConfirmationStatus.Confirmed, confirmationTask.Task.Result[1].Status);
         confirmationPipe.Stop();
@@ -91,7 +90,7 @@ public class ReliableTests
             {
                 Stream = stream,
                 StreamSystem = system,
-                ConfirmationHandler = confirmation =>
+                ConfirmationHandler = _ =>
                 {
                     if (Interlocked.Increment(ref count) == 10)
                     {
@@ -136,7 +135,7 @@ public class ReliableTests
                 Stream = stream,
                 StreamSystem = system,
                 ClientProvidedName = "producer_to_kill",
-                ConfirmationHandler = confirmation =>
+                ConfirmationHandler = _ =>
                 {
                     if (Interlocked.Increment(ref count) == 5)
                     {
@@ -167,6 +166,31 @@ public class ReliableTests
         // the auto-reconnect has to connect the locator again
         await system.DeleteStream(stream);
         await rProducer.Close();
+        await system.Close();
+    }
+
+    [Fact]
+    public async void HandleDeleteStreamWithMetaDataUpdate()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var clientProviderName = Guid.NewGuid().ToString();
+        var rProducer = await RProducer.CreateRProducer(
+            new RProducerConfig()
+            {
+                Stream = stream,
+                StreamSystem = system,
+                ClientProvidedName = clientProviderName,
+                ConfirmationHandler = _ => Task.CompletedTask
+            }
+        );
+
+        Assert.True(rProducer.IsOpen());
+        // When the stream is deleted the producer has to close the 
+        // connection an become inactive.
+        await system.DeleteStream(stream);
+
+        SystemUtils.Wait();
+        Assert.False(rProducer.IsOpen());
         await system.Close();
     }
 }

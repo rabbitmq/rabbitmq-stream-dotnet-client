@@ -12,6 +12,7 @@ using System.Timers;
 using Timer = System.Timers.Timer;
 
 namespace RabbitMQ.Stream.Client.Reliable;
+
 /// <summary>
 /// ConfirmationStatus can be:
 /// </summary>
@@ -20,16 +21,22 @@ public enum ConfirmationStatus : ushort
     WaitForConfirmation = 0,
     Confirmed = 1,
     TimeoutError = 2,
+    StreamNotAvailable = 6,
+    InternalError = 15,
+    AccessRefused = 16,
+    PreconditionFailed = 17,
+    PublisherDoesNotExist = 18,
 }
+
 /// <summary>
-/// Confirmation is a wrapper around the message/s
+/// MessagesConfirmation is a wrapper around the message/s
 /// This class is returned to the user to understand
 /// the message status. 
 /// </summary>
-public class Confirmation
+public class MessagesConfirmation
 {
-    public ulong PublishingId { get; internal init; }
-    public List<Message> Messages { get; internal set; }
+    public ulong PublishingId { get; internal set; }
+    public List<Message> Messages { get; internal init; }
     public DateTime InsertDateTime { get; init; }
     public ConfirmationStatus Status { get; internal set; }
 }
@@ -41,19 +48,19 @@ public class Confirmation
 /// </summary>
 public class ConfirmationPipe
 {
-    private ActionBlock<Tuple<ConfirmationStatus, Confirmation>> _waitForConfirmationActionBlock;
-    private readonly ConcurrentDictionary<ulong, Confirmation> _waitForConfirmation = new();
+    private ActionBlock<Tuple<ConfirmationStatus, MessagesConfirmation>> _waitForConfirmationActionBlock;
+    private readonly ConcurrentDictionary<ulong, MessagesConfirmation> _waitForConfirmation = new();
     private readonly Timer _invalidateTimer = new();
-    private Func<Confirmation, Task> ConfirmHandler { get; }
+    private Func<MessagesConfirmation, Task> ConfirmHandler { get; }
 
-    public ConfirmationPipe(Func<Confirmation, Task> confirmHandler)
+    public ConfirmationPipe(Func<MessagesConfirmation, Task> confirmHandler)
     {
         ConfirmHandler = confirmHandler;
     }
 
     public void Start()
     {
-        _waitForConfirmationActionBlock = new ActionBlock<Tuple<ConfirmationStatus, Confirmation>>(
+        _waitForConfirmationActionBlock = new ActionBlock<Tuple<ConfirmationStatus, MessagesConfirmation>>(
             request =>
             {
                 var (confirmationStatus, confirmation) = request;
@@ -91,7 +98,8 @@ public class ConfirmationPipe
     private async void OnTimedEvent(object? sender, ElapsedEventArgs e)
     {
         {
-            foreach (var pair in _waitForConfirmation.Where(pair => (DateTime.Now - pair.Value.InsertDateTime).Seconds > 2))
+            foreach (var pair in _waitForConfirmation.Where(pair =>
+                         (DateTime.Now - pair.Value.InsertDateTime).Seconds > 2))
             {
                 await RemoveUnConfirmedMessage(pair.Value.PublishingId, ConfirmationStatus.TimeoutError);
             }
@@ -101,7 +109,7 @@ public class ConfirmationPipe
     public void AddUnConfirmedMessage(ulong publishingId, Message message)
     {
         _waitForConfirmation.TryAdd(publishingId,
-            new Confirmation()
+            new MessagesConfirmation()
             {
                 Messages = new List<Message>() { message },
                 PublishingId = publishingId,
@@ -112,13 +120,18 @@ public class ConfirmationPipe
     public void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
     {
         _waitForConfirmation.TryAdd(publishingId,
-            new Confirmation() { Messages = messages, PublishingId = publishingId, InsertDateTime = DateTime.Now });
+            new MessagesConfirmation()
+            {
+                Messages = messages,
+                PublishingId = publishingId,
+                InsertDateTime = DateTime.Now
+            });
     }
 
     public Task RemoveUnConfirmedMessage(ulong publishingId, ConfirmationStatus confirmationStatus)
     {
         return _waitForConfirmationActionBlock.SendAsync(
             Tuple.Create(confirmationStatus,
-                new Confirmation() { PublishingId = publishingId }));
+                new MessagesConfirmation() { PublishingId = publishingId }));
     }
 }
