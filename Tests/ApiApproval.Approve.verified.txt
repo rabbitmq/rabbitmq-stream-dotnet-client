@@ -972,17 +972,9 @@ namespace RabbitMQ.Stream.Client
 }
 namespace RabbitMQ.Stream.Client.Reliable
 {
-    public class Confirmation
-    {
-        public Confirmation() { }
-        public System.DateTime InsertDateTime { get; set; }
-        public System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> Messages { get; }
-        public ulong PublishingId { get; }
-        public RabbitMQ.Stream.Client.Reliable.ConfirmationStatus Status { get; }
-    }
     public class ConfirmationPipe
     {
-        public ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.Confirmation, System.Threading.Tasks.Task> confirmHandler) { }
+        public ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> confirmHandler) { }
         public void AddUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Message message) { }
         public void AddUnConfirmedMessage(ulong publishingId, System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) { }
         public System.Threading.Tasks.Task RemoveUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Reliable.ConfirmationStatus confirmationStatus) { }
@@ -994,6 +986,11 @@ namespace RabbitMQ.Stream.Client.Reliable
         WaitForConfirmation = 0,
         Confirmed = 1,
         TimeoutError = 2,
+        StreamNotAvailable = 6,
+        InternalError = 15,
+        AccessRefused = 16,
+        PreconditionFailed = 17,
+        PublisherDoesNotExist = 18,
     }
     public interface IPublishingIdStrategy
     {
@@ -1004,9 +1001,18 @@ namespace RabbitMQ.Stream.Client.Reliable
         void WhenConnected();
         void WhenDisconnected(out bool reconnect);
     }
+    public class MessagesConfirmation
+    {
+        public MessagesConfirmation() { }
+        public System.DateTime InsertDateTime { get; set; }
+        public System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> Messages { get; }
+        public ulong PublishingId { get; }
+        public RabbitMQ.Stream.Client.Reliable.ConfirmationStatus Status { get; }
+    }
     public class RProducer
     {
         public System.Threading.Tasks.Task Close() { }
+        public bool IsOpen() { }
         public System.Threading.Tasks.ValueTask Send(RabbitMQ.Stream.Client.Message message) { }
         public System.Threading.Tasks.ValueTask Send(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) { }
         public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.RProducer> CreateRProducer(RabbitMQ.Stream.Client.Reliable.RProducerConfig rProducerConfig) { }
@@ -1016,7 +1022,7 @@ namespace RabbitMQ.Stream.Client.Reliable
         public RProducerConfig() { }
         protected RProducerConfig(RabbitMQ.Stream.Client.Reliable.RProducerConfig original) { }
         public string ClientProvidedName { get; set; }
-        public System.Func<RabbitMQ.Stream.Client.Reliable.Confirmation, System.Threading.Tasks.Task> ConfirmationHandler { get; set; }
+        public System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> ConfirmationHandler { get; set; }
         protected virtual System.Type EqualityContract { get; }
         public RabbitMQ.Stream.Client.Reliable.IReconnectStrategy ReconnectStrategy { get; set; }
         public string Reference { get; set; }

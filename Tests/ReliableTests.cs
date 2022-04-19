@@ -189,7 +189,7 @@ public class ReliableTests
         // connection an become inactive.
         await system.DeleteStream(stream);
 
-        SystemUtils.Wait();
+        SystemUtils.Wait(TimeSpan.FromSeconds(5));
         Assert.False(rProducer.IsOpen());
         await system.Close();
     }
