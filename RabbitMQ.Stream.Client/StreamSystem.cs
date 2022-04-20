@@ -171,6 +171,7 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         public async Task<ulong> QuerySequence(string reference, string stream)
         {
+            await MayBeReconnectLocator();
             MaybeThrowQueryException(reference, stream);
 
             var response = await client.QueryPublisherSequence(reference, stream);

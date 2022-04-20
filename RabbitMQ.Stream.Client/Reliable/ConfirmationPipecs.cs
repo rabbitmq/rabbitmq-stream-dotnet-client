@@ -65,19 +65,14 @@ public class ConfirmationPipe
             request =>
             {
                 var (confirmationStatus, confirmation) = request;
-                switch (confirmationStatus)
+                _waitForConfirmation.TryRemove(confirmation.PublishingId, out var message);
+                if (message == null)
                 {
-                    case ConfirmationStatus.Confirmed:
-                    case ConfirmationStatus.TimeoutError:
-                        _waitForConfirmation.TryRemove(confirmation.PublishingId, out var message);
-                        if (message != null)
-                        {
-                            message.Status = confirmationStatus;
-                            ConfirmHandler?.Invoke(message);
-                        }
-
-                        break;
+                    return;
                 }
+
+                message.Status = confirmationStatus;
+                ConfirmHandler?.Invoke(message);
             }, new ExecutionDataflowBlockOptions
             {
                 MaxDegreeOfParallelism = 1,

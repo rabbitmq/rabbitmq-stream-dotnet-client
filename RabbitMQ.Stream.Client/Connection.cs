@@ -127,9 +127,6 @@ namespace RabbitMQ.Stream.Client
                     {
                         // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
 
-                        // Console.WriteLine(
-                        //     $"B TryReadFrame {buffer.Length} {result.IsCompleted} {result.Buffer.IsEmpty} {frame.Length}");
-
                         var memory =
                             ArrayPool<byte>.Shared.Rent((int)frame.Length).AsMemory(0, (int)frame.Length);
                         frame.CopyTo(memory.Span);

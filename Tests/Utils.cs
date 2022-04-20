@@ -59,10 +59,11 @@ namespace Tests
             Thread.Sleep(wait);
         }
 
-        public static void InitStreamSystemWithRandomStream(out StreamSystem system, out string stream)
+        public static void InitStreamSystemWithRandomStream(out StreamSystem system, out string stream,
+            string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig();
+            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();

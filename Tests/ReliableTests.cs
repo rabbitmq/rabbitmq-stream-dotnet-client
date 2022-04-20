@@ -127,17 +127,20 @@ public class ReliableTests
         // The RProducer has to detect the disconnection and reconnect the client
         // 
         var testPassed = new TaskCompletionSource<bool>();
-        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+
+        var clientProvidedNameLocator = Guid.NewGuid().ToString();
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream, clientProvidedNameLocator);
         var count = 0;
+        var clientProvidedName = Guid.NewGuid().ToString();
         var rProducer = await RProducer.CreateRProducer(
             new RProducerConfig()
             {
                 Stream = stream,
                 StreamSystem = system,
-                ClientProvidedName = "producer_to_kill",
+                ClientProvidedName = clientProvidedName,
                 ConfirmationHandler = _ =>
                 {
-                    if (Interlocked.Increment(ref count) == 5)
+                    if (Interlocked.Increment(ref count) == 10)
                     {
                         testPassed.SetResult(true);
                     }
@@ -152,8 +155,8 @@ public class ReliableTests
         }
 
         SystemUtils.Wait(TimeSpan.FromSeconds(6));
-        Assert.Equal(1, SystemUtils.HttpKillConnections("producer_to_kill").Result);
-        Assert.Equal(1, SystemUtils.HttpKillConnections("dotnet-stream-locator").Result);
+        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProvidedName).Result);
+        await SystemUtils.HttpKillConnections(clientProvidedNameLocator);
 
         for (var i = 0; i < 5; i++)
         {

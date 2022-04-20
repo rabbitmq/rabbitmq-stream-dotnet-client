@@ -11,7 +11,7 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 internal class AutoPublishingId : IPublishingIdStrategy
 {
-    private ulong _lastPublishingId;
+    private ulong _lastPublishingId = 0;
     private readonly RProducerConfig _rProducerConfig;
 
     public ulong GetPublishingId()
@@ -87,12 +87,14 @@ public class RProducer
     private readonly SemaphoreSlim _semProducer = new(1);
     private readonly ConfirmationPipe _confirmationPipe;
     private bool _needReconnect = true;
+    private bool _inReconnection = false;
 
     private RProducer(RProducerConfig rProducerConfig)
     {
         _rProducerConfig = rProducerConfig;
         _autoPublishingId = new AutoPublishingId(_rProducerConfig);
         _confirmationPipe = new ConfirmationPipe(rProducerConfig.ConfirmationHandler);
+        _autoPublishingId.InitPublishingId();
         _confirmationPipe.Start();
     }
 
@@ -106,10 +108,9 @@ public class RProducer
     private async Task Init()
     {
         await _semProducer.WaitAsync();
+
         try
         {
-            _autoPublishingId.InitPublishingId();
-
             _producer = await _rProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
             {
                 Stream = _rProducerConfig.Stream,
@@ -159,10 +160,18 @@ public class RProducer
 
     private async Task TryToReconnect()
     {
-        _rProducerConfig.ReconnectStrategy.WhenDisconnected(out var reconnect);
-        if (reconnect && _needReconnect)
+        _inReconnection = true;
+        try
         {
-            await Init();
+            _rProducerConfig.ReconnectStrategy.WhenDisconnected(out var reconnect);
+            if (reconnect && _needReconnect)
+            {
+                await Init();
+            }
+        }
+        finally
+        {
+            _inReconnection = false;
         }
     }
 
@@ -205,7 +214,7 @@ public class RProducer
 
     private async Task CloseProducer()
     {
-        await _semProducer.WaitAsync();
+        await _semProducer.WaitAsync(10);
         try
         {
             await _producer.Close();
@@ -223,7 +232,7 @@ public class RProducer
 
     public async Task Close()
     {
-        await _semProducer.WaitAsync();
+        await _semProducer.WaitAsync(10);
         try
         {
             _needReconnect = false;
@@ -243,7 +252,15 @@ public class RProducer
         await _semProducer.WaitAsync();
         try
         {
-            await _producer.Send(pid, message);
+            // This flags avoid some race condition,
+            // since the reconnection can arrive from different threads 
+            // so in this case it skips the publish until
+            // the producer is connected. Messages are safe since are stored 
+            // on the _waitForConfirmation list. The user will get Timeout Error
+            if (!(_inReconnection))
+            {
+                await _producer.Send(pid, message);
+            }
         }
 
         catch (Exception e)
@@ -259,12 +276,14 @@ public class RProducer
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
         var pid = _autoPublishingId.GetPublishingId();
-
         _confirmationPipe.AddUnConfirmedMessage(pid, messages);
         await _semProducer.WaitAsync();
         try
         {
-            await _producer.Send(pid, messages, compressionType);
+            if (!(_inReconnection))
+            {
+                await _producer.Send(pid, messages, compressionType);
+            }
         }
 
         catch (Exception e)
