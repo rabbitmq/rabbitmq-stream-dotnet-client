@@ -991,10 +991,12 @@ namespace RabbitMQ.Stream.Client.Reliable
         AccessRefused = 16,
         PreconditionFailed = 17,
         PublisherDoesNotExist = 18,
+        UndefinedError = 200,
     }
     public interface IPublishingIdStrategy
     {
         ulong GetPublishingId();
+        void InitPublishingId();
     }
     public interface IReconnectStrategy
     {
