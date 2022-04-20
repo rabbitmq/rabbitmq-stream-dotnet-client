@@ -26,6 +26,7 @@ public enum ConfirmationStatus : ushort
     AccessRefused = 16,
     PreconditionFailed = 17,
     PublisherDoesNotExist = 18,
+    UndefinedError = 200,
 }
 
 /// <summary>

@@ -42,7 +42,7 @@ public class ReliableTests
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
+        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() {message});
         new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
@@ -70,7 +70,7 @@ public class ReliableTests
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
+        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() {message});
         confirmationPipe.RemoveUnConfirmedMessage(1, ConfirmationStatus.Confirmed);
         confirmationPipe.RemoveUnConfirmedMessage(2, ConfirmationStatus.Confirmed);
         new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
@@ -106,7 +106,7 @@ public class ReliableTests
             await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
         }
 
-        List<Message> messages = new() { new Message(Encoding.UTF8.GetBytes($"hello list")) };
+        List<Message> messages = new() {new Message(Encoding.UTF8.GetBytes($"hello list"))};
 
         for (var i = 0; i < 5; i++)
         {
@@ -157,7 +157,7 @@ public class ReliableTests
 
         for (var i = 0; i < 5; i++)
         {
-            List<Message> messages = new() { new Message(Encoding.UTF8.GetBytes($"hello list")) };
+            List<Message> messages = new() {new Message(Encoding.UTF8.GetBytes($"hello list"))};
             await rProducer.Send(messages, CompressionType.None);
         }
 
@@ -191,6 +191,115 @@ public class ReliableTests
 
         SystemUtils.Wait(TimeSpan.FromSeconds(5));
         Assert.False(rProducer.IsOpen());
+        await system.Close();
+    }
+    
+    [Fact]
+    public async void HandleChangeStreamConfigurationWithMetaDataUpdate()
+    {
+       // When stream topology changes the MetadataUpdate is raised.
+       // in this test we simulate it using await rProducer:HandleMetaDataMaybeReconnect/1;
+       // Producer must reconnect
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var clientProviderName = Guid.NewGuid().ToString();
+        var rProducer = await RProducer.CreateRProducer(
+            new RProducerConfig()
+            {
+                Stream = stream,
+                StreamSystem = system,
+                ClientProvidedName = clientProviderName,
+                ConfirmationHandler = _ => Task.CompletedTask
+            }
+        );
+
+        Assert.True(rProducer.IsOpen());
+        await rProducer.HandleMetaDataMaybeReconnect(stream);
+        SystemUtils.Wait();
+        Assert.True(rProducer.IsOpen());
+        // await system.DeleteStream(stream);
+        await system.Close();
+    }
+
+
+    [Fact]
+    public async void AutoPublishIdDefaultShouldStartFromTheLast()
+    {
+        // RProducer automatically retrieves the last producer offset.
+        // see IPublishingIdStrategy implementation
+        // This tests if the the last id stored 
+        // A new RProducer should restart from the last offset. 
+        
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var testPassed = new TaskCompletionSource<ulong>();
+        var clientProviderName = Guid.NewGuid().ToString();
+        var reference = Guid.NewGuid().ToString();
+        var count = 0;
+        var rProducer = await RProducer.CreateRProducer(
+            new RProducerConfig()
+            {
+                Stream = stream,
+                StreamSystem = system,
+                ClientProvidedName = clientProviderName,
+                Reference = reference,
+                ConfirmationHandler = confirm =>
+                {
+                    if (Interlocked.Increment(ref count) != 5)
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    Assert.Equal(ConfirmationStatus.Confirmed, confirm.Status);
+
+                    if (confirm.Status == ConfirmationStatus.Confirmed)
+                    {
+                        testPassed.SetResult(confirm.PublishingId);
+                    }
+
+
+                    return Task.CompletedTask;
+                }
+            }
+        );
+
+        Assert.True(rProducer.IsOpen());
+
+        for (var i = 0; i < 5; i++)
+        {
+            await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
+        }
+
+
+        // We check if the publishing id is actually 5
+        new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        Assert.Equal((ulong)5, testPassed.Task.Result);
+        
+        await rProducer.Close();
+        var testPassedSecond = new TaskCompletionSource<ulong>();
+        var rProducerSecond = await RProducer.CreateRProducer(
+            new RProducerConfig()
+            {
+                Stream = stream,
+                StreamSystem = system,
+                Reference = reference,
+                ClientProvidedName = clientProviderName,
+                ConfirmationHandler = confirm =>
+                {
+                    testPassedSecond.SetResult(confirm.PublishingId);
+                    return Task.CompletedTask;
+                }
+            }
+        );
+        
+        // given the same reference, the publishingId should restart from the last
+        // in this cas5 is 5
+        await rProducerSecond.Send(new Message(Encoding.UTF8.GetBytes($"hello")));
+        // +1 here, so 6
+        new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(testPassedSecond);
+        Assert.Equal((ulong)6, testPassedSecond.Task.Result);
+
+
+        await rProducerSecond.Close();
+        await system.DeleteStream(stream);
         await system.Close();
     }
 }

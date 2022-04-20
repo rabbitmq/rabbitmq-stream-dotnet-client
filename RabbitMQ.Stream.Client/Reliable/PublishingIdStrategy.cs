@@ -3,12 +3,14 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 namespace RabbitMQ.Stream.Client.Reliable;
+
 /// <summary>
 /// Define PublishingId Strategy.
 /// Can be automatic, so the RProducer will provide
-/// the ID, or the use the way to  
+/// the PublishingId
 /// </summary>
 public interface IPublishingIdStrategy
 {
     ulong GetPublishingId();
+    void InitPublishingId();
 }

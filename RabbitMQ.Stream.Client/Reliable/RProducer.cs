@@ -12,10 +12,30 @@ namespace RabbitMQ.Stream.Client.Reliable;
 internal class AutoPublishingId : IPublishingIdStrategy
 {
     private ulong _lastPublishingId;
+    private readonly RProducerConfig _rProducerConfig;
 
     public ulong GetPublishingId()
     {
         return ++_lastPublishingId;
+    }
+
+    public AutoPublishingId(RProducerConfig rProducerConfig)
+    {
+        _rProducerConfig = rProducerConfig;
+    }
+
+    public void InitPublishingId()
+    {
+        try
+        {
+            var queryTask =
+                _rProducerConfig.StreamSystem.QuerySequence(_rProducerConfig.Reference, _rProducerConfig.Stream);
+            _lastPublishingId = queryTask.Result;
+        }
+        catch (Exception e)
+        {
+            _lastPublishingId = 0;
+        }
     }
 }
 
@@ -48,6 +68,17 @@ public record RProducerConfig
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 }
 
+/// <summary>
+/// RProducer is a wrapper around the standard Producer.
+/// Main features are:
+/// - Auto-reconnection if the connection is dropped
+/// - Trace sent and received messages. The event RProducerConfig:ConfirmationHandler/2
+///   receives back messages sent with the status.
+/// - Handle the Metadata Update. In case the stream is deleted RProducer closes Producer/Connection.
+///   Reconnect the Producer if the stream still exists.
+/// - Set automatically the next PublisherID
+/// - Automatically retrieves the last sequence. By default is AutoPublishingId see IPublishingIdStrategy.
+/// </summary>
 public class RProducer
 {
     private Producer _producer;
@@ -59,8 +90,8 @@ public class RProducer
 
     private RProducer(RProducerConfig rProducerConfig)
     {
-        _autoPublishingId = new AutoPublishingId();
         _rProducerConfig = rProducerConfig;
+        _autoPublishingId = new AutoPublishingId(_rProducerConfig);
         _confirmationPipe = new ConfirmationPipe(rProducerConfig.ConfirmationHandler);
         _confirmationPipe.Start();
     }
@@ -77,6 +108,8 @@ public class RProducer
         await _semProducer.WaitAsync();
         try
         {
+            _autoPublishingId.InitPublishingId();
+
             _producer = await _rProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
             {
                 Stream = _rProducerConfig.Stream,
@@ -99,7 +132,8 @@ public class RProducer
                         ResponseCode.InternalError => ConfirmationStatus.InternalError,
                         ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
                         ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
-                        _ => ConfirmationStatus.Confirmed
+                        ResponseCode.Ok => ConfirmationStatus.Confirmed,
+                        _ => ConfirmationStatus.UndefinedError
                     };
 
                     _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
@@ -186,6 +220,7 @@ public class RProducer
     {
         return _needReconnect;
     }
+
     public async Task Close()
     {
         await _semProducer.WaitAsync();
