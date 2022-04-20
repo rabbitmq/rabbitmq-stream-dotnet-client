@@ -32,7 +32,7 @@ internal class AutoPublishingId : IPublishingIdStrategy
                 _rProducerConfig.StreamSystem.QuerySequence(_rProducerConfig.Reference, _rProducerConfig.Stream);
             _lastPublishingId = queryTask.Result;
         }
-        catch (Exception e)
+        catch (Exception)
         {
             _lastPublishingId = 0;
         }
