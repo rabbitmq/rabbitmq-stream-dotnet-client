@@ -85,8 +85,8 @@ public class ReliableTests
         var testPassed = new TaskCompletionSource<bool>();
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var count = 0;
-        var rProducer = await RProducer.CreateRProducer(
-            new RProducerConfig()
+        var rProducer = await ReliableProducer.CreateReliableProducer(
+            new ReliableProducerConfig()
             {
                 Stream = stream,
                 StreamSystem = system,
@@ -132,8 +132,8 @@ public class ReliableTests
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream, clientProvidedNameLocator);
         var count = 0;
         var clientProvidedName = Guid.NewGuid().ToString();
-        var rProducer = await RProducer.CreateRProducer(
-            new RProducerConfig()
+        var rProducer = await ReliableProducer.CreateReliableProducer(
+            new ReliableProducerConfig()
             {
                 Stream = stream,
                 StreamSystem = system,
@@ -177,8 +177,8 @@ public class ReliableTests
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
-        var rProducer = await RProducer.CreateRProducer(
-            new RProducerConfig()
+        var rProducer = await ReliableProducer.CreateReliableProducer(
+            new ReliableProducerConfig()
             {
                 Stream = stream,
                 StreamSystem = system,
@@ -201,12 +201,12 @@ public class ReliableTests
     public async void HandleChangeStreamConfigurationWithMetaDataUpdate()
     {
         // When stream topology changes the MetadataUpdate is raised.
-        // in this test we simulate it using await rProducer:HandleMetaDataMaybeReconnect/1;
+        // in this test we simulate it using await ReliableProducer:HandleMetaDataMaybeReconnect/1;
         // Producer must reconnect
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
-        var rProducer = await RProducer.CreateRProducer(
-            new RProducerConfig()
+        var rProducer = await ReliableProducer.CreateReliableProducer(
+            new ReliableProducerConfig()
             {
                 Stream = stream,
                 StreamSystem = system,
@@ -236,8 +236,8 @@ public class ReliableTests
         var clientProviderName = Guid.NewGuid().ToString();
         var reference = Guid.NewGuid().ToString();
         var count = 0;
-        var rProducer = await RProducer.CreateRProducer(
-            new RProducerConfig()
+        var rProducer = await ReliableProducer.CreateReliableProducer(
+            new ReliableProducerConfig()
             {
                 Stream = stream,
                 StreamSystem = system,
@@ -275,8 +275,8 @@ public class ReliableTests
 
         await rProducer.Close();
         var testPassedSecond = new TaskCompletionSource<ulong>();
-        var rProducerSecond = await RProducer.CreateRProducer(
-            new RProducerConfig()
+        var rProducerSecond = await ReliableProducer.CreateReliableProducer(
+            new ReliableProducerConfig()
             {
                 Stream = stream,
                 StreamSystem = system,

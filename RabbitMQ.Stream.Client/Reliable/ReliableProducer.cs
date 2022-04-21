@@ -12,16 +12,16 @@ namespace RabbitMQ.Stream.Client.Reliable;
 internal class AutoPublishingId : IPublishingIdStrategy
 {
     private ulong _lastPublishingId = 0;
-    private readonly RProducerConfig _rProducerConfig;
+    private readonly ReliableProducerConfig _reliableProducerConfig;
 
     public ulong GetPublishingId()
     {
         return ++_lastPublishingId;
     }
 
-    public AutoPublishingId(RProducerConfig rProducerConfig)
+    public AutoPublishingId(ReliableProducerConfig reliableProducerConfig)
     {
-        _rProducerConfig = rProducerConfig;
+        _reliableProducerConfig = reliableProducerConfig;
     }
 
     public void InitPublishingId()
@@ -29,7 +29,7 @@ internal class AutoPublishingId : IPublishingIdStrategy
         try
         {
             var queryTask =
-                _rProducerConfig.StreamSystem.QuerySequence(_rProducerConfig.Reference, _rProducerConfig.Stream);
+                _reliableProducerConfig.StreamSystem.QuerySequence(_reliableProducerConfig.Reference, _reliableProducerConfig.Stream);
             _lastPublishingId = queryTask.Result;
         }
         catch (Exception)
@@ -58,7 +58,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
     }
 }
 
-public record RProducerConfig
+public record ReliableProducerConfig
 {
     public StreamSystem StreamSystem { get; set; }
     public string Stream { get; set; }
@@ -69,38 +69,38 @@ public record RProducerConfig
 }
 
 /// <summary>
-/// RProducer is a wrapper around the standard Producer.
+/// ReliableProducer is a wrapper around the standard Producer.
 /// Main features are:
 /// - Auto-reconnection if the connection is dropped
-/// - Trace sent and received messages. The event RProducerConfig:ConfirmationHandler/2
+/// - Trace sent and received messages. The event ReliableProducer:ConfirmationHandler/2
 ///   receives back messages sent with the status.
-/// - Handle the Metadata Update. In case the stream is deleted RProducer closes Producer/Connection.
+/// - Handle the Metadata Update. In case the stream is deleted ReliableProducer closes Producer/Connection.
 ///   Reconnect the Producer if the stream still exists.
 /// - Set automatically the next PublisherID
 /// - Automatically retrieves the last sequence. By default is AutoPublishingId see IPublishingIdStrategy.
 /// </summary>
-public class RProducer
+public class ReliableProducer
 {
     private Producer _producer;
     private readonly AutoPublishingId _autoPublishingId;
-    private readonly RProducerConfig _rProducerConfig;
+    private readonly ReliableProducerConfig _reliableProducerConfig;
     private readonly SemaphoreSlim _semProducer = new(1);
     private readonly ConfirmationPipe _confirmationPipe;
     private bool _needReconnect = true;
     private bool _inReconnection = false;
 
-    private RProducer(RProducerConfig rProducerConfig)
+    private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
-        _rProducerConfig = rProducerConfig;
-        _autoPublishingId = new AutoPublishingId(_rProducerConfig);
-        _confirmationPipe = new ConfirmationPipe(rProducerConfig.ConfirmationHandler);
+        _reliableProducerConfig = reliableProducerConfig;
+        _autoPublishingId = new AutoPublishingId(_reliableProducerConfig);
+        _confirmationPipe = new ConfirmationPipe(reliableProducerConfig.ConfirmationHandler);
         _autoPublishingId.InitPublishingId();
         _confirmationPipe.Start();
     }
 
-    public static async Task<RProducer> CreateRProducer(RProducerConfig rProducerConfig)
+    public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
-        var rProducer = new RProducer(rProducerConfig);
+        var rProducer = new ReliableProducer(reliableProducerConfig);
         await rProducer.Init();
         return rProducer;
     }
@@ -111,11 +111,11 @@ public class RProducer
 
         try
         {
-            _producer = await _rProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
+            _producer = await _reliableProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
             {
-                Stream = _rProducerConfig.Stream,
-                ClientProvidedName = _rProducerConfig.ClientProvidedName,
-                Reference = _rProducerConfig.Reference,
+                Stream = _reliableProducerConfig.Stream,
+                ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
+                Reference = _reliableProducerConfig.Reference,
                 MetadataHandler = update =>
                 {
                     HandleMetaDataMaybeReconnect(update.Stream).Wait();
@@ -141,12 +141,12 @@ public class RProducer
                         confirmationStatus);
                 }
             });
-            _rProducerConfig.ReconnectStrategy.WhenConnected();
+            _reliableProducerConfig.ReconnectStrategy.WhenConnected();
         }
 
         catch (CreateProducerException ce)
         {
-            LogEventSource.Log.LogError($"{ce}. RProducer closed");
+            LogEventSource.Log.LogError($"{ce}. ReliableProducer closed");
         }
         catch (Exception e)
         {
@@ -163,7 +163,7 @@ public class RProducer
         _inReconnection = true;
         try
         {
-            _rProducerConfig.ReconnectStrategy.WhenDisconnected(out var reconnect);
+            _reliableProducerConfig.ReconnectStrategy.WhenDisconnected(out var reconnect);
             if (reconnect && _needReconnect)
             {
                 await Init();
@@ -190,16 +190,16 @@ public class RProducer
     {
         LogEventSource.Log.LogInformation(
             $"Meta data update for the stream: {stream} " +
-            $"Producer {_rProducerConfig.Reference} closed.");
+            $"Producer {_reliableProducerConfig.Reference} closed.");
 
         // This sleep is needed. When a stream is deleted it takes sometime.
         // The StreamExists/1 could return true even the stream doesn't exist anymore.
         Thread.Sleep(500);
-        if (await _rProducerConfig.StreamSystem.StreamExists(stream))
+        if (await _reliableProducerConfig.StreamSystem.StreamExists(stream))
         {
             LogEventSource.Log.LogInformation(
                 $"Meta data update, the stream {stream} still exist. " +
-                $"Producer {_rProducerConfig.Reference} will try to reconnect.");
+                $"Producer {_reliableProducerConfig.Reference} will try to reconnect.");
             // Here we just close the producer connection
             // the func TryToReconnect/0 will be called. 
             await CloseProducer();
@@ -207,7 +207,7 @@ public class RProducer
         else
         {
             // In this case the stream doesn't exist anymore
-            // the RProducer is just closed.
+            // the ReliableProducer is just closed.
             await Close();
         }
     }

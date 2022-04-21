@@ -6,7 +6,7 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 /// <summary>
 /// Define PublishingId Strategy.
-/// Can be automatic, so the RProducer will provide
+/// Can be automatic, so the ReliableProducer will provide
 /// the PublishingId
 /// </summary>
 public interface IPublishingIdStrategy
