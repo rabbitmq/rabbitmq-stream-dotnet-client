@@ -25,6 +25,7 @@
     - [Publish Messages](#publish-messages)
     - [Deduplication](#Deduplication)
     - [Consume Messages](#consume-messages)
+      - [Offset Types](#offset-types)
       - [Track Offset](#track-offset)
     - [Handle Close](#handle-close)
     - [Handle Metadata Update](#handle-metadata-update)
