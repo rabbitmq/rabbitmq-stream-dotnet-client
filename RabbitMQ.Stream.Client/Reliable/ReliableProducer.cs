@@ -24,13 +24,13 @@ internal class AutoPublishingId : IPublishingIdStrategy
         _reliableProducerConfig = reliableProducerConfig;
     }
 
-    public void InitPublishingId()
+    public async Task InitPublishingId()
     {
         try
         {
-            var queryTask =
-                _reliableProducerConfig.StreamSystem.QuerySequence(_reliableProducerConfig.Reference, _reliableProducerConfig.Stream);
-            _lastPublishingId = queryTask.Result;
+            _lastPublishingId =
+                await _reliableProducerConfig.StreamSystem.QuerySequence(_reliableProducerConfig.Reference,
+                    _reliableProducerConfig.Stream);
         }
         catch (Exception)
         {

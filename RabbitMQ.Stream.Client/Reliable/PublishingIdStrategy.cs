@@ -2,6 +2,8 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
+using System.Threading.Tasks;
+
 namespace RabbitMQ.Stream.Client.Reliable;
 
 /// <summary>
@@ -12,5 +14,5 @@ namespace RabbitMQ.Stream.Client.Reliable;
 public interface IPublishingIdStrategy
 {
     ulong GetPublishingId();
-    void InitPublishingId();
+    Task InitPublishingId();
 }
