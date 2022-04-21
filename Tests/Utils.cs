@@ -142,23 +142,6 @@ namespace Tests
             return iEnumerable.Count();
         }
 
-        // public static async Task<int> GetConnectionsNumber(string connectionName)
-        // {
-        //     using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
-        //     using var client = new HttpClient(handler);
-        //     var result = await client.GetAsync("http://localhost:15672/api/connections");
-        //     var json = await result.Content.ReadAsStringAsync();
-        //     var connections = JsonSerializer.Deserialize<IEnumerable<Connection>>(json);
-        //     if (connections == null)
-        //     {
-        //         return 0;
-        //     }
-        //
-        //     var iEnumerable = connections.Where(x => x.client_properties["connection_name"].Contains(connectionName));
-        //
-        //     return iEnumerable.Count();
-        // }
-
         public static void HttpPost(string jsonBody, string api)
         {
             var httpWebRequest = (HttpWebRequest)WebRequest.Create($"http://localhost:15672/api/{api}");
