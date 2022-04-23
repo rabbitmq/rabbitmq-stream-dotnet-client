@@ -861,6 +861,7 @@ namespace RabbitMQ.Stream.Client
         public RabbitMQ.Stream.Client.LeaderLocator LeaderLocator { set; }
         public System.TimeSpan MaxAge { set; }
         public int MaxLengthBytes { set; }
+        public int MaxSegmentSizeBytes { set; }
         public string Name { get; set; }
         public virtual RabbitMQ.Stream.Client.StreamSpec <Clone>$() { }
         public void Deconstruct(out string Name) { }
