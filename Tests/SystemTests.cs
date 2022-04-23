@@ -80,13 +80,13 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
-            var spec = new StreamSpec(stream) 
-                           { 
-                               MaxAge = TimeSpan.FromHours(8), 
-                               LeaderLocator = LeaderLocator.Random,
-                               MaxLengthBytes = 20_000,
-                               MaxSegmentSizeBytes = 1000
-                           };
+            var spec = new StreamSpec(stream)
+            {
+                MaxAge = TimeSpan.FromHours(8),
+                LeaderLocator = LeaderLocator.Random,
+                MaxLengthBytes = 20_000,
+                MaxSegmentSizeBytes = 1000
+            };
             Assert.Equal("28800s", spec.Args["max-age"]);
             Assert.Equal("random", spec.Args["queue-leader-locator"]);
             Assert.Equal("1000", spec.Args["stream-max-segment-size-bytes"]);
