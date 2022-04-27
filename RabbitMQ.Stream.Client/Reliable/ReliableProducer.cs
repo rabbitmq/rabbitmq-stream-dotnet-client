@@ -87,14 +87,13 @@ public class ReliableProducer
     private readonly SemaphoreSlim _semProducer = new(1);
     private readonly ConfirmationPipe _confirmationPipe;
     private bool _needReconnect = true;
-    private bool _inReconnection = false;
+    private bool _inReconnection;
 
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
         _reliableProducerConfig = reliableProducerConfig;
         _autoPublishingId = new AutoPublishingId(_reliableProducerConfig);
         _confirmationPipe = new ConfirmationPipe(reliableProducerConfig.ConfirmationHandler);
-        _autoPublishingId.InitPublishingId();
         _confirmationPipe.Start();
     }
 
@@ -106,6 +105,12 @@ public class ReliableProducer
     }
 
     private async Task Init()
+    {
+        await _autoPublishingId.InitPublishingId();
+        await GetNewProducer();
+    }
+
+    private async Task GetNewProducer()
     {
         await _semProducer.WaitAsync();
 
@@ -166,7 +171,7 @@ public class ReliableProducer
             _reliableProducerConfig.ReconnectStrategy.WhenDisconnected(out var reconnect);
             if (reconnect && _needReconnect)
             {
-                await Init();
+                await GetNewProducer();
             }
         }
         finally
@@ -253,8 +258,8 @@ public class ReliableProducer
         try
         {
             // This flags avoid some race condition,
-            // since the reconnection can arrive from different threads 
-            // so in this case it skips the publish until
+            // since the reconnection can arrive from different threads. 
+            // In this case it skips the publish until
             // the producer is connected. Messages are safe since are stored 
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
@@ -280,7 +285,7 @@ public class ReliableProducer
         await _semProducer.WaitAsync();
         try
         {
-            if (!(_inReconnection))
+            if (!_inReconnection)
             {
                 await _producer.Send(pid, messages, compressionType);
             }

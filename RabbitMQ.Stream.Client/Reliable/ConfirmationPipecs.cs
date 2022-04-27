@@ -49,7 +49,7 @@ public class MessagesConfirmation
 /// </summary>
 public class ConfirmationPipe
 {
-    private ActionBlock<Tuple<ConfirmationStatus, MessagesConfirmation>> _waitForConfirmationActionBlock;
+    private ActionBlock<Tuple<ConfirmationStatus, ulong>> _waitForConfirmationActionBlock;
     private readonly ConcurrentDictionary<ulong, MessagesConfirmation> _waitForConfirmation = new();
     private readonly Timer _invalidateTimer = new();
     private Func<MessagesConfirmation, Task> ConfirmHandler { get; }
@@ -61,11 +61,12 @@ public class ConfirmationPipe
 
     public void Start()
     {
-        _waitForConfirmationActionBlock = new ActionBlock<Tuple<ConfirmationStatus, MessagesConfirmation>>(
+        _waitForConfirmationActionBlock = new ActionBlock<Tuple<ConfirmationStatus, ulong>>(
             request =>
             {
-                var (confirmationStatus, confirmation) = request;
-                _waitForConfirmation.TryRemove(confirmation.PublishingId, out var message);
+                var (confirmationStatus, publishingId) = request;
+
+                _waitForConfirmation.TryRemove(publishingId, out var message);
                 if (message == null)
                 {
                     return;
@@ -104,13 +105,7 @@ public class ConfirmationPipe
 
     public void AddUnConfirmedMessage(ulong publishingId, Message message)
     {
-        _waitForConfirmation.TryAdd(publishingId,
-            new MessagesConfirmation()
-            {
-                Messages = new List<Message>() { message },
-                PublishingId = publishingId,
-                InsertDateTime = DateTime.Now
-            });
+        AddUnConfirmedMessage(publishingId, new List<Message>() { message });
     }
 
     public void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
@@ -127,7 +122,6 @@ public class ConfirmationPipe
     public Task RemoveUnConfirmedMessage(ulong publishingId, ConfirmationStatus confirmationStatus)
     {
         return _waitForConfirmationActionBlock.SendAsync(
-            Tuple.Create(confirmationStatus,
-                new MessagesConfirmation() { PublishingId = publishingId }));
+            Tuple.Create(confirmationStatus, publishingId));
     }
 }
