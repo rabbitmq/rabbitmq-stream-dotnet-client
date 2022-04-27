@@ -298,7 +298,7 @@ var consumer = await system.CreateConsumer(
 });
 ```
 ### Offset Types
-There are five types of Offset and can be set by the property  `OffsetSpec` of the class `ConsumerConfig` that must be passed to the Consumer constructor, in the example we use `OffsetTypeFirst`:
+There are five types of Offset and they can be set by the `ConsumerConfig.OffsetSpec` property that must be passed to the Consumer constructor, in the example we use `OffsetTypeFirst`:
 ```csharp
 var consumerOffsetTypeFirst = await system.CreateConsumer(
     new ConsumerConfig
