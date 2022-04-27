@@ -25,6 +25,7 @@
     - [Publish Messages](#publish-messages)
     - [Deduplication](#Deduplication)
     - [Consume Messages](#consume-messages)
+      - [Offset Types](#offset-types)
       - [Track Offset](#track-offset)
     - [Handle Close](#handle-close)
     - [Handle Metadata Update](#handle-metadata-update)
@@ -296,6 +297,45 @@ var consumer = await system.CreateConsumer(
         }
 });
 ```
+### Offset Types
+There are five types of Offset and they can be set by the `ConsumerConfig.OffsetSpec` property that must be passed to the Consumer constructor, in the example we use `OffsetTypeFirst`:
+```csharp
+var consumerOffsetTypeFirst = await system.CreateConsumer(
+    new ConsumerConfig
+    {
+        Reference = "my_consumer_offset_first",
+        Stream = stream,
+        OffsetSpec = new OffsetTypeFirst(),
+        MessageHandler = async (consumer, ctx, message) =>
+        {
+ 
+            await Task.CompletedTask;
+        }
+    });
+```
+The five types are:
+-  First: it takes messages from the first message of the stream. 
+```csharp
+var offsetTypeFirst = new OffsetTypeFirst();
+```
+- Last: it takes messages from the last chunk of the stream, i.e. it doesn’t start from the last message, but the last “group” of messages.
+```csharp
+var offsetTypeLast = new OffsetTypeLast();
+```
+- Next: it takes messages published after the consumer connection.
+```csharp
+var offsetTypeNext = new OffsetTypeNext()
+```
+- Offset: it takes messages starting from the message with id equal to the passed value. If the value is less than the first message of the stream, it starts from the first (i.e. if you pass 0, but the stream starts from 10, it starts from 10). If the message with the id hasn’t yet been published it waits until this publishingId is reached.
+```csharp
+ulong iWantToStartFromPubId = 10;
+var offsetTypeOffset = new OffsetTypeOffset(iWantToStartFromPubId);
+```
+- Timestamp: it takes messages starting from the first message with timestamp bigger than the one passed
+```csharp
+var anHourAgo = (long)DateTime.UtcNow.AddHours(-1).Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+var offsetTypeTimestamp = new OffsetTypeTimestamp(anHourAgo);
+```
 ### Track Offset
 
 The server can store the current delivered offset given a consumer with `StoreOffset` in this way:
@@ -328,6 +368,8 @@ var consumer = await system.CreateConsumer(
         Stream = stream,
         OffsetSpec = new OffsetTypeOffset(trackedOffset),    
 ```
+
+OBS. if don't have stored an offset for the consumer's reference on the stream you get an OffsetNotFoundException exception.
 
 ### Handle Close
 Producers/Consumers raise and event when the client is disconnected:
