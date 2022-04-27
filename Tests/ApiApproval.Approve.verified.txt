@@ -996,7 +996,7 @@ namespace RabbitMQ.Stream.Client.Reliable
     public interface IPublishingIdStrategy
     {
         ulong GetPublishingId();
-        void InitPublishingId();
+        System.Threading.Tasks.Task InitPublishingId();
     }
     public interface IReconnectStrategy
     {
@@ -1011,18 +1011,18 @@ namespace RabbitMQ.Stream.Client.Reliable
         public ulong PublishingId { get; }
         public RabbitMQ.Stream.Client.Reliable.ConfirmationStatus Status { get; }
     }
-    public class RProducer
+    public class ReliableProducer
     {
         public System.Threading.Tasks.Task Close() { }
         public bool IsOpen() { }
         public System.Threading.Tasks.ValueTask Send(RabbitMQ.Stream.Client.Message message) { }
         public System.Threading.Tasks.ValueTask Send(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) { }
-        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.RProducer> CreateRProducer(RabbitMQ.Stream.Client.Reliable.RProducerConfig rProducerConfig) { }
+        public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.ReliableProducer> CreateReliableProducer(RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig reliableProducerConfig) { }
     }
-    public class RProducerConfig : System.IEquatable<RabbitMQ.Stream.Client.Reliable.RProducerConfig>
+    public class ReliableProducerConfig : System.IEquatable<RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig>
     {
-        public RProducerConfig() { }
-        protected RProducerConfig(RabbitMQ.Stream.Client.Reliable.RProducerConfig original) { }
+        public ReliableProducerConfig() { }
+        protected ReliableProducerConfig(RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig original) { }
         public string ClientProvidedName { get; set; }
         public System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> ConfirmationHandler { get; set; }
         protected virtual System.Type EqualityContract { get; }
@@ -1030,13 +1030,13 @@ namespace RabbitMQ.Stream.Client.Reliable
         public string Reference { get; set; }
         public string Stream { get; set; }
         public RabbitMQ.Stream.Client.StreamSystem StreamSystem { get; set; }
-        public virtual RabbitMQ.Stream.Client.Reliable.RProducerConfig <Clone>$() { }
-        public virtual bool Equals(RabbitMQ.Stream.Client.Reliable.RProducerConfig? other) { }
+        public virtual RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig <Clone>$() { }
+        public virtual bool Equals(RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig? other) { }
         public override bool Equals(object? obj) { }
         public override int GetHashCode() { }
         protected virtual bool PrintMembers(System.Text.StringBuilder builder) { }
         public override string ToString() { }
-        public static bool operator !=(RabbitMQ.Stream.Client.Reliable.RProducerConfig? left, RabbitMQ.Stream.Client.Reliable.RProducerConfig? right) { }
-        public static bool operator ==(RabbitMQ.Stream.Client.Reliable.RProducerConfig? left, RabbitMQ.Stream.Client.Reliable.RProducerConfig? right) { }
+        public static bool operator !=(RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig? left, RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig? right) { }
+        public static bool operator ==(RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig? left, RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig? right) { }
     }
 }
