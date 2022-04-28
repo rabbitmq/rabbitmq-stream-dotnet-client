@@ -414,16 +414,18 @@ You can use `MetadataHandler` to handle it:
  - Reliable Consumer (not ready yet)
 
 ### Reliable Producer
-Reliable Producer is built up the standard `Producer`
-Features:
+Reliable Producer is a smart layer built up of the standard `Producer`. </b>   
+The idea is to leve the user decides what to use, the standard or reliable producer. </b>
+
+The main features are:
 - Provide publishingID automatically
 - Auto-Reconnect in case of disconnection
 - Trace sent and received messages
 - Invalidate messages
 - Handle the metadata Update
 
-### Provide publishingID automatically
-Reliable Producer retrieves the last publishingID given the producer name. 
+#### Provide publishingID automatically
+Reliable Producer retrieves the last publishingID given the producer name. </b>
 Zero(0) is the default value in case there is no a publishingID.
 
 #### Auto-Reconnect
@@ -458,7 +460,7 @@ So the user will receive `ConfirmationStatus.TimeoutError` in the `ConfirmationH
 If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate` event.
 Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the producer.
 
-### Full example
+#### Full example
 ```csharp
 // Get an ReliableProducer instance
 // System is mandatory
@@ -502,10 +504,9 @@ You can use it:
 ```csharp
 var p = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
 {
-StreamSystem = system,
- ReconnectStrategy = MyReconnectStrategy
+...
+ReconnectStrategy = MyReconnectStrategy
 ```
-
 
 ### Build from source
 Build:
