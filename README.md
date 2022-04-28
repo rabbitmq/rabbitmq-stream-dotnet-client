@@ -453,8 +453,8 @@ ConfirmationHandler = confirmation =>
 }
 ```
 #### Invalidate messages
-Reliable Producer removes the message from the internal messages change if the client doesn't receive a confirmation within 2 seconds.
-So the user will receive `ConfirmationStatus.TimeoutError` in the `ConfirmationHandler`.
+If the client doesn't receive a confirmation within 2 seconds Reliable Producer removes the message from the internal messages cache.
+The user will receive `ConfirmationStatus.TimeoutError` in the `ConfirmationHandler`.
 
 #### Handle the metadata Update
 If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate` event.
