@@ -28,6 +28,10 @@ namespace RabbitMQ.Stream.Client
         {
             set => Args["queue-leader-locator"] = $"{value.ToString()}";
         }
+        public int MaxSegmentSizeBytes
+        {
+            set => Args["stream-max-segment-size-bytes"] = $"{value}";
+        }
 
         public IDictionary<string, string> Args => args;
     }

@@ -197,6 +197,18 @@ await system.CreateStream(new StreamSpec(stream)
 
 Set a policy is highly recommended.
 
+RabbitMQ does not store the whole stream in a single file, but splits it in segment files. 
+This is also used for truncate the stream: when a stream reaches his maximum size, an entire segment file is deleted. For this reason  `MaxLengthBytes` (the max dimension of the entire stream) is usually significantly higher than `MaxSegmentSizeBytes` (the max dimension of a single segment file).
+RabbitMQ enforces the retention policy when the current segment has reached its maximum size and is closed in favor of a new one.
+
+```csharp
+await system.CreateStream(new StreamSpec(stream)
+{
+    MaxLengthBytes = 20_000,
+    MaxSegmentSizeBytes = 1000
+});
+```
+
 ### Producer
 
 A Producer instance is created from the `System`.
