@@ -238,7 +238,7 @@ namespace Tests
 
             // we kill _only_ producer and consumer connection
             // leave the locator up and running to delete the stream
-            Assert.Equal(2, SystemUtils.HttpKillConnections().Result);
+            Assert.Equal(2, SystemUtils.HttpKillConnections("to_kill").Result);
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             // close two time it should not raise an exception

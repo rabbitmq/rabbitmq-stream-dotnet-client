@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -29,7 +30,7 @@ namespace RabbitMQ.Stream.Client
     public class StreamSystem
     {
         private readonly ClientParameters clientParameters;
-        private readonly Client client;
+        private Client client;
 
         private StreamSystem(ClientParameters clientParameters, Client client)
         {
@@ -80,8 +81,32 @@ namespace RabbitMQ.Stream.Client
             await client.Close("system close");
         }
 
+        private readonly SemaphoreSlim _semLocatorConnection = new(1);
+
+        private async Task MayBeReconnectLocator()
+        {
+            try
+            {
+                await _semLocatorConnection.WaitAsync();
+                {
+                    if (client.IsClosed)
+                    {
+                        client = await Client.Create(clientParameters with
+                        {
+                            ClientProvidedName = clientParameters.ClientProvidedName
+                        });
+                    }
+                }
+            }
+            finally
+            {
+                _semLocatorConnection.Release();
+            }
+        }
+
         public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
         {
+            await MayBeReconnectLocator();
             var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
             var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
@@ -111,6 +136,7 @@ namespace RabbitMQ.Stream.Client
             return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
+
         private static void MaybeThrowQueryException(string reference, string stream)
         {
             if (string.IsNullOrEmpty(reference) || string.IsNullOrEmpty(stream))
@@ -145,6 +171,7 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         public async Task<ulong> QuerySequence(string reference, string stream)
         {
+            await MayBeReconnectLocator();
             MaybeThrowQueryException(reference, stream);
 
             var response = await client.QueryPublisherSequence(reference, stream);
@@ -155,6 +182,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task DeleteStream(string stream)
         {
+            await MayBeReconnectLocator();
             var response = await client.DeleteStream(stream);
             if (response.ResponseCode == ResponseCode.Ok)
             {

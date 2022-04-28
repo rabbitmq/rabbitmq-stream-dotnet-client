@@ -59,6 +59,16 @@ namespace Tests
             Thread.Sleep(wait);
         }
 
+        public static void InitStreamSystemWithRandomStream(out StreamSystem system, out string stream,
+            string clientProviderNameLocator = "stream-locator")
+        {
+            stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
+            system = StreamSystem.Create(config).Result;
+            var x = system.CreateStream(new StreamSpec(stream));
+            x.Wait();
+        }
+
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             ITestOutputHelper testOutputHelper)
         {
@@ -103,19 +113,19 @@ namespace Tests
             producer.Dispose();
         }
 
-        private class Connecction
+        private class Connection
         {
             public string name { get; set; }
             public Dictionary<string, string> client_properties { get; set; }
         }
 
-        public static async Task<int> HttpKillConnections()
+        public static async Task<int> HttpKillConnections(string connectionName)
         {
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             var json = await result.Content.ReadAsStringAsync();
-            var connections = JsonSerializer.Deserialize<IEnumerable<Connecction>>(json);
+            var connections = JsonSerializer.Deserialize<IEnumerable<Connection>>(json);
             if (connections == null)
             {
                 return 0;
@@ -123,7 +133,7 @@ namespace Tests
             // we kill _only_ producer and consumer connections
             // leave the locator up and running to delete the stream
 
-            var iEnumerable = connections.Where(x => x.client_properties["connection_name"].Contains("to_kill"));
+            var iEnumerable = connections.Where(x => x.client_properties["connection_name"].Contains(connectionName));
             foreach (var conn in iEnumerable)
             {
                 await client.DeleteAsync($"http://localhost:15672/api/connections/{conn.name}");
