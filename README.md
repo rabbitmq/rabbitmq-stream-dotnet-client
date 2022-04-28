@@ -415,7 +415,7 @@ You can use `MetadataHandler` to handle it:
 
 ### Reliable Producer
 Reliable Producer is a smart layer built up of the standard `Producer`. </b>   
-The idea is to leve the user decides what to use, the standard or reliable producer. </b>
+The idea is to leave the user decides what to use, the standard or reliable producer. </b>
 
 The main features are:
 - Provide publishingID automatically
@@ -459,6 +459,11 @@ So the user will receive `ConfirmationStatus.TimeoutError` in the `ConfirmationH
 #### Handle the metadata Update
 If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate` event.
 Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the producer.
+#### Send API
+Reliable Producer implements two `send(..)`
+- `Send(Message message)` // standard
+- `Send(List<Message> messages, CompressionType compressionType)` //sub-batching with compression
+
 
 #### Full example
 ```csharp
