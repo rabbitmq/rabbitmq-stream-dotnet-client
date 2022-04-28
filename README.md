@@ -29,6 +29,8 @@
       - [Track Offset](#track-offset)
     - [Handle Close](#handle-close)
     - [Handle Metadata Update](#handle-metadata-update)
+    - [Reliable](#reliable)
+      - [Reliable Producer](#reliable-producer)
     - [Build from source](#build-from-source)
     - [Project Status](#project-status)
 
@@ -220,7 +222,6 @@ var producer = await system.CreateProducer(
         Stream = "my_stream",
     });
 ```
-
 Consider a Producer instance like a long-lived object, do not create one to send just one message.
 
 | Parameter               | Description                            | Default                        |
@@ -408,6 +409,103 @@ You can use `MetadataHandler` to handle it:
    },
  }
 ```
+### Reliable 
+ - Reliable Producer
+ - Reliable Consumer (not ready yet)
+
+### Reliable Producer
+Reliable Producer is built up the standard `Producer`
+Features:
+- Provide publishingID automatically
+- Auto-Reconnect in case of disconnection
+- Trace sent and received messages
+- Invalidate messages
+- Handle the metadata Update
+
+### Provide publishingID automatically
+Reliable Producer retrieves the last publishingID given the producer name. 
+Zero(0) is the default value in case there is no a publishingID.
+
+#### Auto-Reconnect
+Reliable Producer restores the TCP connection in case the Producer is disconnected for some reason.
+During the reconnection it continues to store the messages in a local-list.
+The user will receive back the confirmed or un-confirmed messages.
+
+#### Trace sent and received messages
+Reliable Producer keeps in memory each sent message and remove from the memory when the message is confirmed or goes in timout.
+`ConfirmationHandler` receives the messages  back with the status.
+`confirmation.Status` can have different values, but in general `ConfirmationStatus.Confirmed` means the messages
+is stored on the server other status means that there was a problem with the message/messages.
+```csharp
+ConfirmationHandler = confirmation =>
+{                    
+    if (confirmation.Status == ConfirmationStatus.Confirmed)
+    {
+
+        // OK
+    }
+    else
+    {
+        // Some problem
+    }
+}
+```
+#### Invalidate messages
+Reliable Producer removes the message from the internal messages change if the client doesn't receive a confirmation within 2 seconds.
+So the user will receive `ConfirmationStatus.TimeoutError` in the `ConfirmationHandler`.
+
+#### Handle the metadata Update
+If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate` event.
+Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the producer.
+
+### Full example
+```csharp
+// Get an ReliableProducer instance
+// System is mandatory
+var rProducer = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
+{
+    StreamSystem = system,
+    Stream = stream,
+    Reference = "myProducerName",
+    ConfirmationHandler = confirmation =>
+    {
+        if (confirmation.Status == ConfirmationStatus.Confirmed)
+        {
+
+            // OK
+        }
+        else
+        {
+            // Some error
+        }
+        return Task.CompletedTask;
+    }
+});
+for (var i = 0; i < 1000; i++)
+{
+    await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
+}
+
+/// When you have done you can close the it
+await p.Close();
+```
+### Reconnection Strategy 
+By default Reliable Producer uses an `BackOffReconnectStrategy` to reconnect the client.
+You can customize the behaviour implementing the `IReconnectStrategy` interface:
+```csharp
+void WhenDisconnected(out bool reconnect);
+void WhenConnected();
+```
+with `reconnect` you can decide when reconnect the producer.
+
+You can use it:
+```csharp
+var p = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
+{
+StreamSystem = system,
+ ReconnectStrategy = MyReconnectStrategy
+```
+
 
 ### Build from source
 Build:
