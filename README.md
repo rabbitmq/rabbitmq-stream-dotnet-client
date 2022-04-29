@@ -464,38 +464,6 @@ Reliable Producer implements two `send(..)`
 - `Send(Message message)` // standard
 - `Send(List<Message> messages, CompressionType compressionType)` //sub-batching with compression
 
-
-#### Full example
-```csharp
-// Get an ReliableProducer instance
-// System is mandatory
-var rProducer = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
-{
-    StreamSystem = system,
-    Stream = stream,
-    Reference = "myProducerName",
-    ConfirmationHandler = confirmation =>
-    {
-        if (confirmation.Status == ConfirmationStatus.Confirmed)
-        {
-
-            // OK
-        }
-        else
-        {
-            // Some error
-        }
-        return Task.CompletedTask;
-    }
-});
-for (var i = 0; i < 1000; i++)
-{
-    await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
-}
-
-/// When you have done you can close the it
-await p.Close();
-```
 ### Reconnection Strategy 
 By default Reliable Producer uses an `BackOffReconnectStrategy` to reconnect the client.
 You can customize the behaviour implementing the `IReconnectStrategy` interface:
@@ -512,6 +480,10 @@ var p = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig
 ...
 ReconnectStrategy = MyReconnectStrategy
 ```
+
+#### Examples
+See the directory [Examples/Reliable](./Examples/Reliable)
+
 
 ### Build from source
 Build:
