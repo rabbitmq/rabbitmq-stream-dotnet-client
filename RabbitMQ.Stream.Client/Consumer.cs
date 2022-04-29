@@ -117,19 +117,36 @@ namespace RabbitMQ.Stream.Client
             throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
         }
 
-        public async Task<ResponseCode> Close()
+        public Task<ResponseCode> Close()
         {
             if (client.IsClosed)
             {
-                return ResponseCode.Ok;
+                return Task.FromResult(ResponseCode.Ok);
             }
 
-            var deleteConsumerResponse = await client.Unsubscribe(subscriberId);
-            var result = deleteConsumerResponse.ResponseCode;
+            var result = ResponseCode.Ok;
+            try
+            {
+                var deleteConsumerResponseTask = client.Unsubscribe(subscriberId);
+                // The  default timeout is usually 10 seconds 
+                // in this case we reduce the waiting time
+                // the consumer could be removed because of stream deleted 
+                // so it is not necessary to wait.
+                deleteConsumerResponseTask.Wait(TimeSpan.FromSeconds(3));
+                if (deleteConsumerResponseTask.IsCompletedSuccessfully)
+                {
+                    result = deleteConsumerResponseTask.Result.ResponseCode;
+                }
+            }
+            catch (Exception e)
+            {
+                LogEventSource.Log.LogError($"Error removing the consumer id: {subscriberId} from the server. {e}");
+            }
+
             var closed = client.MaybeClose($"client-close-subscriber: {subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {subscriberId}");
             _disposed = true;
-            return result;
+            return Task.FromResult(result);
         }
 
         //
