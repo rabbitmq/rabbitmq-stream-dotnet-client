@@ -224,13 +224,14 @@ namespace Tests
             // by a network problem or forced by the management UI
             // see issues/97
             var stream = Guid.NewGuid().ToString();
+            var clientProvidedName = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(new ProducerConfig { Stream = stream, ClientProvidedName = "to_kill" });
+            var producer = await system.CreateProducer(new ProducerConfig { Stream = stream, ClientProvidedName = clientProvidedName });
             SystemUtils.Wait();
             var consumer = await system.CreateConsumer(
-                new ConsumerConfig { Stream = stream, ClientProvidedName = "to_kill" });
+                new ConsumerConfig { Stream = stream, ClientProvidedName = clientProvidedName });
             SystemUtils.Wait();
 
             // Here we have to wait the management stats refresh time before killing the connections.
@@ -238,7 +239,7 @@ namespace Tests
 
             // we kill _only_ producer and consumer connection
             // leave the locator up and running to delete the stream
-            Assert.Equal(2, SystemUtils.HttpKillConnections("to_kill").Result);
+            Assert.Equal(2, SystemUtils.HttpKillConnections(clientProvidedName).Result);
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             // close two time it should not raise an exception

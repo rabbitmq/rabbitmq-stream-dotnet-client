@@ -281,12 +281,18 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
         {
-            var result =
-                await Request<UnsubscribeRequest, UnsubscribeResponse>(corr =>
-                    new UnsubscribeRequest(corr, subscriptionId));
-            // remove consumer after RPC returns, this should avoid uncorrelated data being sent
-            consumers.Remove(subscriptionId);
-            return result;
+            try
+            {
+                var result =
+                    await Request<UnsubscribeRequest, UnsubscribeResponse>(corr =>
+                        new UnsubscribeRequest(corr, subscriptionId));
+                return result;
+            }
+            finally
+            {
+                // remove consumer after RPC returns, this should avoid uncorrelated data being sent
+                consumers.Remove(subscriptionId);
+            }
         }
 
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
