@@ -4,8 +4,8 @@
 
 namespace RabbitMQ.Stream.Client
 {
-    public static class Consts
+    public static class Version
     {
-        public const string ClientVersion = "1.0.0-beta.5";
+        public static readonly string VersionString = "1.0.0-beta.5.9";
     }
 }

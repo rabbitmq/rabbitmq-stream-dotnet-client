@@ -1,0 +1,28 @@
+name: publish-nuget
+
+on:
+  workflow_call:
+    secrets:
+      NUGET_API_KEY:
+        required: true
+
+jobs:
+  publish-nuget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 6.0.x
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet/v3-cache
+          key: ${{ runner.os }}-v2-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-v2-nuget-
+      - name: Build (Release)
+        run: dotnet build --configuration=Release --verbosity=normal
+      - name: Publish to NuGet
+        run: dotnet nuget push --api-key ${{secrets.NUGET_API_KEY}} --source 'https://api.nuget.org/v3/index.json' ${{github.workspace}}/packages/RabbitMQ.Stream.Client.*.nupkg
