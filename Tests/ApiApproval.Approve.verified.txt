@@ -272,10 +272,6 @@ namespace RabbitMQ.Stream.Client
             where T :  struct, RabbitMQ.Stream.Client.ICommand { }
         public static System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection> Create(System.Net.EndPoint ipEndpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption) { }
     }
-    public static class Consts
-    {
-        public const string ClientVersion = "1.0.0-beta.5";
-    }
     public class Consumer : RabbitMQ.Stream.Client.AbstractEntity, System.IDisposable
     {
         public System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode> Close() { }
@@ -965,6 +961,10 @@ namespace RabbitMQ.Stream.Client
         public RabbitMQ.Stream.Client.ResponseCode ResponseCode { get; }
         public int SizeNeeded { get; }
         public int Write(System.Span<byte> span) { }
+    }
+    public static class Version
+    {
+        public static readonly string VersionString;
     }
     public class VirtualHostAccessFailureException : RabbitMQ.Stream.Client.ProtocolException
     {

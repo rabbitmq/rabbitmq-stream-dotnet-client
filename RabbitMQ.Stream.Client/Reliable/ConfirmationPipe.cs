@@ -92,7 +92,7 @@ public class ConfirmationPipe
         _waitForConfirmationActionBlock.Complete();
     }
 
-    private async void OnTimedEvent(object? sender, ElapsedEventArgs e)
+    private async void OnTimedEvent(object sender, ElapsedEventArgs e)
     {
         {
             foreach (var pair in _waitForConfirmation.Where(pair =>

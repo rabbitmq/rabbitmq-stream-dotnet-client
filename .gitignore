@@ -1,31 +1,32 @@
-###################
-## Generated files
-###################
-
-gensrc/
-[Ll]ocal.props
-[Ll]ocal.dist
-
-.idea
-.vscode
-*.pyc
+## Misc files
+*.bak
+docs/api-guide.pdf
 docs/pyle.log
 docs/pyle.pid
-docs/api-guide.pdf
 .DS_Store
+.idea
+InternalTrace*
+[Ll]ocal.dist
+[Ll]ocal.props
+*.lock.json
+nunit-agent*
+*.pyc
+test-output.log
 TestResults.xml
 TestResult.xml
-/.fake
-/.ionide
-/NuGet
-.vscode/
-*.lock.json
 Tests/coverage.xml
 test.sh
 *.VisualState.xml
-test-output.log
-InternalTrace*
-nunit-agent*
+.vscode
+
+## Misc directories
+.fake/
+gensrc/
+.ionide/
+NuGet/
+tmp/
+.vscode/
+
 #################
 ## Visual Studio
 #################
@@ -39,7 +40,6 @@ nunit-agent*
 *.sln.docstates
 
 # Build results
-
 [Dd]ebug/
 [Rr]elease/
 x64/
@@ -111,11 +111,9 @@ UpgradeLog*.XML
 UpgradeLog*.htm
 
 # Unit tests
-
 projects/Unit*/TestResult.xml
 
 # Development scripts
-
 *.pcap
 
 # Vim
