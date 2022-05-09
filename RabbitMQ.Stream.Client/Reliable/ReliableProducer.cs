@@ -39,24 +39,6 @@ internal class AutoPublishingId : IPublishingIdStrategy
     }
 }
 
-internal class BackOffReconnectStrategy : IReconnectStrategy
-{
-    private int Tentatives { get; set; } = 1;
-
-    public void WhenDisconnected(out bool reconnect)
-    {
-        Tentatives <<= 1;
-        LogEventSource.Log.LogInformation(
-            $"Producer disconnected, check if reconnection needed in {Tentatives * 100} ms.");
-        Thread.Sleep(TimeSpan.FromMilliseconds(Tentatives * 100));
-        reconnect = true;
-    }
-
-    public void WhenConnected()
-    {
-        Tentatives = 1;
-    }
-}
 
 public record ReliableProducerConfig
 {
