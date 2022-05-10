@@ -216,7 +216,7 @@ public class ReliableTests
         );
 
         Assert.True(rProducer.IsOpen());
-        await rProducer.HandleMetaDataMaybeReconnect(stream, "test-producer", system);
+        await rProducer.HandleMetaDataMaybeReconnect(stream, system);
         SystemUtils.Wait();
         Assert.True(rProducer.IsOpen());
         // await system.DeleteStream(stream);

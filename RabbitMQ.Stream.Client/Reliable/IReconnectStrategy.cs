@@ -9,7 +9,7 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 public interface IReconnectStrategy
 {
-    void WhenDisconnected(out bool reconnect);
+    void WhenDisconnected(out bool reconnect, string connectionInfo);
     void WhenConnected();
 }
 
@@ -17,11 +17,11 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
 {
     private int Tentatives { get; set; } = 1;
 
-    public void WhenDisconnected(out bool reconnect)
+    public void WhenDisconnected(out bool reconnect, string connectionInfo)
     {
         Tentatives <<= 1;
         LogEventSource.Log.LogInformation(
-            $"TCP disconnected, check if reconnection needed in {Tentatives * 100} ms.");
+            $"{connectionInfo} disconnected, check if reconnection needed in {Tentatives * 100} ms.");
         Thread.Sleep(TimeSpan.FromMilliseconds(Tentatives * 100));
         reconnect = true;
     }

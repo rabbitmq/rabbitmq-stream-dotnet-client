@@ -70,7 +70,6 @@ public class ReliableProducer : ReliableBase
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
         _reliableProducerConfig = reliableProducerConfig;
-        ReconnectStrategy = reliableProducerConfig.ReconnectStrategy;
         _autoPublishingId = new AutoPublishingId(_reliableProducerConfig);
         _confirmationPipe = new ConfirmationPipe(reliableProducerConfig.ConfirmationHandler);
         _confirmationPipe.Start();
@@ -100,12 +99,12 @@ public class ReliableProducer : ReliableBase
                 Reference = _reliableProducerConfig.Reference,
                 MetadataHandler = update =>
                 {
-                    HandleMetaDataMaybeReconnect(update.Stream, $"Producer {_reliableProducerConfig.Reference}",
+                    HandleMetaDataMaybeReconnect(update.Stream,
                         _reliableProducerConfig.StreamSystem).Wait();
                 },
                 ConnectionClosedHandler = async _ =>
                 {
-                    await TryToReconnect();
+                    await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
                 },
                 ConfirmHandler = confirmation =>
                 {
@@ -124,7 +123,7 @@ public class ReliableProducer : ReliableBase
                         confirmationStatus);
                 }
             });
-            ReconnectStrategy.WhenConnected();
+            _reliableProducerConfig.ReconnectStrategy.WhenConnected();
         }
 
         catch (CreateProducerException ce)
@@ -135,7 +134,7 @@ public class ReliableProducer : ReliableBase
         {
             LogEventSource.Log.LogError($"Error during initialization: {e}.");
             SemaphoreSlim.Release();
-            await TryToReconnect();
+            await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
         }
 
         SemaphoreSlim.Release();
@@ -218,5 +217,11 @@ public class ReliableProducer : ReliableBase
         {
             SemaphoreSlim.Release();
         }
+    }
+
+    public override string ToString()
+    {
+        return $"Producer reference: {_reliableProducerConfig.Reference}," +
+               $"stream: {_reliableProducerConfig.Stream} ";
     }
 }

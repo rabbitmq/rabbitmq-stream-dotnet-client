@@ -6,13 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
-
+/// <summary>
+/// Base class for Reliable for producer/ consumer
+/// </summary>
 public abstract class ReliableBase
 {
     protected readonly SemaphoreSlim SemaphoreSlim = new(1);
     protected bool _needReconnect = true;
     protected bool _inReconnection;
-    protected IReconnectStrategy ReconnectStrategy { get; set; }
 
     protected async Task Init()
     {
@@ -20,14 +21,16 @@ public abstract class ReliableBase
     }
     protected abstract Task GetNewReliable(bool boot);
 
-    protected async Task TryToReconnect()
+    protected async Task TryToReconnect(IReconnectStrategy reconnectStrategy)
     {
         _inReconnection = true;
         try
         {
-            ReconnectStrategy.WhenDisconnected(out var reconnect);
+            reconnectStrategy.WhenDisconnected(out var reconnect, ToString());
             if (reconnect && _needReconnect)
             {
+                LogEventSource.Log.LogInformation(
+                    $"{ToString()} is disconnected, try to reconnect");
                 await GetNewReliable(false);
             }
         }
@@ -48,12 +51,11 @@ public abstract class ReliableBase
     /// and try to reconnect.
     /// (internal because it is needed for tests)
     /// </summary>
-    internal async Task HandleMetaDataMaybeReconnect(string stream,
-        string info, StreamSystem system)
+    internal async Task HandleMetaDataMaybeReconnect(string stream, StreamSystem system)
     {
         LogEventSource.Log.LogInformation(
-            $"Meta data update for the stream: {stream} " +
-            $"{info} closed.");
+            $"Meta data update stream: {stream} " +
+            $"{ToString()} closed.");
 
         // This sleep is needed. When a stream is deleted it takes sometime.
         // The StreamExists/1 could return true even the stream doesn't exist anymore.
@@ -62,7 +64,7 @@ public abstract class ReliableBase
         {
             LogEventSource.Log.LogInformation(
                 $"Meta data update, the stream {stream} still exist. " +
-                $"{info} will try to reconnect.");
+                $"{ToString()} will try to reconnect.");
             // Here we just close the producer connection
             // the func TryToReconnect/0 will be called. 
             await CloseReliable();

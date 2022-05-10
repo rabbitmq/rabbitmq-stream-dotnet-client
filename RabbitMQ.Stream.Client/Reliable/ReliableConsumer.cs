@@ -32,7 +32,6 @@ public class ReliableConsumer : ReliableBase
     private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
     {
         _reliableConsumerConfig = reliableConsumerConfig;
-        ReconnectStrategy = reliableConsumerConfig.ReconnectStrategy;
     }
 
     public static async Task<ReliableConsumer> CreateReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
@@ -65,11 +64,11 @@ public class ReliableConsumer : ReliableBase
                 OffsetSpec = offsetSpec,
                 ConnectionClosedHandler = async _ =>
                 {
-                    await TryToReconnect();
+                    await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
                 },
                 MetadataHandler = update =>
                 {
-                    HandleMetaDataMaybeReconnect(update.Stream, $"Consumer {_reliableConsumerConfig.Reference}",
+                    HandleMetaDataMaybeReconnect(update.Stream,
                         _reliableConsumerConfig.StreamSystem).Wait();
                 },
                 MessageHandler = async (consumer, ctx, message) =>
@@ -79,7 +78,7 @@ public class ReliableConsumer : ReliableBase
                     await _reliableConsumerConfig.MessageHandler(consumer, ctx, message);
                 }
             });
-            ReconnectStrategy.WhenConnected();
+            _reliableConsumerConfig.ReconnectStrategy.WhenConnected();
         }
 
         catch (CreateProducerException ce)
@@ -90,7 +89,7 @@ public class ReliableConsumer : ReliableBase
         {
             LogEventSource.Log.LogError($"Error during initialization: {e}.");
             SemaphoreSlim.Release();
-            await TryToReconnect();
+            await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
         }
 
         SemaphoreSlim.Release();
@@ -113,5 +112,11 @@ public class ReliableConsumer : ReliableBase
     {
         _needReconnect = false;
         await CloseReliable();
+    }
+
+    public override string ToString()
+    {
+        return $"Consumer reference: {_reliableConsumerConfig.Reference},  " +
+               $"stream: {_reliableConsumerConfig.Stream} ";
     }
 }
