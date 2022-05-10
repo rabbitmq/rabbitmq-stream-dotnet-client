@@ -85,7 +85,7 @@ namespace Tests
                 {
                     Reference = producerName,
                     Stream = stream,
-                    ConfirmHandler = confirmation =>
+                    ConfirmHandler = _ =>
                     {
                         count++;
                         testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");

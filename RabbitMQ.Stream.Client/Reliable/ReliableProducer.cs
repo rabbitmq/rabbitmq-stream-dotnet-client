@@ -39,7 +39,6 @@ internal class AutoPublishingId : IPublishingIdStrategy
     }
 }
 
-
 public record ReliableProducerConfig
 {
     public StreamSystem StreamSystem { get; set; }
@@ -61,19 +60,17 @@ public record ReliableProducerConfig
 /// - Set automatically the next PublisherID
 /// - Automatically retrieves the last sequence. By default is AutoPublishingId see IPublishingIdStrategy.
 /// </summary>
-public class ReliableProducer
+public class ReliableProducer : ReliableBase
 {
     private Producer _producer;
     private readonly AutoPublishingId _autoPublishingId;
     private readonly ReliableProducerConfig _reliableProducerConfig;
-    private readonly SemaphoreSlim _semProducer = new(1);
     private readonly ConfirmationPipe _confirmationPipe;
-    private bool _needReconnect = true;
-    private bool _inReconnection;
 
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
         _reliableProducerConfig = reliableProducerConfig;
+        ReconnectStrategy = reliableProducerConfig.ReconnectStrategy;
         _autoPublishingId = new AutoPublishingId(_reliableProducerConfig);
         _confirmationPipe = new ConfirmationPipe(reliableProducerConfig.ConfirmationHandler);
         _confirmationPipe.Start();
@@ -86,15 +83,13 @@ public class ReliableProducer
         return rProducer;
     }
 
-    private async Task Init()
+    protected override async Task GetNewReliable(bool boot)
     {
-        await _autoPublishingId.InitPublishingId();
-        await GetNewProducer();
-    }
-
-    private async Task GetNewProducer()
-    {
-        await _semProducer.WaitAsync();
+        await SemaphoreSlim.WaitAsync();
+        if (boot)
+        {
+            await _autoPublishingId.InitPublishingId();
+        }
 
         try
         {
@@ -105,7 +100,8 @@ public class ReliableProducer
                 Reference = _reliableProducerConfig.Reference,
                 MetadataHandler = update =>
                 {
-                    HandleMetaDataMaybeReconnect(update.Stream).Wait();
+                    HandleMetaDataMaybeReconnect(update.Stream, $"Producer {_reliableProducerConfig.Reference}",
+                        _reliableProducerConfig.StreamSystem).Wait();
                 },
                 ConnectionClosedHandler = async _ =>
                 {
@@ -128,7 +124,7 @@ public class ReliableProducer
                         confirmationStatus);
                 }
             });
-            _reliableProducerConfig.ReconnectStrategy.WhenConnected();
+            ReconnectStrategy.WhenConnected();
         }
 
         catch (CreateProducerException ce)
@@ -138,88 +134,29 @@ public class ReliableProducer
         catch (Exception e)
         {
             LogEventSource.Log.LogError($"Error during initialization: {e}.");
-            _semProducer.Release();
+            SemaphoreSlim.Release();
             await TryToReconnect();
         }
 
-        _semProducer.Release();
+        SemaphoreSlim.Release();
     }
 
-    private async Task TryToReconnect()
+    protected override async Task CloseReliable()
     {
-        _inReconnection = true;
-        try
-        {
-            _reliableProducerConfig.ReconnectStrategy.WhenDisconnected(out var reconnect);
-            if (reconnect && _needReconnect)
-            {
-                await GetNewProducer();
-            }
-        }
-        finally
-        {
-            _inReconnection = false;
-        }
-    }
-
-    /// <summary>
-    /// When the clients receives a meta data update, it doesn't know
-    /// the reason.
-    /// Metadata update can be raised when:
-    /// - stream is deleted
-    /// - change the stream topology (ex: add a follower)
-    ///
-    /// HandleMetaDataMaybeReconnect checks if the stream still exists
-    /// and try to reconnect.
-    /// (internal because it is needed for tests)
-    /// </summary>
-    internal async Task HandleMetaDataMaybeReconnect(string stream)
-    {
-        LogEventSource.Log.LogInformation(
-            $"Meta data update for the stream: {stream} " +
-            $"Producer {_reliableProducerConfig.Reference} closed.");
-
-        // This sleep is needed. When a stream is deleted it takes sometime.
-        // The StreamExists/1 could return true even the stream doesn't exist anymore.
-        Thread.Sleep(500);
-        if (await _reliableProducerConfig.StreamSystem.StreamExists(stream))
-        {
-            LogEventSource.Log.LogInformation(
-                $"Meta data update, the stream {stream} still exist. " +
-                $"Producer {_reliableProducerConfig.Reference} will try to reconnect.");
-            // Here we just close the producer connection
-            // the func TryToReconnect/0 will be called. 
-            await CloseProducer();
-        }
-        else
-        {
-            // In this case the stream doesn't exist anymore
-            // the ReliableProducer is just closed.
-            await Close();
-        }
-    }
-
-    private async Task CloseProducer()
-    {
-        await _semProducer.WaitAsync(10);
+        await SemaphoreSlim.WaitAsync(10);
         try
         {
             await _producer.Close();
         }
         finally
         {
-            _semProducer.Release();
+            SemaphoreSlim.Release();
         }
     }
 
-    public bool IsOpen()
+    public override async Task Close()
     {
-        return _needReconnect;
-    }
-
-    public async Task Close()
-    {
-        await _semProducer.WaitAsync(10);
+        await SemaphoreSlim.WaitAsync(10);
         try
         {
             _needReconnect = false;
@@ -228,7 +165,7 @@ public class ReliableProducer
         }
         finally
         {
-            _semProducer.Release();
+            SemaphoreSlim.Release();
         }
     }
 
@@ -236,7 +173,7 @@ public class ReliableProducer
     {
         var pid = _autoPublishingId.GetPublishingId();
         _confirmationPipe.AddUnConfirmedMessage(pid, message);
-        await _semProducer.WaitAsync();
+        await SemaphoreSlim.WaitAsync();
         try
         {
             // This flags avoid some race condition,
@@ -256,7 +193,7 @@ public class ReliableProducer
         }
         finally
         {
-            _semProducer.Release();
+            SemaphoreSlim.Release();
         }
     }
 
@@ -264,7 +201,7 @@ public class ReliableProducer
     {
         var pid = _autoPublishingId.GetPublishingId();
         _confirmationPipe.AddUnConfirmedMessage(pid, messages);
-        await _semProducer.WaitAsync();
+        await SemaphoreSlim.WaitAsync();
         try
         {
             if (!_inReconnection)
@@ -279,7 +216,7 @@ public class ReliableProducer
         }
         finally
         {
-            _semProducer.Release();
+            SemaphoreSlim.Release();
         }
     }
 }

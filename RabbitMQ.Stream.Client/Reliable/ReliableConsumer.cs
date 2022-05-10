@@ -14,28 +14,25 @@ public record ReliableConsumerConfig
     public string Stream { get; set; }
     public string Reference { get; set; }
     public string ClientProvidedName { get; set; } = "dotnet-stream-rconusmer";
-    
+
     public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
-    
+
     public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
 
-    
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 }
 
-public class ReliableConsumer
+public class ReliableConsumer : ReliableBase
 {
     private Consumer _consumer;
     private readonly ReliableConsumerConfig _reliableConsumerConfig;
-    private readonly SemaphoreSlim _semConsumer = new(1);
-    private bool _needReconnect = true;
-    private bool _inReconnection;
     private ulong _lastConsumerOffset = 0;
-
+    private bool _consumed = false;
 
     private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
     {
         _reliableConsumerConfig = reliableConsumerConfig;
+        ReconnectStrategy = reliableConsumerConfig.ReconnectStrategy;
     }
 
     public static async Task<ReliableConsumer> CreateReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
@@ -45,39 +42,21 @@ public class ReliableConsumer
         return rConsumer;
     }
 
-    private async Task Init()
+    protected override async Task GetNewReliable(bool boot)
     {
-        await GetNewConsumer(true);
-    }
-
-
-    private async Task TryToReconnect()
-    {
-        _inReconnection = true;
-        try
-        {
-            _reliableConsumerConfig.ReconnectStrategy.WhenDisconnected(out var reconnect);
-            if (reconnect && _needReconnect)
-            {
-                await GetNewConsumer(false);
-            }
-        }
-        finally
-        {
-            _inReconnection = false;
-        }
-    }
-
-    private async Task GetNewConsumer(bool boot)
-    {
-        await _semConsumer.WaitAsync();
+        await SemaphoreSlim.WaitAsync();
 
         try
         {
             var offsetSpec = _reliableConsumerConfig.OffsetSpec;
             if (!boot)
-                offsetSpec = new OffsetTypeOffset(_lastConsumerOffset);
-            
+            {
+                if (_consumed)
+                {
+                    offsetSpec = new OffsetTypeOffset(_lastConsumerOffset + 1);
+                }
+            }
+
             _consumer = await _reliableConsumerConfig.StreamSystem.CreateConsumer(new ConsumerConfig()
             {
                 Stream = _reliableConsumerConfig.Stream,
@@ -88,17 +67,19 @@ public class ReliableConsumer
                 {
                     await TryToReconnect();
                 },
-                MetadataHandler = _ =>
+                MetadataHandler = update =>
                 {
-                    
+                    HandleMetaDataMaybeReconnect(update.Stream, $"Consumer {_reliableConsumerConfig.Reference}",
+                        _reliableConsumerConfig.StreamSystem).Wait();
                 },
-                MessageHandler  = async (consumer, ctx, message) =>
+                MessageHandler = async (consumer, ctx, message) =>
                 {
+                    _consumed = true;
                     _lastConsumerOffset = ctx.Offset;
                     await _reliableConsumerConfig.MessageHandler(consumer, ctx, message);
                 }
             });
-            _reliableConsumerConfig.ReconnectStrategy.WhenConnected();
+            ReconnectStrategy.WhenConnected();
         }
 
         catch (CreateProducerException ce)
@@ -108,29 +89,29 @@ public class ReliableConsumer
         catch (Exception e)
         {
             LogEventSource.Log.LogError($"Error during initialization: {e}.");
-            _semConsumer.Release();
+            SemaphoreSlim.Release();
             await TryToReconnect();
         }
 
-        _semConsumer.Release();
+        SemaphoreSlim.Release();
     }
 
-    public bool IsOpen()
+    protected override async Task CloseReliable()
     {
-        return _needReconnect;
-    }
-
-    public async Task Close()
-    {
-        await _semConsumer.WaitAsync(10);
+        await SemaphoreSlim.WaitAsync(10);
         try
         {
-            _needReconnect = false;
             await _consumer.Close();
         }
         finally
         {
-            _semConsumer.Release();
+            SemaphoreSlim.Release();
         }
+    }
+
+    public override async Task Close()
+    {
+        _needReconnect = false;
+        await CloseReliable();
     }
 }

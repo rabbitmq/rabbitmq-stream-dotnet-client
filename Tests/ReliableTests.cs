@@ -173,7 +173,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void HandleDeleteStreamWithMetaDataUpdate()
+    public async void ProducerHandleDeleteStreamWithMetaDataUpdate()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
@@ -216,7 +216,7 @@ public class ReliableTests
         );
 
         Assert.True(rProducer.IsOpen());
-        await rProducer.HandleMetaDataMaybeReconnect(stream);
+        await rProducer.HandleMetaDataMaybeReconnect(stream, "test-producer", system);
         SystemUtils.Wait();
         Assert.True(rProducer.IsOpen());
         // await system.DeleteStream(stream);
@@ -299,6 +299,122 @@ public class ReliableTests
 
         await rProducerSecond.Close();
         await system.DeleteStream(stream);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void FirstConsumeAfterKillConnectionShouldContinueToWork()
+    {
+        // test the consumer reconnection 
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var testPassed = new TaskCompletionSource<bool>();
+        const int NumberOfMessages = 20;
+        var clientProviderName = Guid.NewGuid().ToString();
+        var reference = Guid.NewGuid().ToString();
+        var messagesReceived = 0;
+        var cR = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
+        {
+            Reference = reference,
+            Stream = stream,
+            StreamSystem = system,
+            ClientProvidedName = clientProviderName,
+            OffsetSpec = new OffsetTypeFirst(),
+            MessageHandler = async (_, _, _) =>
+            {
+                if (Interlocked.Increment(ref messagesReceived) >= NumberOfMessages)
+                {
+                    testPassed.SetResult(true);
+                }
+
+                await Task.CompletedTask;
+            }
+        });
+        SystemUtils.Wait(TimeSpan.FromSeconds(6));
+        // in this case we kill the connection before consume consume any message
+        // so it should use the selected   OffsetSpec in this case = new OffsetTypeFirst(),
+
+        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
+        await SystemUtils.HttpKillConnections(clientProviderName);
+        await SystemUtils.PublishMessages(system, stream, NumberOfMessages, _testOutputHelper);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        await cR.Close();
+        await system.DeleteStream(stream);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void ConsumeAfterKillConnectionShouldContinueToWork()
+    {
+        // test the consumer reconnection 
+        // in this test we kill the connection two times 
+        // and publish two times 
+        // the consumer should receive the NumberOfMessages * 2
+
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        const int NumberOfMessages = 10;
+        await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
+            Guid.NewGuid().ToString(),
+            _testOutputHelper);
+        var testPassed = new TaskCompletionSource<bool>();
+        var clientProviderName = Guid.NewGuid().ToString();
+        var reference = Guid.NewGuid().ToString();
+        var cR = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
+        {
+            Reference = reference,
+            Stream = stream,
+            StreamSystem = system,
+            ClientProvidedName = clientProviderName,
+            OffsetSpec = new OffsetTypeFirst(),
+            MessageHandler = async (_, ctx, _) =>
+            {
+                // ctx.Offset starts from zero
+                // here we check if the offset is NumberOfMessages *2 ( we publish two times)
+                if ((ctx.Offset + 1) == (NumberOfMessages * 2))
+                {
+                    testPassed.SetResult(true);
+                }
+
+                await Task.CompletedTask;
+            }
+        });
+        SystemUtils.Wait(TimeSpan.FromSeconds(6));
+        // kill the first time 
+        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
+        await SystemUtils.HttpKillConnections(clientProviderName);
+        await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
+            Guid.NewGuid().ToString(),
+            _testOutputHelper);
+        SystemUtils.Wait(TimeSpan.FromSeconds(6));
+        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        // after kill the consumer must be open
+        Assert.True(cR.IsOpen());
+        await cR.Close();
+        Assert.False(cR.IsOpen());
+        await system.DeleteStream(stream);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void ConsumerHandleDeleteStreamWithMetaDataUpdate()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var clientProviderName = Guid.NewGuid().ToString();
+        var rConsumer = await ReliableConsumer.CreateReliableConsumer(
+            new ReliableConsumerConfig()
+            {
+                Stream = stream,
+                StreamSystem = system,
+                ClientProvidedName = clientProviderName,
+            }
+        );
+
+        Assert.True(rConsumer.IsOpen());
+        // When the stream is deleted the consumer has to close the 
+        // connection an become inactive.
+        await system.DeleteStream(stream);
+        SystemUtils.Wait(TimeSpan.FromSeconds(5));
+        Assert.False(rConsumer.IsOpen());
         await system.Close();
     }
 }
