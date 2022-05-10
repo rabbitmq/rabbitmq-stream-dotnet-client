@@ -22,12 +22,20 @@ public record ReliableConsumerConfig
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 }
 
+/// <summary>
+/// ReliableConsumer is a wrapper around the standard Consumer.
+/// Main features are:
+/// - Auto-reconnection if the connection is dropped
+///   Automatically restart consuming from the last offset 
+/// - Handle the Metadata Update. In case the stream is deleted ReliableProducer closes Producer/Connection.
+///   Reconnect the Consumer if the stream still exists.
+/// </summary>
 public class ReliableConsumer : ReliableBase
 {
     private Consumer _consumer;
     private readonly ReliableConsumerConfig _reliableConsumerConfig;
     private ulong _lastConsumerOffset = 0;
-    private bool _consumed = false;
+    private bool _consumedFirstTime = false;
 
     private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
     {
@@ -48,12 +56,11 @@ public class ReliableConsumer : ReliableBase
         try
         {
             var offsetSpec = _reliableConsumerConfig.OffsetSpec;
-            if (!boot)
+            // if is not the boot time and at least one message was consumed
+            // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume fro the next)
+            if (!boot && _consumedFirstTime)
             {
-                if (_consumed)
-                {
-                    offsetSpec = new OffsetTypeOffset(_lastConsumerOffset + 1);
-                }
+                offsetSpec = new OffsetTypeOffset(_lastConsumerOffset + 1);
             }
 
             _consumer = await _reliableConsumerConfig.StreamSystem.CreateConsumer(new ConsumerConfig()
@@ -73,7 +80,7 @@ public class ReliableConsumer : ReliableBase
                 },
                 MessageHandler = async (consumer, ctx, message) =>
                 {
-                    _consumed = true;
+                    _consumedFirstTime = true;
                     _lastConsumerOffset = ctx.Offset;
                     await _reliableConsumerConfig.MessageHandler(consumer, ctx, message);
                 }
@@ -95,6 +102,7 @@ public class ReliableConsumer : ReliableBase
         SemaphoreSlim.Release();
     }
 
+    // just close the consumer. See base/metadataupdate
     protected override async Task CloseReliable()
     {
         await SemaphoreSlim.WaitAsync(10);

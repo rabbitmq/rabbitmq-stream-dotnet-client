@@ -5,7 +5,7 @@ using RabbitMQ.Stream.Client.Reliable;
 
 namespace example;
 
-public class ReliableProducer
+public class ReliableProducerExample
 {
     public async Task StartDefaultConfigurations()
     {

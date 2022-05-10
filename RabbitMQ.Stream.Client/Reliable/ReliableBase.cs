@@ -6,8 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
+
 /// <summary>
-/// Base class for Reliable for producer/ consumer
+/// Base class for Reliable producer/ consumer
 /// </summary>
 public abstract class ReliableBase
 {
@@ -19,6 +20,9 @@ public abstract class ReliableBase
     {
         await GetNewReliable(true);
     }
+
+    // boot is the first time is called. 
+    // used to init the producer/consumer
     protected abstract Task GetNewReliable(bool boot);
 
     protected async Task TryToReconnect(IReconnectStrategy reconnectStrategy)
