@@ -1,23 +1,44 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>RabbitMQ.Stream.Client</AssemblyName>
-    <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
-    <Version>1.0.0-beta.5</Version>
-    <PackageVersion>1.0.0-beta.5</PackageVersion>
+    <AssemblyOriginatorKeyFile>../rabbit.snk</AssemblyOriginatorKeyFile>
+    <AssemblyTitle>RabbitMQ Stream Client Library for .NET</AssemblyTitle>
     <Authors>VMware</Authors>
-    <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</RepositoryUrl>
-    <PackageDescription>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</PackageDescription>
+    <Company>VMware, Inc. or its affiliates.</Company>
     <Copyright>Copyright © 2007-2022 VMware, Inc. or its affiliates.</Copyright>
-    <PackageTags>rabbitmq, stream</PackageTags>
     <Description>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</Description>
-    <Title>RabbitMQ Stream .NET client</Title>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerVerbosity>normal</MinVerVerbosity>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <PackageDescription>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</PackageDescription>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageOutputPath>..\packages</PackageOutputPath>
     <PackageProjectUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</PackageProjectUrl>
-    <PackageLicenseUrl>https://raw.githubusercontent.com/rabbitmq/rabbitmq-stream-dotnet-client/main/LICENSE</PackageLicenseUrl>
-    <PackageIconUrl>https://github.com/rabbitmq/rabbitmq-website/raw/live/site/img/rabbitmq_logo_30x30.png</PackageIconUrl>
+    <PackageTags>rabbitmq, stream</PackageTags>
+    <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</RepositoryUrl>
+    <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <TargetFramework>net6.0</TargetFramework>
+    <Title>RabbitMQ Stream Client Library for .NET</Title>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
-  
+
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="icon.png" />
+    <Content Include="icon.png" PackagePath="" />
+    <None Include="..\LICENSE" Pack="true" PackagePath=""/>
+  </ItemGroup>
 
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
@@ -26,6 +47,45 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="system.io.pipelines" Version="6.0.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="MinVer" Version="3.1.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.IO.Pipelines" Version="6.0.2" />
   </ItemGroup>
+
+  <Target Name="AfterMinVer" AfterTargets="MinVer">
+    <SetLibraryVersion Version="$(MinVerVersion)" />
+  </Target>
+
+  <UsingTask TaskName="SetLibraryVersion" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Version ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          string pattern = "VersionString = \"[^\"]+\";";
+          string replacement = string.Format("VersionString = \"{0}\";", Version);
+          Regex rx = new Regex(pattern);
+          string text = File.ReadAllText("Version.cs");
+          string repl = rx.Replace(text, replacement);
+          File.WriteAllText("Version.cs.tmp", repl, Encoding.UTF8);
+          File.Replace("Version.cs.tmp", "Version.cs", "Version.cs.bak");
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
 </Project>

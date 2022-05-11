@@ -3,19 +3,18 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AltCover" Version="8.2.835" />
+    <PackageReference Include="AltCover" Version="8.2.837" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
-    <PackageReference Include="PublicApiGenerator" Version="10.3.0" />
     <PackageReference Include="xunit" Version="2.4.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
-    <PackageReference Include="Verify.Xunit" Version="16.1.2" />
     <PackageReference Include="coverlet.collector" Version="3.1.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

@@ -7,7 +7,7 @@
 [![codecov](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client/branch/main/graph/badge.svg?token=OIA04ZQD79)](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client)
 </div>
 
-<h2>Table of content</h2>
+#@ Table of Contents
 
 
 ---
@@ -31,18 +31,19 @@
     - [Handle Metadata Update](#handle-metadata-update)
     - [Reliable](#reliable)
       - [Reliable Producer](#reliable-producer)
-    - [Build from source](#build-from-source)
-    - [Project Status](#project-status)
+- [Build from source](#build-from-source)
+- [Project Status](#project-status)
+- [Release Process](#release-process)
 
-### Overview
+## Overview
 
 Dotnet client for [RabbitMQ Stream Queues](https://www.rabbitmq.com/stream.html)
 
-### Installing via NuGet
+## Installing via NuGet
 
 The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.Stream.Client/).
 
-### Getting started
+## Getting started
 
 A rapid getting started
 
@@ -146,7 +147,7 @@ var config = new StreamSystemConfig
 };
 ```
 
-### Tls
+### TLS
 
 ```csharp
 var config = new StreamSystemConfig
@@ -485,7 +486,8 @@ ReconnectStrategy = MyReconnectStrategy
 See the directory [Examples/Reliable](./Examples/Reliable)
 
 
-### Build from source
+## Build from source
+
 Build:
 ```shell
 make build
@@ -501,6 +503,19 @@ Run test in docker:
 make run-test-in-docker
 ```
 
-### Project Status
+## Project Status
 
-The client is work in progress. The API(s) could change
+The client is work in progress. The API(s) could change prior to version `1.0.0`
+
+## Release Process
+
+* Ensure builds are green: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions)
+* Tag the `main` branch using your GPG key:
+    ```
+    git tag -a -s -u GPG_KEY_ID -m 'rabbitmq-stream-dotnet-client v1.0.0-beta.6' 'v1.0.0-beta.6' && git push && git push --tags
+    ```
+* Ensure the build for the tag passes: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions)
+* Check for the new version on NuGet: [link](https://www.nuget.org/packages/RabbitMQ.Stream.Client)
+  * Best practice is to download the new package and inspect the contents using [NuGetPackageExplorer](https://github.com/NuGetPackageExplorer/NuGetPackageExplorer)
+* Create the new release on GitHub: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases)
+* Announce the new release on the mailing list: [link](https://groups.google.com/g/rabbitmq-users)
