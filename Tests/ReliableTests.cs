@@ -454,7 +454,7 @@ public class ReliableTests
         Assert.True(rConsumer.IsOpen());
         SystemUtils.Wait(TimeSpan.FromSeconds(6));
         Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
-        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        SystemUtils.Wait(TimeSpan.FromSeconds(3));
         // that's should be closed at this point 
         // since the set reconnect = false
         Assert.False(rConsumer.IsOpen());
