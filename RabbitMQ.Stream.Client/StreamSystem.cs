@@ -119,7 +119,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             await MayBeReconnectLocator();
-            var meta = await client.QueryMetadata(new[] {producerConfig.Stream});
+            var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
             var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {

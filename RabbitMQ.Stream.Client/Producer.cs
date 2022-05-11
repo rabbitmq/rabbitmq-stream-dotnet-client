@@ -167,13 +167,13 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessBuffer()
         {
-            var messages = new List<(ulong, Message)>(this.config.MessagesBufferSize);
+            var messages = new List<(ulong, Message)>(config.MessagesBufferSize);
             while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
             {
                 while (messageBuffer.Reader.TryRead(out var msg))
                 {
                     messages.Add((msg.PublishingId, msg.Data));
-                    if (messages.Count == this.config.MessagesBufferSize)
+                    if (messages.Count == config.MessagesBufferSize)
                     {
                         await SendMessages(messages).ConfigureAwait(false);
                     }
@@ -183,7 +183,6 @@ namespace RabbitMQ.Stream.Client
                 {
                     await SendMessages(messages).ConfigureAwait(false);
                 }
-
             }
 
             async Task SendMessages(List<(ulong, Message)> messages)
@@ -234,7 +233,7 @@ namespace RabbitMQ.Stream.Client
             StreamInfo metaStreamInfo)
         {
             var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new Producer((Client) client, config);
+            var producer = new Producer((Client)client, config);
             await producer.Init();
             return producer;
         }

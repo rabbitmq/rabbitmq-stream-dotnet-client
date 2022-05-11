@@ -97,7 +97,7 @@ namespace Tests
                     Reference = "producer",
                     Stream = "",
                 }));
-            
+
             await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
                 new ProducerConfig
                 {
@@ -108,7 +108,7 @@ namespace Tests
 
             await system.Close();
         }
-        
+
         [Fact]
         public async void NotifyProducerClose()
         {
