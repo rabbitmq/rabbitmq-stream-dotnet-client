@@ -526,6 +526,8 @@ RabbitMQ.Stream.Client.Producer.PublishCommandsSent.get -> int
 RabbitMQ.Stream.Client.Producer.Send(ulong publishingId, RabbitMQ.Stream.Client.Message message) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Producer.Send(ulong publishingId, System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> subEntryMessages, RabbitMQ.Stream.Client.CompressionType compressionType) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.ProducerConfig
+RabbitMQ.Stream.Client.ProducerConfig.BatchSize.get -> int
+RabbitMQ.Stream.Client.ProducerConfig.BatchSize.set -> void
 RabbitMQ.Stream.Client.ProducerConfig.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.ProducerConfig.ClientProvidedName.set -> void
 RabbitMQ.Stream.Client.ProducerConfig.ConfirmHandler.get -> System.Action<RabbitMQ.Stream.Client.Confirmation>
@@ -534,6 +536,8 @@ RabbitMQ.Stream.Client.ProducerConfig.ConnectionClosedHandler.get -> System.Func
 RabbitMQ.Stream.Client.ProducerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.ProducerConfig.MaxInFlight.get -> int
 RabbitMQ.Stream.Client.ProducerConfig.MaxInFlight.set -> void
+RabbitMQ.Stream.Client.ProducerConfig.MessagesBufferSize.get -> int
+RabbitMQ.Stream.Client.ProducerConfig.MessagesBufferSize.set -> void
 RabbitMQ.Stream.Client.ProducerConfig.MetadataHandler.get -> System.Action<RabbitMQ.Stream.Client.MetaDataUpdate>
 RabbitMQ.Stream.Client.ProducerConfig.MetadataHandler.set -> void
 RabbitMQ.Stream.Client.ProducerConfig.Reference.get -> string

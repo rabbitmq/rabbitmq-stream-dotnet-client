@@ -86,7 +86,6 @@ namespace Tests
         }
 
         [Fact]
-        [WaitTestBeforeAfter]
         public async Task ProducerShouldRaiseAnExceptionIfStreamOrBatchSizeAreNotValid()
         {
             var config = new StreamSystemConfig();
@@ -276,8 +275,6 @@ namespace Tests
             // sequence start from zero
             Assert.True(resAfter == (NumberOfMessages - 1));
 
-            Assert.Equal(ResponseCode.Ok, await producer.Close());
-            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await system.DeleteStream(stream);
             await system.Close();
         }
