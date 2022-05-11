@@ -31,7 +31,7 @@ namespace RabbitMQ.Stream.Client
         [NonEvent]
         private static string ConvertToString(Exception exception)
         {
-            return exception == default ? default : $"{Environment.NewLine}{ exception?.ToString() }";
+            return exception == default ? default : $"{Environment.NewLine}{exception?.ToString()}";
         }
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace RabbitMQ.Stream.Client
         [NonEvent]
         public ILogEventSource LogError(string message, Exception exception)
         {
-            LogError($"{ message }{ ConvertToString(exception) }");
+            LogError($"{message}{ConvertToString(exception)}");
 
             return this;
         }
