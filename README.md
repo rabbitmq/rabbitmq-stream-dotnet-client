@@ -412,7 +412,7 @@ You can use `MetadataHandler` to handle it:
 ```
 ### Reliable 
  - Reliable Producer
- - Reliable Consumer
+ - Reliable Consumer </p>
 See the directory [Examples/Reliable](./Examples/Reliable)
 
  
@@ -484,10 +484,11 @@ See [Reconnection Strategy](#reconnection-strategy)
 By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
 You can customize the behaviour implementing the `IReconnectStrategy` interface:
 ```csharp
-void WhenDisconnected(out bool reconnect);
+void WhenDisconnected(out bool reconnect,string connectionInfo);
 void WhenConnected();
 ```
 with `reconnect` you can decide when reconnect the producer/Consumer.
+`connectionInfo` add information about the connection.
 
 You can use it:
 ```csharp

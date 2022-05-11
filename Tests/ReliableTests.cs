@@ -417,4 +417,48 @@ public class ReliableTests
         Assert.False(rConsumer.IsOpen());
         await system.Close();
     }
+
+    private class MyReconnection : IReconnectStrategy
+    {
+        public void WhenDisconnected(out bool reconnect, string _)
+        {
+            reconnect = false;
+        }
+
+        public void WhenConnected()
+        {
+
+        }
+    }
+
+    [Fact]
+    public async void OverrideDefaultRecoveryConnection()
+    {
+        // testing the ReconnectStrategy override with a new 
+        // class MyReconnection. In this case we don't want the reconnection
+        // the first time the client is disconnected we set reconnect = false;
+        // so the ReliableConsumer just close the connection
+
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var clientProviderName = Guid.NewGuid().ToString();
+        var rConsumer = await ReliableConsumer.CreateReliableConsumer(
+            new ReliableConsumerConfig()
+            {
+                Stream = stream,
+                StreamSystem = system,
+                ClientProvidedName = clientProviderName,
+                ReconnectStrategy = new MyReconnection()
+            }
+        );
+
+        Assert.True(rConsumer.IsOpen());
+        SystemUtils.Wait(TimeSpan.FromSeconds(6));
+        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
+        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        // that's should be closed at this point 
+        // since the set reconnect = false
+        Assert.False(rConsumer.IsOpen());
+        await system.DeleteStream(stream);
+        await system.Close();
+    }
 }

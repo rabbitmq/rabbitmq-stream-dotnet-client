@@ -37,6 +37,10 @@ public abstract class ReliableBase
                     $"{ToString()} is disconnected, try to reconnect");
                 await GetNewReliable(false);
             }
+            else
+            {
+                await Close();
+            }
         }
         finally
         {
