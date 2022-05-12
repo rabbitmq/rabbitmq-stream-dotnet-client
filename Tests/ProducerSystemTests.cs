@@ -86,6 +86,30 @@ namespace Tests
         }
 
         [Fact]
+        public async Task ProducerShouldRaiseAnExceptionIfStreamOrBatchSizeAreNotValid()
+        {
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+
+            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
+                new ProducerConfig
+                {
+                    Reference = "producer",
+                    Stream = "",
+                }));
+
+            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
+                new ProducerConfig
+                {
+                    Reference = "producer",
+                    Stream = "TEST",
+                    MessagesBufferSize = -1,
+                }));
+
+            await system.Close();
+        }
+
+        [Fact]
         public async void NotifyProducerClose()
         {
             var stream = Guid.NewGuid().ToString();
@@ -250,6 +274,8 @@ namespace Tests
             var resAfter = await system.QuerySequence(ProducerName, stream);
             // sequence start from zero
             Assert.True(resAfter == (NumberOfMessages - 1));
+
+            await system.DeleteStream(stream);
             await system.Close();
         }
     }

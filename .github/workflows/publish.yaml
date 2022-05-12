@@ -1,0 +1,14 @@
+name: publish rabbitmq-stream-dotnet-client
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  call-build-test:
+    uses: ./.github/workflows/build-test.yaml
+  call-publish-nuget:
+    uses: ./.github/workflows/publish-nuget.yaml
+    needs: call-build-test
+    secrets: inherit

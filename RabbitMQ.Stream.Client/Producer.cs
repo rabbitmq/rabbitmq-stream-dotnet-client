@@ -28,6 +28,16 @@ namespace RabbitMQ.Stream.Client
         public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+        public int BatchSize { get; set; } = 100;
+
+        /// <summary>
+        /// Number of the messages sent for each frame-send.
+        /// High values can increase the throughput.
+        /// Low values can reduce the messages latency.
+        /// Default value is 100.
+        /// </summary>
+        public int MessagesBufferSize { get; set; } = 100;
     }
 
     public class Producer : AbstractEntity, IDisposable
@@ -157,14 +167,13 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessBuffer()
         {
-            // TODO: make the batch size configurable.
-            var messages = new List<(ulong, Message)>(100);
-            while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false) && !client.IsClosed)
+            var messages = new List<(ulong, Message)>(config.MessagesBufferSize);
+            while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
             {
                 while (messageBuffer.Reader.TryRead(out var msg))
                 {
                     messages.Add((msg.PublishingId, msg.Data));
-                    if (messages.Count == 100)
+                    if (messages.Count == config.MessagesBufferSize)
                     {
                         await SendMessages(messages).ConfigureAwait(false);
                     }

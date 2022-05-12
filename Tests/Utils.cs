@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +17,7 @@ using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
 using Xunit.Abstractions;
+using Xunit.Sdk;
 
 namespace Tests
 {
@@ -144,20 +146,15 @@ namespace Tests
 
         public static void HttpPost(string jsonBody, string api)
         {
-            var httpWebRequest = (HttpWebRequest)WebRequest.Create($"http://localhost:15672/api/{api}");
-            httpWebRequest.Credentials = new System.Net.NetworkCredential("guest", "guest");
-            httpWebRequest.ContentType = "application/json";
-            httpWebRequest.Method = "POST";
-
-            using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var client = new HttpClient(handler);
+            HttpContent content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            var task = client.PostAsync($"http://localhost:15672/api/{api}", content);
+            task.Wait();
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode)
             {
-                streamWriter.Write(jsonBody);
-            }
-
-            var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-            using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
-            {
-                streamReader.ReadToEnd();
+                throw new XunitException(string.Format("{0}: {1}", result.StatusCode, result.ReasonPhrase));
             }
         }
 

@@ -106,6 +106,18 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
         {
+            // Validate the ProducerConfig values
+            if (producerConfig.Stream == "")
+            {
+                throw new CreateProducerException($"Stream name can't be empty");
+            }
+
+            if (producerConfig.MessagesBufferSize < Consts.MinBatchSize)
+            {
+                throw new CreateProducerException(
+                    $"Batch Size must be bigger than 0");
+            }
+
             await MayBeReconnectLocator();
             var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
             var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
