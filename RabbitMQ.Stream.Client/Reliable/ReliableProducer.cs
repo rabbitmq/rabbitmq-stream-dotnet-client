@@ -199,7 +199,8 @@ public class ReliableProducer
 
         // This sleep is needed. When a stream is deleted it takes sometime.
         // The StreamExists/1 could return true even the stream doesn't exist anymore.
-        Thread.Sleep(500);
+        Thread.Sleep(TimeSpan.FromMilliseconds(500));
+
         if (await _reliableProducerConfig.StreamSystem.StreamExists(stream))
         {
             LogEventSource.Log.LogInformation(
@@ -219,7 +220,7 @@ public class ReliableProducer
 
     private async Task CloseProducer()
     {
-        await _semProducer.WaitAsync(10);
+        await _semProducer.WaitAsync(TimeSpan.FromMilliseconds(10));
         try
         {
             await _producer.Close();
@@ -237,7 +238,7 @@ public class ReliableProducer
 
     public async Task Close()
     {
-        await _semProducer.WaitAsync(10);
+        await _semProducer.WaitAsync(TimeSpan.FromMilliseconds(10));
         try
         {
             _needReconnect = false;

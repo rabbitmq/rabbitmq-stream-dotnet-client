@@ -86,7 +86,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, result.ResponseCode);
 
             await client.DeleteStream(stream);
-            Assert.True(testPassed.Task.Wait(5000));
+            Assert.True(testPassed.Task.Wait(TimeSpan.FromSeconds(5)));
             var mdu = testPassed.Task.Result;
             Assert.Equal(stream, mdu.Stream);
             Assert.Equal(ResponseCode.StreamNotAvailable, mdu.Code);
@@ -177,7 +177,7 @@ namespace Tests
                 await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, msgData) }));
                 if ((int)i - numConfirmed > 1000)
                 {
-                    await Task.Delay(10);
+                    await Task.Delay(TimeSpan.FromMilliseconds(10));
                 }
             }
 

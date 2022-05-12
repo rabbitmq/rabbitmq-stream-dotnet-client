@@ -87,7 +87,7 @@ for (ulong i = 0; i < 100; i++)
 }
 
 // not mandatory. Just to show the confirmation
-Thread.Sleep(1000);
+Thread.Sleep(TimeSpan.FromSeconds(1));
 
 // Create a consumer
 var consumer = await system.CreateConsumer(

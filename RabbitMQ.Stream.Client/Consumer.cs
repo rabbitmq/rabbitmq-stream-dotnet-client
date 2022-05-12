@@ -163,7 +163,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             var closeConsumer = Close();
-            closeConsumer.Wait(1000);
+            closeConsumer.Wait(TimeSpan.FromSeconds(1));
             ClientExceptions.MaybeThrowException(closeConsumer.Result,
                 $"Error during remove producer. Subscriber: {subscriberId}");
         }
