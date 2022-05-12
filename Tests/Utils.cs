@@ -51,6 +51,35 @@ namespace Tests
 
     public static class SystemUtils
     {
+        public static void WaitUntil(Func<bool> func, ushort retries = 10)
+        {
+            Wait();
+            while (!func())
+            {
+                Wait();
+                --retries;
+                if (retries == 0)
+                {
+                    throw new XunitException("timed out waiting on a condition!");
+                }
+            }
+        }
+
+        public static async void WaitUntilAsync(Func<Task<bool>> func, ushort retries = 10)
+        {
+            Wait();
+            while (! await func())
+            {
+                Wait();
+                --retries;
+                if (retries == 0)
+                {
+                    throw new XunitException("timed out waiting on a condition!");
+                }
+            }
+        }
+
+
         public static void Wait()
         {
             Thread.Sleep(TimeSpan.FromMilliseconds(500));
@@ -119,6 +148,21 @@ namespace Tests
         {
             public string name { get; set; }
             public Dictionary<string, string> client_properties { get; set; }
+        }
+
+        public static async Task<bool> IsConnectionOpen(string connectionName)
+        {
+            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var client = new HttpClient(handler);
+            bool isOpen = false;
+            var result = await client.GetAsync("http://localhost:15672/api/connections");
+            var obj = JsonSerializer.Deserialize(result.Content.ReadAsStream(), typeof(IEnumerable<Connection>));
+            if (obj != null)
+            {
+                var connections = obj as IEnumerable<Connection>;
+                isOpen = connections.Any(x => x.client_properties["connection_name"].Contains(connectionName));
+            }
+            return isOpen;
         }
 
         public static async Task<int> HttpKillConnections(string connectionName)

@@ -422,7 +422,6 @@ public class ReliableTests
     {
         public void WhenDisconnected(out bool reconnect, string _)
         {
-            SystemUtils.Wait(TimeSpan.FromMilliseconds(500));
             reconnect = false;
         }
 
@@ -452,14 +451,18 @@ public class ReliableTests
             }
         );
 
-        Assert.True(rConsumer.IsOpen());
-        SystemUtils.Wait(TimeSpan.FromSeconds(6));
-        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
-        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        SystemUtils.WaitUntil(() => rConsumer.IsOpen());
+        SystemUtils.WaitUntilAsync(async () => await SystemUtils.IsConnectionOpen(clientProviderName));
         // that's should be closed at this point 
         // since the set reconnect = false
-        Assert.False(rConsumer.IsOpen());
-        await system.DeleteStream(stream);
-        await system.Close();
+        try
+        {
+            SystemUtils.WaitUntil(() => false == rConsumer.IsOpen());
+        }
+        finally
+        {
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
     }
 }
