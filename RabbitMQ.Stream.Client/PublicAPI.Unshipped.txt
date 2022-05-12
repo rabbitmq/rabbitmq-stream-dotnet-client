@@ -845,4 +845,4 @@ static RabbitMQ.Stream.Client.StreamCompressionCodecs.RegisterCodec<T>(RabbitMQ.
 static RabbitMQ.Stream.Client.StreamCompressionCodecs.UnRegisterCodec(RabbitMQ.Stream.Client.CompressionType compressionType) -> void
 static RabbitMQ.Stream.Client.StreamSystem.Create(RabbitMQ.Stream.Client.StreamSystemConfig config) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamSystem>
 static RabbitMQ.Stream.Client.SubEntryPublish.Version.get -> byte
-static readonly RabbitMQ.Stream.Client.Version.VersionString -> string
+static RabbitMQ.Stream.Client.Version.VersionString.get -> string

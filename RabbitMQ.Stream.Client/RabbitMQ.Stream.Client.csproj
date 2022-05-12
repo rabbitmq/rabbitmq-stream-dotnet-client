@@ -62,30 +62,4 @@
     <PackageReference Include="System.IO.Pipelines" Version="6.0.2" />
   </ItemGroup>
 
-  <Target Name="AfterMinVer" AfterTargets="MinVer">
-    <SetLibraryVersion Version="$(MinVerVersion)" />
-  </Target>
-
-  <UsingTask TaskName="SetLibraryVersion" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-    <ParameterGroup>
-      <Version ParameterType="System.String" Required="true" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System" />
-      <Using Namespace="System.IO" />
-      <Using Namespace="System.Text.RegularExpressions" />
-      <Code Type="Fragment" Language="cs">
-        <![CDATA[
-          string pattern = "VersionString = \"[^\"]+\";";
-          string replacement = string.Format("VersionString = \"{0}\";", Version);
-          Regex rx = new Regex(pattern);
-          string text = File.ReadAllText("Version.cs");
-          string repl = rx.Replace(text, replacement);
-          File.WriteAllText("Version.cs.tmp", repl, Encoding.UTF8);
-          File.Replace("Version.cs.tmp", "Version.cs", "Version.cs.bak");
-        ]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
 </Project>
