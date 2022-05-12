@@ -31,10 +31,18 @@ public abstract class ReliableBase
         try
         {
             reconnectStrategy.WhenDisconnected(out var reconnect, ToString());
-            if (reconnect && _needReconnect)
+            var hasToReconnect = reconnect && _needReconnect;
+            var addInfo = "Client won't reconnect";
+            if (hasToReconnect)
             {
-                LogEventSource.Log.LogInformation(
-                    $"{ToString()} is disconnected, try to reconnect");
+                addInfo = "Client will try reconnect";
+            }
+
+            LogEventSource.Log.LogInformation(
+                $"{ToString()} is disconnected. {addInfo}");
+
+            if (hasToReconnect)
+            {
                 await GetNewReliable(false);
             }
             else
@@ -61,18 +69,14 @@ public abstract class ReliableBase
     /// </summary>
     internal async Task HandleMetaDataMaybeReconnect(string stream, StreamSystem system)
     {
-        LogEventSource.Log.LogInformation(
-            $"Meta data update stream: {stream} " +
-            $"{ToString()} closed.");
-
         // This sleep is needed. When a stream is deleted it takes sometime.
         // The StreamExists/1 could return true even the stream doesn't exist anymore.
         Thread.Sleep(500);
         if (await system.StreamExists(stream))
         {
             LogEventSource.Log.LogInformation(
-                $"Meta data update, the stream {stream} still exist. " +
-                $"{ToString()} will try to reconnect.");
+                $"Meta data update stream: {stream}. The stream still exist." +
+                $" Client: {ToString()}");
             // Here we just close the producer connection
             // the func TryToReconnect/0 will be called. 
             await CloseReliable();
@@ -81,6 +85,9 @@ public abstract class ReliableBase
         {
             // In this case the stream doesn't exist anymore
             // the ReliableProducer is just closed.
+            LogEventSource.Log.LogInformation(
+                $"Meta data update stream: {stream} " +
+                $"{ToString()} will be closed.");
             await Close();
         }
     }
