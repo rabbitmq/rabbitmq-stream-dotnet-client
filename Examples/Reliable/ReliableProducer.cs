@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Text;
 using RabbitMQ.Stream.Client;
@@ -51,7 +52,7 @@ public class ReliableProducer
 
         Console.WriteLine($"End...Done {DateTime.Now - start}");
         // just to receive all the notification back
-        Thread.Sleep(2000);
+        Thread.Sleep(TimeSpan.FromSeconds(2));
         await reliableProducer.Close();
         
     }

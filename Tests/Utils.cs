@@ -30,11 +30,19 @@ namespace Tests
             this.testOutputHelper = testOutputHelper;
         }
 
-        // Added this generic function to trap error during the 
-        // tests
+        public void WaitUntilTaskCompletes(TaskCompletionSource<TResult> tasks)
+        {
+            WaitUntilTaskCompletes(tasks, true, TimeSpan.FromSeconds(10));
+        }
+
+        public void WaitUntilTaskCompletes(TaskCompletionSource<TResult> tasks, bool expectToComplete = true)
+        {
+            WaitUntilTaskCompletes(tasks, expectToComplete, TimeSpan.FromSeconds(10));
+        }
+
         public void WaitUntilTaskCompletes(TaskCompletionSource<TResult> tasks,
-            bool expectToComplete = true,
-            int timeOut = 10000)
+            bool expectToComplete,
+            TimeSpan timeOut)
         {
             try
             {
@@ -107,7 +115,7 @@ namespace Tests
                 await producer.Send(Convert.ToUInt64(i), message);
             }
 
-            testPassed.Task.Wait(10000);
+            testPassed.Task.Wait(TimeSpan.FromSeconds(10));
             Assert.Equal(producer.MessagesSent, numberOfMessages);
             Assert.True(producer.ConfirmFrames >= 1);
             Assert.True(producer.IncomingFrames >= 1);
@@ -167,7 +175,7 @@ namespace Tests
             {
                 var filename = Path.Combine(dirPath, "Resources", fileName);
                 var fileTask = File.ReadAllBytesAsync(filename);
-                fileTask.Wait(1000);
+                fileTask.Wait(TimeSpan.FromSeconds(1));
                 return fileTask.Result;
             }
 
