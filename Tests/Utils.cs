@@ -51,12 +51,12 @@ namespace Tests
 
     public static class SystemUtils
     {
-        public static void WaitUntil(Func<bool> func, ushort retries = 10)
+        // Waits for 10 seconds total by default
+        public static void WaitUntil(Func<bool> func, ushort retries = 40)
         {
-            Wait();
             while (!func())
             {
-                Wait();
+                Wait(TimeSpan.FromMilliseconds(250));
                 --retries;
                 if (retries == 0)
                 {
@@ -68,7 +68,7 @@ namespace Tests
         public static async void WaitUntilAsync(Func<Task<bool>> func, ushort retries = 10)
         {
             Wait();
-            while (! await func())
+            while (!await func())
             {
                 Wait();
                 --retries;
@@ -78,7 +78,6 @@ namespace Tests
                 }
             }
         }
-
 
         public static void Wait()
         {
@@ -154,7 +153,7 @@ namespace Tests
         {
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
-            bool isOpen = false;
+            var isOpen = false;
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             var obj = JsonSerializer.Deserialize(result.Content.ReadAsStream(), typeof(IEnumerable<Connection>));
             if (obj != null)
@@ -162,6 +161,7 @@ namespace Tests
                 var connections = obj as IEnumerable<Connection>;
                 isOpen = connections.Any(x => x.client_properties["connection_name"].Contains(connectionName));
             }
+
             return isOpen;
         }
 
@@ -176,9 +176,9 @@ namespace Tests
             {
                 return 0;
             }
+
             // we kill _only_ producer and consumer connections
             // leave the locator up and running to delete the stream
-
             var iEnumerable = connections.Where(x => x.client_properties["connection_name"].Contains(connectionName));
             foreach (var conn in iEnumerable)
             {
