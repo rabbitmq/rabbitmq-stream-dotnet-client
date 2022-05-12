@@ -453,6 +453,7 @@ public class ReliableTests
 
         SystemUtils.WaitUntil(() => rConsumer.IsOpen());
         SystemUtils.WaitUntilAsync(async () => await SystemUtils.IsConnectionOpen(clientProviderName));
+        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
         // that's should be closed at this point 
         // since the set reconnect = false
         try
