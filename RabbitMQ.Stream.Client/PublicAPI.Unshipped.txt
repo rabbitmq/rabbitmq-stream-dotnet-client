@@ -844,9 +844,6 @@ readonly RabbitMQ.Stream.Client.Reliable.ReliableBase.SemaphoreSlim -> System.Th
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.GetAnySize(object value) -> int
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.GetSequenceSize(System.Buffers.ReadOnlySequence<byte> data) -> int
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteAny(System.Span<byte> seq, object value) -> int
-static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteString(System.Span<byte> seq, string value) -> int
-static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteTimestamp(System.Span<byte> seq, System.DateTime value) -> int
-static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteUInt64(System.Span<byte> seq, ulong value) -> int
 static RabbitMQ.Stream.Client.AMQP.Data.Parse(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) -> RabbitMQ.Stream.Client.AMQP.Data
 static RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.Read(System.Buffers.ReadOnlySequence<byte> amqpData) -> byte
 static RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.Write(System.Span<byte> span, byte data) -> int
