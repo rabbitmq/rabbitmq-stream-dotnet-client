@@ -29,13 +29,11 @@ namespace RabbitMQ.Stream.Client.AMQP
                 bool bo => WriteBool(seq, bo),
                 byte[] bArr => bArr.Length == 0 ? WriteNull(seq) : WriteBytes(seq, bArr),
                 DateTime d => d == DateTime.MinValue ? WriteNull(seq) : WriteTimestamp(seq, d),
-                _ => throw new AMQP.AmqpParseException($"WriteAny Invalid type {value}")
+                _ => throw new AmqpParseException($"WriteAny Invalid type {value}")
             };
-
-            ;
         }
 
-        public static int WriteString(Span<byte> seq, string value)
+        private static int WriteString(Span<byte> seq, string value)
         {
             var len = value.Length;
             var offset = 0;
@@ -55,7 +53,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static int WriteUInt64(Span<byte> seq, ulong value)
+        private static int WriteUInt64(Span<byte> seq, ulong value)
         {
             if (value == 0)
             {
@@ -201,7 +199,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             return WireFormatting.WriteByte(seq, value ? FormatCode.BoolTrue : FormatCode.BoolFalse);
         }
 
-        public static int WriteTimestamp(Span<byte> seq, DateTime value)
+        private static int WriteTimestamp(Span<byte> seq, DateTime value)
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Timestamp);
             var unixTime = ((DateTimeOffset)value).ToUnixTimeMilliseconds();
@@ -336,7 +334,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 byte[] bArr => GetBytesSize(bArr),
                 byte => 1,
                 DateTime d => GetTimestampSize(d),
-                _ => throw new AMQP.AmqpParseException($"WriteAny Invalid type {value}")
+                _ => throw new AmqpParseException($"WriteAny Invalid type {value}")
             };
         }
     }
