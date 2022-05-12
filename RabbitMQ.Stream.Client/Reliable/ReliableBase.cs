@@ -47,6 +47,7 @@ public abstract class ReliableBase
             }
             else
             {
+                _needReconnect = false;
                 await Close();
             }
         }
