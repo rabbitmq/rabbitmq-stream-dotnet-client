@@ -188,6 +188,7 @@ namespace Tests
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
 
+            var uri = new Uri("http://localhost:15672/api/connections");
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             if (!result.IsSuccessStatusCode)
             {
