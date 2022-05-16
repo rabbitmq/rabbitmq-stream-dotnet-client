@@ -155,7 +155,7 @@ public class ReliableProducer : ReliableBase
 
     public override async Task Close()
     {
-        await SemaphoreSlim.WaitAsync(10);
+        await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10));
         try
         {
             _needReconnect = false;

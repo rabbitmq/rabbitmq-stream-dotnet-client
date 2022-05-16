@@ -25,7 +25,7 @@ namespace RabbitMQ.Stream.Client
         public IClient CreateClient(ClientParameters clientParameters)
         {
             var taskClient = Client.Create(clientParameters);
-            taskClient.Wait(1000);
+            taskClient.Wait(TimeSpan.FromSeconds(1));
             return taskClient.Result;
         }
     }
@@ -90,7 +90,7 @@ namespace RabbitMQ.Stream.Client
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
                 advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
                 // TODO: Maybe an external parameter
-                Thread.Sleep(200);
+                Thread.Sleep(TimeSpan.FromMilliseconds(200));
             }
 
             return client;

@@ -144,7 +144,7 @@ namespace RabbitMQ.Stream.Client
             if (!semaphore.Wait(0) && !client.IsClosed)
             {
                 // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
-                if (!await semaphore.WaitAsync(1000).ConfigureAwait(false))
+                if (!await semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
                 {
                     LogEventSource.Log.LogWarning("Semaphore Wait timeout during publishing.");
                 }
@@ -251,7 +251,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             var closeProducer = Close();
-            closeProducer.Wait(1000);
+            closeProducer.Wait(TimeSpan.FromSeconds(1));
             ClientExceptions.MaybeThrowException(closeProducer.Result,
                 $"Error during remove producer. Producer: {publisherId}");
             _disposed = true;
