@@ -21,5 +21,5 @@ rabbitmq-server:
 run-test-in-docker:
 	docker stop dotnet-test || true
 	docker build -t stream-dotnet-test -f Docker/Dockerfile  . && \
-	docker run -d --rm --name dotnet-test -v $(shell pwd):/source --cpuset-cpus="0-1" stream-dotnet-test && \
+	docker run -d --rm --name dotnet-test -v $(shell pwd):/source --cpuset-cpus="1" stream-dotnet-test && \
     docker exec -it dotnet-test /bin/sh -c "cd /source && make" || true  

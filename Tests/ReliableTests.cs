@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +22,9 @@ public class ReliableTests
     public ReliableTests(ITestOutputHelper testOutputHelper)
     {
         _testOutputHelper = testOutputHelper;
+        new LogEventListener().EnableEvents(new EventSource("Console")
+        {
+        }, EventLevel.LogAlways);
     }
 
     [Fact]
@@ -447,7 +451,7 @@ public class ReliableTests
                 StreamSystem = system,
                 ClientProvidedName = clientProviderName,
                 ReconnectStrategy = new MyReconnection(),
-                Reference = Guid.NewGuid().ToString()
+                Reference = "ConsumerOverrideDefaultRecoveryConnection"
             }
         );
 
