@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,11 +21,15 @@ public class ReliableTests
     public ReliableTests(ITestOutputHelper testOutputHelper)
     {
         _testOutputHelper = testOutputHelper;
-        new LogEventListener().EnableEvents(new EventSource("Console")
-        {
-        }, EventLevel.LogAlways);
+        // try
+        // {
+        //     new LogEventListener().EnableEvents(new EventSource("Console") { }, EventLevel.LogAlways);
+        // }
+        // catch (Exception)
+        // {
+        //     //ignore
+        // }
     }
-
 
     [Fact]
     public void MessageWithoutConfirmationRaiseTimeout()
@@ -425,8 +428,16 @@ public class ReliableTests
 
     private class MyReconnection : IReconnectStrategy
     {
-        public void WhenDisconnected(out bool reconnect, string _)
+        private readonly ITestOutputHelper _testOutputHelper;
+
+        public MyReconnection(ITestOutputHelper testOutputHelper)
         {
+            _testOutputHelper = testOutputHelper;
+        }
+
+        public void WhenDisconnected(out bool reconnect, string info)
+        {
+            _testOutputHelper.WriteLine($"MyReconnection WhenDisconnected {info}");
             reconnect = false;
         }
 
@@ -451,19 +462,29 @@ public class ReliableTests
                 Stream = stream,
                 StreamSystem = system,
                 ClientProvidedName = clientProviderName,
-                ReconnectStrategy = new MyReconnection(),
+                ReconnectStrategy = new MyReconnection(_testOutputHelper),
                 Reference = "ConsumerOverrideDefaultRecoveryConnection"
             }
         );
 
         SystemUtils.WaitUntil(() => rConsumer.IsOpen());
-        SystemUtils.WaitUntilAsync(async () => await SystemUtils.IsConnectionOpen(clientProviderName));
-        SystemUtils.WaitUntilAsync(async () =>
-                {
-                    var c = await SystemUtils.HttpKillConnections(clientProviderName);
-                    return c == 1;
-                }
+
+        await SystemUtils.PublishMessages(system, stream, 10, _testOutputHelper);
+        SystemUtils.WaitUntil(() => SystemUtils.IsConnectionOpen(clientProviderName).Result);
+        Assert.True(SystemUtils.IsConnectionOpen(clientProviderName).Result);
+        SystemUtils.WaitUntil(() =>
+            {
+                var c = SystemUtils.HttpKillConnections(clientProviderName).Result;
+                return c == 1;
+            }
         );
+
+        SystemUtils.WaitUntil(() =>
+
+            false == SystemUtils.IsConnectionOpen(clientProviderName).Result
+
+            );
+
         // that's should be closed at this point 
         // since the set reconnect = false
         try

@@ -48,6 +48,9 @@ public abstract class ReliableBase
             else
             {
                 _needReconnect = false;
+                LogEventSource.Log.LogInformation(
+                    $"{ToString()} is disconnected. waiting for close: {_needReconnect}");
+
                 await Close();
             }
         }

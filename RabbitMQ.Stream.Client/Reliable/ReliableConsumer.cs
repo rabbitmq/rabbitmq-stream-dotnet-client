@@ -82,7 +82,10 @@ public class ReliableConsumer : ReliableBase
                 {
                     _consumedFirstTime = true;
                     _lastConsumerOffset = ctx.Offset;
-                    await _reliableConsumerConfig.MessageHandler(consumer, ctx, message);
+                    if (_reliableConsumerConfig.MessageHandler != null)
+                    {
+                        await _reliableConsumerConfig.MessageHandler(consumer, ctx, message);
+                    }
                 }
             });
             _reliableConsumerConfig.ReconnectStrategy.WhenConnected();
