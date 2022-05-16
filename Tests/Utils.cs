@@ -13,6 +13,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
@@ -195,9 +196,8 @@ namespace Tests
             var killed = 0;
             foreach (var conn in enumerable)
             {
-                // var s = HttpUtility.UrlEncode(conn.name).Replace("+", "%20").ToUpper();
-                var uri = new Uri($"http://localhost:15672/api/connections/{conn.name}");
-                var r = await client.DeleteAsync(uri);
+                var s = HttpUtility.UrlEncode(conn.name).Replace("+", "%20").ToUpper();
+                var r = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
                 if (r.StatusCode != HttpStatusCode.OK && r.StatusCode != HttpStatusCode.NoContent)
                 {
                     throw new Exception($"Deleted fail :{r.StatusCode}");
