@@ -166,7 +166,13 @@ namespace Tests
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
             var isOpen = false;
+
             var result = await client.GetAsync("http://localhost:15672/api/connections");
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+            }
+
             var obj = JsonSerializer.Deserialize(result.Content.ReadAsStream(), typeof(IEnumerable<Connection>));
             if (obj != null)
             {
@@ -181,7 +187,13 @@ namespace Tests
         {
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
+
             var result = await client.GetAsync("http://localhost:15672/api/connections");
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+            }
+
             var json = await result.Content.ReadAsStringAsync();
             var connections = JsonSerializer.Deserialize<IEnumerable<Connection>>(json);
             if (connections == null)
@@ -198,9 +210,9 @@ namespace Tests
             {
                 var s = HttpUtility.UrlEncode(conn.name).Replace("+", "%20").ToUpper();
                 var r = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
-                if (r.StatusCode != HttpStatusCode.OK && r.StatusCode != HttpStatusCode.NoContent)
+                if (!r.IsSuccessStatusCode)
                 {
-                    throw new Exception($"Deleted fail :{r.StatusCode}");
+                    throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
                 }
 
                 killed += 1;
@@ -219,7 +231,7 @@ namespace Tests
             var result = task.Result;
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("{0}: {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
             }
         }
 
