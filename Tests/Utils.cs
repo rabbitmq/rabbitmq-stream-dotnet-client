@@ -13,7 +13,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
@@ -209,7 +208,18 @@ namespace Tests
             var killed = 0;
             foreach (var conn in enumerable)
             {
-                var s = HttpUtility.UrlEncode(conn.name).Replace("+", "%20").ToUpper();
+                /*
+                 * NOTE:
+                 * this is the equivalent to this JS code:
+                 * https://github.com/rabbitmq/rabbitmq-server/blob/master/deps/rabbitmq_management/priv/www/js/formatters.js#L710-L712
+                 *
+                 * function esc(str) {
+                 *   return encodeURIComponent(str);
+                 * }
+                 *
+                 * https://stackoverflow.com/a/4550600
+                 */
+                var s = Uri.EscapeDataString(conn.name);
                 var r = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
                 if (!r.IsSuccessStatusCode)
                 {
