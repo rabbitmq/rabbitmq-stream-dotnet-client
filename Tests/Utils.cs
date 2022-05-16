@@ -13,6 +13,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
@@ -101,7 +102,10 @@ namespace Tests
             string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
+            var config = new StreamSystemConfig
+            {
+                ClientProvidedName = clientProviderNameLocator
+            };
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();
@@ -188,12 +192,21 @@ namespace Tests
             // we kill _only_ producer and consumer connections
             // leave the locator up and running to delete the stream
             var iEnumerable = connections.Where(x => x.client_properties["connection_name"].Contains(connectionName));
-            foreach (var conn in iEnumerable)
+            var enumerable = iEnumerable as Connection[] ?? iEnumerable.ToArray();
+            var killed = 0;
+            foreach (var conn in enumerable)
             {
-                await client.DeleteAsync($"http://localhost:15672/api/connections/{conn.name}");
+                var s = HttpUtility.UrlEncode(conn.name).Replace("+", "%20").ToUpper();
+                var r = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
+                if (r.StatusCode != HttpStatusCode.OK && r.StatusCode != HttpStatusCode.NoContent)
+                {
+                    throw new Exception($"Deleted fail :{r.StatusCode}");
+                }
+
+                killed += 1;
             }
 
-            return iEnumerable.Count();
+            return killed;
         }
 
         public static void HttpPost(string jsonBody, string api)

@@ -456,11 +456,12 @@ public class ReliableTests
 
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
+
         var rConsumer = await ReliableConsumer.CreateReliableConsumer(
             new ReliableConsumerConfig()
             {
-                Stream = stream,
                 StreamSystem = system,
+                Stream = stream,
                 ClientProvidedName = clientProviderName,
                 ReconnectStrategy = new MyReconnection(_testOutputHelper),
                 Reference = "ConsumerOverrideDefaultRecoveryConnection"
@@ -480,10 +481,11 @@ public class ReliableTests
         );
 
         SystemUtils.WaitUntil(() =>
-
-            false == SystemUtils.IsConnectionOpen(clientProviderName).Result
-
-            );
+            {
+                var isOpen = SystemUtils.IsConnectionOpen(clientProviderName).Result;
+                return !isOpen;
+            }
+        );
 
         // that's should be closed at this point 
         // since the set reconnect = false
