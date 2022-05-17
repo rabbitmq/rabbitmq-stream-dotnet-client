@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
@@ -59,6 +59,26 @@ namespace Tests
         public bool ValidateDns { get; set; } = false;
     }
 
+    public class MisconfiguredLoadBalancerRouting : IRouting
+    {
+
+        public IClient CreateClient(ClientParameters clientParameters)
+        {
+
+            var fake = new FakeClient(clientParameters)
+            {
+                ConnectionProperties = new Dictionary<string, string>()
+                {
+                    ["advertised_host"] = "node4",
+                    ["advertised_port"] = "5552"
+                }
+            };
+            return fake;
+        }
+
+        public bool ValidateDns { get; set; } = false;
+    }
+
     //advertised_host is is missed
     public class MissingFieldsRouting : IRouting
     {
@@ -87,26 +107,6 @@ namespace Tests
                 {
                     ["advertised_port"] = "5552",
                     ["advertised_host"] = "leader"
-                }
-            };
-            return fake;
-        }
-
-        public bool ValidateDns { get; set; } = false;
-    }
-    
-    public class MisconfiguredLoadBalancerRouting : IRouting
-    {
-
-        public IClient CreateClient(ClientParameters clientParameters)
-        {
-
-            var fake = new FakeClient(clientParameters)
-            {
-                ConnectionProperties = new Dictionary<string, string>()
-                {
-                    ["advertised_host"] = "node4",
-                    ["advertised_port"] = "5552"
                 }
             };
             return fake;
@@ -153,6 +153,21 @@ namespace Tests
         }
 
         [Fact]
+        public void RoutingHelperShouldThrowIfLoadBalancerIsMisconfigured()
+        {
+            var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
+            var clientParameters = new ClientParameters()
+            {
+                AddressResolver = addressResolver,
+            };
+            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("node2", 5552),
+                new List<Broker>() { new Broker("replica", 5552) });
+
+            Assert.ThrowsAsync<RoutingClientException>(
+                () => RoutingHelper<MisconfiguredLoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo));
+        }
+
+        [Fact]
         public void RandomReplicaLeader()
         {
             // this test is not completed yet should add also some replicas
@@ -168,21 +183,6 @@ namespace Tests
             var res = (client.Result.ConnectionProperties["advertised_host"] == "leader" ||
                        client.Result.ConnectionProperties["advertised_host"] == "replica");
             Assert.True(res);
-        }
-        
-        [Fact]
-        public void RoutingHelperShouldThrowIfLoadBalancerIsMisconfigured()
-        {
-            var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
-            var clientParameters = new ClientParameters()
-            {
-                AddressResolver = addressResolver,
-            };
-            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("node2", 5552),
-                new List<Broker>() { new Broker("replica", 5552) });
-            
-            Assert.ThrowsAsync<RoutingClientException>(
-                () => RoutingHelper<MisconfiguredLoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo));
         }
 
         [Fact]
