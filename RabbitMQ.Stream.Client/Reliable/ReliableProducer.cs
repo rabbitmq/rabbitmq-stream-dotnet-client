@@ -123,7 +123,7 @@ public class ReliableProducer : ReliableBase
                         confirmationStatus);
                 }
             });
-            _reliableProducerConfig.ReconnectStrategy.WhenConnected();
+            _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
         }
 
         catch (CreateProducerException ce)

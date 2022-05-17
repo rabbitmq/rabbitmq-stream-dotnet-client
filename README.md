@@ -485,10 +485,10 @@ See [Reconnection Strategy](#reconnection-strategy)
 By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
 You can customize the behaviour implementing the `IReconnectStrategy` interface:
 ```csharp
-void WhenDisconnected(out bool reconnect,string connectionInfo);
-void WhenConnected();
+bool WhenDisconnected(string connectionInfo);
+void WhenConnected(string connectionInfo);
 ```
-with `reconnect` you can decide when reconnect the producer/Consumer.
+If `WhenDisconnected` return is `true` Producer/Consumer will be reconnected else closed.
 `connectionInfo` add information about the connection.
 
 You can use it:

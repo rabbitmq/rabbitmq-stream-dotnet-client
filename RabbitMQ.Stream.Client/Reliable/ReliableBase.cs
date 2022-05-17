@@ -30,7 +30,7 @@ public abstract class ReliableBase
         _inReconnection = true;
         try
         {
-            reconnectStrategy.WhenDisconnected(out var reconnect, ToString());
+            var reconnect = reconnectStrategy.WhenDisconnected(ToString());
             var hasToReconnect = reconnect && _needReconnect;
             var addInfo = "Client won't reconnect";
             if (hasToReconnect)
@@ -48,9 +48,6 @@ public abstract class ReliableBase
             else
             {
                 _needReconnect = false;
-                LogEventSource.Log.LogInformation(
-                    $"{ToString()} is disconnected. waiting for close: {_needReconnect}");
-
                 await Close();
             }
         }

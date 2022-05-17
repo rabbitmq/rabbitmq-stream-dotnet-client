@@ -191,7 +191,7 @@ namespace Tests
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException($"HTTP GET failed: {result.StatusCode} {result.ReasonPhrase}");
             }
 
             var json = await result.Content.ReadAsStringAsync();
@@ -223,7 +223,7 @@ namespace Tests
                 var r = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
                 if (!r.IsSuccessStatusCode)
                 {
-                    throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+                    throw new XunitException($"HTTP DELETE failed: {result.StatusCode} {result.ReasonPhrase}");
                 }
 
                 killed += 1;

@@ -88,7 +88,7 @@ public class ReliableConsumer : ReliableBase
                     }
                 }
             });
-            _reliableConsumerConfig.ReconnectStrategy.WhenConnected();
+            _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
         }
 
         catch (CreateProducerException ce)

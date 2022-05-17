@@ -435,13 +435,13 @@ public class ReliableTests
             _testOutputHelper = testOutputHelper;
         }
 
-        public void WhenDisconnected(out bool reconnect, string info)
+        public bool WhenDisconnected(string info)
         {
             _testOutputHelper.WriteLine($"MyReconnection WhenDisconnected {info}");
-            reconnect = false;
+            return false;
         }
 
-        public void WhenConnected()
+        public void WhenConnected(string _)
         {
         }
     }
@@ -464,7 +464,7 @@ public class ReliableTests
                 Stream = stream,
                 ClientProvidedName = clientProviderName,
                 ReconnectStrategy = new MyReconnection(_testOutputHelper),
-                Reference = "ConsumerOverrideDefaultRecoveryConnection"
+                Reference = Guid.NewGuid().ToString()
             }
         );
 
