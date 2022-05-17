@@ -59,6 +59,34 @@ namespace Tests
 
     public static class SystemUtils
     {
+        // Waits for 10 seconds total by default
+        public static void WaitUntil(Func<bool> func, ushort retries = 40)
+        {
+            while (!func())
+            {
+                Wait(TimeSpan.FromMilliseconds(250));
+                --retries;
+                if (retries == 0)
+                {
+                    throw new XunitException("timed out waiting on a condition!");
+                }
+            }
+        }
+
+        public static async void WaitUntilAsync(Func<Task<bool>> func, ushort retries = 10)
+        {
+            Wait();
+            while (!await func())
+            {
+                Wait();
+                --retries;
+                if (retries == 0)
+                {
+                    throw new XunitException("timed out waiting on a condition!");
+                }
+            }
+        }
+
         public static void Wait()
         {
             Thread.Sleep(TimeSpan.FromMilliseconds(500));
@@ -73,7 +101,10 @@ namespace Tests
             string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
+            var config = new StreamSystemConfig
+            {
+                ClientProvidedName = clientProviderNameLocator
+            };
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();
@@ -95,7 +126,7 @@ namespace Tests
                 {
                     Reference = producerName,
                     Stream = stream,
-                    ConfirmHandler = confirmation =>
+                    ConfirmHandler = _ =>
                     {
                         count++;
                         testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
@@ -129,27 +160,76 @@ namespace Tests
             public Dictionary<string, string> client_properties { get; set; }
         }
 
+        public static async Task<bool> IsConnectionOpen(string connectionName)
+        {
+            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var client = new HttpClient(handler);
+            var isOpen = false;
+
+            var result = await client.GetAsync("http://localhost:15672/api/connections");
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+            }
+
+            var obj = JsonSerializer.Deserialize(result.Content.ReadAsStream(), typeof(IEnumerable<Connection>));
+            if (obj != null)
+            {
+                var connections = obj as IEnumerable<Connection>;
+                isOpen = connections.Any(x => x.client_properties["connection_name"].Contains(connectionName));
+            }
+
+            return isOpen;
+        }
+
         public static async Task<int> HttpKillConnections(string connectionName)
         {
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
+
+            var uri = new Uri("http://localhost:15672/api/connections");
             var result = await client.GetAsync("http://localhost:15672/api/connections");
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException($"HTTP GET failed: {result.StatusCode} {result.ReasonPhrase}");
+            }
+
             var json = await result.Content.ReadAsStringAsync();
             var connections = JsonSerializer.Deserialize<IEnumerable<Connection>>(json);
             if (connections == null)
             {
                 return 0;
             }
+
             // we kill _only_ producer and consumer connections
             // leave the locator up and running to delete the stream
-
             var iEnumerable = connections.Where(x => x.client_properties["connection_name"].Contains(connectionName));
-            foreach (var conn in iEnumerable)
+            var enumerable = iEnumerable as Connection[] ?? iEnumerable.ToArray();
+            var killed = 0;
+            foreach (var conn in enumerable)
             {
-                await client.DeleteAsync($"http://localhost:15672/api/connections/{conn.name}");
+                /*
+                 * NOTE:
+                 * this is the equivalent to this JS code:
+                 * https://github.com/rabbitmq/rabbitmq-server/blob/master/deps/rabbitmq_management/priv/www/js/formatters.js#L710-L712
+                 *
+                 * function esc(str) {
+                 *   return encodeURIComponent(str);
+                 * }
+                 *
+                 * https://stackoverflow.com/a/4550600
+                 */
+                var s = Uri.EscapeDataString(conn.name);
+                var r = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
+                if (!r.IsSuccessStatusCode)
+                {
+                    throw new XunitException($"HTTP DELETE failed: {result.StatusCode} {result.ReasonPhrase}");
+                }
+
+                killed += 1;
             }
 
-            return iEnumerable.Count();
+            return killed;
         }
 
         public static void HttpPost(string jsonBody, string api)
@@ -162,7 +242,7 @@ namespace Tests
             var result = task.Result;
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("{0}: {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
             }
         }
 

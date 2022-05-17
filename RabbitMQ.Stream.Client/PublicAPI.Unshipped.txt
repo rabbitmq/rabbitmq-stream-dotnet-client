@@ -1,3 +1,6 @@
+abstract RabbitMQ.Stream.Client.Reliable.ReliableBase.Close() -> System.Threading.Tasks.Task
+abstract RabbitMQ.Stream.Client.Reliable.ReliableBase.CloseReliable() -> System.Threading.Tasks.Task
+abstract RabbitMQ.Stream.Client.Reliable.ReliableBase.GetNewReliable(bool boot) -> System.Threading.Tasks.Task
 const RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.AmqpValue = 119 -> byte
 const RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.ApplicationData = 117 -> byte
 const RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.ApplicationProperties = 116 -> byte
@@ -84,6 +87,10 @@ const RabbitMQ.Stream.Client.UnsubscribeRequest.Key = 12 -> ushort
 const RabbitMQ.Stream.Client.UnsubscribeResponse.Key = 12 -> ushort
 override RabbitMQ.Stream.Client.LeaderLocator.ToString() -> string
 override RabbitMQ.Stream.Client.LogEventListener.Dispose() -> void
+override RabbitMQ.Stream.Client.Reliable.ReliableConsumer.Close() -> System.Threading.Tasks.Task
+override RabbitMQ.Stream.Client.Reliable.ReliableConsumer.ToString() -> string
+override RabbitMQ.Stream.Client.Reliable.ReliableProducer.Close() -> System.Threading.Tasks.Task
+override RabbitMQ.Stream.Client.Reliable.ReliableProducer.ToString() -> string
 RabbitMQ.Stream.Client.AbstractEntity
 RabbitMQ.Stream.Client.AbstractEntity.AbstractEntity() -> void
 RabbitMQ.Stream.Client.AbstractEntity.client -> RabbitMQ.Stream.Client.Client
@@ -613,8 +620,8 @@ RabbitMQ.Stream.Client.Reliable.IPublishingIdStrategy
 RabbitMQ.Stream.Client.Reliable.IPublishingIdStrategy.GetPublishingId() -> ulong
 RabbitMQ.Stream.Client.Reliable.IPublishingIdStrategy.InitPublishingId() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
-RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenConnected() -> void
-RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenDisconnected(out bool reconnect) -> void
+RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenConnected(string connectionInfo) -> void
+RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenDisconnected(string connectionInfo) -> bool
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.InsertDateTime.get -> System.DateTime
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.InsertDateTime.init -> void
@@ -622,9 +629,30 @@ RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.Messages.get -> System.Coll
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.MessagesConfirmation() -> void
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.PublishingId.get -> ulong
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.Status.get -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
+RabbitMQ.Stream.Client.Reliable.ReliableBase
+RabbitMQ.Stream.Client.Reliable.ReliableBase.Init() -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.Reliable.ReliableBase.IsOpen() -> bool
+RabbitMQ.Stream.Client.Reliable.ReliableBase.ReliableBase() -> void
+RabbitMQ.Stream.Client.Reliable.ReliableBase.TryToReconnect(RabbitMQ.Stream.Client.Reliable.IReconnectStrategy reconnectStrategy) -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.Reliable.ReliableBase._inReconnection -> bool
+RabbitMQ.Stream.Client.Reliable.ReliableBase._needReconnect -> bool
+RabbitMQ.Stream.Client.Reliable.ReliableConsumer
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ClientProvidedName.get -> string
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ClientProvidedName.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.get -> System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.OffsetSpec.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ReconnectStrategy.get -> RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ReconnectStrategy.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.Reference.get -> string
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.Reference.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.Stream.get -> string
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.Stream.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.StreamSystem.get -> RabbitMQ.Stream.Client.StreamSystem
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.StreamSystem.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducer
-RabbitMQ.Stream.Client.Reliable.ReliableProducer.Close() -> System.Threading.Tasks.Task
-RabbitMQ.Stream.Client.Reliable.ReliableProducer.IsOpen() -> bool
 RabbitMQ.Stream.Client.Reliable.ReliableProducer.Send(RabbitMQ.Stream.Client.Message message) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.ReliableProducer.Send(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig
@@ -812,12 +840,10 @@ RabbitMQ.Stream.Client.UnsubscribeResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.Version
 RabbitMQ.Stream.Client.VirtualHostAccessFailureException
 RabbitMQ.Stream.Client.VirtualHostAccessFailureException.VirtualHostAccessFailureException(string s) -> void
+readonly RabbitMQ.Stream.Client.Reliable.ReliableBase.SemaphoreSlim -> System.Threading.SemaphoreSlim
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.GetAnySize(object value) -> int
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.GetSequenceSize(System.Buffers.ReadOnlySequence<byte> data) -> int
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteAny(System.Span<byte> seq, object value) -> int
-static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteString(System.Span<byte> seq, string value) -> int
-static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteTimestamp(System.Span<byte> seq, System.DateTime value) -> int
-static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteUInt64(System.Span<byte> seq, ulong value) -> int
 static RabbitMQ.Stream.Client.AMQP.Data.Parse(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) -> RabbitMQ.Stream.Client.AMQP.Data
 static RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.Read(System.Buffers.ReadOnlySequence<byte> amqpData) -> byte
 static RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.Write(System.Span<byte> span, byte data) -> int
@@ -837,6 +863,7 @@ static RabbitMQ.Stream.Client.PooledTaskSource<T>.Rent() -> RabbitMQ.Stream.Clie
 static RabbitMQ.Stream.Client.PooledTaskSource<T>.Return(RabbitMQ.Stream.Client.ManualResetValueTaskSource<T> task) -> void
 static RabbitMQ.Stream.Client.Producer.Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ProducerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Producer>
 static RabbitMQ.Stream.Client.Publish.Version.get -> byte
+static RabbitMQ.Stream.Client.Reliable.ReliableConsumer.CreateReliableConsumer(RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig reliableConsumerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.ReliableConsumer>
 static RabbitMQ.Stream.Client.Reliable.ReliableProducer.CreateReliableProducer(RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig reliableProducerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.ReliableProducer>
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupRandomConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>

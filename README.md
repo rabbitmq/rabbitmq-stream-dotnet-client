@@ -31,6 +31,7 @@
     - [Handle Metadata Update](#handle-metadata-update)
     - [Reliable](#reliable)
       - [Reliable Producer](#reliable-producer)
+      - [Reliable Consumer](#reliable-consumer)
 - [Build from source](#build-from-source)
 - [Project Status](#project-status)
 - [Release Process](#release-process)
@@ -412,8 +413,10 @@ You can use `MetadataHandler` to handle it:
 ```
 ### Reliable 
  - Reliable Producer
- - Reliable Consumer (not ready yet)
+ - Reliable Consumer </p>
+See the directory [Examples/Reliable](./Examples/Reliable)
 
+ 
 ### Reliable Producer
 Reliable Producer is a smart layer built up of the standard `Producer`. </b>   
 The idea is to leave the user decides what to use, the standard or reliable producer. </b>
@@ -423,7 +426,7 @@ The main features are:
 - Auto-Reconnect in case of disconnection
 - Trace sent and received messages
 - Invalidate messages
-- Handle the metadata Update
+- [Handle the metadata Update](#reliable-handle-metadata-update)
 
 #### Provide publishingID automatically
 Reliable Producer retrieves the last publishingID given the producer name. </b>
@@ -433,6 +436,7 @@ Zero(0) is the default value in case there is no a publishingID.
 Reliable Producer restores the TCP connection in case the Producer is disconnected for some reason.
 During the reconnection it continues to store the messages in a local-list.
 The user will receive back the confirmed or un-confirmed messages.
+See [Reconnection Strategy](#reconnection-strategy)
 
 #### Trace sent and received messages
 Reliable Producer keeps in memory each sent message and remove from the memory when the message is confirmed or goes in timout.
@@ -457,22 +461,35 @@ ConfirmationHandler = confirmation =>
 If the client doesn't receive a confirmation within 2 seconds Reliable Producer removes the message from the internal messages cache.
 The user will receive `ConfirmationStatus.TimeoutError` in the `ConfirmationHandler`.
 
-#### Handle the metadata Update
-If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate` event.
-Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the producer.
 #### Send API
 Reliable Producer implements two `send(..)`
 - `Send(Message message)` // standard
 - `Send(List<Message> messages, CompressionType compressionType)` //sub-batching with compression
 
-### Reconnection Strategy 
-By default Reliable Producer uses an `BackOffReconnectStrategy` to reconnect the client.
+
+### Reliable Consumer
+Reliable Consumer is a smart layer built up of the standard `Consumer`. </b>   
+The idea is to leave the user decides what to use, the standard or reliable Consumer. </b>
+
+The main features are:
+- Auto-Reconnect in case of disconnection
+- Auto restart consuming from the last offset
+- [Handle the metadata Update](#reliable-handle-metadata-update)
+
+#### Auto-Reconnect
+Reliable Consumer restores the TCP connection in case the Producer is disconnected for some reason.
+Reliable Consumer will restart consuming from the last offset stored.
+See [Reconnection Strategy](#reconnection-strategy)
+
+### Reconnection Strategy
+By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
 You can customize the behaviour implementing the `IReconnectStrategy` interface:
 ```csharp
-void WhenDisconnected(out bool reconnect);
-void WhenConnected();
+bool WhenDisconnected(string connectionInfo);
+void WhenConnected(string connectionInfo);
 ```
-with `reconnect` you can decide when reconnect the producer.
+If `WhenDisconnected` return is `true` Producer/Consumer will be reconnected else closed.
+`connectionInfo` add information about the connection.
 
 You can use it:
 ```csharp
@@ -482,9 +499,10 @@ var p = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig
 ReconnectStrategy = MyReconnectStrategy
 ```
 
-#### Examples
-See the directory [Examples/Reliable](./Examples/Reliable)
 
+### Reliable handle metadata update
+If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate` event.
+Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the producer/consumer.
 
 ## Build from source
 

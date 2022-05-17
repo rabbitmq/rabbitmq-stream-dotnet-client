@@ -81,13 +81,13 @@ namespace RabbitMQ.Stream.Client
             await client.Close("system close");
         }
 
-        private readonly SemaphoreSlim _semLocatorConnection = new(1);
+        private readonly SemaphoreSlim _semClientProvidedName = new(1);
 
         private async Task MayBeReconnectLocator()
         {
             try
             {
-                await _semLocatorConnection.WaitAsync();
+                await _semClientProvidedName.WaitAsync();
                 {
                     if (client.IsClosed)
                     {
@@ -100,7 +100,7 @@ namespace RabbitMQ.Stream.Client
             }
             finally
             {
-                _semLocatorConnection.Release();
+                _semClientProvidedName.Release();
             }
         }
 
@@ -126,8 +126,18 @@ namespace RabbitMQ.Stream.Client
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Producer.Create(clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName },
-                producerConfig, metaStreamInfo);
+            try
+            {
+                await _semClientProvidedName.WaitAsync();
+
+                return await Producer.Create(
+                    clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName },
+                    producerConfig, metaStreamInfo);
+            }
+            finally
+            {
+                _semClientProvidedName.Release();
+            }
         }
 
         public async Task CreateStream(StreamSpec spec)
@@ -206,6 +216,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
+            await MayBeReconnectLocator();
             var meta = await client.QueryMetadata(new[] { consumerConfig.Stream });
             var metaStreamInfo = meta.StreamInfos[consumerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
@@ -213,8 +224,17 @@ namespace RabbitMQ.Stream.Client
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            return await Consumer.Create(clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName },
-                consumerConfig, metaStreamInfo);
+            try
+            {
+                await _semClientProvidedName.WaitAsync();
+                var s = clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName };
+                return await Consumer.Create(s,
+                    consumerConfig, metaStreamInfo);
+            }
+            finally
+            {
+                _semClientProvidedName.Release();
+            }
         }
     }
 
