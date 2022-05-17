@@ -80,15 +80,20 @@ namespace RabbitMQ.Stream.Client
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
             var advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
 
-            while (broker.Host != advertisedHost ||
-                   broker.Port != uint.Parse(advertisedPort))
+            var attempts = 0;
+            while (broker.Host != advertisedHost || broker.Port != uint.Parse(advertisedPort))
             {
-                await client.Close("advertised_host or advertised_port doesn't mach");
+                attempts++;
+                await client.Close("advertised_host or advertised_port doesn't match");
 
                 client = routing.CreateClient(clientParameters with { Endpoint = endPoint });
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
                 advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
+                if (attempts > 100)
+                {
+                    throw new RoutingClientException($"Could not find broker ({broker.Host}:{broker.Port}) after 100 attempts");
+                }
                 // TODO: Maybe an external parameter
                 Thread.Sleep(TimeSpan.FromMilliseconds(200));
             }
