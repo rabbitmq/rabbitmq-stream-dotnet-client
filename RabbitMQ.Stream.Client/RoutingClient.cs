@@ -98,11 +98,24 @@ namespace RabbitMQ.Stream.Client
                         $"Could not find broker ({broker.Host}:{broker.Port}) after {maxAttempts} attempts");
                 }
 
-                // TODO: Maybe an external parameter
                 Thread.Sleep(TimeSpan.FromMilliseconds(200));
             }
 
             return client;
+        }
+
+        private static int MaxAttempts(StreamInfo metaDataInfo)
+        {
+            // Here we have a reasonable number of retry.
+            // based on the stream configuration
+            // It will retry to the same node more than one time
+            // to be sure that there is not some temp fail
+            return (int)Math.Pow(2
+                                 +
+                                 1 // The leader node
+                                 +
+                                 metaDataInfo.Replicas.Count, // Replicas
+                2); // Pow just to be sure that the LoadBalancer will ping all the nodes
         }
 
         /// <summary>
@@ -111,9 +124,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
-            var maxAttempts = (int)Math.Pow(2 + metaDataInfo.Replicas.Count, 2);
-
-            return await LookupConnection(clientParameters, metaDataInfo.Leader, maxAttempts);
+            return await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo));
         }
 
         /// <summary>
@@ -132,9 +143,8 @@ namespace RabbitMQ.Stream.Client
             var rnd = new Random();
             var brokerId = rnd.Next(0, brokers.Count);
             var broker = brokers[brokerId];
-            var maxAttempts = (int)Math.Pow(2 + brokers.Count, 2);
 
-            return await LookupConnection(clientParameters, broker, maxAttempts);
+            return await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo));
         }
     }
 
