@@ -1,6 +1,9 @@
 name: publish rabbitmq-stream-dotnet-client
 
 on:
+  create:
+    tags:
+      - '*'
   push:
     tags:
       - '*'
