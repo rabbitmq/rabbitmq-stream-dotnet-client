@@ -19,7 +19,6 @@ namespace RabbitMQ.Stream.Client
 
     public class Routing : IRouting
     {
-
         public bool ValidateDns { get; set; } = true;
 
         public IClient CreateClient(ClientParameters clientParameters)
@@ -39,8 +38,11 @@ namespace RabbitMQ.Stream.Client
     /// </summary>
     public static class RoutingHelper<T> where T : IRouting, new()
     {
-        private static async Task<IClient> LookupConnection(ClientParameters clientParameters,
-            Broker broker)
+        private static async Task<IClient> LookupConnection(
+            ClientParameters clientParameters,
+            Broker broker,
+            int maxAttempts
+        )
         {
             var routing = new T();
 
@@ -80,20 +82,40 @@ namespace RabbitMQ.Stream.Client
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
             var advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
 
-            while (broker.Host != advertisedHost ||
-                   broker.Port != uint.Parse(advertisedPort))
+            var attemptNo = 0;
+            while (broker.Host != advertisedHost || broker.Port != uint.Parse(advertisedPort))
             {
-                await client.Close("advertised_host or advertised_port doesn't mach");
+                attemptNo++;
+                await client.Close("advertised_host or advertised_port doesn't match");
 
                 client = routing.CreateClient(clientParameters with { Endpoint = endPoint });
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
                 advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
-                // TODO: Maybe an external parameter
+                if (attemptNo > maxAttempts)
+                {
+                    throw new RoutingClientException(
+                        $"Could not find broker ({broker.Host}:{broker.Port}) after {maxAttempts} attempts");
+                }
+
                 Thread.Sleep(TimeSpan.FromMilliseconds(200));
             }
 
             return client;
+        }
+
+        private static int MaxAttempts(StreamInfo metaDataInfo)
+        {
+            // Here we have a reasonable number of retry.
+            // based on the stream configuration
+            // It will retry to the same node more than one time
+            // to be sure that there is not some temp fail
+            return (int)Math.Pow(2
+                                 +
+                                 1 // The leader node
+                                 +
+                                 metaDataInfo.Replicas.Count, // Replicas
+                2); // Pow just to be sure that the LoadBalancer will ping all the nodes
         }
 
         /// <summary>
@@ -102,7 +124,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo)
         {
-            return await LookupConnection(clientParameters, metaDataInfo.Leader);
+            return await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo));
         }
 
         /// <summary>
@@ -121,7 +143,8 @@ namespace RabbitMQ.Stream.Client
             var rnd = new Random();
             var brokerId = rnd.Next(0, brokers.Count);
             var broker = brokers[brokerId];
-            return await LookupConnection(clientParameters, broker);
+
+            return await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo));
         }
     }
 
