@@ -25,4 +25,4 @@ jobs:
       - name: Build (Release)
         run: dotnet build --configuration=Release --verbosity=normal
       - name: Publish to NuGet
-        run: dotnet nuget push --api-key ${{secrets.NUGET_API_KEY}} --source 'https://api.nuget.org/v3/index.json' ${{github.workspace}}/packages/RabbitMQ.Stream.Client.*.nupkg
+        run: dotnet nuget push --skip-duplicate --api-key ${{secrets.NUGET_API_KEY}} --source 'https://api.nuget.org/v3/index.json' ${{github.workspace}}/packages/RabbitMQ.Stream.Client.*.nupkg
