@@ -131,7 +131,7 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939), new List<Broker>());
             await Assert.ThrowsAsync<AggregateException>(() => RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo));
         }
-        
+
         [Fact]
         public async Task AddressResolverShouldRaiseAnExceptionIfAdvIsNull()
         {

@@ -107,7 +107,7 @@ namespace RabbitMQ.Stream.Client
                                  metaDataInfo.Replicas.Count, // Replicas
                 2); // Pow just to be sure that the LoadBalancer will ping all the nodes
         }
-        
+
         private static string GetPropertyValue(IDictionary<string, string> connectionProperties, string key)
         {
             if (!connectionProperties.TryGetValue(key, out var value))
@@ -149,6 +149,7 @@ namespace RabbitMQ.Stream.Client
                     exceptions.Add(ex);
                 }
             }
+
             throw new AggregateException("None of the brokers could be reached", exceptions);
         }
     }

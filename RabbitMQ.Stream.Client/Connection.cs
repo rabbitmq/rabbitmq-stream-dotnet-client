@@ -65,22 +65,23 @@ namespace RabbitMQ.Stream.Client
             {
                 await socket.ConnectAsync(endpoint);
             }
-            catch (SocketException ex) 
+            catch (SocketException ex)
             {
                 if (endpoint.GetType() == typeof(IPEndPoint))
                 {
                     var ipEndPoint = (IPEndPoint)endpoint;
-                    throw new AggregateException($"Socket exception while connecting to {ipEndPoint.Address}:{ipEndPoint.Port}", ex);
+                    throw new Exception($"Socket exception while connecting to {ipEndPoint.Address}:{ipEndPoint.Port}", ex);
                 }
-                
+
                 if (endpoint.GetType() == typeof(DnsEndPoint))
                 {
                     var dnsEndPoint = (DnsEndPoint)endpoint;
-                    throw new AggregateException($"Socket exception while connecting to {dnsEndPoint.Host}:{dnsEndPoint.Port}", ex);
+                    throw new Exception($"Socket exception while connecting to {dnsEndPoint.Host}:{dnsEndPoint.Port}", ex);
                 }
 
                 throw;
             }
+
             return new Connection(socket, commandCallback, closedCallBack, sslOption);
         }
 
