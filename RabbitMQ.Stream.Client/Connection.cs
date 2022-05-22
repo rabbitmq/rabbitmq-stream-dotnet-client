@@ -52,7 +52,7 @@ namespace RabbitMQ.Stream.Client
             Task.Run(ProcessIncomingFrames);
         }
 
-        public static async Task<Connection> Create(EndPoint ipEndpoint, Func<Memory<byte>, Task> commandCallback,
+        public static async Task<Connection> Create(EndPoint endpoint, Func<Memory<byte>, Task> commandCallback,
             Func<string, Task> closedCallBack, SslOption sslOption)
         {
             var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
@@ -61,7 +61,26 @@ namespace RabbitMQ.Stream.Client
             socket.SendBufferSize *= 10;
             socket.ReceiveBufferSize *= 10;
 
-            await socket.ConnectAsync(ipEndpoint);
+            try
+            {
+                await socket.ConnectAsync(endpoint);
+            }
+            catch (SocketException ex) 
+            {
+                if (endpoint.GetType() == typeof(IPEndPoint))
+                {
+                    var ipEndPoint = (IPEndPoint)endpoint;
+                    throw new AggregateException($"Socket exception while connecting to {ipEndPoint.Address}:{ipEndPoint.Port}", ex);
+                }
+                
+                if (endpoint.GetType() == typeof(DnsEndPoint))
+                {
+                    var dnsEndPoint = (DnsEndPoint)endpoint;
+                    throw new AggregateException($"Socket exception while connecting to {dnsEndPoint.Host}:{dnsEndPoint.Port}", ex);
+                }
+
+                throw;
+            }
             return new Connection(socket, commandCallback, closedCallBack, sslOption);
         }
 
