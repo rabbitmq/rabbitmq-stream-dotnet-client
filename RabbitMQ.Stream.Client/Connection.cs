@@ -67,19 +67,19 @@ namespace RabbitMQ.Stream.Client
             }
             catch (SocketException ex)
             {
-                if (endpoint.GetType() == typeof(IPEndPoint))
+                switch (endpoint)
                 {
-                    var ipEndPoint = (IPEndPoint)endpoint;
-                    throw new Exception($"Socket exception while connecting to {ipEndPoint.Address}:{ipEndPoint.Port}", ex);
+                    case IPEndPoint ipEndPoint:
+                        ex.Data.Add("Address", ipEndPoint.Address);
+                        ex.Data.Add("Port", ipEndPoint.Port);
+                        throw;
+                    case DnsEndPoint dnsEndPoint:
+                        ex.Data.Add("Host", dnsEndPoint.Host);
+                        ex.Data.Add("Port", dnsEndPoint.Port);
+                        throw;
+                    default:
+                        throw;
                 }
-
-                if (endpoint.GetType() == typeof(DnsEndPoint))
-                {
-                    var dnsEndPoint = (DnsEndPoint)endpoint;
-                    throw new Exception($"Socket exception while connecting to {dnsEndPoint.Host}:{dnsEndPoint.Port}", ex);
-                }
-
-                throw;
             }
 
             return new Connection(socket, commandCallback, closedCallBack, sslOption);
