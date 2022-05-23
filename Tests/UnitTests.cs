@@ -119,17 +119,30 @@ namespace Tests
     public class UnitTests
     {
         [Fact]
-        public void AddressResolverShouldRaiseAnExceptionIfAdvIsNull()
+        public async Task GiveProperExceptionWhenUnableToConnect()
+        {
+            var clientParameters = new ClientParameters
+            {
+                // if using `Routing` and not a purpose-built impl of `IRouting`,
+                // it's enough to specify an endpoint that won't be reached.
+                // Can be replaced with `IRouting` impl that throws on create.
+                Endpoint = new DnsEndPoint("localhost", 3939)
+            };
+            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939), new List<Broker>());
+            await Assert.ThrowsAsync<AggregateException>(() => RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo));
+        }
+
+        [Fact]
+        public async Task AddressResolverShouldRaiseAnExceptionIfAdvIsNull()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
             var clientParameters = new ClientParameters()
             {
                 AddressResolver = addressResolver,
             };
-            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552),
-                null);
+            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552), new List<Broker>());
             // run more than one time just to be sure to use all the IP with random
-            Assert.ThrowsAsync<RoutingClientException>(() =>
+            await Assert.ThrowsAsync<RoutingClientException>(() =>
                 RoutingHelper<MissingFieldsRouting>.LookupLeaderConnection(clientParameters, metaDataInfo));
         }
 
@@ -153,7 +166,7 @@ namespace Tests
         }
 
         [Fact]
-        public void RoutingHelperShouldThrowIfLoadBalancerIsMisconfigured()
+        public async Task RoutingHelperShouldThrowIfLoadBalancerIsMisconfigured()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
             var clientParameters = new ClientParameters()
@@ -163,7 +176,7 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("node2", 5552),
                 new List<Broker>() { new Broker("replica", 5552) });
 
-            Assert.ThrowsAsync<RoutingClientException>(
+            await Assert.ThrowsAsync<RoutingClientException>(
                 () => RoutingHelper<MisconfiguredLoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo));
         }
 

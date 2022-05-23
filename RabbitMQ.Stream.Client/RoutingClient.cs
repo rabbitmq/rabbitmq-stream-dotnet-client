@@ -69,16 +69,6 @@ namespace RabbitMQ.Stream.Client
             endPoint = clientParameters.AddressResolver.EndPoint;
             var client = routing.CreateClient(clientParameters with { Endpoint = endPoint });
 
-            string GetPropertyValue(IDictionary<string, string> connectionProperties, string key)
-            {
-                if (!connectionProperties.TryGetValue(key, out var value))
-                {
-                    throw new RoutingClientException($"can't lookup {key}");
-                }
-
-                return value;
-            }
-
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
             var advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
 
@@ -118,6 +108,16 @@ namespace RabbitMQ.Stream.Client
                 2); // Pow just to be sure that the LoadBalancer will ping all the nodes
         }
 
+        private static string GetPropertyValue(IDictionary<string, string> connectionProperties, string key)
+        {
+            if (!connectionProperties.TryGetValue(key, out var value))
+            {
+                throw new RoutingClientException($"can't lookup {key}");
+            }
+
+            return value;
+        }
+
         /// <summary>
         /// Gets the leader connection. The producer must connect to the leader. 
         /// </summary>
@@ -135,16 +135,22 @@ namespace RabbitMQ.Stream.Client
         {
             var brokers = new List<Broker>() { metaDataInfo.Leader };
             brokers.AddRange(metaDataInfo.Replicas);
-
-            // pick one random node from leader and replicas.
-            // we need to use the LookupConnection since not all the nodes can have 
-            // replicas. For example if AddressResolver is configured the client could be
-            // connected to a node without replicas.
             var rnd = new Random();
-            var brokerId = rnd.Next(0, brokers.Count);
-            var broker = brokers[brokerId];
+            brokers.Sort((_, _) => rnd.Next(-1, 1));
+            var exceptions = new List<Exception>();
+            foreach (var broker in brokers)
+            {
+                try
+                {
+                    return await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo));
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+            }
 
-            return await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo));
+            throw new AggregateException("None of the brokers could be reached", exceptions);
         }
     }
 
