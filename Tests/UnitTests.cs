@@ -155,7 +155,7 @@ namespace Tests
                 AddressResolver = addressResolver,
             };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("node2", 5552),
-                new List<Broker>() { new Broker("replica", 5552) });
+                new List<Broker>() { new Broker("node1", 5552), new Broker("node3", 5552) });
             // run more than one time just to be sure to use all the IP with random
             for (var i = 0; i < 4; i++)
             {

@@ -46,27 +46,34 @@ namespace RabbitMQ.Stream.Client
         {
             var routing = new T();
 
-            var endPoint = new IPEndPoint(IPAddress.Loopback, (int)broker.Port);
-
-            if (routing.ValidateDns)
-            {
-                var hostEntry = await Dns.GetHostEntryAsync(broker.Host);
-                endPoint = new IPEndPoint(hostEntry.AddressList.First(), (int)broker.Port);
-            }
-
             if (clientParameters.AddressResolver == null
                 || clientParameters.AddressResolver.Enabled == false)
             {
+                // We use the localhost ip as default
+                // this is mostly to have a default value.
+
+                var endPointNoLb = new IPEndPoint(IPAddress.Loopback, (int)broker.Port);
+
+                // ValidateDns just validate the DNS 
+                // it the real world application is always TRUE
+                // routing.ValidateDns == false is used just for test
+                // it should not change.
+                if (routing.ValidateDns)
+                {
+                    var hostEntry = await Dns.GetHostEntryAsync(broker.Host);
+                    endPointNoLb = new IPEndPoint(hostEntry.AddressList.First(), (int)broker.Port);
+                }
+
                 // In this case we just return the node (leader for producer, random for consumer)
                 // since there is not load balancer configuration
 
-                return routing.CreateClient(clientParameters with { Endpoint = endPoint });
+                return routing.CreateClient(clientParameters with { Endpoint = endPointNoLb });
             }
 
             // here it means that there is a AddressResolver configuration
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
-            endPoint = clientParameters.AddressResolver.EndPoint;
+            var endPoint = clientParameters.AddressResolver.EndPoint;
             var client = routing.CreateClient(clientParameters with { Endpoint = endPoint });
 
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
