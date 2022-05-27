@@ -3,7 +3,9 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Collections;
 using System.Diagnostics.Tracing;
+using System.Linq;
 
 namespace RabbitMQ.Stream.Client
 {
