@@ -128,11 +128,11 @@ public class ReliableProducer : ReliableBase
 
         catch (CreateProducerException ce)
         {
-            LogEventSource.Log.LogError($"{ce}. ReliableProducer closed", ce);
+            LogEventSource.Log.LogError("ReliableProducer closed", ce);
         }
         catch (Exception e)
         {
-            LogEventSource.Log.LogError($"Error during initialization: {e}.", e);
+            LogEventSource.Log.LogError("Error during initialization: ", e);
             SemaphoreSlim.Release();
             await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
         }
@@ -188,7 +188,7 @@ public class ReliableProducer : ReliableBase
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError($"Error sending message: {e}.", e);
+            LogEventSource.Log.LogError("Error sending message: ", e);
         }
         finally
         {
@@ -211,7 +211,7 @@ public class ReliableProducer : ReliableBase
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError($"Error sending messages: {e}.", e);
+            LogEventSource.Log.LogError("Error sending messages: ", e);
         }
         finally
         {
