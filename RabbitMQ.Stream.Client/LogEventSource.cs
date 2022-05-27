@@ -129,7 +129,11 @@ namespace RabbitMQ.Stream.Client
         [NonEvent]
         public ILogEventSource LogError(string message, Exception exception)
         {
-            if (exception.Data.Count == 0)
+            if (exception == null)
+            {
+                LogError(message);
+            }
+            else if (exception.Data.Count == 0)
             {
                 LogError($"{message}{ConvertToString(exception)}");
             }
