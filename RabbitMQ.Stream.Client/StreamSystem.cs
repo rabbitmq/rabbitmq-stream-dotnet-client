@@ -21,7 +21,20 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
-        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
+        private IList<EndPoint> _endPoints = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
+        public IList<EndPoint> Endpoints
+        {
+            get => AddressResolver != null ? new List<EndPoint> { AddressResolver.EndPoint } : _endPoints;
+            set
+            {
+                if (AddressResolver != null)
+                {
+                    throw new ArgumentException("Cannot set endpoints in configuration with address resolver");
+                }
+
+                _endPoints = value;
+            }
+        }
 
         public AddressResolver AddressResolver { get; set; } = null;
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";

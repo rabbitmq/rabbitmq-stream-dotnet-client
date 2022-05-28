@@ -173,7 +173,6 @@ var config = new StreamSystemConfig
     Password = "guest",
     VirtualHost = "/",
     AddressResolver = lbAddressResolver,
-    Endpoints = new List<EndPoint> {addressResolver.EndPoint},
 }    
 ```
 
