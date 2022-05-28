@@ -4,14 +4,22 @@
 
 using System;
 using System.Diagnostics.Tracing;
+using System.IO;
 
 namespace RabbitMQ.Stream.Client
 {
     public sealed class LogEventListener : EventListener, IDisposable
     {
+        private readonly TextWriter io;
+
         public LogEventListener()
         {
             EnableEvents((EventSource)LogEventSource.Log, EventLevel.Verbose, Keywords.Log);
+        }
+
+        internal LogEventListener(TextWriter io) : this()
+        {
+            this.io = io;
         }
 
         /// <summary>
@@ -37,7 +45,25 @@ namespace RabbitMQ.Stream.Client
         {
             for (var i = 0; i < eventData.Payload.Count; i++)
             {
-                Console.WriteLine("{0}: {1}: {2}", eventData.Level, eventData.Message, eventData.Payload[i]);
+                TextWriter onEventWrittenIO;
+                switch (eventData.Level)
+                {
+                    case EventLevel.Error:
+                    case EventLevel.Warning:
+                    case EventLevel.Critical:
+                        onEventWrittenIO = Console.Error;
+                        break;
+                    default:
+                        onEventWrittenIO = Console.Out;
+                        break;
+                }
+
+                if (io != null)
+                {
+                    onEventWrittenIO = io;
+                }
+
+                onEventWrittenIO.WriteLine("{0}: {1}: {2}", eventData.Level, eventData.Message, eventData.Payload[i]);
             }
 
             base.OnEventWritten(eventData);

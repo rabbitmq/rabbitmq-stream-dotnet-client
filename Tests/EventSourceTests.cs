@@ -5,10 +5,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
+using System.IO;
+using System.Text;
 
 using RabbitMQ.Stream.Client;
 
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Tests
 {
@@ -29,6 +32,13 @@ namespace Tests
 
     public class EventSourceTests
     {
+        private readonly ITestOutputHelper testOutputHelper;
+
+        public EventSourceTests(ITestOutputHelper testOutputHelper)
+        {
+            this.testOutputHelper = testOutputHelper;
+        }
+
         /// <summary>
         /// The name of the argument whose value is used as the payload when writing the event.
         /// </summary>
@@ -122,18 +132,41 @@ namespace Tests
 
             Exception resultException = default;
 
-            var exception =
-                new Exception(Exception2Message,
-                new Exception(Exception1Message));
+            var exception1 = new Exception(Exception1Message);
+            exception1.Data.Add("foo", "bar");
 
-            new LogEventListener().EventWritten += (sender, args) =>
+            var exception2 = new Exception(Exception2Message, exception1);
+            exception2.Data.Add("baz", "bat");
+
+            var logEventListener = new LogEventListener(new TestOutputTextWriter(testOutputHelper));
+
+            logEventListener.EventWritten += (sender, args) =>
             {
-                resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Error, ExpectedPayloadName, new string[] { nameof(GenerateErrorEvent), Exception1Message, Exception2Message }));
+                resultException = Record.Exception(() =>
+                        args.ValidateEventData(EventLevel.Error, ExpectedPayloadName,
+                            new string[] { nameof(GenerateErrorWithExceptionEvent), Exception1Message, Exception2Message }));
             };
 
-            LogEventSource.Log.LogError(nameof(GenerateErrorEvent), exception);
+            LogEventSource.Log.LogError(nameof(GenerateErrorWithExceptionEvent), exception2);
 
             Assert.Null(resultException);
+        }
+
+        private class TestOutputTextWriter : TextWriter
+        {
+            private readonly ITestOutputHelper testOutputHelper;
+
+            public TestOutputTextWriter(ITestOutputHelper testOutputHelper) : base()
+            {
+                this.testOutputHelper = testOutputHelper;
+            }
+
+            public override Encoding Encoding => Encoding.UTF8;
+
+            public override void WriteLine(string format, object arg0, object arg1, object arg2)
+            {
+                testOutputHelper.WriteLine(string.Format(format, arg0, arg1, arg2));
+            }
         }
     }
 }
