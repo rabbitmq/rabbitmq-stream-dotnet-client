@@ -30,19 +30,24 @@ namespace Tests
         }
     }
 
-    public class EventSourceTests
+    public class EventSourceTests : IDisposable
     {
-        private readonly ITestOutputHelper testOutputHelper;
+        private readonly LogEventListener logEventListener;
 
         public EventSourceTests(ITestOutputHelper testOutputHelper)
         {
-            this.testOutputHelper = testOutputHelper;
+            logEventListener = new LogEventListener(new TestOutputTextWriter(testOutputHelper));
         }
 
         /// <summary>
         /// The name of the argument whose value is used as the payload when writing the event.
         /// </summary>
         private const string ExpectedPayloadName = "message";
+
+        public void Dispose()
+        {
+            logEventListener.Dispose();
+        }
 
         /// <summary>
         /// Verifies the contents of the event
@@ -54,16 +59,26 @@ namespace Tests
         {
             Exception resultException = default;
 
-            new LogEventListener().EventWritten += (sender, args) =>
+            EventHandler<EventWrittenEventArgs> handler = (sender, args) =>
             {
-                resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Informational, ExpectedPayloadName, new string[] { nameof(GenerateInfoEvent) }));
+                resultException = Record.Exception(() =>
+                        args.ValidateEventData(EventLevel.Informational, ExpectedPayloadName, new string[] { nameof(GenerateInfoEvent) }));
             };
 
-            // Simple message.
-            LogEventSource.Log.LogInformation(nameof(GenerateInfoEvent));
+            try
+            {
+                logEventListener.EventWritten += handler;
 
-            // Simple message formatted with string.Format().
-            LogEventSource.Log.LogInformation("{0}{1}{2}", "Generate", "Info", "Event");
+                // Simple message.
+                LogEventSource.Log.LogInformation(nameof(GenerateInfoEvent));
+
+                // Simple message formatted with string.Format().
+                LogEventSource.Log.LogInformation("{0}{1}{2}", "Generate", "Info", "Event");
+            }
+            finally
+            {
+                logEventListener.EventWritten -= handler;
+            }
 
             Assert.Null(resultException);
         }
@@ -78,16 +93,25 @@ namespace Tests
         {
             Exception resultException = default;
 
-            new LogEventListener().EventWritten += (sender, args) =>
+            EventHandler<EventWrittenEventArgs> handler = (sender, args) =>
             {
                 resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Warning, ExpectedPayloadName, new string[] { nameof(GenerateWarningEvent) }));
             };
 
-            // Simple message.
-            LogEventSource.Log.LogWarning(nameof(GenerateWarningEvent));
+            try
+            {
+                logEventListener.EventWritten += handler;
 
-            // Simple message formatted with string.Format().
-            LogEventSource.Log.LogWarning("{0}{1}{2}", "Generate", "Warning", "Event");
+                // Simple message.
+                LogEventSource.Log.LogWarning(nameof(GenerateWarningEvent));
+
+                // Simple message formatted with string.Format().
+                LogEventSource.Log.LogWarning("{0}{1}{2}", "Generate", "Warning", "Event");
+            }
+            finally
+            {
+                logEventListener.EventWritten -= handler;
+            }
 
             Assert.Null(resultException);
         }
@@ -102,19 +126,28 @@ namespace Tests
         {
             Exception resultException = default;
 
-            new LogEventListener().EventWritten += (sender, args) =>
+            EventHandler<EventWrittenEventArgs> handler = (sender, args) =>
             {
                 resultException = Record.Exception(() => args.ValidateEventData(EventLevel.Error, ExpectedPayloadName, new string[] { nameof(GenerateErrorEvent) }));
             };
 
-            // Simple message.
-            LogEventSource.Log.LogError(nameof(GenerateErrorEvent));
+            try
+            {
+                logEventListener.EventWritten += handler;
 
-            // Simple message with null exception.
-            LogEventSource.Log.LogError(nameof(GenerateErrorEvent), default);
+                // Simple message.
+                LogEventSource.Log.LogError(nameof(GenerateErrorEvent));
 
-            // Simple message formatted with string.Format().
-            LogEventSource.Log.LogError("{0}{1}{2}", default, "Generate", "Error", "Event");
+                // Simple message with null exception.
+                LogEventSource.Log.LogError(nameof(GenerateErrorEvent), default);
+
+                // Simple message formatted with string.Format().
+                LogEventSource.Log.LogError("{0}{1}{2}", default, "Generate", "Error", "Event");
+            }
+            finally
+            {
+                logEventListener.EventWritten -= handler;
+            }
 
             Assert.Null(resultException);
         }
@@ -138,16 +171,23 @@ namespace Tests
             var exception2 = new Exception(Exception2Message, exception1);
             exception2.Data.Add("baz", "bat");
 
-            var logEventListener = new LogEventListener(new TestOutputTextWriter(testOutputHelper));
-
-            logEventListener.EventWritten += (sender, args) =>
+            EventHandler<EventWrittenEventArgs> handler = (sender, args) =>
             {
                 resultException = Record.Exception(() =>
                         args.ValidateEventData(EventLevel.Error, ExpectedPayloadName,
                             new string[] { nameof(GenerateErrorWithExceptionEvent), Exception1Message, Exception2Message }));
             };
 
-            LogEventSource.Log.LogError(nameof(GenerateErrorWithExceptionEvent), exception2);
+            try
+            {
+                logEventListener.EventWritten += handler;
+
+                LogEventSource.Log.LogError(nameof(GenerateErrorWithExceptionEvent), exception2);
+            }
+            finally
+            {
+                logEventListener.EventWritten -= handler;
+            }
 
             Assert.Null(resultException);
         }
