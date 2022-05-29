@@ -157,20 +157,19 @@ namespace RabbitMQ.Stream.Client
         [NonEvent]
         private static string ConvertToString(Exception exception)
         {
-            var messageBuilder = new StringBuilder();
+            var messageBuilder = new StringBuilder(exception.ToString());
+            messageBuilder.AppendLine();
 
             do
             {
-                messageBuilder.AppendLine(exception.ToString());
-
-                foreach (DictionaryEntry kvp in exception.Data)
+                if (exception.Data.Count > 0)
                 {
-                    messageBuilder.AppendFormat("{0} : {1}{2}", kvp.Key, kvp.Value, Environment.NewLine);
-                }
+                    messageBuilder.AppendFormat(" ---> {0} Data:{1}", exception.GetType(), Environment.NewLine);
 
-                if (exception.InnerException != null)
-                {
-                    messageBuilder.AppendLine("Inner exception:");
+                    foreach (DictionaryEntry kvp in exception.Data)
+                    {
+                        messageBuilder.AppendFormat("    {0} : {1}{2}", kvp.Key, kvp.Value, Environment.NewLine);
+                    }
                 }
             } while ((exception = exception.InnerException) != null);
 

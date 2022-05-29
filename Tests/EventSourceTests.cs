@@ -160,12 +160,16 @@ namespace Tests
         [Fact]
         public void GenerateErrorWithExceptionEvent()
         {
+            const string Exception0Message = "TextExceptionMessage0";
             const string Exception1Message = "TextExceptionMessage1";
             const string Exception2Message = "TextExceptionMessage2";
 
             Exception resultException = default;
 
-            var exception1 = new Exception(Exception1Message);
+            var exception0 = new Exception(Exception0Message);
+            exception0.Data.Add("ex0", "data0");
+
+            var exception1 = new Exception(Exception1Message, exception0);
             exception1.Data.Add("foo", "bar");
 
             var exception2 = new Exception(Exception2Message, exception1);
