@@ -3,7 +3,9 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Collections;
 using System.Diagnostics.Tracing;
+using System.Text;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -25,14 +27,6 @@ namespace RabbitMQ.Stream.Client
 
         private LogEventSource() : base(EventSourceSettings.EtwSelfDescribingEventFormat)
         { }
-
-        /// <summary>
-        /// </summary>
-        [NonEvent]
-        private static string ConvertToString(Exception exception)
-        {
-            return exception == default ? default : $"{Environment.NewLine}{exception?.ToString()}";
-        }
 
         /// <summary>
         /// Writes an informational log message.
@@ -127,7 +121,14 @@ namespace RabbitMQ.Stream.Client
         [NonEvent]
         public ILogEventSource LogError(string message, Exception exception)
         {
-            LogError($"{message}{ConvertToString(exception)}");
+            if (exception == null)
+            {
+                LogError(message);
+            }
+            else
+            {
+                LogError($"{message}{ConvertToString(exception)}");
+            }
 
             return this;
         }
@@ -149,6 +150,30 @@ namespace RabbitMQ.Stream.Client
         public ILogEventSource LogError(string message, Exception exception, params object[] args)
         {
             return LogError(string.Format(message, args), exception);
+        }
+
+        /// <summary>
+        /// </summary>
+        [NonEvent]
+        private static string ConvertToString(Exception exception)
+        {
+            var messageBuilder = new StringBuilder(exception.ToString());
+            messageBuilder.AppendLine();
+
+            do
+            {
+                if (exception.Data.Count > 0)
+                {
+                    messageBuilder.AppendFormat(" ---> {0} Data:{1}", exception.GetType(), Environment.NewLine);
+
+                    foreach (DictionaryEntry kvp in exception.Data)
+                    {
+                        messageBuilder.AppendFormat("    {0} : {1}{2}", kvp.Key, kvp.Value, Environment.NewLine);
+                    }
+                }
+            } while ((exception = exception.InnerException) != null);
+
+            return messageBuilder.ToString();
         }
     }
 }

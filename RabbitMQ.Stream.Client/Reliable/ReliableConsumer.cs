@@ -93,11 +93,11 @@ public class ReliableConsumer : ReliableBase
 
         catch (CreateProducerException ce)
         {
-            LogEventSource.Log.LogError($"{ce}. ReliableConsumer closed");
+            LogEventSource.Log.LogError("ReliableConsumer closed. ", ce);
         }
         catch (Exception e)
         {
-            LogEventSource.Log.LogError($"Error during initialization: {e}.");
+            LogEventSource.Log.LogError("Error during initialization: ", e);
             SemaphoreSlim.Release();
             await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
         }
