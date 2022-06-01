@@ -15,6 +15,7 @@ namespace RabbitMQ.Stream.Client
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
         public string VirtualHost { get; set; } = "/";
+        public uint Heartbeat { get; set; } = 60;
 
         /// <summary>
         /// TLS options setting.
@@ -49,7 +50,8 @@ namespace RabbitMQ.Stream.Client
                 VirtualHost = config.VirtualHost,
                 Ssl = config.Ssl,
                 AddressResolver = config.AddressResolver,
-                ClientProvidedName = config.ClientProvidedName
+                ClientProvidedName = config.ClientProvidedName,
+                Heartbeat = config.Heartbeat
             };
             // create the metadata client connection
             foreach (var endPoint in config.Endpoints)
