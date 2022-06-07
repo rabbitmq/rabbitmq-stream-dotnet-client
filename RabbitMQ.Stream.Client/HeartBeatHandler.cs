@@ -15,26 +15,37 @@ public class HeartBeatHandler
     private DateTime _lastUpdate = DateTime.Now;
     private short _missedHeartbeat;
 
-    public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc, uint heartbeat)
+    public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc,
+        Func<string, Task<CloseResponse>> close,
+        uint heartbeat, double timerIntervalSeconds = 20)
     {
-        _timer.Enabled = true;
-        _timer.Interval = 20 * 1000;
-        _timer.Elapsed += (sender, args) =>
+        // the heartbeat is disabled when zero
+        // so all the timer won't be enabled
+        if (heartbeat > 0)
         {
-            sendHeartbeatFunc();
-            var seconds = (DateTime.Now - _lastUpdate).TotalSeconds;
-            if (!(seconds > heartbeat))
+            _timer.Enabled = true;
+            _timer.Interval = timerIntervalSeconds * 1000;
+            _timer.Elapsed += (_, _) =>
             {
-                return;
-            }
+                sendHeartbeatFunc();
+                var seconds = (DateTime.Now - _lastUpdate).TotalSeconds;
+                if (!(seconds > heartbeat))
+                {
+                    return;
+                }
 
-            _missedHeartbeat++;
-            LogEventSource.Log.LogWarning($"Heartbeat missed: {_missedHeartbeat}");
-            if (_missedHeartbeat > 3)
-            {
+                _missedHeartbeat++;
+                LogEventSource.Log.LogWarning($"Heartbeat missed: {_missedHeartbeat}");
+                if (_missedHeartbeat <= 3)
+                {
+                    return;
+                }
+
                 LogEventSource.Log.LogWarning($"Too many Heartbeat missed: {_missedHeartbeat}");
-            }
-        };
+                Close();
+                close($"Too many Heartbeat missed: {_missedHeartbeat}");
+            };
+        }
     }
 
     internal void UpdateHeartBeat()
@@ -46,5 +57,10 @@ public class HeartBeatHandler
     internal void Close()
     {
         _timer.Close();
+    }
+
+    internal bool IsActive()
+    {
+        return _timer.Enabled;
     }
 }

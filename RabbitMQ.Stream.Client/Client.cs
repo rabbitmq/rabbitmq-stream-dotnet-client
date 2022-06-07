@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
-        public uint Heartbeat { get; set; } = 30;
+        public uint Heartbeat { get; set; } = 10;
 
         public string ClientProvidedName
         {
@@ -158,7 +158,10 @@ namespace RabbitMQ.Stream.Client
         private Client(ClientParameters parameters)
         {
             Parameters = parameters;
-            _heartBeatHandler = new HeartBeatHandler(SendHeartBeat, parameters.Heartbeat);
+            _heartBeatHandler = new HeartBeatHandler(
+                SendHeartBeat,
+                Close,
+                parameters.Heartbeat);
             IsClosed = false;
         }
 
