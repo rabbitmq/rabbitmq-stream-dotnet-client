@@ -423,7 +423,7 @@ It is possible to configure the heart beat using:
 }
 ```
 - `60` seconds is the default value
-- `0` disable the heartbeat client side
+- `0` will advise server to disable heartbeat
 
 
 ### Reliable 
