@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
-        public uint Heartbeat { get; set; } = 60;
+        public uint Heartbeat { get; set; } = 30;
 
         public string ClientProvidedName
         {
@@ -111,6 +111,8 @@ namespace RabbitMQ.Stream.Client
 
         private int publishCommandsSent;
 
+        private readonly HeartBeatHandler _heartBeatHandler;
+
         public int PublishCommandsSent => publishCommandsSent;
 
         public int MessagesSent => messagesSent;
@@ -156,6 +158,7 @@ namespace RabbitMQ.Stream.Client
         private Client(ClientParameters parameters)
         {
             Parameters = parameters;
+            _heartBeatHandler = new HeartBeatHandler(SendHeartBeat, parameters.Heartbeat);
             IsClosed = false;
         }
 
@@ -374,12 +377,19 @@ namespace RabbitMQ.Stream.Client
 
             if (MemoryMarshal.TryGetArray(frameMemory, out ArraySegment<byte> segment))
             {
-                ArrayPool<byte>.Shared.Return(segment.Array);
+                if (segment.Array != null)
+                {
+                    ArrayPool<byte>.Shared.Return(segment.Array);
+                }
             }
         }
 
         private void HandleCorrelatedCommand(ushort tag, ref ReadOnlySequence<byte> frame)
         {
+            // in general every action updates the heartbeat server side
+            // so there is no need to send the heartbeat when not necessary 
+            _heartBeatHandler.UpdateHeartBeat();
+
             switch (tag)
             {
                 case DeclarePublisherResponse.Key:
@@ -439,6 +449,10 @@ namespace RabbitMQ.Stream.Client
                     HandleCorrelatedResponse(closeResponse);
                     IsClosed = true;
                     break;
+                case HeartBeatHandler.Key:
+                    Console.WriteLine($"hb received {DateTime.Now}");
+                    _heartBeatHandler.UpdateHeartBeat();
+                    break;
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
@@ -468,6 +482,8 @@ namespace RabbitMQ.Stream.Client
             {
                 return new CloseResponse(0, ResponseCode.Ok);
             }
+
+            _heartBeatHandler.Close();
 
             // TODO LRB timeout
             var result =
@@ -510,6 +526,11 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<bool> StoreOffset(string reference, string stream, ulong offsetValue)
         {
             return await Publish(new StoreOffsetRequest(stream, reference, offsetValue));
+        }
+
+        internal async ValueTask<bool> SendHeartBeat()
+        {
+            return await Publish(new HeartBeatRequest());
         }
 
         public async ValueTask<MetaDataResponse> QueryMetadata(string[] streams)
