@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
-        public uint Heartbeat { get; set; } = 10;
+        public uint Heartbeat { get; set; } = 60;
 
         public string ClientProvidedName
         {
@@ -453,7 +453,6 @@ namespace RabbitMQ.Stream.Client
                     IsClosed = true;
                     break;
                 case HeartBeatHandler.Key:
-                    Console.WriteLine($"hb received {DateTime.Now}");
                     _heartBeatHandler.UpdateHeartBeat();
                     break;
                 default:
@@ -477,6 +476,11 @@ namespace RabbitMQ.Stream.Client
             {
                 ((ManualResetValueTaskSource<T>)tsc).SetResult(command);
             }
+        }
+
+        private async ValueTask<bool> SendHeartBeat()
+        {
+            return await Publish(new HeartBeatRequest());
         }
 
         public async Task<CloseResponse> Close(string reason)
@@ -529,11 +533,6 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<bool> StoreOffset(string reference, string stream, ulong offsetValue)
         {
             return await Publish(new StoreOffsetRequest(stream, reference, offsetValue));
-        }
-
-        internal async ValueTask<bool> SendHeartBeat()
-        {
-            return await Publish(new HeartBeatRequest());
         }
 
         public async ValueTask<MetaDataResponse> QueryMetadata(string[] streams)

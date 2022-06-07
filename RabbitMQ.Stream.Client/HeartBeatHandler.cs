@@ -34,6 +34,7 @@ public class HeartBeatHandler
                     return;
                 }
 
+                // missed the Heart beat 
                 _missedHeartbeat++;
                 LogEventSource.Log.LogWarning($"Heartbeat missed: {_missedHeartbeat}");
                 if (_missedHeartbeat <= 3)
@@ -41,9 +42,12 @@ public class HeartBeatHandler
                     return;
                 }
 
+                // When the client does not receive the Heartbeat for three times the 
+                // client will be closed
                 LogEventSource.Log.LogWarning($"Too many Heartbeat missed: {_missedHeartbeat}");
                 Close();
-                close($"Too many Heartbeat missed: {_missedHeartbeat}");
+                close($"Too many Heartbeat missed: {_missedHeartbeat}. " +
+                      $"Client connection will be closed");
             };
         }
     }
