@@ -3,8 +3,9 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
+using Timer = System.Timers.Timer;
 
 namespace RabbitMQ.Stream.Client;
 
@@ -13,7 +14,7 @@ public class HeartBeatHandler
     private readonly Timer _timer = new();
     internal const ushort Key = 23;
     private DateTime _lastUpdate = DateTime.Now;
-    private short _missedHeartbeat;
+    private uint _missedHeartbeat;
 
     public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc,
         Func<string, Task<CloseResponse>> close,
@@ -42,7 +43,7 @@ public class HeartBeatHandler
                 }
 
                 // missed the Heartbeat 
-                _missedHeartbeat++;
+                Interlocked.Increment(ref _missedHeartbeat);
                 LogEventSource.Log.LogWarning($"Heartbeat missed: {_missedHeartbeat}");
                 if (_missedHeartbeat <= 3)
                 {
@@ -62,7 +63,7 @@ public class HeartBeatHandler
     internal void UpdateHeartBeat()
     {
         _lastUpdate = DateTime.Now;
-        _missedHeartbeat = 0;
+        Interlocked.Exchange(ref _missedHeartbeat, 0);
     }
 
     internal void Close()
