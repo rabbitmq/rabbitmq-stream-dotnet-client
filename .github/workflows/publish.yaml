@@ -2,6 +2,8 @@ name: publish rabbitmq-stream-dotnet-client
 
 on:
   create:
+    branches-ignore:
+      - '*'
     tags:
       - '*'
   push:
