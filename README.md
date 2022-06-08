@@ -415,16 +415,17 @@ You can use `MetadataHandler` to handle it:
 
 ### Heartbeat
 
-It is possible to configure the heart beat using:
+It is possible to configure the heartbeat using:
 ```csharp
  var config = new StreamSystemConfig()
 {
-    Heartbeat = 30,
+    Heartbeat = 30, // in seconds
 }
 ```
 - `60` seconds is the default value
 - `0` will advise server to disable heartbeat
 
+Heartbeat value shouldn't be too low.
 
 ### Reliable 
  - Reliable Producer

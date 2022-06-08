@@ -321,9 +321,9 @@ namespace Tests
                     testPassed.SetResult(true);
                     return null;
                 },
-                1, 0.1);
+                1);
 
-            var r = testPassed.Task.Wait(2_000);
+            var r = testPassed.Task.Wait(5_000);
             Assert.True(r);
             Assert.False(hBeatHandler.IsActive());
         }
@@ -336,7 +336,7 @@ namespace Tests
             var hBeatHandler = new HeartBeatHandler(
                 () => default,
                 s => null,
-                0, 0.1);
+                0);
             Assert.False(hBeatHandler.IsActive());
         }
     }

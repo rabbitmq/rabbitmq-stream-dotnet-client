@@ -342,6 +342,10 @@ namespace RabbitMQ.Stream.Client
                 tag = (ushort)(tag ^ 0x8000);
             }
 
+            // in general every action updates the heartbeat server side
+            // so there is no need to send the heartbeat when not necessary 
+            _heartBeatHandler.UpdateHeartBeat();
+
             switch (tag)
             {
                 case PublishConfirm.Key:
@@ -389,10 +393,6 @@ namespace RabbitMQ.Stream.Client
 
         private void HandleCorrelatedCommand(ushort tag, ref ReadOnlySequence<byte> frame)
         {
-            // in general every action updates the heartbeat server side
-            // so there is no need to send the heartbeat when not necessary 
-            _heartBeatHandler.UpdateHeartBeat();
-
             switch (tag)
             {
                 case DeclarePublisherResponse.Key:

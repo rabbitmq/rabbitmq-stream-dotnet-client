@@ -17,24 +17,31 @@ public class HeartBeatHandler
 
     public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc,
         Func<string, Task<CloseResponse>> close,
-        uint heartbeat, double timerIntervalSeconds = 20)
+        uint heartbeat)
     {
         // the heartbeat is disabled when zero
         // so all the timer won't be enabled
+
+        // this is what the user can configure 
+        // ex:  var config = new StreamSystemConfig()
+        // {
+        //     Heartbeat = 5,
+        // }
         if (heartbeat > 0)
         {
             _timer.Enabled = true;
-            _timer.Interval = timerIntervalSeconds * 1000;
+            _timer.Interval = heartbeat * 1000;
             _timer.Elapsed += (_, _) =>
             {
                 sendHeartbeatFunc();
+
                 var seconds = (DateTime.Now - _lastUpdate).TotalSeconds;
-                if (!(seconds > heartbeat))
+                if (seconds < heartbeat)
                 {
                     return;
                 }
 
-                // missed the Heart beat 
+                // missed the Heartbeat 
                 _missedHeartbeat++;
                 LogEventSource.Log.LogWarning($"Heartbeat missed: {_missedHeartbeat}");
                 if (_missedHeartbeat <= 3)
@@ -44,7 +51,7 @@ public class HeartBeatHandler
 
                 // When the client does not receive the Heartbeat for three times the 
                 // client will be closed
-                LogEventSource.Log.LogWarning($"Too many Heartbeat missed: {_missedHeartbeat}");
+                LogEventSource.Log.LogError($"Too many Heartbeat missed: {_missedHeartbeat}");
                 Close();
                 close($"Too many Heartbeat missed: {_missedHeartbeat}. " +
                       $"Client connection will be closed");
