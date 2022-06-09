@@ -419,11 +419,11 @@ It is possible to configure the heartbeat using:
 ```csharp
  var config = new StreamSystemConfig()
 {
-    Heartbeat = 30, // in seconds
+     Heartbeat = TimeSpan.FromSeconds(30),
 }
 ```
-- `60` seconds is the default value
-- `0` will advise server to disable heartbeat
+- `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
+- `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
 
 Heartbeat value shouldn't be too low.
 
