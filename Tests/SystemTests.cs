@@ -228,7 +228,12 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(new ProducerConfig { Stream = stream, ClientProvidedName = clientProvidedName });
+            var producer =
+                await system.CreateProducer(new ProducerConfig
+                {
+                    Stream = stream,
+                    ClientProvidedName = clientProvidedName
+                });
             SystemUtils.Wait();
             var consumer = await system.CreateConsumer(
                 new ConsumerConfig { Stream = stream, ClientProvidedName = clientProvidedName });
@@ -246,6 +251,23 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, await consumer.Close());
             Assert.Equal(ResponseCode.Ok, await consumer.Close());
 
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
+        public async void SetHeartBeat()
+        {
+            // Just test the heartbeat setting
+            // TODO find a smarter way to test the heartbeat disconnection
+            var config = new StreamSystemConfig() { Heartbeat = TimeSpan.FromMinutes(1), };
+            var system = await StreamSystem.Create(config);
+            var stream = Guid.NewGuid().ToString();
+            await system.CreateStream(new StreamSpec(stream));
+            var producer =
+                await system.CreateProducer(new ProducerConfig { Stream = stream });
+            SystemUtils.Wait();
+            Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);
             await system.Close();
         }
