@@ -18,7 +18,7 @@ public class HeartBeatHandler
 
     public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc,
         Func<string, Task<CloseResponse>> close,
-        uint heartbeat)
+        int heartbeat)
     {
         // the heartbeat is disabled when zero
         // so all the timer won't be enabled
@@ -26,7 +26,7 @@ public class HeartBeatHandler
         // this is what the user can configure 
         // ex:  var config = new StreamSystemConfig()
         // {
-        //     Heartbeat = 5,
+        //     Heartbeat = TimeSpan.FromSeconds(5),
         // }
         if (heartbeat > 0)
         {
@@ -34,7 +34,8 @@ public class HeartBeatHandler
             _timer.Interval = heartbeat * 1000;
             _timer.Elapsed += (_, _) =>
             {
-                sendHeartbeatFunc();
+                var f = sendHeartbeatFunc();
+                f.AsTask().Wait(1000);
 
                 var seconds = (DateTime.Now - _lastUpdate).TotalSeconds;
                 if (seconds < heartbeat)

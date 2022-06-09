@@ -15,7 +15,7 @@ namespace RabbitMQ.Stream.Client
         public string UserName { get; set; } = "guest";
         public string Password { get; set; } = "guest";
         public string VirtualHost { get; set; } = "/";
-        public uint Heartbeat { get; set; } = 60;
+        public TimeSpan Heartbeat { get; set; } = TimeSpan.FromMinutes(1);
 
         /// <summary>
         /// TLS options setting.

@@ -212,7 +212,7 @@ RabbitMQ.Stream.Client.ClientParameters.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.ClientParameters.ClientProvidedName.set -> void
 RabbitMQ.Stream.Client.ClientParameters.Endpoint.get -> System.Net.EndPoint
 RabbitMQ.Stream.Client.ClientParameters.Endpoint.set -> void
-RabbitMQ.Stream.Client.ClientParameters.Heartbeat.get -> uint
+RabbitMQ.Stream.Client.ClientParameters.Heartbeat.get -> System.TimeSpan
 RabbitMQ.Stream.Client.ClientParameters.Heartbeat.set -> void
 RabbitMQ.Stream.Client.ClientParameters.MetadataHandler.get -> System.Action<RabbitMQ.Stream.Client.MetaDataUpdate>
 RabbitMQ.Stream.Client.ClientParameters.MetadataHandler.set -> void
@@ -359,7 +359,7 @@ RabbitMQ.Stream.Client.GzipCompressionCodec.UnCompress(System.Buffers.ReadOnlySe
 RabbitMQ.Stream.Client.GzipCompressionCodec.UnCompressedSize.get -> int
 RabbitMQ.Stream.Client.GzipCompressionCodec.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.HeartBeatHandler
-RabbitMQ.Stream.Client.HeartBeatHandler.HeartBeatHandler(System.Func<System.Threading.Tasks.ValueTask<bool>> sendHeartbeatFunc, System.Func<string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse>> close, uint heartbeat) -> void
+RabbitMQ.Stream.Client.HeartBeatHandler.HeartBeatHandler(System.Func<System.Threading.Tasks.ValueTask<bool>> sendHeartbeatFunc, System.Func<string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse>> close, int heartbeat) -> void
 RabbitMQ.Stream.Client.HeartBeatRequest
 RabbitMQ.Stream.Client.HeartBeatRequest.HeartBeatRequest() -> void
 RabbitMQ.Stream.Client.HeartBeatRequest.SizeNeeded.get -> int
@@ -794,7 +794,7 @@ RabbitMQ.Stream.Client.StreamSystemConfig.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.StreamSystemConfig.ClientProvidedName.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.Endpoints.get -> System.Collections.Generic.IList<System.Net.EndPoint>
 RabbitMQ.Stream.Client.StreamSystemConfig.Endpoints.set -> void
-RabbitMQ.Stream.Client.StreamSystemConfig.Heartbeat.get -> uint
+RabbitMQ.Stream.Client.StreamSystemConfig.Heartbeat.get -> System.TimeSpan
 RabbitMQ.Stream.Client.StreamSystemConfig.Heartbeat.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.Password.get -> string
 RabbitMQ.Stream.Client.StreamSystemConfig.Password.set -> void

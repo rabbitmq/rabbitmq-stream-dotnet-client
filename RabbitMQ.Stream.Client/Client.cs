@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
-        public uint Heartbeat { get; set; } = 60;
+        public TimeSpan Heartbeat { get; set; } = TimeSpan.FromMinutes(1);
 
         public string ClientProvidedName
         {
@@ -161,7 +161,7 @@ namespace RabbitMQ.Stream.Client
             _heartBeatHandler = new HeartBeatHandler(
                 SendHeartBeat,
                 Close,
-                parameters.Heartbeat);
+                parameters.Heartbeat.Seconds);
             IsClosed = false;
         }
 
@@ -211,7 +211,8 @@ namespace RabbitMQ.Stream.Client
 
             //tune
             var tune = await client.tuneReceived.Task;
-            await client.Publish(new TuneRequest(0, client.Parameters.Heartbeat));
+            await client.Publish(new TuneRequest(0,
+                (uint)client.Parameters.Heartbeat.Seconds));
 
             // open 
             var open = await client.Request<OpenRequest, OpenResponse>(corr =>
