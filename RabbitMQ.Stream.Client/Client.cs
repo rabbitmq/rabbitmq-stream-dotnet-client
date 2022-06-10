@@ -41,6 +41,7 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
+        public TimeSpan Heartbeat { get; set; } = TimeSpan.FromMinutes(1);
 
         public string ClientProvidedName
         {
@@ -110,6 +111,8 @@ namespace RabbitMQ.Stream.Client
 
         private int publishCommandsSent;
 
+        private readonly HeartBeatHandler _heartBeatHandler;
+
         public int PublishCommandsSent => publishCommandsSent;
 
         public int MessagesSent => messagesSent;
@@ -155,6 +158,10 @@ namespace RabbitMQ.Stream.Client
         private Client(ClientParameters parameters)
         {
             Parameters = parameters;
+            _heartBeatHandler = new HeartBeatHandler(
+                SendHeartBeat,
+                Close,
+                parameters.Heartbeat.Seconds);
             IsClosed = false;
         }
 
@@ -204,7 +211,8 @@ namespace RabbitMQ.Stream.Client
 
             //tune
             var tune = await client.tuneReceived.Task;
-            await client.Publish(new TuneRequest(0, 0));
+            await client.Publish(new TuneRequest(0,
+                (uint)client.Parameters.Heartbeat.Seconds));
 
             // open 
             var open = await client.Request<OpenRequest, OpenResponse>(corr =>
@@ -335,6 +343,10 @@ namespace RabbitMQ.Stream.Client
                 tag = (ushort)(tag ^ 0x8000);
             }
 
+            // in general every action updates the heartbeat server side
+            // so there is no need to send the heartbeat when not necessary 
+            _heartBeatHandler.UpdateHeartBeat();
+
             switch (tag)
             {
                 case PublishConfirm.Key:
@@ -373,7 +385,10 @@ namespace RabbitMQ.Stream.Client
 
             if (MemoryMarshal.TryGetArray(frameMemory, out ArraySegment<byte> segment))
             {
-                ArrayPool<byte>.Shared.Return(segment.Array);
+                if (segment.Array != null)
+                {
+                    ArrayPool<byte>.Shared.Return(segment.Array);
+                }
             }
         }
 
@@ -438,6 +453,9 @@ namespace RabbitMQ.Stream.Client
                     HandleCorrelatedResponse(closeResponse);
                     IsClosed = true;
                     break;
+                case HeartBeatHandler.Key:
+                    _heartBeatHandler.UpdateHeartBeat();
+                    break;
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
@@ -461,12 +479,19 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        private async ValueTask<bool> SendHeartBeat()
+        {
+            return await Publish(new HeartBeatRequest());
+        }
+
         public async Task<CloseResponse> Close(string reason)
         {
             if (IsClosed)
             {
                 return new CloseResponse(0, ResponseCode.Ok);
             }
+
+            _heartBeatHandler.Close();
 
             // TODO LRB timeout
             var result =

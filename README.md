@@ -29,6 +29,7 @@
       - [Track Offset](#track-offset)
     - [Handle Close](#handle-close)
     - [Handle Metadata Update](#handle-metadata-update)
+    - [Heartbeat](#heartbeat)
     - [Reliable](#reliable)
       - [Reliable Producer](#reliable-producer)
       - [Reliable Consumer](#reliable-consumer)
@@ -411,6 +412,21 @@ You can use `MetadataHandler` to handle it:
    },
  }
 ```
+
+### Heartbeat
+
+It is possible to configure the heartbeat using:
+```csharp
+ var config = new StreamSystemConfig()
+{
+     Heartbeat = TimeSpan.FromSeconds(30),
+}
+```
+- `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
+- `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
+
+Heartbeat value shouldn't be too low.
+
 ### Reliable 
  - Reliable Producer
  - Reliable Consumer </p>

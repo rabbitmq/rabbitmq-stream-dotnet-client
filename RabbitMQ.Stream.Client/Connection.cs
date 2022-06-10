@@ -41,7 +41,6 @@ namespace RabbitMQ.Stream.Client
             Func<string, Task> closedCallBack, SslOption sslOption)
         {
             this.socket = socket;
-
             commandCallback = callback;
             closedCallback = closedCallBack;
             var networkStream = new NetworkStream(socket);

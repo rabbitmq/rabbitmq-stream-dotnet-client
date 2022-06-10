@@ -31,12 +31,7 @@ namespace Tests
 
     public class LoadBalancerRouting : IRouting
     {
-        private readonly List<string> advertisedHosts = new()
-        {
-            "node1",
-            "node2",
-            "node3",
-        };
+        private readonly List<string> advertisedHosts = new() { "node1", "node2", "node3", };
 
         // Simulate a load-balancer access using random 
         // access to the advertisedHosts list
@@ -61,10 +56,8 @@ namespace Tests
 
     public class MisconfiguredLoadBalancerRouting : IRouting
     {
-
         public IClient CreateClient(ClientParameters clientParameters)
         {
-
             var fake = new FakeClient(clientParameters)
             {
                 ConnectionProperties = new Dictionary<string, string>()
@@ -86,10 +79,7 @@ namespace Tests
         {
             var fake = new FakeClient(clientParameters)
             {
-                ConnectionProperties = new Dictionary<string, string>()
-                {
-                    ["advertised_port"] = "5552"
-                }
+                ConnectionProperties = new Dictionary<string, string>() { ["advertised_port"] = "5552" }
             };
             return fake;
         }
@@ -128,19 +118,19 @@ namespace Tests
                 // Can be replaced with `IRouting` impl that throws on create.
                 Endpoint = new DnsEndPoint("localhost", 3939)
             };
-            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939), new List<Broker>());
-            await Assert.ThrowsAsync<AggregateException>(() => RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo));
+            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
+                new List<Broker>());
+            await Assert.ThrowsAsync<AggregateException>(() =>
+                RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo));
         }
 
         [Fact]
         public async Task AddressResolverShouldRaiseAnExceptionIfAdvIsNull()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
-            var clientParameters = new ClientParameters()
-            {
-                AddressResolver = addressResolver,
-            };
-            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552), new List<Broker>());
+            var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
+            var metaDataInfo =
+                new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552), new List<Broker>());
             // run more than one time just to be sure to use all the IP with random
             await Assert.ThrowsAsync<RoutingClientException>(() =>
                 RoutingHelper<MissingFieldsRouting>.LookupLeaderConnection(clientParameters, metaDataInfo));
@@ -150,10 +140,7 @@ namespace Tests
         public void AddressResolverLoadBalancerSimulate()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
-            var clientParameters = new ClientParameters()
-            {
-                AddressResolver = addressResolver,
-            };
+            var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("node2", 5552),
                 new List<Broker>() { new Broker("node1", 5552), new Broker("node3", 5552) });
             // run more than one time just to be sure to use all the IP with random
@@ -169,15 +156,13 @@ namespace Tests
         public async Task RoutingHelperShouldThrowIfLoadBalancerIsMisconfigured()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
-            var clientParameters = new ClientParameters()
-            {
-                AddressResolver = addressResolver,
-            };
+            var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("node2", 5552),
                 new List<Broker>() { new Broker("replica", 5552) });
 
             await Assert.ThrowsAsync<RoutingClientException>(
-                () => RoutingHelper<MisconfiguredLoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo));
+                () => RoutingHelper<MisconfiguredLoadBalancerRouting>.LookupLeaderConnection(clientParameters,
+                    metaDataInfo));
         }
 
         [Fact]
@@ -185,10 +170,7 @@ namespace Tests
         {
             // this test is not completed yet should add also some replicas
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
-            var clientParameters = new ClientParameters()
-            {
-                AddressResolver = addressResolver,
-            };
+            var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552),
                 new List<Broker>());
             var client = RoutingHelper<ReplicaRouting>.LookupRandomConnection(clientParameters, metaDataInfo);
@@ -283,12 +265,7 @@ namespace Tests
         {
             // the following codec aren't provided by builtin.
             // need to register custom codecs
-            var types = new List<CompressionType>
-            {
-                CompressionType.Lz4,
-                CompressionType.Snappy,
-                CompressionType.Zstd
-            };
+            var types = new List<CompressionType> { CompressionType.Lz4, CompressionType.Snappy, CompressionType.Zstd };
             foreach (var compressionType in types)
             {
                 var messages = new List<Message>();
@@ -314,12 +291,7 @@ namespace Tests
         {
             // the following codec aren't provided by builtin.
             // need to register custom codecs
-            var types = new List<CompressionType>
-            {
-                CompressionType.Lz4,
-                CompressionType.Snappy,
-                CompressionType.Zstd
-            };
+            var types = new List<CompressionType> { CompressionType.Lz4, CompressionType.Snappy, CompressionType.Zstd };
             foreach (var compressionType in types)
             {
                 var messages = new List<Message>();
@@ -336,6 +308,36 @@ namespace Tests
                 Assert.Throws<CodecNotFoundException>(() => CompressionHelper.Compress(messages,
                     compressionType));
             }
+        }
+
+        [Fact]
+        public void HeartBeatRaiseClose()
+        {
+            var testPassed = new TaskCompletionSource<bool>();
+            var hBeatHandler = new HeartBeatHandler(
+                () => default,
+                s =>
+                {
+                    testPassed.SetResult(true);
+                    return null;
+                },
+                1);
+
+            var r = testPassed.Task.Wait(6_000);
+            Assert.True(r);
+            Assert.False(hBeatHandler.IsActive());
+        }
+
+        [Fact]
+        public void HeartBeatZeroNotRaisesClose()
+        {
+            // in this case the heartbeat is zero, so disabled
+            // the HeartBeatHandler is disabled by default
+            var hBeatHandler = new HeartBeatHandler(
+                () => default,
+                s => null,
+                0);
+            Assert.False(hBeatHandler.IsActive());
         }
     }
 }
