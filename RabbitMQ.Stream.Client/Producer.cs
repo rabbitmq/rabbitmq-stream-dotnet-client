@@ -151,6 +151,18 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        /// <summary>
+        /// GetLastPublishingId 
+        /// </summary>
+        /// <returns>The last sequence id stored by the producer.</returns>
+        public async Task<ulong> GetLastPublishingId()
+        {
+            var response = await client.QueryPublisherSequence(config.Reference, config.Stream);
+            ClientExceptions.MaybeThrowException(response.ResponseCode,
+                $"GetLastPublishingId stream: {config.Stream}, reference: {config.Reference}");
+            return response.Sequence;
+        }
+
         public async ValueTask Send(ulong publishingId, Message message)
         {
             await SemaphoreWait();
