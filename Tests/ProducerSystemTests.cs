@@ -92,19 +92,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
 
             await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = "",
-                }));
+                new ProducerConfig { Reference = "producer", Stream = "", }));
 
             await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig
-                {
-                    Reference = "producer",
-                    Stream = "TEST",
-                    MessagesBufferSize = -1,
-                }));
+                new ProducerConfig { Reference = "producer", Stream = "TEST", MessagesBufferSize = -1, }));
 
             await system.Close();
         }
@@ -275,6 +266,12 @@ namespace Tests
             // sequence start from zero
             Assert.True(resAfter == (NumberOfMessages - 1));
 
+            var producer = await system.CreateProducer(new ProducerConfig()
+            {
+                Stream = stream,
+                Reference = ProducerName
+            });
+            Assert.True(await producer.GetLastPublishingId() == (NumberOfMessages - 1));
             await system.DeleteStream(stream);
             await system.Close();
         }
