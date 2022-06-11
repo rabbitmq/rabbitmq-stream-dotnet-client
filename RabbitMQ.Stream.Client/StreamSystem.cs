@@ -93,7 +93,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     if (client.IsClosed)
                     {
-                        client = await Client.Create(clientParameters with
+                        client = await Client.Create(client.Parameters with
                         {
                             ClientProvidedName = clientParameters.ClientProvidedName
                         });
@@ -197,7 +197,6 @@ namespace RabbitMQ.Stream.Client
         {
             await MayBeReconnectLocator();
             MaybeThrowQueryException(reference, stream);
-
             var response = await client.QueryPublisherSequence(reference, stream);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
                 $"QuerySequence stream: {stream}, reference: {reference}");
