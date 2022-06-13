@@ -161,7 +161,7 @@ namespace RabbitMQ.Stream.Client
             _heartBeatHandler = new HeartBeatHandler(
                 SendHeartBeat,
                 Close,
-                parameters.Heartbeat.Seconds);
+                (int) parameters.Heartbeat.TotalSeconds);
             IsClosed = false;
         }
 
@@ -212,7 +212,7 @@ namespace RabbitMQ.Stream.Client
             //tune
             var tune = await client.tuneReceived.Task;
             await client.Publish(new TuneRequest(0,
-                (uint)client.Parameters.Heartbeat.Seconds));
+                (uint)client.Parameters.Heartbeat.TotalSeconds));
 
             // open 
             var open = await client.Request<OpenRequest, OpenResponse>(corr =>
