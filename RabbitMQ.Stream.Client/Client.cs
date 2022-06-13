@@ -161,7 +161,7 @@ namespace RabbitMQ.Stream.Client
             _heartBeatHandler = new HeartBeatHandler(
                 SendHeartBeat,
                 Close,
-                (int) parameters.Heartbeat.TotalSeconds);
+                (int)parameters.Heartbeat.TotalSeconds);
             IsClosed = false;
         }
 
