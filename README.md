@@ -237,7 +237,7 @@ Consider a Producer instance like a long-lived object, do not create one to send
 | MaxInFlight             | Max Number of messages before send     | 1000                           | 
 
 Producer with a reference name stores the sequence id on the server.
-It is possible to retrieve the id using `prododucer.GetLastPublishingId()`
+It is possible to retrieve the id using `producer.GetLastPublishingId()`
 or more generic `system.QuerySequence("reference", "my_stream")`
 
 ### Publish Messages
