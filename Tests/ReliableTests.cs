@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
@@ -45,7 +45,8 @@ public class ReliableTests
                 }
 
                 return Task.CompletedTask;
-            }
+            },
+            TimeSpan.FromSeconds(2)
         );
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
@@ -54,8 +55,8 @@ public class ReliableTests
         new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
-        Assert.Equal(ConfirmationStatus.TimeoutError, confirmationTask.Task.Result[0].Status);
-        Assert.Equal(ConfirmationStatus.TimeoutError, confirmationTask.Task.Result[1].Status);
+        Assert.Equal(ConfirmationStatus.ClientTimeoutError, confirmationTask.Task.Result[0].Status);
+        Assert.Equal(ConfirmationStatus.ClientTimeoutError, confirmationTask.Task.Result[1].Status);
         confirmationPipe.Stop();
     }
 
@@ -73,7 +74,8 @@ public class ReliableTests
                 }
 
                 return Task.CompletedTask;
-            }
+            },
+            TimeSpan.FromSeconds(2)
         );
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
