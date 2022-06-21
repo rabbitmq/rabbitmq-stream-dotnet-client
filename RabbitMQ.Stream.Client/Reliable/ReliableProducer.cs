@@ -120,11 +120,17 @@ public class ReliableProducer : ReliableBase
         {
             LogEventSource.Log.LogError("Error during producer initialization: ", e);
             SemaphoreSlim.Release();
-            await MaybeCloseDueOfException(e);
+            if (await MaybeCloseDueToException(e))
+            {
+                throw;
+            }
+
             await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
         }
-
-        SemaphoreSlim.Release();
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
     }
 
     protected override async Task CloseReliable()

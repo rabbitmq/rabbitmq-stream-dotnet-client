@@ -638,7 +638,7 @@ RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.Status.get -> RabbitMQ.Stre
 RabbitMQ.Stream.Client.Reliable.ReliableBase
 RabbitMQ.Stream.Client.Reliable.ReliableBase.Init() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.ReliableBase.IsOpen() -> bool
-RabbitMQ.Stream.Client.Reliable.ReliableBase.MaybeCloseDueOfException(System.Exception exception) -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.Reliable.ReliableBase.MaybeCloseDueToException(System.Exception exception) -> System.Threading.Tasks.Task<bool>
 RabbitMQ.Stream.Client.Reliable.ReliableBase.ReliableBase() -> void
 RabbitMQ.Stream.Client.Reliable.ReliableBase.TryToReconnect(RabbitMQ.Stream.Client.Reliable.IReconnectStrategy reconnectStrategy) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.ReliableBase._inReconnection -> bool
