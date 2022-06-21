@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
@@ -17,6 +17,7 @@ public record ReliableProducerConfig
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
+    public TimeSpan TimeoutMessageAfter { get; init; } = TimeSpan.FromSeconds(3);
 }
 
 /// <summary>
@@ -40,7 +41,10 @@ public class ReliableProducer : ReliableBase
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
         _reliableProducerConfig = reliableProducerConfig;
-        _confirmationPipe = new ConfirmationPipe(reliableProducerConfig.ConfirmationHandler);
+        _confirmationPipe = new ConfirmationPipe(
+            reliableProducerConfig.ConfirmationHandler,
+            reliableProducerConfig.TimeoutMessageAfter
+        );
         _confirmationPipe.Start();
     }
 
@@ -192,7 +196,6 @@ public class ReliableProducer : ReliableBase
 
     public override string ToString()
     {
-        return $"Producer reference: {_reliableProducerConfig.Reference}," +
-               $"stream: {_reliableProducerConfig.Stream} ";
+        return $"Producer reference: {_reliableProducerConfig.Reference}, stream: {_reliableProducerConfig.Stream} ";
     }
 }
