@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
+using System;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
@@ -38,6 +39,19 @@ namespace Tests
                 }
             );
 
+            ReliableProducer reliableProducer = null;
+            try
+            {
+                reliableProducer = await ReliableProducer.CreateReliableProducer(
+                    new ReliableProducerConfig() { Stream = stream, StreamSystem = system });
+            }
+            catch (Exception)
+            {
+                // we already tested the Exception (CreateProducerException)
+            }
+            // here the reliableProducer must be closed due of the CreateProducerException
+            Assert.False(reliableProducer != null && reliableProducer.IsOpen());
+
             await Assert.ThrowsAsync<CreateConsumerException>(
                 async () =>
                 {
@@ -53,6 +67,20 @@ namespace Tests
                         new ReliableConsumerConfig() { Stream = stream, StreamSystem = system });
                 }
             );
+
+            ReliableConsumer reliableConsumer = null;
+            try
+            {
+                reliableConsumer = await ReliableConsumer.CreateReliableConsumer(
+                    new ReliableConsumerConfig() { Stream = stream, StreamSystem = system });
+            }
+            catch (Exception)
+            {
+                // we already tested the Exception (CreateConsumerException)
+            }
+
+            // here the reliableConsumer must be closed due of the CreateConsumerException
+            Assert.False(reliableConsumer != null && reliableConsumer.IsOpen());
 
             await system.Close();
         }
