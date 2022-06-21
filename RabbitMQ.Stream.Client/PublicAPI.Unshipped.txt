@@ -611,18 +611,18 @@ RabbitMQ.Stream.Client.QueryPublisherResponse.Write(System.Span<byte> span) -> i
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.AddUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Message message) -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.AddUnConfirmedMessage(ulong publishingId, System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) -> void
-RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> confirmHandler) -> void
+RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> confirmHandler, System.TimeSpan messageTimeout) -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.RemoveUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Reliable.ConfirmationStatus confirmationStatus) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.Start() -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.Stop() -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.AccessRefused = 16 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
+RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.ClientTimeoutError = 2 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.Confirmed = 1 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.InternalError = 15 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.PreconditionFailed = 17 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.PublisherDoesNotExist = 18 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.StreamNotAvailable = 6 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
-RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.TimeoutError = 2 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.UndefinedError = 200 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.WaitForConfirmation = 0 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
@@ -674,6 +674,8 @@ RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.Stream.get -> string
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.Stream.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.StreamSystem.get -> RabbitMQ.Stream.Client.StreamSystem
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.StreamSystem.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.TimeoutMessageAfter.get -> System.TimeSpan
+RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.TimeoutMessageAfter.init -> void
 RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.ResponseCode.AccessRefused = 16 -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.ResponseCode.AuthenticationFailure = 8 -> RabbitMQ.Stream.Client.ResponseCode

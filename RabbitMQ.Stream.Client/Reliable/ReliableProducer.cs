@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,12 +12,28 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 public record ReliableProducerConfig
 {
+    private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
+
     public StreamSystem StreamSystem { get; set; }
     public string Stream { get; set; }
     public string Reference { get; set; }
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
+
+    public TimeSpan TimeoutMessageAfter
+    {
+        get => _timeoutMessageAfter;
+        init
+        {
+            if (value.TotalMilliseconds < 1000)
+            {
+                throw new ValidationException("TimeoutMessageAfter has to be at least 1000ms");
+            }
+
+            _timeoutMessageAfter = value;
+        }
+    }
 }
 
 /// <summary>
@@ -40,7 +57,10 @@ public class ReliableProducer : ReliableBase
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
         _reliableProducerConfig = reliableProducerConfig;
-        _confirmationPipe = new ConfirmationPipe(reliableProducerConfig.ConfirmationHandler);
+        _confirmationPipe = new ConfirmationPipe(
+            reliableProducerConfig.ConfirmationHandler,
+            reliableProducerConfig.TimeoutMessageAfter
+        );
         _confirmationPipe.Start();
     }
 
@@ -192,7 +212,6 @@ public class ReliableProducer : ReliableBase
 
     public override string ToString()
     {
-        return $"Producer reference: {_reliableProducerConfig.Reference}," +
-               $"stream: {_reliableProducerConfig.Stream} ";
+        return $"Producer reference: {_reliableProducerConfig.Reference}, stream: {_reliableProducerConfig.Stream} ";
     }
 }

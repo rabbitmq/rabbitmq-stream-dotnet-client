@@ -7,8 +7,7 @@
 [![codecov](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client/branch/main/graph/badge.svg?token=OIA04ZQD79)](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client)
 </div>
 
-#@ Table of Contents
-
+# Table of Contents
 
 ---
 
@@ -116,7 +115,7 @@ await system.DeleteStream(stream);
 await system.Close();
 ```
 
-### Usage
+## Usage
 
 ---
 
@@ -238,7 +237,7 @@ Consider a Producer instance like a long-lived object, do not create one to send
 
 Producer with a reference name stores the sequence id on the server.
 It is possible to retrieve the id using `producer.GetLastPublishingId()`
-or more generic `system.QuerySequence("reference", "my_stream")`
+or more generic `system.QuerySequence("reference", "my_stream")`.
 
 ### Publish Messages
 
@@ -294,7 +293,9 @@ var producer = await system.CreateProducer(
         Stream = "my_stream",
     });
 ```
+
 then:
+
 ```csharp
 var publishingId = 0;
 var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
@@ -302,7 +303,9 @@ await producer.Send(publishingId, message);
 ```
 
 ### Consume Messages
+
 Define a consumer:
+
 ```csharp
 var consumer = await system.CreateConsumer(
     new ConsumerConfig
@@ -317,8 +320,11 @@ var consumer = await system.CreateConsumer(
         }
 });
 ```
+
 ### Offset Types
+
 There are five types of Offset and they can be set by the `ConsumerConfig.OffsetSpec` property that must be passed to the Consumer constructor, in the example we use `OffsetTypeFirst`:
+
 ```csharp
 var consumerOffsetTypeFirst = await system.CreateConsumer(
     new ConsumerConfig
@@ -333,29 +339,40 @@ var consumerOffsetTypeFirst = await system.CreateConsumer(
         }
     });
 ```
+
 The five types are:
--  First: it takes messages from the first message of the stream. 
+- First: it takes messages from the first message of the stream.
+
 ```csharp
 var offsetTypeFirst = new OffsetTypeFirst();
 ```
+
 - Last: it takes messages from the last chunk of the stream, i.e. it doesn’t start from the last message, but the last “group” of messages.
+
 ```csharp
 var offsetTypeLast = new OffsetTypeLast();
 ```
+
 - Next: it takes messages published after the consumer connection.
+
 ```csharp
 var offsetTypeNext = new OffsetTypeNext()
 ```
+
 - Offset: it takes messages starting from the message with id equal to the passed value. If the value is less than the first message of the stream, it starts from the first (i.e. if you pass 0, but the stream starts from 10, it starts from 10). If the message with the id hasn’t yet been published it waits until this publishingId is reached.
+
 ```csharp
 ulong iWantToStartFromPubId = 10;
 var offsetTypeOffset = new OffsetTypeOffset(iWantToStartFromPubId);
 ```
+
 - Timestamp: it takes messages starting from the first message with timestamp bigger than the one passed
+
 ```csharp
 var anHourAgo = (long)DateTime.UtcNow.AddHours(-1).Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 var offsetTypeTimestamp = new OffsetTypeTimestamp(anHourAgo);
 ```
+
 ### Track Offset
 
 The server can store the current delivered offset given a consumer with `StoreOffset` in this way:
@@ -374,8 +391,7 @@ var consumer = await system.CreateConsumer(
             }
 ```
 
-Note: </b> 
-**Avoid** to store the offset for each single message, it can reduce the performances.
+Note: **Avoid** storing the offset for every single message, it can reduce performance.
 
 It is possible to retrieve the offset with `QueryOffset`:
 
@@ -389,9 +405,10 @@ var consumer = await system.CreateConsumer(
         OffsetSpec = new OffsetTypeOffset(trackedOffset),    
 ```
 
-OBS. if don't have stored an offset for the consumer's reference on the stream you get an OffsetNotFoundException exception.
+Note: if you try to store an offset that doesn't exist yet for the consumer's reference on the stream you get will get an `OffsetNotFoundException` exception.
 
 ### Handle Close
+
 Producers/Consumers raise and event when the client is disconnected:
 
 ```csharp
@@ -405,8 +422,10 @@ Producers/Consumers raise and event when the client is disconnected:
 ```
 
 ### Handle Metadata Update
+
 Stream metadata update is raised when the stream topology changes or the stream is deleted. 
 You can use `MetadataHandler` to handle it:
+
 ```csharp
  new ProducerConfig/ConsumerConfig
  {
@@ -420,12 +439,14 @@ You can use `MetadataHandler` to handle it:
 ### Heartbeat
 
 It is possible to configure the heartbeat using:
+
 ```csharp
  var config = new StreamSystemConfig()
 {
      Heartbeat = TimeSpan.FromSeconds(30),
 }
 ```
+
 - `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
 - `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
 
@@ -433,15 +454,19 @@ Heartbeat value shouldn't be too low.
 
 ### Reliable 
  - Reliable Producer
- - Reliable Consumer </p>
-See the directory [Examples/Reliable](./Examples/Reliable)
+ - Reliable Consumer
+
+See the directory [Examples/Reliable](./Examples/Reliable) for code examples.
 
  
 ### Reliable Producer
-Reliable Producer is a smart layer built up of the standard `Producer`. </b>   
-The idea is to leave the user decides what to use, the standard or reliable producer. </b>
+
+Reliable Producer is a smart layer built up of the standard `Producer`.
+
+The idea is to give the user ability to choose between the standard or reliable producer.
 
 The main features are:
+
 - Provide publishingID automatically
 - Auto-Reconnect in case of disconnection
 - Trace sent and received messages
@@ -449,20 +474,25 @@ The main features are:
 - [Handle the metadata Update](#reliable-handle-metadata-update)
 
 #### Provide publishingID automatically
-Reliable Producer retrieves the last publishingID given the producer name. </b>
-Zero(0) is the default value in case there is no a publishingID.
+
+Reliable Producer retrieves the last publishingID given the producer name.
+
+Zero(0) is the default value in case there is no publishingID for given producer reference.
 
 #### Auto-Reconnect
+
 Reliable Producer restores the TCP connection in case the Producer is disconnected for some reason.
 During the reconnection it continues to store the messages in a local-list.
 The user will receive back the confirmed or un-confirmed messages.
 See [Reconnection Strategy](#reconnection-strategy)
 
 #### Trace sent and received messages
-Reliable Producer keeps in memory each sent message and remove from the memory when the message is confirmed or goes in timout.
+
+Reliable Producer keeps in memory each sent message and removes it from the memory when the message is confirmed or times out.
 `ConfirmationHandler` receives the messages  back with the status.
 `confirmation.Status` can have different values, but in general `ConfirmationStatus.Confirmed` means the messages
-is stored on the server other status means that there was a problem with the message/messages.
+is stored on the server. Other statuses mean that there was a problem with the message/messages under given publishing id.
+
 ```csharp
 ConfirmationHandler = confirmation =>
 {                    
@@ -477,17 +507,34 @@ ConfirmationHandler = confirmation =>
     }
 }
 ```
+
+#### Currently defined confirmation statuses
+
+| Status                | Description                                                                                                  | Source |
+|-----------------------|--------------------------------------------------------------------------------------------------------------|--------|
+| Confirmed             | Message has been confirmed by the server and written to disk.                                                | Server |
+| ClientTimeoutError    | Client gave up waiting for the message (read more [here](#invalidate-messages)).                             | Client |
+| StreamNotAvailable    | Stream was deleted or otherwise become unavailable.                                                          | Server |
+| InternalError         |                                                                                                              | Server |
+| AccessRefused         | Provided credentials are invalid or you lack permissions for specific vhost/etc.                             | Server |
+| PreconditionFailed    | Catch-all for validation on server (eg. requested to create stream with different parameters but same name). | Server |
+| PublisherDoesNotExist |                                                                                                              | Server |
+| UndefinedError        | Catch-all for any new status that is not yet handled in the library.                                         | Server |
+
 #### Invalidate messages
-If the client doesn't receive a confirmation within 2 seconds Reliable Producer removes the message from the internal messages cache.
-The user will receive `ConfirmationStatus.TimeoutError` in the `ConfirmationHandler`.
+
+If the client doesn't receive a confirmation within configured timeout (3 seconds by default), Reliable Producer removes the message from the internal messages cache.
+The user will receive `ConfirmationStatus.ClientTimeoutError` in the `ConfirmationHandler`.
 
 #### Send API
 Reliable Producer implements two `send(..)`
+
 - `Send(Message message)` // standard
 - `Send(List<Message> messages, CompressionType compressionType)` //sub-batching with compression
 
 
 ### Reliable Consumer
+
 Reliable Consumer is a smart layer built up of the standard `Consumer`. </b>   
 The idea is to leave the user decides what to use, the standard or reliable Consumer. </b>
 
@@ -497,17 +544,21 @@ The main features are:
 - [Handle the metadata Update](#reliable-handle-metadata-update)
 
 #### Auto-Reconnect
+
 Reliable Consumer restores the TCP connection in case the Producer is disconnected for some reason.
 Reliable Consumer will restart consuming from the last offset stored.
 See [Reconnection Strategy](#reconnection-strategy)
 
 ### Reconnection Strategy
+
 By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
 You can customize the behaviour implementing the `IReconnectStrategy` interface:
+
 ```csharp
 bool WhenDisconnected(string connectionInfo);
 void WhenConnected(string connectionInfo);
 ```
+
 If `WhenDisconnected` return is `true` Producer/Consumer will be reconnected else closed.
 `connectionInfo` add information about the connection.
 
@@ -519,8 +570,8 @@ var p = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig
 ReconnectStrategy = MyReconnectStrategy
 ```
 
-
 ### Reliable handle metadata update
+
 If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate` event.
 Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the producer/consumer.
 

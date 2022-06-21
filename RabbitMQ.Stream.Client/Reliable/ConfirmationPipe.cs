@@ -19,10 +19,22 @@ namespace RabbitMQ.Stream.Client.Reliable;
 public enum ConfirmationStatus : ushort
 {
     WaitForConfirmation = 0,
+    /// <summary>
+    /// Message was confirmed to be received and stored by server.
+    /// </summary>
     Confirmed = 1,
-    TimeoutError = 2,
+    /// <summary>
+    /// Client gave up on waiting for this publishing id.
+    /// </summary>
+    ClientTimeoutError = 2,
+    /// <summary>
+    /// Stream is not available anymore (it was deleted).
+    /// </summary>
     StreamNotAvailable = 6,
     InternalError = 15,
+    /// <summary>
+    /// Signals either bad credentials, or insufficient permissions.
+    /// </summary>
     AccessRefused = 16,
     PreconditionFailed = 17,
     PublisherDoesNotExist = 18,
@@ -53,10 +65,12 @@ public class ConfirmationPipe
     private readonly ConcurrentDictionary<ulong, MessagesConfirmation> _waitForConfirmation = new();
     private readonly Timer _invalidateTimer = new();
     private Func<MessagesConfirmation, Task> ConfirmHandler { get; }
+    private readonly TimeSpan _messageTimeout;
 
-    public ConfirmationPipe(Func<MessagesConfirmation, Task> confirmHandler)
+    public ConfirmationPipe(Func<MessagesConfirmation, Task> confirmHandler, TimeSpan messageTimeout)
     {
         ConfirmHandler = confirmHandler;
+        _messageTimeout = messageTimeout;
     }
 
     public void Start()
@@ -82,7 +96,7 @@ public class ConfirmationPipe
             });
 
         _invalidateTimer.Elapsed += OnTimedEvent;
-        _invalidateTimer.Interval = 2000;
+        _invalidateTimer.Interval = _messageTimeout.TotalMilliseconds;
         _invalidateTimer.Enabled = true;
     }
 
@@ -94,24 +108,24 @@ public class ConfirmationPipe
 
     private async void OnTimedEvent(object sender, ElapsedEventArgs e)
     {
+        var timedOutMessages = _waitForConfirmation.Where(pair =>
+            (DateTime.Now - pair.Value.InsertDateTime).TotalSeconds > _messageTimeout.TotalSeconds);
+
+        foreach (var pair in timedOutMessages)
         {
-            foreach (var pair in _waitForConfirmation.Where(pair =>
-                         (DateTime.Now - pair.Value.InsertDateTime).Seconds > 2))
-            {
-                await RemoveUnConfirmedMessage(pair.Value.PublishingId, ConfirmationStatus.TimeoutError);
-            }
+            await RemoveUnConfirmedMessage(pair.Value.PublishingId, ConfirmationStatus.ClientTimeoutError);
         }
     }
 
     public void AddUnConfirmedMessage(ulong publishingId, Message message)
     {
-        AddUnConfirmedMessage(publishingId, new List<Message>() { message });
+        AddUnConfirmedMessage(publishingId, new List<Message> { message });
     }
 
     public void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
     {
         _waitForConfirmation.TryAdd(publishingId,
-            new MessagesConfirmation()
+            new MessagesConfirmation
             {
                 Messages = messages,
                 PublishingId = publishingId,
