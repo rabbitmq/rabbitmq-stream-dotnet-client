@@ -161,7 +161,7 @@ namespace RabbitMQ.Stream.Client
             _heartBeatHandler = new HeartBeatHandler(
                 SendHeartBeat,
                 Close,
-                (int) parameters.Heartbeat.TotalSeconds);
+                (int)parameters.Heartbeat.TotalSeconds);
             IsClosed = false;
         }
 
@@ -330,7 +330,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task HandleClosed(string reason)
         {
-            IsClosed = true;
+            InternalClose();
             await OnConnectionClosed(reason);
         }
 
@@ -451,7 +451,7 @@ namespace RabbitMQ.Stream.Client
                 case CloseResponse.Key:
                     CloseResponse.Read(frame, out var closeResponse);
                     HandleCorrelatedResponse(closeResponse);
-                    IsClosed = true;
+                    InternalClose();
                     break;
                 case HeartBeatHandler.Key:
                     _heartBeatHandler.UpdateHeartBeat();
@@ -484,6 +484,12 @@ namespace RabbitMQ.Stream.Client
             return await Publish(new HeartBeatRequest());
         }
 
+        private void InternalClose()
+        {
+            _heartBeatHandler.Close();
+            IsClosed = true;
+        }
+
         public async Task<CloseResponse> Close(string reason)
         {
             if (IsClosed)
@@ -491,15 +497,13 @@ namespace RabbitMQ.Stream.Client
                 return new CloseResponse(0, ResponseCode.Ok);
             }
 
-            _heartBeatHandler.Close();
-
             // TODO LRB timeout
             var result =
                 await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
                     TimeSpan.FromSeconds(30));
-
             try
             {
+                InternalClose();
                 connection.Dispose();
             }
             catch (Exception e)
@@ -507,7 +511,6 @@ namespace RabbitMQ.Stream.Client
                 LogEventSource.Log.LogError($"An error occurred while calling {nameof(connection.Dispose)}.", e);
             }
 
-            IsClosed = true;
             return result;
         }
 

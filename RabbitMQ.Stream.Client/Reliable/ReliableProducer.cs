@@ -9,36 +9,6 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
-internal class AutoPublishingId : IPublishingIdStrategy
-{
-    private ulong _lastPublishingId = 0;
-    private readonly ReliableProducerConfig _reliableProducerConfig;
-
-    public ulong GetPublishingId()
-    {
-        return ++_lastPublishingId;
-    }
-
-    public AutoPublishingId(ReliableProducerConfig reliableProducerConfig)
-    {
-        _reliableProducerConfig = reliableProducerConfig;
-    }
-
-    public async Task InitPublishingId()
-    {
-        try
-        {
-            _lastPublishingId =
-                await _reliableProducerConfig.StreamSystem.QuerySequence(_reliableProducerConfig.Reference,
-                    _reliableProducerConfig.Stream);
-        }
-        catch (Exception)
-        {
-            _lastPublishingId = 0;
-        }
-    }
-}
-
 public record ReliableProducerConfig
 {
     public StreamSystem StreamSystem { get; set; }
@@ -63,14 +33,13 @@ public record ReliableProducerConfig
 public class ReliableProducer : ReliableBase
 {
     private Producer _producer;
-    private readonly AutoPublishingId _autoPublishingId;
+    private ulong _publishingId;
     private readonly ReliableProducerConfig _reliableProducerConfig;
     private readonly ConfirmationPipe _confirmationPipe;
 
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
         _reliableProducerConfig = reliableProducerConfig;
-        _autoPublishingId = new AutoPublishingId(_reliableProducerConfig);
         _confirmationPipe = new ConfirmationPipe(reliableProducerConfig.ConfirmationHandler);
         _confirmationPipe.Start();
     }
@@ -85,10 +54,6 @@ public class ReliableProducer : ReliableBase
     protected override async Task GetNewReliable(bool boot)
     {
         await SemaphoreSlim.WaitAsync();
-        if (boot)
-        {
-            await _autoPublishingId.InitPublishingId();
-        }
 
         try
         {
@@ -124,6 +89,12 @@ public class ReliableProducer : ReliableBase
                 }
             });
             _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
+            if (boot)
+            {
+                // Init the publishing id
+                Interlocked.Exchange(ref _publishingId,
+                    await _producer.GetLastPublishingId());
+            }
         }
 
         catch (CreateProducerException ce)
@@ -170,8 +141,8 @@ public class ReliableProducer : ReliableBase
 
     public async ValueTask Send(Message message)
     {
-        var pid = _autoPublishingId.GetPublishingId();
-        _confirmationPipe.AddUnConfirmedMessage(pid, message);
+        Interlocked.Increment(ref _publishingId);
+        _confirmationPipe.AddUnConfirmedMessage(_publishingId, message);
         await SemaphoreSlim.WaitAsync();
         try
         {
@@ -182,7 +153,7 @@ public class ReliableProducer : ReliableBase
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
             {
-                await _producer.Send(pid, message);
+                await _producer.Send(_publishingId, message);
             }
         }
 
@@ -198,14 +169,14 @@ public class ReliableProducer : ReliableBase
 
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
-        var pid = _autoPublishingId.GetPublishingId();
-        _confirmationPipe.AddUnConfirmedMessage(pid, messages);
+        Interlocked.Increment(ref _publishingId);
+        _confirmationPipe.AddUnConfirmedMessage(_publishingId, messages);
         await SemaphoreSlim.WaitAsync();
         try
         {
             if (!_inReconnection)
             {
-                await _producer.Send(pid, messages, compressionType);
+                await _producer.Send(_publishingId, messages, compressionType);
             }
         }
 
