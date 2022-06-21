@@ -120,6 +120,7 @@ public class ReliableProducer : ReliableBase
         catch (CreateProducerException ce)
         {
             LogEventSource.Log.LogError("ReliableProducer closed", ce);
+            await Close();
         }
         catch (Exception e)
         {

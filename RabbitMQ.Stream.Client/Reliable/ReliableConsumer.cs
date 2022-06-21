@@ -91,7 +91,7 @@ public class ReliableConsumer : ReliableBase
             _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
         }
 
-        catch (CreateProducerException ce)
+        catch (CreateConsumerException ce)
         {
             LogEventSource.Log.LogError("ReliableConsumer closed. ", ce);
         }
