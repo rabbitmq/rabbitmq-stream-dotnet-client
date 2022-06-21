@@ -3,6 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 
 namespace Tests
@@ -18,23 +19,22 @@ namespace Tests
             // load definition creates users and streams to test the access
             // the user "test" can't access on "no_access_stream"
             const string stream = "no_access_stream";
-            var config = new StreamSystemConfig()
-            {
-                Password = "test",
-                UserName = "test",
-                VirtualHost = "/"
-            };
+            var config = new StreamSystemConfig() { Password = "test", UserName = "test", VirtualHost = "/" };
             var system = await StreamSystem.Create(config);
 
             await Assert.ThrowsAsync<CreateProducerException>(
                 async () =>
                 {
                     await system.CreateProducer(
-                        new ProducerConfig
-                        {
-                            Reference = "producer",
-                            Stream = stream,
-                        });
+                        new ProducerConfig { Reference = "producer", Stream = stream, });
+                }
+            );
+
+            await Assert.ThrowsAsync<CreateProducerException>(
+                async () =>
+                {
+                    await ReliableProducer.CreateReliableProducer(
+                        new ReliableProducerConfig() { Stream = stream, StreamSystem = system });
                 }
             );
 
@@ -42,11 +42,15 @@ namespace Tests
                 async () =>
                 {
                     await system.CreateConsumer(
-                        new ConsumerConfig()
-                        {
-                            Reference = "consumer",
-                            Stream = stream,
-                        });
+                        new ConsumerConfig() { Reference = "consumer", Stream = stream, });
+                }
+            );
+
+            await Assert.ThrowsAsync<CreateConsumerException>(
+                async () =>
+                {
+                    await ReliableConsumer.CreateReliableConsumer(
+                        new ReliableConsumerConfig() { Stream = stream, StreamSystem = system });
                 }
             );
 
