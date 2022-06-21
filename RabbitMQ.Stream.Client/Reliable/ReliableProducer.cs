@@ -11,13 +11,28 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 public record ReliableProducerConfig
 {
+    private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
+
     public StreamSystem StreamSystem { get; set; }
     public string Stream { get; set; }
     public string Reference { get; set; }
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
-    public TimeSpan TimeoutMessageAfter { get; init; } = TimeSpan.FromSeconds(3);
+
+    public TimeSpan TimeoutMessageAfter
+    {
+        get => _timeoutMessageAfter;
+        init
+        {
+            if (value.TotalMilliseconds < 1000)
+            {
+                throw new ValidationException("TimeoutMessageAfter has to be at least 1000ms");
+            }
+
+            _timeoutMessageAfter = value;
+        }
+    }
 }
 
 /// <summary>
