@@ -508,6 +508,19 @@ ConfirmationHandler = confirmation =>
 }
 ```
 
+#### Currently defined confirmation statuses
+
+| Status                | Description                                                                                                  | Source |
+|-----------------------|--------------------------------------------------------------------------------------------------------------|--------|
+| Confirmed             | Message has been confirmed by the server and written to disk.                                                | Server |
+| ClientTimeoutError    | Client gave up waiting for the message (read more [here](#invalidate-messages)).                             | Client |
+| StreamNotAvailable    | Stream was deleted or otherwise become unavailable.                                                          | Server |
+| InternalError         |                                                                                                              | Server |
+| AccessRefused         | Provided credentials are invalid or you lack permissions for specific vhost/etc.                             | Server |
+| PreconditionFailed    | Catch-all for validation on server (eg. requested to create stream with different parameters but same name). | Server |
+| PublisherDoesNotExist |                                                                                                              | Server |
+| UndefinedError        | Catch-all for any new status that is not yet handled in the library.                                         | Server |
+
 #### Invalidate messages
 
 If the client doesn't receive a confirmation within configured timeout (3 seconds by default), Reliable Producer removes the message from the internal messages cache.
