@@ -91,18 +91,15 @@ public class ReliableConsumer : ReliableBase
             _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
         }
 
-        catch (CreateProducerException ce)
-        {
-            LogEventSource.Log.LogError("ReliableConsumer closed. ", ce);
-        }
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error during initialization: ", e);
-            SemaphoreSlim.Release();
-            await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
+            LogEventSource.Log.LogError("Error during consumer initialization: ", e);
+            throw;
         }
-
-        SemaphoreSlim.Release();
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
     }
 
     // just close the consumer. See base/metadataupdate
@@ -111,7 +108,10 @@ public class ReliableConsumer : ReliableBase
         await SemaphoreSlim.WaitAsync(10);
         try
         {
-            await _consumer.Close();
+            if (_consumer != null)
+            {
+                await _consumer.Close();
+            }
         }
         finally
         {

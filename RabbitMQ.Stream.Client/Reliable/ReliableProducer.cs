@@ -116,19 +116,15 @@ public class ReliableProducer : ReliableBase
                     await _producer.GetLastPublishingId());
             }
         }
-
-        catch (CreateProducerException ce)
-        {
-            LogEventSource.Log.LogError("ReliableProducer closed", ce);
-        }
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error during initialization: ", e);
-            SemaphoreSlim.Release();
-            await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
+            LogEventSource.Log.LogError("Error during producer initialization: ", e);
+            throw;
         }
-
-        SemaphoreSlim.Release();
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
     }
 
     protected override async Task CloseReliable()
@@ -136,7 +132,10 @@ public class ReliableProducer : ReliableBase
         await SemaphoreSlim.WaitAsync(10);
         try
         {
-            await _producer.Close();
+            if (_producer != null)
+            {
+                await _producer.Close();
+            }
         }
         finally
         {
@@ -151,7 +150,10 @@ public class ReliableProducer : ReliableBase
         {
             _needReconnect = false;
             _confirmationPipe.Stop();
-            await _producer.Close();
+            if (_producer != null)
+            {
+                await _producer.Close();
+            }
         }
         finally
         {
