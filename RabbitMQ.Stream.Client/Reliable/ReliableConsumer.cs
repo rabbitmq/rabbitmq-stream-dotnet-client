@@ -94,13 +94,7 @@ public class ReliableConsumer : ReliableBase
         catch (Exception e)
         {
             LogEventSource.Log.LogError("Error during consumer initialization: ", e);
-            SemaphoreSlim.Release();
-            if (await MaybeCloseDueToException(e))
-            {
-                throw;
-            }
-
-            await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
+            throw;
         }
         finally
         {

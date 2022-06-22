@@ -119,13 +119,7 @@ public class ReliableProducer : ReliableBase
         catch (Exception e)
         {
             LogEventSource.Log.LogError("Error during producer initialization: ", e);
-            SemaphoreSlim.Release();
-            if (await MaybeCloseDueToException(e))
-            {
-                throw;
-            }
-
-            await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
+            throw;
         }
         finally
         {

@@ -2,7 +2,6 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -92,35 +91,6 @@ public abstract class ReliableBase
                 $"{ToString()} will be closed.");
             await Close();
         }
-    }
-
-    /// <summary>
-    /// In case it is not possible to create the producer/consumer
-    /// we need to check the exception.
-    /// If it is a protocol error, the client has to be closed.
-    /// for example if there are no grants.
-    /// </summary>
-    /// <param name="exception"></param>
-    /// <returns>True id the client is closed. False if it is not</returns>
-    protected async Task<bool> MaybeCloseDueToException(Exception exception)
-    {
-        // CreateProducerException CreateConsumerException are raised when there is
-        // some problem protocol side as: 
-        // AuthenticationFailure 
-        // VirtualHostAccessFailure 
-        // AccessRefused 
-        // PreconditionFailed
-        var shouldReThrow = false;
-
-        if (exception is (CreateProducerException or CreateConsumerException))
-        {
-            //in this case we just close the Reliable Class
-            //and throw the exception 
-            await Close();
-            shouldReThrow = true;
-        }
-
-        return shouldReThrow;
     }
 
     protected abstract Task CloseReliable();
