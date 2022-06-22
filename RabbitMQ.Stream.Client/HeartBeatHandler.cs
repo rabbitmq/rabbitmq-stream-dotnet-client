@@ -30,7 +30,7 @@ public class HeartBeatHandler
         // }
         if (heartbeat > 0)
         {
-            _timer.Enabled = true;
+            _timer.Enabled = false;
             _timer.Interval = heartbeat * 1000;
             _timer.Elapsed += (_, _) =>
             {
@@ -70,6 +70,11 @@ public class HeartBeatHandler
     internal void Close()
     {
         _timer.Close();
+    }
+
+    internal void Start()
+    {
+        _timer.Enabled = true;
     }
 
     internal bool IsActive()
