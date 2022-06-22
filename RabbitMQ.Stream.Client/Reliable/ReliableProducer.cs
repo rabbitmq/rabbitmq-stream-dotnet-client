@@ -132,7 +132,10 @@ public class ReliableProducer : ReliableBase
         await SemaphoreSlim.WaitAsync(10);
         try
         {
-            await _producer.Close();
+            if (_producer != null)
+            {
+                await _producer.Close();
+            }
         }
         finally
         {
