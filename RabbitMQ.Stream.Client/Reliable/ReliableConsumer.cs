@@ -95,11 +95,17 @@ public class ReliableConsumer : ReliableBase
         {
             LogEventSource.Log.LogError("Error during consumer initialization: ", e);
             SemaphoreSlim.Release();
-            await MaybeCloseDueOfException(e);
+            if (await MaybeCloseDueToException(e))
+            {
+                throw;
+            }
+
             await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
         }
-
-        SemaphoreSlim.Release();
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
     }
 
     // just close the consumer. See base/metadataupdate

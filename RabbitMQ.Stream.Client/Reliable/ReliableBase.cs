@@ -102,7 +102,7 @@ public abstract class ReliableBase
     /// </summary>
     /// <param name="exception"></param>
     /// <returns>True id the client is closed. False if it is not</returns>
-    protected async Task MaybeCloseDueOfException(Exception exception)
+    protected async Task<bool> MaybeCloseDueToException(Exception exception)
     {
         // CreateProducerException CreateConsumerException are raised when there is
         // some problem protocol side as: 
@@ -110,14 +110,17 @@ public abstract class ReliableBase
         // VirtualHostAccessFailure 
         // AccessRefused 
         // PreconditionFailed
+        var shouldReThrow = false;
 
         if (exception is (CreateProducerException or CreateConsumerException))
         {
             //in this case we just close the Reliable Class
             //and throw the exception 
             await Close();
-            throw exception;
+            shouldReThrow = true;
         }
+
+        return shouldReThrow;
     }
 
     protected abstract Task CloseReliable();
