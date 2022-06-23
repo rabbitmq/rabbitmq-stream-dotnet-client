@@ -322,7 +322,7 @@ namespace Tests
                     return null;
                 },
                 1);
-
+            hBeatHandler.Start();
             var r = testPassed.Task.Wait(6_000);
             Assert.True(r);
             Assert.False(hBeatHandler.IsActive());

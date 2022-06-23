@@ -85,7 +85,7 @@ namespace RabbitMQ.Stream.Client
 
     public class Client : IClient
     {
-        private bool isClosed = false;
+        private bool isClosed = true;
 
         private readonly TimeSpan defaultTimeout = TimeSpan.FromSeconds(10);
 
@@ -165,6 +165,11 @@ namespace RabbitMQ.Stream.Client
             IsClosed = false;
         }
 
+        private void StartHeartBeat()
+        {
+            _heartBeatHandler.Start();
+        }
+
         public delegate Task ConnectionCloseHandler(string reason);
 
         public event ConnectionCloseHandler ConnectionClosed;
@@ -228,6 +233,8 @@ namespace RabbitMQ.Stream.Client
             client.ConnectionProperties = open.ConnectionProperties;
 
             client.correlationId = 100;
+            // start heart beat only when the client is connected
+            client.StartHeartBeat();
             return client;
         }
 

@@ -61,7 +61,6 @@ public class ReliableProducer : ReliableBase
             reliableProducerConfig.ConfirmationHandler,
             reliableProducerConfig.TimeoutMessageAfter
         );
-        _confirmationPipe.Start();
     }
 
     public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig)
@@ -114,6 +113,9 @@ public class ReliableProducer : ReliableBase
                 // Init the publishing id
                 Interlocked.Exchange(ref _publishingId,
                     await _producer.GetLastPublishingId());
+
+                // confirmation Pipe can start only if the producer is ready
+                _confirmationPipe.Start();
             }
         }
         catch (Exception e)
