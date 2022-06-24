@@ -116,6 +116,7 @@ namespace RabbitMQ.Stream.Client
         public int PublishCommandsSent => publishCommandsSent;
 
         public int MessagesSent => messagesSent;
+        public uint MaxFrameSize => tuneReceived.Task.Result.FrameMax;
 
         private int messagesSent;
         private int confirmFrames;
@@ -215,7 +216,7 @@ namespace RabbitMQ.Stream.Client
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
             //tune
-            var tune = await client.tuneReceived.Task;
+            await client.tuneReceived.Task;
             await client.Publish(new TuneRequest(0,
                 (uint)client.Parameters.Heartbeat.TotalSeconds));
 
@@ -586,7 +587,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
+                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
             }
         }
 

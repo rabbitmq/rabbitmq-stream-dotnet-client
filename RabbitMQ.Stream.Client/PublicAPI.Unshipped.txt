@@ -193,6 +193,7 @@ RabbitMQ.Stream.Client.Client.DeletePublisher(byte publisherId) -> System.Thread
 RabbitMQ.Stream.Client.Client.DeleteStream(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.DeleteResponse>
 RabbitMQ.Stream.Client.Client.IncomingFrames.get -> int
 RabbitMQ.Stream.Client.Client.IsClosed.get -> bool
+RabbitMQ.Stream.Client.Client.MaxFrameSize.get -> uint
 RabbitMQ.Stream.Client.Client.MessagesSent.get -> int
 RabbitMQ.Stream.Client.Client.Parameters.get -> RabbitMQ.Stream.Client.ClientParameters
 RabbitMQ.Stream.Client.Client.Parameters.set -> void
@@ -531,6 +532,7 @@ RabbitMQ.Stream.Client.PeerPropertiesResponse.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.PeerPropertiesResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.PooledTaskSource<T>
 RabbitMQ.Stream.Client.Producer
+RabbitMQ.Stream.Client.Producer.BatchSend(System.Collections.Generic.List<(ulong, RabbitMQ.Stream.Client.Message)> messages) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Producer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.Producer.ConfirmFrames.get -> int
 RabbitMQ.Stream.Client.Producer.Dispose() -> void

@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -92,7 +93,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var id in publishingIds.Span)
                     {
-                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = ResponseCode.Ok, });
+                        config.ConfirmHandler(new Confirmation {PublishingId = id, Code = ResponseCode.Ok,});
                     }
 
                     semaphore.Release(publishingIds.Length);
@@ -101,7 +102,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var (id, code) in errors)
                     {
-                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = code, });
+                        config.ConfirmHandler(new Confirmation {PublishingId = id, Code = code,});
                     }
 
                     semaphore.Release(errors.Length);
@@ -139,6 +140,33 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        public async ValueTask BatchSend(List<(ulong, Message)> messages)
+        {
+            if (messages.Count > config.MaxInFlight)
+            {
+                throw new InvalidOperationException($"Too many messages in batch. " +
+                                                    $"Max allowed is {config.MaxInFlight}");
+            }
+
+            var totalSize = messages.Sum(message => message.Item2.Size);
+
+            if (totalSize > client.MaxFrameSize)
+            {
+                throw new InvalidOperationException($"Total size of messages in batch is too big. " +
+                                                    $"Max allowed is {client.MaxFrameSize}");
+            }
+
+            for (var i = 0; i < messages.Count; i++)
+            {
+                await SemaphoreWait();
+            }
+
+            if (messages.Count != 0 && !client.IsClosed)
+            {
+                await SendMessages(messages).ConfigureAwait(false);
+            }
+        }
+
         private async Task SemaphoreWait()
         {
             if (!semaphore.Wait(0) && !client.IsClosed)
@@ -148,6 +176,15 @@ namespace RabbitMQ.Stream.Client
                 {
                     LogEventSource.Log.LogWarning("Semaphore Wait timeout during publishing.");
                 }
+            }
+        }
+
+        private async Task SendMessages(List<(ulong, Message)> messages)
+        {
+            var publishTask = client.Publish(new Publish(publisherId, messages));
+            if (!publishTask.IsCompletedSuccessfully)
+            {
+                await publishTask.ConfigureAwait(false);
             }
         }
 
@@ -194,15 +231,6 @@ namespace RabbitMQ.Stream.Client
                 if (messages.Count > 0)
                 {
                     await SendMessages(messages).ConfigureAwait(false);
-                }
-            }
-
-            async Task SendMessages(List<(ulong, Message)> messages)
-            {
-                var publishTask = client.Publish(new Publish(publisherId, messages));
-                if (!publishTask.IsCompletedSuccessfully)
-                {
-                    await publishTask.ConfigureAwait(false);
                 }
 
                 messages.Clear();
