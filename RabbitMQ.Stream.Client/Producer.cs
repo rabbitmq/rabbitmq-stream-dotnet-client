@@ -93,7 +93,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var id in publishingIds.Span)
                     {
-                        config.ConfirmHandler(new Confirmation {PublishingId = id, Code = ResponseCode.Ok,});
+                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = ResponseCode.Ok, });
                     }
 
                     semaphore.Release(publishingIds.Length);
@@ -102,7 +102,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var (id, code) in errors)
                     {
-                        config.ConfirmHandler(new Confirmation {PublishingId = id, Code = code,});
+                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = code, });
                     }
 
                     semaphore.Release(errors.Length);
@@ -163,7 +163,7 @@ namespace RabbitMQ.Stream.Client
 
             if (messages.Count != 0 && !client.IsClosed)
             {
-                await SendMessages(messages).ConfigureAwait(false);
+                await SendMessages(messages, false).ConfigureAwait(false);
             }
         }
 
@@ -179,12 +179,17 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private async Task SendMessages(List<(ulong, Message)> messages)
+        private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
             var publishTask = client.Publish(new Publish(publisherId, messages));
             if (!publishTask.IsCompletedSuccessfully)
             {
                 await publishTask.ConfigureAwait(false);
+            }
+
+            if (clearMessagesList)
+            {
+                messages.Clear();
             }
         }
 
@@ -232,8 +237,6 @@ namespace RabbitMQ.Stream.Client
                 {
                     await SendMessages(messages).ConfigureAwait(false);
                 }
-
-                messages.Clear();
             }
         }
 
