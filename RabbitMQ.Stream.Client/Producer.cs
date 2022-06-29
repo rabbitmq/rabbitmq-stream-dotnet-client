@@ -142,6 +142,25 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask BatchSend(List<(ulong, Message)> messages)
         {
+            PreValidateBatch(messages);
+            await InternalBatchSend(messages);
+        }
+
+        internal async Task InternalBatchSend(List<(ulong, Message)> messages)
+        {
+            for (var i = 0; i < messages.Count; i++)
+            {
+                await SemaphoreWait();
+            }
+
+            if (messages.Count != 0 && !client.IsClosed)
+            {
+                await SendMessages(messages, false).ConfigureAwait(false);
+            }
+        }
+
+        internal void PreValidateBatch(List<(ulong, Message)> messages)
+        {
             if (messages.Count > config.MaxInFlight)
             {
                 throw new InvalidOperationException($"Too many messages in batch. " +
@@ -154,16 +173,6 @@ namespace RabbitMQ.Stream.Client
             {
                 throw new InvalidOperationException($"Total size of messages in batch is too big. " +
                                                     $"Max allowed is {client.MaxFrameSize}");
-            }
-
-            for (var i = 0; i < messages.Count; i++)
-            {
-                await SemaphoreWait();
-            }
-
-            if (messages.Count != 0 && !client.IsClosed)
-            {
-                await SendMessages(messages, false).ConfigureAwait(false);
             }
         }
 

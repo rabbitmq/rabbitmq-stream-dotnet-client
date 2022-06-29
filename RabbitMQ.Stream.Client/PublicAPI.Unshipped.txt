@@ -661,6 +661,7 @@ RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.Stream.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.StreamSystem.get -> RabbitMQ.Stream.Client.StreamSystem
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.StreamSystem.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducer
+RabbitMQ.Stream.Client.Reliable.ReliableProducer.BatchSend(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.ReliableProducer.Send(RabbitMQ.Stream.Client.Message message) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.ReliableProducer.Send(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig
@@ -668,6 +669,8 @@ RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ClientProvidedName.get ->
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ClientProvidedName.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ConfirmationHandler.get -> System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ConfirmationHandler.init -> void
+RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.MaxInFlight.get -> int
+RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.MaxInFlight.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ReconnectStrategy.get -> RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ReconnectStrategy.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.Reference.get -> string
