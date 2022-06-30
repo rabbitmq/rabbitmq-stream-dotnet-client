@@ -46,7 +46,7 @@ public class ReliableTests
 
                 return Task.CompletedTask;
             },
-            TimeSpan.FromSeconds(2)
+            TimeSpan.FromSeconds(2), 100
         );
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
@@ -75,7 +75,7 @@ public class ReliableTests
 
                 return Task.CompletedTask;
             },
-            TimeSpan.FromSeconds(2)
+            TimeSpan.FromSeconds(2), 100
         );
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));

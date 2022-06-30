@@ -61,8 +61,8 @@ public class ReliableProducer : ReliableBase
         _reliableProducerConfig = reliableProducerConfig;
         _confirmationPipe = new ConfirmationPipe(
             reliableProducerConfig.ConfirmationHandler,
-            reliableProducerConfig.TimeoutMessageAfter
-        );
+            reliableProducerConfig.TimeoutMessageAfter,
+            reliableProducerConfig.MaxInFlight);
     }
 
     public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig)
@@ -227,9 +227,9 @@ public class ReliableProducer : ReliableBase
         }
 
         _producer.PreValidateBatch(messagesToSend);
-        foreach (var valueTuple in messagesToSend)
+        foreach (var msg in messagesToSend)
         {
-            _confirmationPipe.AddUnConfirmedMessage(valueTuple.Item1, valueTuple.Item2);
+            _confirmationPipe.AddUnConfirmedMessage(msg.Item1, msg.Item2);
         }
 
         await SemaphoreSlim.WaitAsync();

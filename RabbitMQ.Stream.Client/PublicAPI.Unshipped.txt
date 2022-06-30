@@ -613,7 +613,7 @@ RabbitMQ.Stream.Client.QueryPublisherResponse.Write(System.Span<byte> span) -> i
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.AddUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Message message) -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.AddUnConfirmedMessage(ulong publishingId, System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) -> void
-RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> confirmHandler, System.TimeSpan messageTimeout) -> void
+RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> confirmHandler, System.TimeSpan messageTimeout, int maxInFlightMessages) -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.RemoveUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Reliable.ConfirmationStatus confirmationStatus) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.Start() -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.Stop() -> void
