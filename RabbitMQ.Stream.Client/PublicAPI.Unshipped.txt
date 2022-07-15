@@ -193,6 +193,7 @@ RabbitMQ.Stream.Client.Client.DeletePublisher(byte publisherId) -> System.Thread
 RabbitMQ.Stream.Client.Client.DeleteStream(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.DeleteResponse>
 RabbitMQ.Stream.Client.Client.IncomingFrames.get -> int
 RabbitMQ.Stream.Client.Client.IsClosed.get -> bool
+RabbitMQ.Stream.Client.Client.MaxFrameSize.get -> uint
 RabbitMQ.Stream.Client.Client.MessagesSent.get -> int
 RabbitMQ.Stream.Client.Client.Parameters.get -> RabbitMQ.Stream.Client.ClientParameters
 RabbitMQ.Stream.Client.Client.Parameters.set -> void
@@ -531,6 +532,7 @@ RabbitMQ.Stream.Client.PeerPropertiesResponse.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.PeerPropertiesResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.PooledTaskSource<T>
 RabbitMQ.Stream.Client.Producer
+RabbitMQ.Stream.Client.Producer.BatchSend(System.Collections.Generic.List<(ulong, RabbitMQ.Stream.Client.Message)> messages) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Producer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.Producer.ConfirmFrames.get -> int
 RabbitMQ.Stream.Client.Producer.Dispose() -> void
@@ -611,7 +613,7 @@ RabbitMQ.Stream.Client.QueryPublisherResponse.Write(System.Span<byte> span) -> i
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.AddUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Message message) -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.AddUnConfirmedMessage(ulong publishingId, System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) -> void
-RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> confirmHandler, System.TimeSpan messageTimeout) -> void
+RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> confirmHandler, System.TimeSpan messageTimeout, int maxInFlightMessages) -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.RemoveUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Reliable.ConfirmationStatus confirmationStatus) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.Start() -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.Stop() -> void
@@ -659,6 +661,7 @@ RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.Stream.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.StreamSystem.get -> RabbitMQ.Stream.Client.StreamSystem
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.StreamSystem.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducer
+RabbitMQ.Stream.Client.Reliable.ReliableProducer.BatchSend(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.ReliableProducer.Send(RabbitMQ.Stream.Client.Message message) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.ReliableProducer.Send(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig
@@ -666,6 +669,8 @@ RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ClientProvidedName.get ->
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ClientProvidedName.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ConfirmationHandler.get -> System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ConfirmationHandler.init -> void
+RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.MaxInFlight.get -> int
+RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.MaxInFlight.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ReconnectStrategy.get -> RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.ReconnectStrategy.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.Reference.get -> string

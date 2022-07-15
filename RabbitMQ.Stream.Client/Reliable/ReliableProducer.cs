@@ -21,6 +21,8 @@ public record ReliableProducerConfig
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 
+    public int MaxInFlight { get; set; } = 1000;
+
     public TimeSpan TimeoutMessageAfter
     {
         get => _timeoutMessageAfter;
@@ -59,8 +61,8 @@ public class ReliableProducer : ReliableBase
         _reliableProducerConfig = reliableProducerConfig;
         _confirmationPipe = new ConfirmationPipe(
             reliableProducerConfig.ConfirmationHandler,
-            reliableProducerConfig.TimeoutMessageAfter
-        );
+            reliableProducerConfig.TimeoutMessageAfter,
+            reliableProducerConfig.MaxInFlight);
     }
 
     public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig)
@@ -81,6 +83,7 @@ public class ReliableProducer : ReliableBase
                 Stream = _reliableProducerConfig.Stream,
                 ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
                 Reference = _reliableProducerConfig.Reference,
+                MaxInFlight = _reliableProducerConfig.MaxInFlight,
                 MetadataHandler = update =>
                 {
                     HandleMetaDataMaybeReconnect(update.Stream,
@@ -207,6 +210,45 @@ public class ReliableProducer : ReliableBase
         catch (Exception e)
         {
             LogEventSource.Log.LogError("Error sending messages: ", e);
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
+    }
+
+    public async ValueTask BatchSend(List<Message> messages)
+    {
+        var messagesToSend = new List<(ulong, Message)>();
+        foreach (var message in messages)
+        {
+            Interlocked.Increment(ref _publishingId);
+            messagesToSend.Add((_publishingId, message));
+        }
+
+        _producer.PreValidateBatch(messagesToSend);
+        foreach (var msg in messagesToSend)
+        {
+            _confirmationPipe.AddUnConfirmedMessage(msg.Item1, msg.Item2);
+        }
+
+        await SemaphoreSlim.WaitAsync();
+        try
+        {
+            // This flags avoid some race condition,
+            // since the reconnection can arrive from different threads. 
+            // In this case it skips the publish until
+            // the producer is connected. Messages are safe since are stored 
+            // on the _waitForConfirmation list. The user will get Timeout Error
+            if (!(_inReconnection))
+            {
+                await _producer.InternalBatchSend(messagesToSend);
+            }
+        }
+
+        catch (Exception e)
+        {
+            LogEventSource.Log.LogError("BatchSend error sending message: ", e);
         }
         finally
         {

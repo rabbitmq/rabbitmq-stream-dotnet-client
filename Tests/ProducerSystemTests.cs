@@ -275,5 +275,71 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
+
+        [Fact]
+        public async void ProducerBatchSendValidate()
+        {
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            // validate that the messages batch size is not greater than the MaxInFlight
+
+            var producer = await system.CreateProducer(new ProducerConfig
+            {
+                Reference = "producer",
+                Stream = stream,
+                MaxInFlight = 100, // in this case the batch send can't be greater than 100
+            });
+            var messages = new List<(ulong, Message)>();
+            // 101 > MaxInFlight so it must raise an exception
+            for (var i = 0; i < 101; i++)
+            {
+                messages.Add(((ulong)i, new Message(Encoding.UTF8.GetBytes($"data_{i}"))));
+            }
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => producer.BatchSend(messages).AsTask());
+            messages.Clear();
+
+            // MaxFrameSize by default is 1048576
+            // we can't send messages greater than 1048576 bytes
+            messages.Add((1, new Message(new byte[1048576 * 2]))); // 2MB >  MaxFrameSize so it must raise an exception
+            await Assert.ThrowsAsync<InvalidOperationException>(() => producer.BatchSend(messages).AsTask());
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
+        public async void ProducerBatchConfirmNumberOfMessages()
+        {
+            // test the batch confirm number of messages for batch send
+            // we send 100 messages using the batch send
+            // we should receive only 100 conformations
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var testPassed = new TaskCompletionSource<bool>();
+            const int NumberOfMessages = 100;
+            var producer = await system.CreateProducer(new
+                ProducerConfig
+            {
+                Reference = "producer",
+                Stream = stream,
+                ConfirmHandler = confirmation =>
+                {
+                    if (confirmation.PublishingId == NumberOfMessages)
+                    {
+                        testPassed.SetResult(true);
+                    }
+                }
+            }
+            );
+            var messages = new List<(ulong, Message)>();
+            for (var i = 1; i <= NumberOfMessages; i++)
+            {
+                messages.Add(((ulong)i, new Message(Encoding.UTF8.GetBytes($"data_{i}"))));
+            }
+
+            await producer.BatchSend(messages);
+            messages.Clear();
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
     }
 }

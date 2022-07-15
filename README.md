@@ -251,6 +251,21 @@ or more generic `system.QuerySequence("reference", "my_stream")`.
 
 `publishingId` must be incremented for each send.
 
+#### Standard Batch publish
+
+Batch send is a synchronous operation.
+It allows to pre-aggregate messages and send them in a single synchronous call.
+```csharp
+var messages = new List<(ulong, Message)>();
+for (ulong i = 0; i < 30; i++)
+{
+    messages.Add((i, new Message(Encoding.UTF8.GetBytes($"batch {i}"))));
+}
+await producer.BatchSend(messages);
+messages.Clear();
+```
+In most cases, the standard `Send` is easier and works in most of the cases.
+
 #### Sub Entries Batching
 A sub-entry is one "slot" in a publishing frame, meaning outbound messages are not only batched in publishing frames,
 but in sub-entries as well. Use this feature to increase throughput at the cost of increased latency.

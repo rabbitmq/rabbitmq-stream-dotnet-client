@@ -46,7 +46,7 @@ public class ReliableTests
 
                 return Task.CompletedTask;
             },
-            TimeSpan.FromSeconds(2)
+            TimeSpan.FromSeconds(2), 100
         );
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
@@ -75,7 +75,7 @@ public class ReliableTests
 
                 return Task.CompletedTask;
             },
-            TimeSpan.FromSeconds(2)
+            TimeSpan.FromSeconds(2), 100
         );
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
@@ -102,7 +102,11 @@ public class ReliableTests
                 StreamSystem = system,
                 ConfirmationHandler = _ =>
                 {
-                    if (Interlocked.Increment(ref count) == 10)
+                    if (Interlocked.Increment(ref count) ==
+                        5 +  // first five messages iteration
+                        5 + // second five messages iteration with compression enabled
+                        2 // batch send iteration since the messages list contains two messages
+                        )
                     {
                         testPassed.SetResult(true);
                     }
@@ -116,12 +120,19 @@ public class ReliableTests
             await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
         }
 
-        List<Message> messages = new() { new Message(Encoding.UTF8.GetBytes($"hello list")) };
+        List<Message> messages = new()
+        {
+            new Message(Encoding.UTF8.GetBytes($"hello Message1")),
+            new Message(Encoding.UTF8.GetBytes($"hello Message2"))
+        };
 
         for (var i = 0; i < 5; i++)
         {
             await rProducer.Send(messages, CompressionType.None);
         }
+
+        // batch send, it will produce (messages,count) confirmation
+        await rProducer.BatchSend(messages);
 
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         await rProducer.Close();

@@ -19,19 +19,23 @@ namespace RabbitMQ.Stream.Client.Reliable;
 public enum ConfirmationStatus : ushort
 {
     WaitForConfirmation = 0,
+
     /// <summary>
     /// Message was confirmed to be received and stored by server.
     /// </summary>
     Confirmed = 1,
+
     /// <summary>
     /// Client gave up on waiting for this publishing id.
     /// </summary>
     ClientTimeoutError = 2,
+
     /// <summary>
     /// Stream is not available anymore (it was deleted).
     /// </summary>
     StreamNotAvailable = 6,
     InternalError = 15,
+
     /// <summary>
     /// Signals either bad credentials, or insufficient permissions.
     /// </summary>
@@ -66,11 +70,14 @@ public class ConfirmationPipe
     private readonly Timer _invalidateTimer = new();
     private Func<MessagesConfirmation, Task> ConfirmHandler { get; }
     private readonly TimeSpan _messageTimeout;
+    private readonly int _maxInFlightMessages;
 
-    public ConfirmationPipe(Func<MessagesConfirmation, Task> confirmHandler, TimeSpan messageTimeout)
+    public ConfirmationPipe(Func<MessagesConfirmation, Task> confirmHandler,
+        TimeSpan messageTimeout, int maxInFlightMessages)
     {
         ConfirmHandler = confirmHandler;
         _messageTimeout = messageTimeout;
+        _maxInFlightMessages = maxInFlightMessages;
     }
 
     public void Start()
@@ -91,8 +98,9 @@ public class ConfirmationPipe
             }, new ExecutionDataflowBlockOptions
             {
                 MaxDegreeOfParallelism = 1,
-                // throttling
-                BoundedCapacity = 50_000
+                // We set the BoundedCapacity to the double of the maxInFlightMessages
+                // because we want a cache of messages to speedup the performances.
+                BoundedCapacity = (_maxInFlightMessages * 2)
             });
 
         _invalidateTimer.Elapsed += OnTimedEvent;
@@ -125,12 +133,7 @@ public class ConfirmationPipe
     public void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
     {
         _waitForConfirmation.TryAdd(publishingId,
-            new MessagesConfirmation
-            {
-                Messages = messages,
-                PublishingId = publishingId,
-                InsertDateTime = DateTime.Now
-            });
+            new MessagesConfirmation { Messages = messages, PublishingId = publishingId, InsertDateTime = DateTime.Now });
     }
 
     public Task RemoveUnConfirmedMessage(ulong publishingId, ConfirmationStatus confirmationStatus)
