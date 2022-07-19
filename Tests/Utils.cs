@@ -101,10 +101,7 @@ namespace Tests
             string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig
-            {
-                ClientProvidedName = clientProviderNameLocator
-            };
+            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();
@@ -129,7 +126,7 @@ namespace Tests
                     ConfirmHandler = _ =>
                     {
                         count++;
-                        testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
+                        // testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
                         if (count != numberOfMessages)
                         {
                             return;
@@ -147,7 +144,7 @@ namespace Tests
             }
 
             testPassed.Task.Wait(TimeSpan.FromSeconds(10));
-            Assert.Equal(producer.MessagesSent, numberOfMessages);
+            Assert.Equal(numberOfMessages, testPassed.Task.Result);
             Assert.True(producer.ConfirmFrames >= 1);
             Assert.True(producer.IncomingFrames >= 1);
             Assert.True(producer.PublishCommandsSent >= 1);
@@ -169,7 +166,8 @@ namespace Tests
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
             }
 
             var obj = JsonSerializer.Deserialize(result.Content.ReadAsStream(), typeof(IEnumerable<Connection>));
@@ -242,7 +240,8 @@ namespace Tests
             var result = task.Result;
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
             }
         }
 

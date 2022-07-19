@@ -21,8 +21,29 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
+    internal struct ConsumerEvents
+    {
+        public ConsumerEvents(Func<Deliver, Task> deliverHandler,
+            Func<bool, Task<IOffsetType>> updateConsumerHandler)
+        {
+            DeliverHandler = deliverHandler;
+            UpdateConsumerHandler = updateConsumerHandler;
+        }
+
+        public Func<Deliver, Task> DeliverHandler { get; }
+        public Func<bool, Task<IOffsetType>> UpdateConsumerHandler { get; }
+    }
+
     public record ConsumerConfig : INamedEntity
     {
+
+        // StoredOffsetSpec configuration it is needed to keep the offset spec.
+        // since the offset can be decided from the ConsumerConfig.OffsetSpec.
+        // and from ConsumerConfig.ConsumerUpdateListener.
+        // needed also See also consumer:MaybeDispatch/1.
+        // It is not public because it is not needed for the user.
+        internal IOffsetType StoredOffsetSpec { get; set; }
+
         public string Stream { get; set; }
         public string Reference { get; set; }
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
@@ -31,6 +52,12 @@ namespace RabbitMQ.Stream.Client
         public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+        public bool IsSingleActiveConsumer { get; set; } = false;
+
+        // config.ConsumerUpdateListener is the callback for when the consumer is updated due
+        // to single active consumer.
+        public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
     }
 
     public class Consumer : AbstractEntity, IDisposable
@@ -51,8 +78,12 @@ namespace RabbitMQ.Stream.Client
         // user offset.
         private bool MaybeDispatch(ulong offset)
         {
-            return !(config.OffsetSpec is OffsetTypeOffset offsetSpec
-                     && offset < offsetSpec.OffsetValue);
+            return config.StoredOffsetSpec switch
+            {
+                OffsetTypeOffset offsetTypeOffset =>
+                    !(offset < offsetTypeOffset.OffsetValue),
+                _ => true
+            };
         }
 
         public async Task StoreOffset(ulong offset)
@@ -84,11 +115,21 @@ namespace RabbitMQ.Stream.Client
                 client.Parameters.MetadataHandler += config.MetadataHandler;
             }
 
-            ushort initialCredit = 2;
+            var consumerProperties = new Dictionary<string, string>();
+            if (config.IsSingleActiveConsumer)
+            {
+                consumerProperties["name"] = config.Reference;
+                consumerProperties["single-active-consumer"] = "true";
+            }
+
+            // this the default value for the consumer.
+            config.StoredOffsetSpec = config.OffsetSpec;
+            const ushort InitialCredit = 2;
+
             var (consumerId, response) = await client.Subscribe(
-                config.Stream,
-                config.OffsetSpec, initialCredit,
-                new Dictionary<string, string>(),
+                config,
+                InitialCredit,
+                consumerProperties,
                 async deliver =>
                 {
                     foreach (var messageEntry in deliver.Messages)
@@ -107,7 +148,22 @@ namespace RabbitMQ.Stream.Client
 
                     // give one credit after each chunk
                     await client.Credit(deliver.SubscriptionId, 1);
-                });
+                }, async b =>
+                {
+                    if (config.ConsumerUpdateListener != null)
+                    {
+                        // in this case the StoredOffsetSpec is overridden by the ConsumerUpdateListener
+                        // since the user decided to override the default behavior
+                        config.StoredOffsetSpec = await config.ConsumerUpdateListener(
+                            config.Reference,
+                            config.Stream,
+                            b);
+                    }
+
+                    return config.StoredOffsetSpec;
+                }
+
+                );
             if (response.ResponseCode == ResponseCode.Ok)
             {
                 subscriberId = consumerId;
