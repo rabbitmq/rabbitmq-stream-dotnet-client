@@ -15,7 +15,9 @@ namespace Tests
 
         private readonly StreamSystemConfig _systemConfig = new()
         {
-            Password = "test", UserName = "test", VirtualHost = "/"
+            Password = "test",
+            UserName = "test",
+            VirtualHost = "/"
         };
 
         public PermissionTests()
@@ -31,7 +33,7 @@ namespace Tests
         public async Task AccessToStreamWithoutGrantsShouldRaiseErrorForProducer()
         {
             var system = await StreamSystem.Create(_systemConfig);
-            var producerConfig = new ProducerConfig {Reference = "producer", Stream = StreamName};
+            var producerConfig = new ProducerConfig { Reference = "producer", Stream = StreamName };
             await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(producerConfig));
             await system.Close();
         }
@@ -40,7 +42,7 @@ namespace Tests
         public async Task AccessToStreamWithoutGrantsShouldRaiseErrorForConsumer()
         {
             var system = await StreamSystem.Create(_systemConfig);
-            var consumerConfig = new ConsumerConfig {Reference = "consumer", Stream = StreamName};
+            var consumerConfig = new ConsumerConfig { Reference = "consumer", Stream = StreamName };
             await Assert.ThrowsAsync<CreateConsumerException>(() => system.CreateConsumer(consumerConfig));
             await system.Close();
         }
@@ -49,7 +51,7 @@ namespace Tests
         public async Task AccessToStreamWithoutGrantsShouldRaiseErrorForReliableConsumer()
         {
             var system = await StreamSystem.Create(_systemConfig);
-            var rConsumerConfig = new ReliableConsumerConfig {Stream = StreamName, StreamSystem = system};
+            var rConsumerConfig = new ReliableConsumerConfig { Stream = StreamName, StreamSystem = system };
 
             await Assert.ThrowsAsync<CreateConsumerException>(() =>
                 ReliableConsumer.CreateReliableConsumer(rConsumerConfig));
@@ -74,7 +76,7 @@ namespace Tests
         public async void AccessToStreamWithoutGrantsShouldRaiseError()
         {
             var system = await StreamSystem.Create(_systemConfig);
-            var rProducerConfig = new ReliableProducerConfig {Stream = StreamName, StreamSystem = system};
+            var rProducerConfig = new ReliableProducerConfig { Stream = StreamName, StreamSystem = system };
             await Assert.ThrowsAsync<CreateProducerException>(() =>
                 ReliableProducer.CreateReliableProducer(rProducerConfig));
 
