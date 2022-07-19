@@ -34,8 +34,8 @@ public class ReliableConsumer : ReliableBase
 {
     private Consumer _consumer;
     private readonly ReliableConsumerConfig _reliableConsumerConfig;
-    private ulong _lastConsumerOffset = 0;
-    private bool _consumedFirstTime = false;
+    private ulong _lastConsumerOffset;
+    private bool _consumedFirstTime;
 
     private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
     {
@@ -121,7 +121,7 @@ public class ReliableConsumer : ReliableBase
 
     public override async Task Close()
     {
-        _needReconnect = false;
+        IsOpen = false;
         await CloseReliable();
     }
 
@@ -131,3 +131,4 @@ public class ReliableConsumer : ReliableBase
                $"stream: {_reliableConsumerConfig.Stream} ";
     }
 }
+
