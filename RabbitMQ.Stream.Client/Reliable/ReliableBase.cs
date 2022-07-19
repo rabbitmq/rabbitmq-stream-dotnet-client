@@ -45,7 +45,6 @@ public abstract class ReliableBase
 
             LogEventSource.Log.LogInformation($"{ToString()} is disconnected. {addInfo}");
 
-
             while (hasToReconnect)
             {
                 try
