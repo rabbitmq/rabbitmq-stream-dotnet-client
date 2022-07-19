@@ -208,13 +208,13 @@ public class ReliableTests
             }
         );
 
-        Assert.True(rProducer.IsOpen());
+        Assert.True(rProducer.IsOpen);
         // When the stream is deleted the producer has to close the 
         // connection an become inactive.
         await system.DeleteStream(stream);
 
         SystemUtils.Wait(TimeSpan.FromSeconds(5));
-        Assert.False(rProducer.IsOpen());
+        Assert.False(rProducer.IsOpen);
         await system.Close();
     }
 
@@ -236,10 +236,10 @@ public class ReliableTests
             }
         );
 
-        Assert.True(rProducer.IsOpen());
+        Assert.True(rProducer.IsOpen);
         await rProducer.HandleMetaDataMaybeReconnect(stream, system);
         SystemUtils.Wait();
-        Assert.True(rProducer.IsOpen());
+        Assert.True(rProducer.IsOpen);
         // await system.DeleteStream(stream);
         await system.Close();
     }
@@ -283,7 +283,7 @@ public class ReliableTests
             }
         );
 
-        Assert.True(rProducer.IsOpen());
+        Assert.True(rProducer.IsOpen);
 
         for (var i = 0; i < 5; i++)
         {
@@ -409,9 +409,9 @@ public class ReliableTests
         Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // after kill the consumer must be open
-        Assert.True(cR.IsOpen());
+        Assert.True(cR.IsOpen);
         await cR.Close();
-        Assert.False(cR.IsOpen());
+        Assert.False(cR.IsOpen);
         await system.DeleteStream(stream);
         await system.Close();
     }
@@ -430,12 +430,12 @@ public class ReliableTests
             }
         );
 
-        Assert.True(rConsumer.IsOpen());
+        Assert.True(rConsumer.IsOpen);
         // When the stream is deleted the consumer has to close the 
         // connection an become inactive.
         await system.DeleteStream(stream);
         SystemUtils.Wait(TimeSpan.FromSeconds(5));
-        Assert.False(rConsumer.IsOpen());
+        Assert.False(rConsumer.IsOpen);
         await system.Close();
     }
 
@@ -481,7 +481,7 @@ public class ReliableTests
             }
         );
 
-        SystemUtils.WaitUntil(() => rConsumer.IsOpen());
+        SystemUtils.WaitUntil(() => rConsumer.IsOpen);
 
         await SystemUtils.PublishMessages(system, stream, 10, _testOutputHelper);
         SystemUtils.WaitUntil(() => SystemUtils.IsConnectionOpen(clientProviderName).Result);
@@ -504,7 +504,7 @@ public class ReliableTests
         // since the set reconnect = false
         try
         {
-            SystemUtils.WaitUntil(() => false == rConsumer.IsOpen());
+            SystemUtils.WaitUntil(() => false == rConsumer.IsOpen);
         }
         finally
         {
