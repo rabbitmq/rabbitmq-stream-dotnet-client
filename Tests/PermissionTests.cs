@@ -2,7 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
-using System;
+using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
@@ -11,76 +11,86 @@ namespace Tests
 {
     public class PermissionTests
     {
-        [Fact]
-        public async void AccessToStreamWithoutGrantsShouldRaiseErrorTest()
+        private const string StreamName = "no_access_stream";
+
+        private readonly StreamSystemConfig _systemConfig = new()
         {
-            SystemUtils.HttpPost(
-                System.Text.Encoding.Default.GetString(
-                    SystemUtils.GetFileContent("definition_test.json")), "definitions");
+            Password = "test", UserName = "test", VirtualHost = "/"
+        };
+
+        public PermissionTests()
+        {
             // load definition creates users and streams to test the access
             // the user "test" can't access on "no_access_stream"
-            const string stream = "no_access_stream";
-            var config = new StreamSystemConfig() { Password = "test", UserName = "test", VirtualHost = "/" };
-            var system = await StreamSystem.Create(config);
+            var contents = SystemUtils.GetFileContent("definition_test.json");
+            var encodedString = System.Text.Encoding.Default.GetString(contents);
+            SystemUtils.HttpPost(encodedString, "definitions");
+        }
 
-            await Assert.ThrowsAsync<CreateProducerException>(
-                async () =>
-                {
-                    await system.CreateProducer(
-                        new ProducerConfig { Reference = "producer", Stream = stream, });
-                }
-            );
+        [Fact]
+        public async Task AccessToStreamWithoutGrantsShouldRaiseErrorForProducer()
+        {
+            var system = await StreamSystem.Create(_systemConfig);
+            var producerConfig = new ProducerConfig {Reference = "producer", Stream = StreamName};
+            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(producerConfig));
+            await system.Close();
+        }
 
-            await Assert.ThrowsAsync<CreateProducerException>(
-                async () =>
-                {
-                    await ReliableProducer.CreateReliableProducer(
-                        new ReliableProducerConfig() { Stream = stream, StreamSystem = system });
-                }
-            );
+        [Fact]
+        public async Task AccessToStreamWithoutGrantsShouldRaiseErrorForConsumer()
+        {
+            var system = await StreamSystem.Create(_systemConfig);
+            var consumerConfig = new ConsumerConfig {Reference = "consumer", Stream = StreamName};
+            await Assert.ThrowsAsync<CreateConsumerException>(() => system.CreateConsumer(consumerConfig));
+            await system.Close();
+        }
 
-            ReliableProducer reliableProducer = null;
-            try
-            {
-                reliableProducer = await ReliableProducer.CreateReliableProducer(
-                    new ReliableProducerConfig() { Stream = stream, StreamSystem = system });
-            }
-            catch (Exception)
-            {
-                // we already tested the Exception (CreateProducerException)
-            }
-            // here the reliableProducer must be closed due of the CreateProducerException
-            Assert.False(reliableProducer != null && reliableProducer.IsOpen());
+        [Fact]
+        public async Task AccessToStreamWithoutGrantsShouldRaiseErrorForReliableConsumer()
+        {
+            var system = await StreamSystem.Create(_systemConfig);
+            var rConsumerConfig = new ReliableConsumerConfig {Stream = StreamName, StreamSystem = system};
 
-            await Assert.ThrowsAsync<CreateConsumerException>(
-                async () =>
-                {
-                    await system.CreateConsumer(
-                        new ConsumerConfig() { Reference = "consumer", Stream = stream, });
-                }
-            );
-
-            await Assert.ThrowsAsync<CreateConsumerException>(
-                async () =>
-                {
-                    await ReliableConsumer.CreateReliableConsumer(
-                        new ReliableConsumerConfig() { Stream = stream, StreamSystem = system });
-                }
-            );
+            await Assert.ThrowsAsync<CreateConsumerException>(() =>
+                ReliableConsumer.CreateReliableConsumer(rConsumerConfig));
 
             ReliableConsumer reliableConsumer = null;
             try
             {
-                reliableConsumer = await ReliableConsumer.CreateReliableConsumer(
-                    new ReliableConsumerConfig() { Stream = stream, StreamSystem = system });
+                reliableConsumer = await ReliableConsumer.CreateReliableConsumer(rConsumerConfig);
             }
-            catch (Exception)
+            catch
             {
                 // we already tested the Exception (CreateConsumerException)
             }
 
             // here the reliableConsumer must be closed due of the CreateConsumerException
-            Assert.False(reliableConsumer != null && reliableConsumer.IsOpen());
+            Assert.NotNull(reliableConsumer);
+            Assert.False(reliableConsumer.IsOpen);
+            await system.Close();
+        }
+
+        [Fact]
+        public async void AccessToStreamWithoutGrantsShouldRaiseError()
+        {
+            var system = await StreamSystem.Create(_systemConfig);
+            var rProducerConfig = new ReliableProducerConfig {Stream = StreamName, StreamSystem = system};
+            await Assert.ThrowsAsync<CreateProducerException>(() =>
+                ReliableProducer.CreateReliableProducer(rProducerConfig));
+
+            ReliableProducer reliableProducer = null;
+            try
+            {
+                reliableProducer = await ReliableProducer.CreateReliableProducer(rProducerConfig);
+            }
+            catch
+            {
+                // we already tested the Exception (CreateProducerException)
+            }
+
+            // here the reliableProducer must be closed due of the CreateProducerException
+            Assert.NotNull(reliableProducer);
+            Assert.False(reliableProducer.IsOpen);
 
             await system.Close();
         }
