@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,41 +14,56 @@ namespace RabbitMQ.Stream.Client.Reliable;
 public abstract class ReliableBase
 {
     protected readonly SemaphoreSlim SemaphoreSlim = new(1);
-    protected bool _needReconnect = true;
+    public bool IsOpen { get; protected set; } = true;
     protected bool _inReconnection;
+
+    /// <summary>
+    /// Try to set a new reliable.
+    /// If successful, should set internal variable to a new instance.
+    /// Should throw an exception on failure.
+    /// </summary>
+    /// <param name="boot">Whether this is the first init</param>
+    protected abstract Task GetNewReliable(bool boot);
+
+    protected abstract Task CloseReliable();
+    public abstract Task Close();
 
     protected async Task Init()
     {
         await GetNewReliable(true);
     }
 
-    // boot is the first time is called. 
-    // used to init the producer/consumer
-    protected abstract Task GetNewReliable(bool boot);
-
     protected async Task TryToReconnect(IReconnectStrategy reconnectStrategy)
     {
         _inReconnection = true;
         try
         {
-            var reconnect = reconnectStrategy.WhenDisconnected(ToString());
-            var hasToReconnect = reconnect && _needReconnect;
-            var addInfo = "Client won't reconnect";
-            if (hasToReconnect)
+            var strategySuggestsReconnect = reconnectStrategy.WhenDisconnected(ToString());
+            var addInfo = strategySuggestsReconnect ? "Client will try reconnect" : "Client won't reconnect";
+
+            var hasToReconnect = strategySuggestsReconnect && IsOpen;
+
+            LogEventSource.Log.LogInformation($"{ToString()} is disconnected. {addInfo}");
+
+
+            while (hasToReconnect)
             {
-                addInfo = "Client will try reconnect";
+                try
+                {
+                    await GetNewReliable(false);
+                }
+                catch (Exception e)
+                {
+                    LogEventSource.Log.LogError("Got an exception when trying to reconnect", e);
+                }
+
+                strategySuggestsReconnect = reconnectStrategy.WhenDisconnected(ToString());
+                hasToReconnect = strategySuggestsReconnect && IsOpen;
             }
 
-            LogEventSource.Log.LogInformation(
-                $"{ToString()} is disconnected. {addInfo}");
-
-            if (hasToReconnect)
+            if (!strategySuggestsReconnect)
             {
-                await GetNewReliable(false);
-            }
-            else
-            {
-                _needReconnect = false;
+                IsOpen = false;
                 await Close();
             }
         }
@@ -91,13 +107,5 @@ public abstract class ReliableBase
                 $"{ToString()} will be closed.");
             await Close();
         }
-    }
-
-    protected abstract Task CloseReliable();
-    public abstract Task Close();
-
-    public bool IsOpen()
-    {
-        return _needReconnect;
     }
 }
