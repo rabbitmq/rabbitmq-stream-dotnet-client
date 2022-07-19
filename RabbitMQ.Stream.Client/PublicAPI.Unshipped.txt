@@ -639,11 +639,11 @@ RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.PublishingId.get -> ulong
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.Status.get -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ReliableBase
 RabbitMQ.Stream.Client.Reliable.ReliableBase.Init() -> System.Threading.Tasks.Task
-RabbitMQ.Stream.Client.Reliable.ReliableBase.IsOpen() -> bool
+RabbitMQ.Stream.Client.Reliable.ReliableBase.IsOpen.get -> bool
+RabbitMQ.Stream.Client.Reliable.ReliableBase.IsOpen.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableBase.ReliableBase() -> void
 RabbitMQ.Stream.Client.Reliable.ReliableBase.TryToReconnect(RabbitMQ.Stream.Client.Reliable.IReconnectStrategy reconnectStrategy) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.ReliableBase._inReconnection -> bool
-RabbitMQ.Stream.Client.Reliable.ReliableBase._needReconnect -> bool
 RabbitMQ.Stream.Client.Reliable.ReliableConsumer
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ClientProvidedName.get -> string

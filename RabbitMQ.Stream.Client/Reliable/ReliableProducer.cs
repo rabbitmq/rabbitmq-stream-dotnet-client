@@ -153,7 +153,7 @@ public class ReliableProducer : ReliableBase
         await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10));
         try
         {
-            _needReconnect = false;
+            IsOpen = false;
             _confirmationPipe.Stop();
             if (_producer != null)
             {
