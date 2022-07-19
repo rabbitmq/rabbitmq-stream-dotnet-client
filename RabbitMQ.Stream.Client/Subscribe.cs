@@ -155,9 +155,13 @@ namespace RabbitMQ.Stream.Client
             get
             {
                 var size = 2 + 2 + 4 + 1 + WireFormatting.StringSize(stream) + offsetType.Size + 2;
+                if (properties.Count > 0)
+                {
+                    size += 4; // size of the properties map
+                }
+
                 foreach (var (key, value) in properties)
                 {
-                    size = 4; // size of the dict
                     // TODO: unnecessary conversion work here to work out the correct size of the frame
                     size += WireFormatting.StringSize(key) + WireFormatting.StringSize(value); //
                 }

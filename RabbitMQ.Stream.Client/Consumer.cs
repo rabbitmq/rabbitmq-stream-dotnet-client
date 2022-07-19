@@ -21,6 +21,19 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
+    internal struct ConsumerEvents
+    {
+
+        public ConsumerEvents(Func<Task<IOffsetType>> consumerUpdate, Func<Deliver, Task> deliverHandler)
+        {
+            ConsumerUpdate = consumerUpdate;
+            DeliverHandler = deliverHandler;
+        }
+
+        public Func<Task<IOffsetType>> ConsumerUpdate { get; }
+        public Func<Deliver, Task> DeliverHandler { get; }
+    }
+
     public record ConsumerConfig : INamedEntity
     {
         public string Stream { get; set; }
@@ -31,6 +44,8 @@ namespace RabbitMQ.Stream.Client
         public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+        public bool IsSingleActiveConsumer { get; set; } = false;
     }
 
     public class Consumer : AbstractEntity, IDisposable
@@ -84,11 +99,18 @@ namespace RabbitMQ.Stream.Client
                 client.Parameters.MetadataHandler += config.MetadataHandler;
             }
 
+            var consumerProperties = new Dictionary<string, string>();
+            if (config.IsSingleActiveConsumer)
+            {
+                consumerProperties["name"] = config.Reference;
+                consumerProperties["single-active-consumer"] = "true";
+            }
+
             ushort initialCredit = 2;
             var (consumerId, response) = await client.Subscribe(
                 config.Stream,
                 config.OffsetSpec, initialCredit,
-                new Dictionary<string, string>(),
+                consumerProperties,
                 async deliver =>
                 {
                     foreach (var messageEntry in deliver.Messages)
