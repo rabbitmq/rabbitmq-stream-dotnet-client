@@ -24,14 +24,20 @@ namespace RabbitMQ.Stream.Client
     internal struct ConsumerEvents
     {
 
-        public ConsumerEvents(Func<Task<IOffsetType>> consumerUpdate, Func<Deliver, Task> deliverHandler)
+        public ConsumerEvents(Func<string, string, bool, Task<IOffsetType>> consumerUpdate,
+            Func<Deliver, Task> deliverHandler, string reference, string stream)
         {
             ConsumerUpdate = consumerUpdate;
             DeliverHandler = deliverHandler;
+            Reference = reference;
+            Stream = stream;
         }
 
-        public Func<Task<IOffsetType>> ConsumerUpdate { get; }
+        public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdate { get; }
         public Func<Deliver, Task> DeliverHandler { get; }
+
+        public string Stream { get; set; }
+        public string Reference { get; set; }
     }
 
     public record ConsumerConfig : INamedEntity
@@ -46,6 +52,11 @@ namespace RabbitMQ.Stream.Client
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
         public bool IsSingleActiveConsumer { get; set; } = false;
+
+        // config.ConsumerUpdateListener is the callback for when the consumer is updated due
+        // to single active consumer.
+        public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
+
     }
 
     public class Consumer : AbstractEntity, IDisposable
@@ -108,8 +119,8 @@ namespace RabbitMQ.Stream.Client
 
             ushort initialCredit = 2;
             var (consumerId, response) = await client.Subscribe(
-                config.Stream,
-                config.OffsetSpec, initialCredit,
+                config,
+                initialCredit,
                 consumerProperties,
                 async deliver =>
                 {

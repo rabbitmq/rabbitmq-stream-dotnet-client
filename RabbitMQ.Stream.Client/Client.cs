@@ -294,23 +294,31 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private Task<IOffsetType> My()
+        private Task<IOffsetType> DefaultOffsetStrategy(string stream, string reference, bool isActive)
         {
             return Task.FromResult<IOffsetType>(new OffsetTypeFirst());
         }
 
-        public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType,
+        public async Task<(byte, SubscribeResponse)> Subscribe(ConsumerConfig config,
             ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler)
         {
             var subscriptionId = GetNextSubscriptionId();
-            // TODO: CHANGE to consumerupdate event
+
+            // config.ConsumerUpdateListener is the callback for when the consumer is updated due
+            // to single active consumer.
+            // if the user does not provide a callback, we will use the default one "DefaultOffsetStrategy".
             consumers.Add(subscriptionId,
-                new ConsumerEvents(My,
-                    deliverHandler));
+                new ConsumerEvents(
+                    config.ConsumerUpdateListener ?? DefaultOffsetStrategy,
+                    deliverHandler,
+                    config.Stream,
+                    config.Reference));
+
             return (subscriptionId,
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
-                    new SubscribeRequest(corr, subscriptionId, stream, offsetType, initialCredit, properties)));
+                    new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
+                        properties)));
         }
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
@@ -409,11 +417,12 @@ namespace RabbitMQ.Stream.Client
                     ConsumerUpdateQueryResponse.Read(frame, out var consumerUpdateQueryResponse);
                     HandleCorrelatedResponse(consumerUpdateQueryResponse);
                     var consumerEventsConsumerUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
-                    var offset = await consumerEventsConsumerUpd.ConsumerUpdate().ConfigureAwait(false);
-                    if (consumerUpdateQueryResponse.IsActive)
-                    {
-                        await ConsumerUpdateResponse(consumerUpdateQueryResponse.CorrelationId, offset);
-                    }
+
+                    var offset = await consumerEventsConsumerUpd.ConsumerUpdate(consumerEventsConsumerUpd.Stream,
+                            consumerEventsConsumerUpd.Reference, consumerUpdateQueryResponse.IsActive)
+                        .ConfigureAwait(false);
+
+                    await ConsumerUpdateResponse(consumerUpdateQueryResponse.CorrelationId, offset);
 
                     break;
                 default:
