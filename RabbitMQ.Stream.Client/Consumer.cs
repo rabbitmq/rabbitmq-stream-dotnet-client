@@ -23,21 +23,21 @@ namespace RabbitMQ.Stream.Client
 
     internal struct ConsumerEvents
     {
-
-        public ConsumerEvents(Func<string, string, bool, Task<IOffsetType>> consumerUpdate,
-            Func<Deliver, Task> deliverHandler, string reference, string stream)
+        public ConsumerEvents(Func<Deliver, Task> deliverHandler,
+            string reference, string stream, IOffsetType offset)
         {
-            ConsumerUpdate = consumerUpdate;
             DeliverHandler = deliverHandler;
             Reference = reference;
             Stream = stream;
+            Offset = offset;
         }
 
-        public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdate { get; }
         public Func<Deliver, Task> DeliverHandler { get; }
 
         public string Stream { get; set; }
         public string Reference { get; set; }
+
+        public IOffsetType Offset { get; set; }
     }
 
     public record ConsumerConfig : INamedEntity
@@ -56,7 +56,6 @@ namespace RabbitMQ.Stream.Client
         // config.ConsumerUpdateListener is the callback for when the consumer is updated due
         // to single active consumer.
         public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
-
     }
 
     public class Consumer : AbstractEntity, IDisposable

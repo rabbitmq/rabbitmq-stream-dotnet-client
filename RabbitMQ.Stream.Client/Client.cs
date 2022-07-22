@@ -294,9 +294,14 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private Task<IOffsetType> DefaultOffsetStrategy(string stream, string reference, bool isActive)
+        public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType,
+            ushort initialCredit,
+            Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler)
         {
-            return Task.FromResult<IOffsetType>(new OffsetTypeFirst());
+            return await Subscribe(new ConsumerConfig() { Stream = stream, OffsetSpec = offsetType },
+                initialCredit,
+                properties,
+                deliverHandler);
         }
 
         public async Task<(byte, SubscribeResponse)> Subscribe(ConsumerConfig config,
@@ -305,15 +310,12 @@ namespace RabbitMQ.Stream.Client
         {
             var subscriptionId = GetNextSubscriptionId();
 
-            // config.ConsumerUpdateListener is the callback for when the consumer is updated due
-            // to single active consumer.
-            // if the user does not provide a callback, we will use the default one "DefaultOffsetStrategy".
             consumers.Add(subscriptionId,
                 new ConsumerEvents(
-                    config.ConsumerUpdateListener ?? DefaultOffsetStrategy,
                     deliverHandler,
                     config.Stream,
-                    config.Reference));
+                    config.Reference,
+                    config.OffsetSpec));
 
             return (subscriptionId,
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
@@ -418,11 +420,18 @@ namespace RabbitMQ.Stream.Client
                     HandleCorrelatedResponse(consumerUpdateQueryResponse);
                     var consumerEventsConsumerUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
 
-                    var offset = await consumerEventsConsumerUpd.ConsumerUpdate(consumerEventsConsumerUpd.Stream,
-                            consumerEventsConsumerUpd.Reference, consumerUpdateQueryResponse.IsActive)
-                        .ConfigureAwait(false);
-
-                    await ConsumerUpdateResponse(consumerUpdateQueryResponse.CorrelationId, offset);
+                    switch (consumerEventsConsumerUpd.Offset)
+                    {
+                        case SaCOffsetTypeOffset sacOffset:
+                            sacOffset.IsActive = consumerUpdateQueryResponse.IsActive;
+                            await ConsumerUpdateResponse(consumerUpdateQueryResponse.CorrelationId,
+                                sacOffset);
+                            break;
+                        default:
+                            await ConsumerUpdateResponse(consumerUpdateQueryResponse.CorrelationId,
+                                consumerEventsConsumerUpd.Offset);
+                            break;
+                    }
 
                     break;
                 default:
@@ -537,6 +546,11 @@ namespace RabbitMQ.Stream.Client
             IsClosed = true;
         }
 
+        private async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
+        {
+            return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification));
+        }
+
         public async Task<CloseResponse> Close(string reason)
         {
             if (IsClosed)
@@ -610,11 +624,6 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<bool> Credit(byte subscriptionId, ushort credit)
         {
             return await Publish(new CreditRequest(subscriptionId, credit));
-        }
-
-        public async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
-        {
-            return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification));
         }
     }
 

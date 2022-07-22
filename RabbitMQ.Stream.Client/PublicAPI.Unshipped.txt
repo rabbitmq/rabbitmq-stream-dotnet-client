@@ -187,7 +187,6 @@ RabbitMQ.Stream.Client.Client.ConfirmFrames.get -> int
 RabbitMQ.Stream.Client.Client.ConnectionClosed -> RabbitMQ.Stream.Client.Client.ConnectionCloseHandler
 RabbitMQ.Stream.Client.Client.ConnectionCloseHandler
 RabbitMQ.Stream.Client.Client.ConnectionProperties.get -> System.Collections.Generic.IDictionary<string, string>
-RabbitMQ.Stream.Client.Client.ConsumerUpdateResponse(uint rCorrelationId, RabbitMQ.Stream.Client.IOffsetType offsetSpecification) -> System.Threading.Tasks.ValueTask<bool>
 RabbitMQ.Stream.Client.Client.CreateStream(string stream, System.Collections.Generic.IDictionary<string, string> args) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.CreateResponse>
 RabbitMQ.Stream.Client.Client.Credit(byte subscriptionId, ushort credit) -> System.Threading.Tasks.ValueTask<bool>
 RabbitMQ.Stream.Client.Client.DeclarePublisher(string publisherRef, string stream, System.Action<System.ReadOnlyMemory<ulong>> confirmCallback, System.Action<(ulong, RabbitMQ.Stream.Client.ResponseCode)[]> errorCallback) -> System.Threading.Tasks.Task<(byte, RabbitMQ.Stream.Client.DeclarePublisherResponse)>
@@ -207,6 +206,7 @@ RabbitMQ.Stream.Client.Client.QueryOffset(string reference, string stream) -> Sy
 RabbitMQ.Stream.Client.Client.QueryPublisherSequence(string publisherRef, string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.QueryPublisherResponse>
 RabbitMQ.Stream.Client.Client.StoreOffset(string reference, string stream, ulong offsetValue) -> System.Threading.Tasks.ValueTask<bool>
 RabbitMQ.Stream.Client.Client.Subscribe(RabbitMQ.Stream.Client.ConsumerConfig config, ushort initialCredit, System.Collections.Generic.Dictionary<string, string> properties, System.Func<RabbitMQ.Stream.Client.Deliver, System.Threading.Tasks.Task> deliverHandler) -> System.Threading.Tasks.Task<(byte, RabbitMQ.Stream.Client.SubscribeResponse)>
+RabbitMQ.Stream.Client.Client.Subscribe(string stream, RabbitMQ.Stream.Client.IOffsetType offsetType, ushort initialCredit, System.Collections.Generic.Dictionary<string, string> properties, System.Func<RabbitMQ.Stream.Client.Deliver, System.Threading.Tasks.Task> deliverHandler) -> System.Threading.Tasks.Task<(byte, RabbitMQ.Stream.Client.SubscribeResponse)>
 RabbitMQ.Stream.Client.Client.Unsubscribe(byte subscriptionId) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.UnsubscribeResponse>
 RabbitMQ.Stream.Client.ClientParameters
 RabbitMQ.Stream.Client.ClientParameters.AddressResolver.get -> RabbitMQ.Stream.Client.AddressResolver
@@ -728,6 +728,13 @@ RabbitMQ.Stream.Client.Routing.ValidateDns.set -> void
 RabbitMQ.Stream.Client.RoutingClientException
 RabbitMQ.Stream.Client.RoutingClientException.RoutingClientException(string message) -> void
 RabbitMQ.Stream.Client.RoutingHelper<T>
+RabbitMQ.Stream.Client.SaCOffsetTypeOffset
+RabbitMQ.Stream.Client.SaCOffsetTypeOffset.IsActive.get -> bool
+RabbitMQ.Stream.Client.SaCOffsetTypeOffset.OffsetType.get -> RabbitMQ.Stream.Client.OffsetTypeEnum
+RabbitMQ.Stream.Client.SaCOffsetTypeOffset.SaCOffsetTypeOffset() -> void
+RabbitMQ.Stream.Client.SaCOffsetTypeOffset.SaCOffsetTypeOffset(System.Func<bool, System.Threading.Tasks.Task<ulong>> fn) -> void
+RabbitMQ.Stream.Client.SaCOffsetTypeOffset.Size.get -> int
+RabbitMQ.Stream.Client.SaCOffsetTypeOffset.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.SaslAuthenticateRequest
 RabbitMQ.Stream.Client.SaslAuthenticateRequest.SaslAuthenticateRequest() -> void
 RabbitMQ.Stream.Client.SaslAuthenticateRequest.SaslAuthenticateRequest(uint correlationId, string mechanism, byte[] data) -> void
