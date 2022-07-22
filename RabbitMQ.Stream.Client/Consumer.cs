@@ -21,6 +21,25 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
+    internal struct ConsumerEvents
+    {
+        public ConsumerEvents(Func<Deliver, Task> deliverHandler,
+            string reference, string stream, IOffsetType offset)
+        {
+            DeliverHandler = deliverHandler;
+            Reference = reference;
+            Stream = stream;
+            Offset = offset;
+        }
+
+        public Func<Deliver, Task> DeliverHandler { get; }
+
+        public string Stream { get; set; }
+        public string Reference { get; set; }
+
+        public IOffsetType Offset { get; set; }
+    }
+
     public record ConsumerConfig : INamedEntity
     {
         public string Stream { get; set; }
@@ -31,6 +50,12 @@ namespace RabbitMQ.Stream.Client
         public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+        public bool IsSingleActiveConsumer { get; set; } = false;
+
+        // config.ConsumerUpdateListener is the callback for when the consumer is updated due
+        // to single active consumer.
+        public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
     }
 
     public class Consumer : AbstractEntity, IDisposable
@@ -84,11 +109,18 @@ namespace RabbitMQ.Stream.Client
                 client.Parameters.MetadataHandler += config.MetadataHandler;
             }
 
+            var consumerProperties = new Dictionary<string, string>();
+            if (config.IsSingleActiveConsumer)
+            {
+                consumerProperties["name"] = config.Reference;
+                consumerProperties["single-active-consumer"] = "true";
+            }
+
             ushort initialCredit = 2;
             var (consumerId, response) = await client.Subscribe(
-                config.Stream,
-                config.OffsetSpec, initialCredit,
-                new Dictionary<string, string>(),
+                config,
+                initialCredit,
+                consumerProperties,
                 async deliver =>
                 {
                     foreach (var messageEntry in deliver.Messages)

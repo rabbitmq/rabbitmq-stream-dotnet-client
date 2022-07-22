@@ -106,8 +106,8 @@ namespace RabbitMQ.Stream.Client
 
         private byte nextSubscriptionId;
 
-        private readonly IDictionary<byte, Func<Deliver, Task>> consumers =
-            new ConcurrentDictionary<byte, Func<Deliver, Task>>();
+        private readonly IDictionary<byte, ConsumerEvents> consumers =
+            new ConcurrentDictionary<byte, ConsumerEvents>();
 
         private int publishCommandsSent;
 
@@ -182,6 +182,16 @@ namespace RabbitMQ.Stream.Client
                 await ConnectionClosed?.Invoke(reason)!;
             }
         }
+
+        // public delegate Task SingleActiveConsumerHandler(string reason);
+        // public event ConnectionCloseHandler ConnectionClosed;
+        // private async Task OnConnectionClosed(string reason)
+        // {
+        //     if (ConnectionClosed != null)
+        //     {
+        //         await ConnectionClosed?.Invoke(reason)!;
+        //     }
+        // }
 
         public static async Task<Client> Create(ClientParameters parameters)
         {
@@ -288,11 +298,29 @@ namespace RabbitMQ.Stream.Client
             ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler)
         {
+            return await Subscribe(new ConsumerConfig() { Stream = stream, OffsetSpec = offsetType },
+                initialCredit,
+                properties,
+                deliverHandler);
+        }
+
+        public async Task<(byte, SubscribeResponse)> Subscribe(ConsumerConfig config,
+            ushort initialCredit,
+            Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler)
+        {
             var subscriptionId = GetNextSubscriptionId();
-            consumers.Add(subscriptionId, deliverHandler);
+
+            consumers.Add(subscriptionId,
+                new ConsumerEvents(
+                    deliverHandler,
+                    config.Stream,
+                    config.Reference,
+                    config.OffsetSpec));
+
             return (subscriptionId,
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
-                    new SubscribeRequest(corr, subscriptionId, stream, offsetType, initialCredit, properties)));
+                    new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
+                        properties)));
         }
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
@@ -355,6 +383,7 @@ namespace RabbitMQ.Stream.Client
             // so there is no need to send the heartbeat when not necessary 
             _heartBeatHandler.UpdateHeartBeat();
 
+            ConsumerEvents consumerEvents;
             switch (tag)
             {
                 case PublishConfirm.Key:
@@ -370,8 +399,8 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case Deliver.Key:
                     Deliver.Read(frame, out var deliver);
-                    var deliverHandler = consumers[deliver.SubscriptionId];
-                    await deliverHandler(deliver).ConfigureAwait(false);
+                    consumerEvents = consumers[deliver.SubscriptionId];
+                    await consumerEvents.DeliverHandler(deliver).ConfigureAwait(false);
                     break;
                 case PublishError.Key:
                     PublishError.Read(frame, out var error);
@@ -385,6 +414,25 @@ namespace RabbitMQ.Stream.Client
                 case TuneResponse.Key:
                     TuneResponse.Read(frame, out var tuneResponse);
                     tuneReceived.SetResult(tuneResponse);
+                    break;
+                case ConsumerUpdateQueryResponse.Key:
+                    ConsumerUpdateQueryResponse.Read(frame, out var consumerUpdateQueryResponse);
+                    HandleCorrelatedResponse(consumerUpdateQueryResponse);
+                    var consumerEventsConsumerUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
+
+                    switch (consumerEventsConsumerUpd.Offset)
+                    {
+                        case SaCOffsetTypeOffset sacOffset:
+                            sacOffset.IsActive = consumerUpdateQueryResponse.IsActive;
+                            await ConsumerUpdateResponse(consumerUpdateQueryResponse.CorrelationId,
+                                sacOffset);
+                            break;
+                        default:
+                            await ConsumerUpdateResponse(consumerUpdateQueryResponse.CorrelationId,
+                                consumerEventsConsumerUpd.Offset);
+                            break;
+                    }
+
                     break;
                 default:
                     HandleCorrelatedCommand(tag, ref frame);
@@ -496,6 +544,11 @@ namespace RabbitMQ.Stream.Client
         {
             _heartBeatHandler.Close();
             IsClosed = true;
+        }
+
+        private async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
+        {
+            return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification));
         }
 
         public async Task<CloseResponse> Close(string reason)
