@@ -23,6 +23,22 @@ public class SacTests
     }
 
     [Fact]
+    public async void ValidateSaC()
+    {
+
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => system.CreateConsumer(new ConsumerConfig()
+        {
+            Stream = stream,
+            IsSingleActiveConsumer = true,
+        }));
+        await system.DeleteStream(stream);
+        await system.Close();
+
+    }
+
+    [Fact]
     public async void SecondConsumerActiveWhenTheFirstIsClosed()
     {
         // Tests the standard behavior of a single active consumer.
@@ -85,6 +101,8 @@ public class SacTests
             1,
             streamName, async (reference, stream, isActive) =>
             {
+                Assert.Equal(AppName, reference);
+                Assert.Equal(streamName, stream);
                 if (isActive)
                 {
                     return await Task.FromResult<IOffsetType>(

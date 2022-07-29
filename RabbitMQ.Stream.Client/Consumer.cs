@@ -36,7 +36,6 @@ namespace RabbitMQ.Stream.Client
 
     public record ConsumerConfig : INamedEntity
     {
-
         // StoredOffsetSpec configuration it is needed to keep the offset spec.
         // since the offset can be decided from the ConsumerConfig.OffsetSpec.
         // and from ConsumerConfig.ConsumerUpdateListener.
@@ -44,19 +43,38 @@ namespace RabbitMQ.Stream.Client
         // It is not public because it is not needed for the user.
         internal IOffsetType StoredOffsetSpec { get; set; }
 
+        internal void Validate()
+        {
+            if (IsSingleActiveConsumer && (Reference == null || Reference.Trim() == string.Empty))
+            {
+                throw new ArgumentException("With single active consumer, the reference must be set.");
+            }
+        }
+
+        // stream name where the consumer will consume the messages.
+        // stream must exist before the consumer is created.
         public string Stream { get; set; }
         public string Reference { get; set; }
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
+
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
+
+        // ClientProvidedName is used to identify TCP connection name.
         public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
+        // SingleActiveConsumer is used to indicate that there is only one consumer active for the stream.
+        // given a consumer reference. 
+        // Consumer Reference can't be null or Empty.
+
         public bool IsSingleActiveConsumer { get; set; } = false;
 
         // config.ConsumerUpdateListener is the callback for when the consumer is updated due
-        // to single active consumer.
+        // to single active consumer. 
+        // return IOffsetType to indicate the offset to be used for the next consumption.
+        // if the ConsumerUpdateListener==null the OffsetSpec will be used.
         public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
     }
 
@@ -103,6 +121,8 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
+            config.Validate();
+
             client.ConnectionClosed += async reason =>
             {
                 if (config.ConnectionClosedHandler != null)
@@ -162,8 +182,7 @@ namespace RabbitMQ.Stream.Client
 
                     return config.StoredOffsetSpec;
                 }
-
-                );
+            );
             if (response.ResponseCode == ResponseCode.Ok)
             {
                 subscriberId = consumerId;
