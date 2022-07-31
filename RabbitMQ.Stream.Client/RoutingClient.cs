@@ -7,12 +7,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
     public interface IRouting
     {
-        Task<IClient> CreateClient(ClientParameters clientParameters);
+        Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null);
         bool ValidateDns { get; set; }
     }
 
@@ -20,7 +21,7 @@ namespace RabbitMQ.Stream.Client
     {
         public bool ValidateDns { get; set; } = true;
 
-        public async Task<IClient> CreateClient(ClientParameters clientParameters)
+        public async Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
             return await Client.Create(clientParameters);
         }

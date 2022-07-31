@@ -6,6 +6,7 @@ using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -37,6 +38,12 @@ public abstract class ReliableBase
 
     protected bool _isOpen;
     protected bool _inReconnection;
+    protected readonly ILogger Logger;
+
+    protected ReliableBase(ILogger logger = null)
+    {
+        Logger = logger;
+    }
 
     internal async Task Init(IReconnectStrategy reconnectStrategy)
     {
@@ -105,12 +112,12 @@ public abstract class ReliableBase
             switch (await reconnectStrategy.WhenDisconnected(ToString()) && _isOpen)
             {
                 case true:
-                    LogEventSource.Log.LogInformation(
+                    Logger?.LogInformation(
                         $"{ToString()} is disconnected. Client will try reconnect");
                     await Init(false, reconnectStrategy);
                     break;
                 case false:
-                    LogEventSource.Log.LogInformation(
+                    Logger?.LogInformation(
                         $"{ToString()} is asked to be closed");
                     await Close();
                     break;
@@ -140,9 +147,11 @@ public abstract class ReliableBase
         await Task.Delay(500);
         if (await system.StreamExists(stream))
         {
-            LogEventSource.Log.LogInformation(
-                $"Meta data update stream: {stream}. The stream still exist." +
-                $" Client: {ToString()}");
+            Logger?.LogInformation(
+                "Meta data update stream: {Stream}. The stream still exist. Client: {ReliableObjectIdentity}",
+                stream,
+                ToString()
+            );
             // Here we just close the producer connection
             // the func TryToReconnect/0 will be called. 
 
@@ -152,9 +161,11 @@ public abstract class ReliableBase
         {
             // In this case the stream doesn't exist anymore
             // the ReliableProducer is just closed.
-            LogEventSource.Log.LogInformation(
-                $"Meta data update stream: {stream} " +
-                $"{ToString()} will be closed.");
+            Logger?.LogInformation(
+                "Meta data update stream: {Stream}. {ReliableObjectIdentity} will be closed",
+                stream,
+                ToString()
+            );
             await Close();
         }
     }

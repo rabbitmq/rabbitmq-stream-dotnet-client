@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -89,7 +90,11 @@ public class Producer : ProducerFactory
     private IProducer _producer;
     private ulong _publishingId;
 
-    private Producer(ProducerConfig producerConfig)
+    protected Producer(ILogger logger = null) : base(logger)
+    {
+    }
+
+    private Producer(ProducerConfig producerConfig, ILogger logger = null) : base(logger)
     {
         _producerConfig = producerConfig;
         _confirmationPipe = new ConfirmationPipe(
@@ -101,9 +106,9 @@ public class Producer : ProducerFactory
     // <summary>
     // Create a new Producer
     // </summary> 
-    public static async Task<Producer> Create(ProducerConfig producerConfig)
+    public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger logger = null)
     {
-        var rProducer = new Producer(producerConfig);
+        var rProducer = new Producer(producerConfig, logger);
         await rProducer.Init(producerConfig.ReconnectStrategy);
         return rProducer;
     }
@@ -185,7 +190,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error sending message: ", e);
+            Logger?.LogError(e, "Error sending message");
         }
         finally
         {
@@ -218,7 +223,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error sending messages: ", e);
+            Logger?.LogError(e, "Error sending messages");
         }
         finally
         {
@@ -268,7 +273,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("BatchSend error sending message: ", e);
+            Logger?.LogError(e, "BatchSend error sending message");
         }
         finally
         {

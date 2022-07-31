@@ -4,6 +4,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -18,6 +19,10 @@ public abstract class ProducerFactory : ReliableBase
 {
     protected ProducerConfig _producerConfig;
     protected ConfirmationPipe _confirmationPipe;
+
+    protected ProducerFactory(ILogger logger) : base(logger)
+    {
+    }
 
     protected async Task<IProducer> CreateProducer()
     {

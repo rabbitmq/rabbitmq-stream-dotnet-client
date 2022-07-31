@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -30,13 +31,15 @@ namespace RabbitMQ.Stream.Client
 
     public class StreamSystem
     {
+        private readonly ILogger _logger;
         private readonly ClientParameters _clientParameters;
         private Client _client;
 
-        private StreamSystem(ClientParameters clientParameters, Client client)
+        private StreamSystem(ClientParameters clientParameters, Client client, ILogger logger = null)
         {
             _clientParameters = clientParameters;
             _client = client;
+            _logger = logger;
         }
 
         public bool IsClosed => _client.IsClosed;
@@ -54,6 +57,7 @@ namespace RabbitMQ.Stream.Client
                 Heartbeat = config.Heartbeat,
                 Endpoints = config.Endpoints
             };
+
             // create the metadata client connection
             foreach (var endPoint in clientParams.Endpoints)
             {
@@ -226,7 +230,7 @@ namespace RabbitMQ.Stream.Client
 
                 return await RawProducer.Create(
                     _clientParameters with { ClientProvidedName = rawProducerConfig.ClientProvidedName },
-                    rawProducerConfig, metaStreamInfo);
+                    rawProducerConfig, metaStreamInfo, _logger);
             }
             finally
             {
