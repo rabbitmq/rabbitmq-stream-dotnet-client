@@ -3,7 +3,6 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -38,12 +37,13 @@ public class ReliableConsumer : ReliableBase
     private ulong _lastConsumerOffset;
     private bool _consumedFirstTime;
 
-    private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig, ILogger logger): base(logger)
+    private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig, ILogger logger) : base(logger)
     {
         _reliableConsumerConfig = reliableConsumerConfig;
     }
 
-    public static async Task<ReliableConsumer> CreateReliableConsumer(ReliableConsumerConfig reliableConsumerConfig, ILogger logger = null)
+    public static async Task<ReliableConsumer> CreateReliableConsumer(ReliableConsumerConfig reliableConsumerConfig,
+        ILogger logger = null)
     {
         var rConsumer = new ReliableConsumer(reliableConsumerConfig, logger);
         await rConsumer.Init();
