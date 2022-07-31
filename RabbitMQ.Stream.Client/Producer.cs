@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -48,13 +49,15 @@ namespace RabbitMQ.Stream.Client
         private readonly ProducerConfig config;
         private readonly Channel<OutgoingMsg> messageBuffer;
         private readonly SemaphoreSlim semaphore;
+        private readonly ILogger _logger;
 
         public int PendingCount => config.MaxInFlight - semaphore.CurrentCount;
 
-        private Producer(Client client, ProducerConfig config)
+        private Producer(Client client, ProducerConfig config, ILogger logger)
         {
             this.client = client;
             this.config = config;
+            _logger = logger;
             messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
             {
                 AllowSynchronousContinuations = false,
@@ -183,7 +186,7 @@ namespace RabbitMQ.Stream.Client
                 // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
                 if (!await semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
                 {
-                    LogEventSource.Log.LogWarning("Semaphore Wait timeout during publishing.");
+                    _logger?.LogWarning("Semaphore Wait timeout during publishing");
                 }
             }
         }
@@ -272,7 +275,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error removing the producer id: {publisherId} from the server. {e}");
+                _logger?.LogError(e, "Error removing the producer id: {PublisherId} from the server", publisherId);
             }
 
             var closed = client.MaybeClose($"client-close-publisher: {publisherId}");
@@ -280,12 +283,15 @@ namespace RabbitMQ.Stream.Client
             return Task.FromResult(result);
         }
 
-        public static async Task<Producer> Create(ClientParameters clientParameters,
+        public static async Task<Producer> Create(
+            ClientParameters clientParameters,
             ProducerConfig config,
-            StreamInfo metaStreamInfo)
+            StreamInfo metaStreamInfo,
+            ILogger logger = null
+        )
         {
             var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new Producer((Client)client, config);
+            var producer = new Producer((Client)client, config, logger);
             await producer.Init();
             return producer;
         }
@@ -317,7 +323,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error during disposing Consumer: {publisherId}.", e);
+                _logger?.LogError(e, "Error during disposing Consumer: {PublisherId}", publisherId);
             }
 
             GC.SuppressFinalize(this);

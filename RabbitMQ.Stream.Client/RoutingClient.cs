@@ -8,12 +8,13 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
     public interface IRouting
     {
-        IClient CreateClient(ClientParameters clientParameters);
+        IClient CreateClient(ClientParameters clientParameters, ILogger logger = null);
         bool ValidateDns { get; set; }
     }
 
@@ -21,9 +22,9 @@ namespace RabbitMQ.Stream.Client
     {
         public bool ValidateDns { get; set; } = true;
 
-        public IClient CreateClient(ClientParameters clientParameters)
+        public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
-            var taskClient = Client.Create(clientParameters);
+            var taskClient = Client.Create(clientParameters, logger);
             taskClient.Wait(TimeSpan.FromSeconds(1));
             return taskClient.Result;
         }

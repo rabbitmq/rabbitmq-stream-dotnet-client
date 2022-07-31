@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -56,7 +57,7 @@ public class ReliableProducer : ReliableBase
     private readonly ReliableProducerConfig _reliableProducerConfig;
     private readonly ConfirmationPipe _confirmationPipe;
 
-    private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
+    private ReliableProducer(ReliableProducerConfig reliableProducerConfig, ILogger logger = null) : base(logger)
     {
         _reliableProducerConfig = reliableProducerConfig;
         _confirmationPipe = new ConfirmationPipe(
@@ -65,9 +66,9 @@ public class ReliableProducer : ReliableBase
             reliableProducerConfig.MaxInFlight);
     }
 
-    public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig)
+    public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig, ILogger logger = null)
     {
-        var rProducer = new ReliableProducer(reliableProducerConfig);
+        var rProducer = new ReliableProducer(reliableProducerConfig, logger);
         await rProducer.Init();
         return rProducer;
     }
@@ -123,7 +124,7 @@ public class ReliableProducer : ReliableBase
         }
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error during producer initialization: ", e);
+            Logger?.LogError(e, "Error during producer initialization");
             throw;
         }
         finally
@@ -186,7 +187,7 @@ public class ReliableProducer : ReliableBase
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error sending message: ", e);
+            Logger?.LogError(e, "Error sending message");
         }
         finally
         {
@@ -209,7 +210,7 @@ public class ReliableProducer : ReliableBase
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error sending messages: ", e);
+            Logger?.LogError(e, "Error sending messages");
         }
         finally
         {
@@ -248,7 +249,7 @@ public class ReliableProducer : ReliableBase
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("BatchSend error sending message: ", e);
+            Logger?.LogError(e, "BatchSend error sending message");
         }
         finally
         {

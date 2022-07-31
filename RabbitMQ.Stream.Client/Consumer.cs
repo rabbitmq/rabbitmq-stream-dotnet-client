@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -38,11 +39,13 @@ namespace RabbitMQ.Stream.Client
         private bool _disposed;
         private readonly ConsumerConfig config;
         private byte subscriberId;
+        private readonly ILogger _logger;
 
-        private Consumer(Client client, ConsumerConfig config)
+        private Consumer(Client client, ConsumerConfig config, ILogger logger = null)
         {
             this.client = client;
             this.config = config;
+            _logger = logger;
         }
 
         // if a user specify a custom offset 
@@ -140,7 +143,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error removing the consumer id: {subscriberId} from the server. {e}");
+                _logger?.LogError(e, "Error removing the consumer id: {SubscriberId} from the server", subscriberId);
             }
 
             var closed = client.MaybeClose($"client-close-subscriber: {subscriberId}");
@@ -176,7 +179,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error during disposing Consumer: {subscriberId}.", e);
+                _logger?.LogError(e, "Error during disposing Consumer: {SubscriberId}", subscriberId);
             }
 
             GC.SuppressFinalize(this);

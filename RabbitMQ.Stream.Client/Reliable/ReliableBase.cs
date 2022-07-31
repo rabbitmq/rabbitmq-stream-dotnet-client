@@ -4,6 +4,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -15,6 +16,12 @@ public abstract class ReliableBase
     protected readonly SemaphoreSlim SemaphoreSlim = new(1);
     protected bool _needReconnect = true;
     protected bool _inReconnection;
+    protected readonly ILogger Logger;
+
+    protected ReliableBase(ILogger logger = null)
+    {
+        Logger = logger;
+    }
 
     protected async Task Init()
     {
@@ -38,8 +45,11 @@ public abstract class ReliableBase
                 addInfo = "Client will try reconnect";
             }
 
-            LogEventSource.Log.LogInformation(
-                $"{ToString()} is disconnected. {addInfo}");
+            Logger?.LogInformation(
+                "{ReliableObjectIdentity} is disconnected. {AdditionalInfo}",
+                ToString(),
+                addInfo
+            );
 
             if (hasToReconnect)
             {
@@ -75,9 +85,11 @@ public abstract class ReliableBase
         Thread.Sleep(500);
         if (await system.StreamExists(stream))
         {
-            LogEventSource.Log.LogInformation(
-                $"Meta data update stream: {stream}. The stream still exist." +
-                $" Client: {ToString()}");
+            Logger?.LogInformation(
+                "Meta data update stream: {Stream}. The stream still exist. Client: {ReliableObjectIdentity}",
+                stream,
+                ToString()
+            );
             // Here we just close the producer connection
             // the func TryToReconnect/0 will be called. 
             await CloseReliable();
@@ -86,9 +98,11 @@ public abstract class ReliableBase
         {
             // In this case the stream doesn't exist anymore
             // the ReliableProducer is just closed.
-            LogEventSource.Log.LogInformation(
-                $"Meta data update stream: {stream} " +
-                $"{ToString()} will be closed.");
+            Logger?.LogInformation(
+                "Meta data update stream: {Stream}. {ReliableObjectIdentity} will be closed",
+                stream,
+                ToString()
+            );
             await Close();
         }
     }

@@ -5,6 +5,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -34,17 +35,17 @@ public class ReliableConsumer : ReliableBase
 {
     private Consumer _consumer;
     private readonly ReliableConsumerConfig _reliableConsumerConfig;
-    private ulong _lastConsumerOffset = 0;
-    private bool _consumedFirstTime = false;
+    private ulong _lastConsumerOffset;
+    private bool _consumedFirstTime;
 
-    private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
+    private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig, ILogger logger): base(logger)
     {
         _reliableConsumerConfig = reliableConsumerConfig;
     }
 
-    public static async Task<ReliableConsumer> CreateReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
+    public static async Task<ReliableConsumer> CreateReliableConsumer(ReliableConsumerConfig reliableConsumerConfig, ILogger logger = null)
     {
-        var rConsumer = new ReliableConsumer(reliableConsumerConfig);
+        var rConsumer = new ReliableConsumer(reliableConsumerConfig, logger);
         await rConsumer.Init();
         return rConsumer;
     }
@@ -93,7 +94,7 @@ public class ReliableConsumer : ReliableBase
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error during consumer initialization: ", e);
+            Logger?.LogError(e, "Error during consumer initialization");
             throw;
         }
         finally

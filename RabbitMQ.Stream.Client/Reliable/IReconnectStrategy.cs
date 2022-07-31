@@ -4,6 +4,8 @@
 
 using System;
 using System.Threading;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -35,13 +37,23 @@ public interface IReconnectStrategy
 internal class BackOffReconnectStrategy : IReconnectStrategy
 {
     private int Tentatives { get; set; } = 1;
+    private readonly ILogger _logger;
+
+    public BackOffReconnectStrategy(ILogger logger = null)
+    {
+        _logger = logger;
+    }
 
     public bool WhenDisconnected(string connectionInfo)
     {
         Tentatives <<= 1;
-        LogEventSource.Log.LogInformation(
-            $"{connectionInfo} disconnected, check if reconnection needed in {Tentatives * 100} ms.");
-        Thread.Sleep(TimeSpan.FromMilliseconds(Tentatives * 100));
+        var sleepDuration = Tentatives * 100;
+        _logger?.LogInformation(
+            "{ConnectionInfo} disconnected, check if reconnection needed in {SleepDuration} ms.",
+            connectionInfo,
+            sleepDuration
+            );
+        Thread.Sleep(TimeSpan.FromMilliseconds(sleepDuration));
         return true;
     }
 

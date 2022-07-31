@@ -5,6 +5,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Timer = System.Timers.Timer;
 
 namespace RabbitMQ.Stream.Client;
@@ -15,11 +16,16 @@ public class HeartBeatHandler
     internal const ushort Key = 23;
     private DateTime _lastUpdate = DateTime.Now;
     private uint _missedHeartbeat;
+    private readonly ILogger _logger;
 
-    public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc,
+    public HeartBeatHandler(
+        Func<ValueTask<bool>> sendHeartbeatFunc,
         Func<string, Task<CloseResponse>> close,
-        int heartbeat)
+        int heartbeat,
+        ILogger logger = null
+    )
     {
+        _logger = logger;
         // the heartbeat is disabled when zero
         // so all the timer won't be enabled
 
@@ -45,7 +51,7 @@ public class HeartBeatHandler
 
                 // missed the Heartbeat 
                 Interlocked.Increment(ref _missedHeartbeat);
-                LogEventSource.Log.LogWarning($"Heartbeat missed: {_missedHeartbeat}");
+                _logger?.LogWarning("Heartbeat missed: {MissedHeartbeat}", _missedHeartbeat);
                 if (_missedHeartbeat <= 3)
                 {
                     return;
@@ -53,10 +59,9 @@ public class HeartBeatHandler
 
                 // When the client does not receive the Heartbeat for three times the 
                 // client will be closed
-                LogEventSource.Log.LogError($"Too many Heartbeat missed: {_missedHeartbeat}");
+                _logger?.LogError("Too many Heartbeat missed: {MissedHeartbeat}", _missedHeartbeat);
                 Close();
-                close($"Too many Heartbeat missed: {_missedHeartbeat}. " +
-                      $"Client connection will be closed");
+                close($"Too many Heartbeat missed: {_missedHeartbeat}. Client connection will be closed");
             };
         }
     }

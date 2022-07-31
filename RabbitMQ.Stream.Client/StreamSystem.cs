@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -106,7 +107,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
+        public async Task<Producer> CreateProducer(ProducerConfig producerConfig, ILogger logger = null)
         {
             // Validate the ProducerConfig values
             if (producerConfig.Stream == "")
@@ -134,7 +135,10 @@ namespace RabbitMQ.Stream.Client
 
                 return await Producer.Create(
                     clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName },
-                    producerConfig, metaStreamInfo);
+                    producerConfig,
+                    metaStreamInfo,
+                    logger
+                );
             }
             finally
             {

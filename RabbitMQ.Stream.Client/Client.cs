@@ -14,6 +14,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -141,6 +142,8 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
 
+        private readonly ILogger _logger;
+
         public bool IsClosed
         {
             get
@@ -156,13 +159,15 @@ namespace RabbitMQ.Stream.Client
             private set => isClosed = value;
         }
 
-        private Client(ClientParameters parameters)
+        private Client(ClientParameters parameters, ILogger logger = null)
         {
             Parameters = parameters;
+            _logger = logger;
             _heartBeatHandler = new HeartBeatHandler(
                 SendHeartBeat,
                 Close,
-                (int)parameters.Heartbeat.TotalSeconds);
+                (int)parameters.Heartbeat.TotalSeconds
+            );
             IsClosed = false;
         }
 
@@ -183,9 +188,9 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public static async Task<Client> Create(ClientParameters parameters)
+        public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
         {
-            var client = new Client(parameters);
+            var client = new Client(parameters, logger);
 
             client.connection = await Connection.Create(parameters.Endpoint,
                 client.HandleIncoming, client.HandleClosed, parameters.Ssl);
@@ -516,7 +521,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"An error occurred while calling {nameof(connection.Dispose)}.", e);
+                _logger?.LogError(e, "An error occurred while calling {FunctionName}", nameof(connection.Dispose));
             }
 
             return result;

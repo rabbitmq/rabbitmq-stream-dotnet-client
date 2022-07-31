@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
 using Xunit;
 
@@ -35,7 +36,7 @@ namespace Tests
 
         // Simulate a load-balancer access using random 
         // access to the advertisedHosts list
-        public IClient CreateClient(ClientParameters clientParameters)
+        public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
             var rnd = new Random();
             var advId = rnd.Next(0, advertisedHosts.Count);
@@ -56,7 +57,7 @@ namespace Tests
 
     public class MisconfiguredLoadBalancerRouting : IRouting
     {
-        public IClient CreateClient(ClientParameters clientParameters)
+        public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -75,7 +76,7 @@ namespace Tests
     //advertised_host is is missed
     public class MissingFieldsRouting : IRouting
     {
-        public IClient CreateClient(ClientParameters clientParameters)
+        public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -89,7 +90,7 @@ namespace Tests
 
     public class ReplicaRouting : IRouting
     {
-        public IClient CreateClient(ClientParameters clientParameters)
+        public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
             var fake = new FakeClient(clientParameters)
             {
