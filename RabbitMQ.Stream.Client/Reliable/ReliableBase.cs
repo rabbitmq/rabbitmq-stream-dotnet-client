@@ -13,8 +13,9 @@ namespace RabbitMQ.Stream.Client.Reliable;
 /// </summary>
 public abstract class ReliableBase
 {
-    protected readonly SemaphoreSlim SemaphoreSlim = new(1);
     public bool IsOpen { get; protected set; } = true;
+
+    protected readonly SemaphoreSlim SemaphoreSlim = new(1);
     protected bool _inReconnection;
 
     /// <summary>
