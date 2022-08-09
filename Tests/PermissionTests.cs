@@ -2,15 +2,18 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
+using System;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Tests
 {
     public class PermissionTests
     {
+        private readonly ITestOutputHelper testOutputHelper;
         private const string StreamName = "no_access_stream";
 
         private readonly StreamSystemConfig _systemConfig = new()
@@ -20,8 +23,10 @@ namespace Tests
             VirtualHost = "/"
         };
 
-        public PermissionTests()
+        public PermissionTests(ITestOutputHelper testOutputHelper)
         {
+            this.testOutputHelper = testOutputHelper;
+
             // load definition creates users and streams to test the access
             // the user "test" can't access on "no_access_stream"
             var contents = SystemUtils.GetFileContent("definition_test.json");
@@ -53,22 +58,17 @@ namespace Tests
             var system = await StreamSystem.Create(_systemConfig);
             var rConsumerConfig = new ReliableConsumerConfig { Stream = StreamName, StreamSystem = system };
 
-            await Assert.ThrowsAsync<CreateConsumerException>(() =>
-                ReliableConsumer.CreateReliableConsumer(rConsumerConfig));
-
             ReliableConsumer reliableConsumer = null;
             try
             {
                 reliableConsumer = await ReliableConsumer.CreateReliableConsumer(rConsumerConfig);
             }
-            catch
+            catch (Exception ex)
             {
-                // we already tested the Exception (CreateConsumerException)
+                Assert.IsAssignableFrom<CreateConsumerException>(ex);
             }
 
-            // here the reliableConsumer must be closed due of the CreateConsumerException
-            Assert.NotNull(reliableConsumer);
-            Assert.False(reliableConsumer.IsOpen);
+            Assert.Null(reliableConsumer);
             await system.Close();
         }
 
@@ -77,23 +77,18 @@ namespace Tests
         {
             var system = await StreamSystem.Create(_systemConfig);
             var rProducerConfig = new ReliableProducerConfig { Stream = StreamName, StreamSystem = system };
-            await Assert.ThrowsAsync<CreateProducerException>(() =>
-                ReliableProducer.CreateReliableProducer(rProducerConfig));
 
             ReliableProducer reliableProducer = null;
             try
             {
                 reliableProducer = await ReliableProducer.CreateReliableProducer(rProducerConfig);
             }
-            catch
+            catch (Exception ex)
             {
-                // we already tested the Exception (CreateProducerException)
+                Assert.IsAssignableFrom<CreateProducerException>(ex);
             }
 
-            // here the reliableProducer must be closed due of the CreateProducerException
-            Assert.NotNull(reliableProducer);
-            Assert.False(reliableProducer.IsOpen);
-
+            Assert.Null(reliableProducer);
             await system.Close();
         }
     }
