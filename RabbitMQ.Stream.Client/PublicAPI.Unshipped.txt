@@ -667,6 +667,10 @@ RabbitMQ.Stream.Client.Reliable.ReliableConsumer
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ClientProvidedName.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ConsumerUpdateListener.get -> System.Func<string, string, bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>>
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ConsumerUpdateListener.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSingleActiveConsumer.get -> bool
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSingleActiveConsumer.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.get -> System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType

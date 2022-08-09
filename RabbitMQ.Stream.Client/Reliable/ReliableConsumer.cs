@@ -20,6 +20,9 @@ public record ReliableConsumerConfig
     public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
 
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
+
+    public bool IsSingleActiveConsumer { get; set; } = false;
+    public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
 }
 
 /// <summary>
@@ -68,6 +71,8 @@ public class ReliableConsumer : ReliableBase
                 Stream = _reliableConsumerConfig.Stream,
                 ClientProvidedName = _reliableConsumerConfig.ClientProvidedName,
                 Reference = _reliableConsumerConfig.Reference,
+                ConsumerUpdateListener = _reliableConsumerConfig.ConsumerUpdateListener,
+                IsSingleActiveConsumer = _reliableConsumerConfig.IsSingleActiveConsumer,
                 OffsetSpec = offsetSpec,
                 ConnectionClosedHandler = async _ =>
                 {

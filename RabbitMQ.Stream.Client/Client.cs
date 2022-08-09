@@ -183,16 +183,6 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        // public delegate Task SingleActiveConsumerHandler(string reason);
-        // public event ConnectionCloseHandler ConnectionClosed;
-        // private async Task OnConnectionClosed(string reason)
-        // {
-        //     if (ConnectionClosed != null)
-        //     {
-        //         await ConnectionClosed?.Invoke(reason)!;
-        //     }
-        // }
-
         public static async Task<Client> Create(ClientParameters parameters)
         {
             var client = new Client(parameters);
@@ -507,7 +497,6 @@ namespace RabbitMQ.Stream.Client
                     {
                         ArrayPool<byte>.Shared.Return(segment.Array);
                     }
-
                     throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag));
             }
         }
