@@ -398,20 +398,38 @@ public class ReliableTests
                 await Task.CompletedTask;
             }
         });
+
+        _testOutputHelper.WriteLine("@@@@ sleeping 6 seconds START");
         SystemUtils.Wait(TimeSpan.FromSeconds(6));
+        _testOutputHelper.WriteLine("@@@@ sleeping 6 seconds END");
+
         // kill the first time 
-        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
-        await SystemUtils.HttpKillConnections(clientProviderName);
-        await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
-            Guid.NewGuid().ToString(),
-            _testOutputHelper);
+        // Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
+        int connectionsKilled = await SystemUtils.HttpKillConnections(clientProviderName);
+        _testOutputHelper.WriteLine("@@@@ 1: {0} connections killed", connectionsKilled);
+        Assert.Equal(1, connectionsKilled);
+
+        connectionsKilled = await SystemUtils.HttpKillConnections(clientProviderName);
+        _testOutputHelper.WriteLine("@@@@ 2: {0} connections killed", connectionsKilled);
+
+        await SystemUtils.PublishMessages(system, stream, NumberOfMessages, Guid.NewGuid().ToString(), _testOutputHelper);
+
+        _testOutputHelper.WriteLine("@@@@ sleeping 6 seconds START");
         SystemUtils.Wait(TimeSpan.FromSeconds(6));
-        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
+        _testOutputHelper.WriteLine("@@@@ sleeping 6 seconds END");
+
+        connectionsKilled = await SystemUtils.HttpKillConnections(clientProviderName);
+        _testOutputHelper.WriteLine("@@@@ 3: {0} connections killed", connectionsKilled);
+        Assert.Equal(1, connectionsKilled);
+
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
         // after kill the consumer must be open
         Assert.True(cR.IsOpen);
         await cR.Close();
+
         Assert.False(cR.IsOpen);
+
         await system.DeleteStream(stream);
         await system.Close();
     }
