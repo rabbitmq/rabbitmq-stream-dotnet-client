@@ -390,8 +390,28 @@ namespace Tests
                 ["date_value"] = dt
             };
             var m = new Message(Encoding.Default.GetBytes("hello")) { ApplicationProperties = app };
-
             Assert.NotNull(m.ApplicationProperties);
+
+            Assert.Equal(14, AmqpWireFormatting.GetAnySize("string_value"));
+            Assert.Equal(9, AmqpWireFormatting.GetAnySize(DoubleValue));
+            Assert.Equal(1, AmqpWireFormatting.GetAnySize(true));
+            Assert.Equal(1, AmqpWireFormatting.GetAnySize((byte)1));
+            Assert.Equal(3, AmqpWireFormatting.GetAnySize((short)1));
+            // In this case is a byte
+            Assert.Equal(2, AmqpWireFormatting.GetAnySize(1));
+            // In this case is a byte less than 128
+            Assert.Equal(2, AmqpWireFormatting.GetAnySize(1L));
+            // In this case is a long 
+            Assert.Equal(9, AmqpWireFormatting.GetAnySize(1000L));
+
+            // byte 
+            Assert.Equal(2, AmqpWireFormatting.GetAnySize(1UL));
+            // ulong
+            Assert.Equal(9, AmqpWireFormatting.GetAnySize(1000UL));
+
+            Assert.Equal(5, AmqpWireFormatting.GetAnySize(1.0f));
+
+            Assert.Equal(9, AmqpWireFormatting.GetAnySize(dt));
 
             var size = DescribedFormatCode.Size;
             size += sizeof(byte); //FormatCode.List32
