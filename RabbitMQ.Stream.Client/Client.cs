@@ -497,6 +497,7 @@ namespace RabbitMQ.Stream.Client
                     {
                         ArrayPool<byte>.Shared.Return(segment.Array);
                     }
+
                     throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag));
             }
         }
