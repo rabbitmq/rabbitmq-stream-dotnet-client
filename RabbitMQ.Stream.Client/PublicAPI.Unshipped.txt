@@ -306,9 +306,7 @@ RabbitMQ.Stream.Client.CreditRequest.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.CreditRequest.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.CreditResponse
 RabbitMQ.Stream.Client.CreditResponse.CreditResponse() -> void
-RabbitMQ.Stream.Client.CreditResponse.ResponseCode.get -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.CreditResponse.SizeNeeded.get -> int
-RabbitMQ.Stream.Client.CreditResponse.SubscriptionId.get -> byte
 RabbitMQ.Stream.Client.CreditResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.DeclarePublisherRequest
 RabbitMQ.Stream.Client.DeclarePublisherRequest.DeclarePublisherRequest() -> void

@@ -4,28 +4,24 @@
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
     public readonly struct CreditResponse : ICommand
     {
         public const ushort Key = 9;
-        private readonly byte subscriptionId;
-        private readonly ResponseCode responseCode;
 
         private CreditResponse(ResponseCode responseCode, byte subscriptionId)
         {
-            this.subscriptionId = subscriptionId;
-            this.responseCode = responseCode;
+            SubscriptionId = subscriptionId;
+            ResponseCode = responseCode;
         }
 
         public int SizeNeeded => throw new NotImplementedException();
 
-        public byte SubscriptionId => subscriptionId;
+        private byte SubscriptionId { get; }
 
-        public ResponseCode ResponseCode => responseCode;
+        private ResponseCode ResponseCode { get; }
 
         public int Write(Span<byte> span)
         {
@@ -43,24 +39,17 @@ namespace RabbitMQ.Stream.Client
             return offset;
         }
 
-        internal void HandleUnroutableCredit(IDictionary<byte, Func<Deliver, Task>> consumers)
+        internal void HandleUnRoutableCredit()
         {
-            /* the server sent a credit-response only in case of 
+            /* the server sends a credit-response only in case of 
              * problem, e.g. crediting an unknown subscription
              * (which can happen when a consumer is closed at 
              * the same time as the deliverhandler is working
              */
 
-            if(consumers.ContainsKey(SubscriptionId) && ResponseCode == ResponseCode.SubscriptionIdDoesNotExist)
-            {
-                LogEventSource.Log.LogWarning($"Consumer subscription has been unregistered " +
-                    $"on the server whlie client was publishing credit command(s)");
-            }
-            else
-            {
-                throw new Exception($"An unexpected {nameof(CreditResponse)} for subscriptionId " +
-                    $"{SubscriptionId} was received with responsecode {ResponseCode}");
-            }
+            LogEventSource.Log.LogWarning(
+                $"Received notification for subscription id: {SubscriptionId} " +
+                $"code: {ResponseCode}");
         }
     }
 }

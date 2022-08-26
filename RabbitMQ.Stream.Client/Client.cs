@@ -388,7 +388,7 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case CreditResponse.Key:
                     CreditResponse.Read(frame, out var creditResponse);
-                    creditResponse.HandleUnroutableCredit(consumers);
+                    creditResponse.HandleUnRoutableCredit();
                     break;
                 default:
                     HandleCorrelatedCommand(tag, ref frame);
