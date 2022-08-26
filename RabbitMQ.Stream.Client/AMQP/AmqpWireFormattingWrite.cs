@@ -330,12 +330,39 @@ namespace RabbitMQ.Stream.Client.AMQP
                 uint u => GetUIntSize(u),
                 ulong ul => GetUInt64Size(ul),
                 long l => GetInt64Size(l),
+                double => GetDoubleSize(),
                 ushort => GetUInt16Size(),
+                short => GetInt16Size(),
+                bool => GetBoolSize(),
+                float => GetFloatSize(),
                 byte[] bArr => GetBytesSize(bArr),
                 byte => 1,
                 DateTime d => GetTimestampSize(d),
-                _ => throw new AmqpParseException($"WriteAny Invalid type {value}")
+                _ => throw new AmqpParseException($"GetAnySize Invalid type {value}")
             };
+        }
+
+        private static int GetFloatSize()
+        {
+            return 1 // FormatCode.Float
+                   + 4; //value
+        }
+
+        private static int GetInt16Size()
+        {
+            return 1 // FormatCode.Short
+                   + 2; //value
+        }
+
+        private static int GetBoolSize()
+        {
+            return 1; // FormatCode.Bool
+        }
+
+        private static int GetDoubleSize()
+        {
+            return 1 // FormatCode.Double
+                   + 8; //value
         }
     }
 }

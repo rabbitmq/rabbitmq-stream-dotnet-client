@@ -351,11 +351,8 @@ namespace Tests
             Assert.Equal("test", msgStaticTest.Properties.GroupId);
             Assert.Equal("test", msgStaticTest.Properties.ReplyToGroupId);
             Assert.Equal("test", Encoding.Default.GetString(msgStaticTest.Properties.UserId));
-            foreach (var (key, value) in msgStaticTest.ApplicationProperties)
-            {
-                Assert.Equal("test", key);
-                Assert.Equal("test", value);
-            }
+            Assert.Equal("test", msgStaticTest.ApplicationProperties["test"]);
+            Assert.Equal(64.646464, msgStaticTest.ApplicationProperties["double"]);
 
             Assert.Equal("test", msgStaticTest.Annotations["test"]);
             Assert.Equal((long)1, msgStaticTest.Annotations[(long)1]);
@@ -372,6 +369,76 @@ namespace Tests
             Assert.Equal((uint)300, msgHeader.MessageHeader.DeliveryCount);
             Assert.True(msgHeader.MessageHeader.Ttl == 0);
             Assert.Equal("amqpValue", msgHeader.AmqpValue);
+        }
+
+        [Fact]
+        public void ValidateMapsType()
+        {
+            const double DoubleValue = 6665555.34566;
+            var dt = DateTime.Now;
+            var app = new ApplicationProperties()
+            {
+                ["double_value"] = DoubleValue,
+                ["string_value"] = "test",
+                ["bool_value"] = true,
+                ["byte_value"] = (byte)1,
+                ["short_value"] = (short)1,
+                ["int_value"] = 1,
+                ["long_value"] = 1L,
+                ["ulong_value"] = 1UL,
+                ["float_value"] = 1.0f,
+                ["date_value"] = dt
+            };
+            var m = new Message(Encoding.Default.GetBytes("hello")) { ApplicationProperties = app };
+            Assert.NotNull(m.ApplicationProperties);
+
+            Assert.Equal(14, AmqpWireFormatting.GetAnySize("string_value"));
+            Assert.Equal(9, AmqpWireFormatting.GetAnySize(DoubleValue));
+            Assert.Equal(1, AmqpWireFormatting.GetAnySize(true));
+            Assert.Equal(1, AmqpWireFormatting.GetAnySize((byte)1));
+            Assert.Equal(3, AmqpWireFormatting.GetAnySize((short)1));
+            // In this case is a byte
+            Assert.Equal(2, AmqpWireFormatting.GetAnySize(1));
+            // In this case is a byte less than 128
+            Assert.Equal(2, AmqpWireFormatting.GetAnySize(1L));
+            // In this case is a long 
+            Assert.Equal(9, AmqpWireFormatting.GetAnySize(1000L));
+
+            // byte 
+            Assert.Equal(2, AmqpWireFormatting.GetAnySize(1UL));
+            // ulong
+            Assert.Equal(9, AmqpWireFormatting.GetAnySize(1000UL));
+
+            Assert.Equal(5, AmqpWireFormatting.GetAnySize(1.0f));
+
+            Assert.Equal(9, AmqpWireFormatting.GetAnySize(dt));
+
+            var size = DescribedFormatCode.Size;
+            size += sizeof(byte); //FormatCode.List32
+            size += sizeof(uint); // field numbers
+            size += sizeof(uint); // PropertySize
+            size += AmqpWireFormatting.GetAnySize("double_value");
+            size += AmqpWireFormatting.GetAnySize(DoubleValue);
+            size += AmqpWireFormatting.GetAnySize("string_value");
+            size += AmqpWireFormatting.GetAnySize("test");
+            size += AmqpWireFormatting.GetAnySize("bool_value");
+            size += AmqpWireFormatting.GetAnySize(true);
+            size += AmqpWireFormatting.GetAnySize("byte_value");
+            size += AmqpWireFormatting.GetAnySize((byte)1);
+            size += AmqpWireFormatting.GetAnySize("short_value");
+            size += AmqpWireFormatting.GetAnySize((short)1);
+            size += AmqpWireFormatting.GetAnySize("int_value");
+            size += AmqpWireFormatting.GetAnySize(1);
+            size += AmqpWireFormatting.GetAnySize("long_value");
+            size += AmqpWireFormatting.GetAnySize(1L);
+            size += AmqpWireFormatting.GetAnySize("ulong_value");
+            size += AmqpWireFormatting.GetAnySize(1UL);
+            size += AmqpWireFormatting.GetAnySize("float_value");
+            size += AmqpWireFormatting.GetAnySize(1.0f);
+            size += AmqpWireFormatting.GetAnySize("date_value");
+            size += AmqpWireFormatting.GetAnySize(dt);
+
+            Assert.Equal(size, m.ApplicationProperties.Size);
         }
 
         [Fact]
