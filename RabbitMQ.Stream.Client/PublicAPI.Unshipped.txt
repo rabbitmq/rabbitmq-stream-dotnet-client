@@ -53,6 +53,7 @@ const RabbitMQ.Stream.Client.CloseResponse.Key = 22 -> ushort
 const RabbitMQ.Stream.Client.CreateRequest.Key = 13 -> ushort
 const RabbitMQ.Stream.Client.CreateResponse.Key = 13 -> ushort
 const RabbitMQ.Stream.Client.CreditRequest.Key = 9 -> ushort
+const RabbitMQ.Stream.Client.CreditResponse.Key = 9 -> ushort
 const RabbitMQ.Stream.Client.DeclarePublisherRequest.Key = 1 -> ushort
 const RabbitMQ.Stream.Client.DeclarePublisherResponse.Key = 1 -> ushort
 const RabbitMQ.Stream.Client.DeletePublisherRequest.Key = 6 -> ushort
@@ -303,6 +304,10 @@ RabbitMQ.Stream.Client.CreditRequest.CreditRequest() -> void
 RabbitMQ.Stream.Client.CreditRequest.CreditRequest(byte subscriptionId, ushort credit) -> void
 RabbitMQ.Stream.Client.CreditRequest.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.CreditRequest.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.CreditResponse
+RabbitMQ.Stream.Client.CreditResponse.CreditResponse() -> void
+RabbitMQ.Stream.Client.CreditResponse.SizeNeeded.get -> int
+RabbitMQ.Stream.Client.CreditResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.DeclarePublisherRequest
 RabbitMQ.Stream.Client.DeclarePublisherRequest.DeclarePublisherRequest() -> void
 RabbitMQ.Stream.Client.DeclarePublisherRequest.DeclarePublisherRequest(uint correlationId, byte publisherId, string publisherRef, string stream) -> void

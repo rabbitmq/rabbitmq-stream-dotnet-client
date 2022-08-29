@@ -386,6 +386,10 @@ namespace RabbitMQ.Stream.Client
                     TuneResponse.Read(frame, out var tuneResponse);
                     tuneReceived.SetResult(tuneResponse);
                     break;
+                case CreditResponse.Key:
+                    CreditResponse.Read(frame, out var creditResponse);
+                    creditResponse.HandleUnRoutableCredit();
+                    break;
                 default:
                     HandleCorrelatedCommand(tag, ref frame);
                     break;
