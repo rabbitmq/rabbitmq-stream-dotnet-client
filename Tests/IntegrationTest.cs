@@ -32,8 +32,8 @@ namespace Tests
             var streamName = Guid.NewGuid().ToString();
             var system = await StreamSystem.Create(new());
             await system.CreateStream(new StreamSpec(streamName));
-            var responseCodes = new List<(ulong PublishingId, ResponseCode Code)>();
 
+            (ulong PublishingId, ResponseCode Code)? sentMessageResponse = null;
             var producer = await system.CreateProducer(new ProducerConfig
             {
                 Reference = streamReference,
@@ -43,11 +43,11 @@ namespace Tests
                 ConfirmHandler = conf =>
                 {
                     _output.WriteLine($"Event published with PublishingId: {conf.PublishingId} - {conf.Code}");
-                    responseCodes.Add((conf.PublishingId, conf.Code));
+                    sentMessageResponse ??= (conf.PublishingId, conf.Code);
                 }
             });
 
-            var receivedMessages = new List<Message>();
+            Message receivedMessage = null;
             var consumer = await system.CreateConsumer(new ConsumerConfig
             {
                 Reference = streamReference,
@@ -57,7 +57,7 @@ namespace Tests
                 // Receive the messages
                 MessageHandler = (_, _, message) =>
                 {
-                    receivedMessages.Add(message);
+                    receivedMessage ??= message;
                     _output.WriteLine($"Event received with size: {message.Size} - Content Length: {message.Data.Contents.Length}");
                     return Task.CompletedTask;
                 }
@@ -69,11 +69,14 @@ namespace Tests
 
             // Wait for the messages to be processed.
             var messageSent = await WaitForConditionAsync(() =>
-                Task.FromResult(responseCodes.Any(response =>
-                    response.PublishingId == 0 && response.Code == ResponseCode.Ok)), 2500, 10);
+                Task.FromResult(sentMessageResponse.HasValue &&
+                                sentMessageResponse.Value.PublishingId == 0 &&
+                                sentMessageResponse.Value.Code == ResponseCode.Ok), 2500, 10);
 
             var messageReceived =
-                await WaitForConditionAsync(() => Task.FromResult(receivedMessages.Any(m => m.Data.Contents.Length == @event.Length)), 2500, 10);
+                await WaitForConditionAsync(
+                    () => Task.FromResult(receivedMessage != null &&
+                                          receivedMessage.Data.Contents.Length == @event.Length), 2500, 10);
 
             // Clean up stream before assertion.
             await system.DeleteStream(streamName);
