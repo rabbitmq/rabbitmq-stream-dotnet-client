@@ -220,10 +220,10 @@ namespace Tests
                  * https://stackoverflow.com/a/4550600
                  */
                 var s = Uri.EscapeDataString(conn.name);
-                var r = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
-                if (!r.IsSuccessStatusCode)
+                var deleteResult = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
+                if (!deleteResult.IsSuccessStatusCode)
                 {
-                    throw new XunitException($"HTTP DELETE failed: {result.StatusCode} {result.ReasonPhrase}");
+                    throw new XunitException($"HTTP DELETE failed: {deleteResult.StatusCode} {deleteResult.ReasonPhrase}");
                 }
 
                 killed += 1;
