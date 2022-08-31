@@ -4,14 +4,14 @@
 
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
 using Xunit.Abstractions;
-using System.Collections;
 
 namespace Tests
 {
@@ -30,7 +30,7 @@ namespace Tests
         {
             var streamReference = Guid.NewGuid().ToString();
             var streamName = Guid.NewGuid().ToString();
-            var system = await StreamSystem.Create(new ());
+            var system = await StreamSystem.Create(new());
             await system.CreateStream(new StreamSpec(streamName));
             var responseCodes = new List<(ulong PublishingId, ResponseCode Code)>();
 
