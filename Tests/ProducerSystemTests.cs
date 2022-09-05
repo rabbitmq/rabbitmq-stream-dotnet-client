@@ -3,6 +3,8 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -338,6 +340,88 @@ namespace Tests
             await producer.BatchSend(messages);
             messages.Clear();
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        private class EventLengthTestCases : IEnumerable<object[]>
+        {
+            private readonly Random _random = new(3895);
+
+            public IEnumerator<object[]> GetEnumerator()
+            {
+                yield return new object[] { GetRandomBytes(254) };
+                yield return new object[] { GetRandomBytes(255) };
+                yield return new object[] { GetRandomBytes(256) };
+                // just to test an event greater than 256 bytes
+                yield return new object[] { GetRandomBytes(654) };
+            }
+
+            private ReadOnlySequence<byte> GetRandomBytes(ulong length)
+            {
+                var arr = new byte[length];
+                _random.NextBytes(arr);
+                return new ReadOnlySequence<byte>(arr);
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+        }
+
+        [Theory]
+        [ClassData(typeof(EventLengthTestCases))]
+        public async Task ProducerSendsArrays255Bytes(ReadOnlySequence<byte> @event)
+        {
+            // Test the data around 255 bytes
+            // https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/issues/160
+            // We test if the data is correctly sent and received
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var testPassed = new TaskCompletionSource<bool>();
+            var producer = await system.CreateProducer(new
+                ProducerConfig
+            {
+                Reference = "producer",
+                Stream = stream,
+                ConfirmHandler = _ =>
+                {
+                    testPassed.SetResult(true);
+                }
+            }
+            );
+
+            const ulong PublishingId = 0;
+            var msg = new Message(new Data(@event))
+            {
+                ApplicationProperties = new ApplicationProperties { { "myArray", @event.First.ToArray() } }
+            };
+
+            await producer.Send(PublishingId, msg);
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
+            var testMessageConsumer = new TaskCompletionSource<Message>();
+
+            var consumer = await system.CreateConsumer(new ConsumerConfig
+            {
+                Stream = stream,
+                // Consume the stream from the Offset
+                OffsetSpec = new OffsetTypeOffset(),
+                // Receive the messages
+                MessageHandler = (_, _, message) =>
+                {
+                    testMessageConsumer.SetResult(message);
+                    return Task.CompletedTask;
+                }
+            });
+
+            new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testMessageConsumer);
+            // at this point the data length _must_ be the same
+            Assert.Equal(@event.Length, testMessageConsumer.Task.Result.Data.Contents.Length);
+
+            Assert.Equal(@event.Length,
+                ((byte[])testMessageConsumer.Task.Result.ApplicationProperties["myArray"]).Length);
+            await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();
         }

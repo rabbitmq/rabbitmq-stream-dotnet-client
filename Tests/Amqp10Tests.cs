@@ -462,5 +462,19 @@ namespace Tests
             // we do not expect the new entry to be written
             Assert.Equal(expectedMapSize, actualMapSize);
         }
+
+        [Theory]
+        // AmqpWireFormattingWrite.GetSequenceSize + DescribedFormat.Size
+        [InlineData(254, 254 + 1 + 1 + 3)]
+        [InlineData(255, 255 + 1 + 1 + 3)]
+        [InlineData(256, 256 + 1 + 4 + 3)]
+        public void WriteDataEdgeCasesTests(int size, int expectedLengthWritten)
+        {
+            var buffer = new Span<byte>(new byte[4096]);
+            var bytes = new byte[size];
+            var data = new Data(new ReadOnlySequence<byte>(bytes));
+            var written = data.Write(buffer);
+            Assert.Equal(expectedLengthWritten, written);
+        }
     }
 }
