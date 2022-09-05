@@ -616,10 +616,10 @@ The client is work in progress. The API(s) could change prior to version `1.0.0`
 * Ensure builds are green: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions)
 * Tag the `main` branch using your GPG key:
     ```
-    git tag -a -s -u GPG_KEY_ID -m 'rabbitmq-stream-dotnet-client v1.0.0-beta.6' 'v1.0.0-beta.6' && git push && git push --tags
+    git tag -a -s -u GPG_KEY_ID -m 'rabbitmq-stream-dotnet-client v1.0.0' 'v1.0.0' && git push && git push --tags
     ```
 * Ensure the build for the tag passes: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions)
+* Create the new release on GitHub, which triggers a build and publish to NuGet: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases)
 * Check for the new version on NuGet: [link](https://www.nuget.org/packages/RabbitMQ.Stream.Client)
   * Best practice is to download the new package and inspect the contents using [NuGetPackageExplorer](https://github.com/NuGetPackageExplorer/NuGetPackageExplorer)
-* Create the new release on GitHub: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases)
 * Announce the new release on the mailing list: [link](https://groups.google.com/g/rabbitmq-users)
