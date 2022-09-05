@@ -29,7 +29,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         public int Write(Span<byte> span)
         {
             var offset = DescribedFormatCode.Write(span, DescribedFormatCode.ApplicationData);
-            if (data.Length < byte.MaxValue)
+            if (data.Length <= byte.MaxValue)
             {
                 offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin8); //binary marker
                 offset += WireFormatting.WriteByte(span.Slice(offset), (byte)data.Length); //length
