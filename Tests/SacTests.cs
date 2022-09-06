@@ -6,6 +6,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -23,19 +24,23 @@ public class SacTests
     }
 
     [Fact]
-    public async void ValidateSaC()
+    public async void ValidateSaCConsumer()
     {
-
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
         await Assert.ThrowsAsync<ArgumentException>(() => system.CreateConsumer(new ConsumerConfig()
         {
-            Stream = stream,
-            IsSingleActiveConsumer = true,
+            Stream = stream, IsSingleActiveConsumer = true,
         }));
+
+
+        await Assert.ThrowsAsync<ArgumentException>(() => ReliableConsumer.CreateReliableConsumer(
+            new ReliableConsumerConfig() {StreamSystem = system,
+                Stream = stream, IsSingleActiveConsumer = true,}));
+
+
         await system.DeleteStream(stream);
         await system.Close();
-
     }
 
     [Fact]
@@ -178,6 +183,7 @@ public class SacTests
         // Just to be sure that testPassedConsumer2 is not called.
         SystemUtils.Wait();
         // so the testPassedConsumer2 should stay in WaitingForActivation state.
+        // since the second consumer is blocked.
         Assert.Equal(TaskStatus.WaitingForActivation, testPassedConsumer2.Task.Status);
         await consumer1.Close();
         // at this point the consumer2 should be activated since the consumer1 is closed.
