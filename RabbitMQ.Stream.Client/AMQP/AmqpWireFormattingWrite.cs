@@ -212,7 +212,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         // determinate the type size
         public static int GetSequenceSize(ReadOnlySequence<byte> data)
         {
-            if (data.Length < 256)
+            if (data.Length <= byte.MaxValue)
             {
                 return (int)data.Length +
                        1 + //marker 1 byte FormatCode.Vbin8

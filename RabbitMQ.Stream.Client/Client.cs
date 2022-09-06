@@ -413,6 +413,9 @@ namespace RabbitMQ.Stream.Client
                     await ConsumerUpdateResponse(
                         consumerUpdateQueryResponse.CorrelationId,
                         await consumerEventsUpd.UpdateConsumerHandler(consumerUpdateQueryResponse.IsActive));
+                case CreditResponse.Key:
+                    CreditResponse.Read(frame, out var creditResponse);
+                    creditResponse.HandleUnRoutableCredit();
                     break;
                 default:
                     HandleCorrelatedCommand(tag, ref frame);
