@@ -3,7 +3,9 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,14 +23,6 @@ public class ReliableTests
     public ReliableTests(ITestOutputHelper testOutputHelper)
     {
         _testOutputHelper = testOutputHelper;
-        // try
-        // {
-        //     new LogEventListener().EnableEvents(new EventSource("Console") { }, EventLevel.LogAlways);
-        // }
-        // catch (Exception)
-        // {
-        //     //ignore
-        // }
     }
 
     [Fact]
@@ -103,10 +97,10 @@ public class ReliableTests
                 ConfirmationHandler = _ =>
                 {
                     if (Interlocked.Increment(ref count) ==
-                        5 +  // first five messages iteration
+                        5 + // first five messages iteration
                         5 + // second five messages iteration with compression enabled
                         2 // batch send iteration since the messages list contains two messages
-                        )
+                       )
                     {
                         testPassed.SetResult(true);
                     }
@@ -512,5 +506,96 @@ public class ReliableTests
             await system.DeleteStream(stream);
             await system.Close();
         }
+    }
+
+    private class FakeThrowExceptionConsumer : ReliableConsumer
+    {
+        private readonly Exception _exceptionType;
+        private bool _firstTime = true;
+
+        internal FakeThrowExceptionConsumer(ReliableConsumerConfig reliableConsumerConfig, Exception exceptionType)
+            : base(
+                reliableConsumerConfig)
+        {
+            _exceptionType = exceptionType;
+        }
+
+        internal override Task CreateNewEntity(bool boot)
+        {
+            if (!_firstTime)
+            {
+                return Task.CompletedTask;
+            }
+
+            // raise the exception only one time
+            // to avoid loops
+            _firstTime = false;
+            throw _exceptionType;
+        }
+    }
+
+    [Fact]
+    //<summary>
+    // This test is to check the behavior of the ReliableConsumer when the
+    // CreateNewEntity throws an exception.
+    // An example could be a GrantException when the consumer is not authorized
+    // The ReliableConsumer should be closed and the exception should be
+    // propagated to the caller.
+    //</summary>
+    public async void RConsumerShouldStopWhenThrowUnknownException()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+
+        var c = new FakeThrowExceptionConsumer(new ReliableConsumerConfig() { StreamSystem = system, Stream = stream },
+            new Exception("Fake Exception"));
+
+        await Assert.ThrowsAsync<Exception>(() => c.Init(new BackOffReconnectStrategy()));
+
+        Assert.False(c.IsOpen());
+
+        await system.DeleteStream(stream);
+        await system.Close();
+    }
+
+    [Theory]
+    [ClassData(typeof(ReliableExceptionTestCases))]
+    //<summary>
+    // This test is to check the behavior of the ReliableConsumer when the
+    // CreateNewEntity throws an known exception.
+    // In this case the ReliableConsumer should reconnect due of known exception.
+    // For example SocketException means that the endpoint is not available
+    // it could be a temporary problem so the ReliableConsumer should try to
+    // reconnect.
+    //</summary>
+    public async void RConsumerShouldBeOpenWhenThrowKnownException(Exception exception)
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var c = new FakeThrowExceptionConsumer(new ReliableConsumerConfig() { StreamSystem = system, Stream = stream },
+            exception);
+        Assert.True(ReliableBase.IsAKnownException(exception));
+        await c.Init(new BackOffReconnectStrategy());
+        // Here the ReliableConsumer should be open
+        // The exception is raised only the first time
+        // so it is not propagated to the caller
+        Assert.True(c.IsOpen());
+        await c.Close();
+        Assert.False(c.IsOpen());
+        await system.DeleteStream(stream);
+        await system.Close();
+    }
+}
+
+internal class ReliableExceptionTestCases : IEnumerable<object[]>
+{
+    public IEnumerator<object[]> GetEnumerator()
+    {
+        yield return new object[] { new LeaderNotFoundException(" Leader Not Found") };
+        yield return new object[] { new SocketException(3) };
+        yield return new object[] { new TimeoutException(" TimeoutException") };
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 }
