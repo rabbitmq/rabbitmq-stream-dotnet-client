@@ -30,14 +30,12 @@ public class SacTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => system.CreateConsumer(new ConsumerConfig()
         {
-            Stream = stream, IsSingleActiveConsumer = true,
+            Stream = stream,
+            IsSingleActiveConsumer = true,
         }));
 
-
         await Assert.ThrowsAsync<ArgumentException>(() => ReliableConsumer.CreateReliableConsumer(
-            new ReliableConsumerConfig() {StreamSystem = system,
-                Stream = stream, IsSingleActiveConsumer = true,}));
-
+            new ReliableConsumerConfig() { StreamSystem = system, Stream = stream, IsSingleActiveConsumer = true, }));
 
         await system.DeleteStream(stream);
         await system.Close();
