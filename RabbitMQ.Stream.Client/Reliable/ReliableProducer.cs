@@ -110,7 +110,7 @@ public class ReliableProducer : ReliableBase
                         confirmationStatus);
                 }
             });
-            _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
+            await _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
             if (boot)
             {
                 // Init the publishing id

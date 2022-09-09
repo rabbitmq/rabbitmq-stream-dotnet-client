@@ -448,14 +448,15 @@ public class ReliableTests
             _testOutputHelper = testOutputHelper;
         }
 
-        public bool WhenDisconnected(string info)
+        ValueTask<bool> IReconnectStrategy.WhenDisconnected(string info)
         {
             _testOutputHelper.WriteLine($"MyReconnection WhenDisconnected {info}");
-            return false;
+            return ValueTask.FromResult(false);
         }
 
-        public void WhenConnected(string _)
+        ValueTask IReconnectStrategy.WhenConnected(string connectionInfo)
         {
+            return ValueTask.CompletedTask;
         }
     }
 
