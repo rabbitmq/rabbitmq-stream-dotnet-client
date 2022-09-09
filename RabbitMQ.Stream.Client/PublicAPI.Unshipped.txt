@@ -396,7 +396,7 @@ RabbitMQ.Stream.Client.IOffsetType.OffsetType.get -> RabbitMQ.Stream.Client.Offs
 RabbitMQ.Stream.Client.IOffsetType.Size.get -> int
 RabbitMQ.Stream.Client.IOffsetType.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.IRouting
-RabbitMQ.Stream.Client.IRouting.CreateClientAsync(RabbitMQ.Stream.Client.ClientParameters clientParameters) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.IClient>
+RabbitMQ.Stream.Client.IRouting.CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 RabbitMQ.Stream.Client.IRouting.ValidateDns.get -> bool
 RabbitMQ.Stream.Client.IRouting.ValidateDns.set -> void
 RabbitMQ.Stream.Client.Keywords
@@ -707,7 +707,7 @@ RabbitMQ.Stream.Client.ResponseCode.SubscriptionIdDoesNotExist = 4 -> RabbitMQ.S
 RabbitMQ.Stream.Client.ResponseCode.UnknownFrame = 13 -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.ResponseCode.VirtualHostAccessFailure = 12 -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.Routing
-RabbitMQ.Stream.Client.Routing.CreateClientAsync(RabbitMQ.Stream.Client.ClientParameters clientParameters) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.IClient>
+RabbitMQ.Stream.Client.Routing.CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 RabbitMQ.Stream.Client.Routing.Routing() -> void
 RabbitMQ.Stream.Client.Routing.ValidateDns.get -> bool
 RabbitMQ.Stream.Client.Routing.ValidateDns.set -> void

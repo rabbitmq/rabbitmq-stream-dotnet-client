@@ -36,7 +36,7 @@ namespace Tests
         // Simulate a load-balancer access using random 
         // access to the advertisedHosts list
 
-        public ValueTask<IClient> CreateClientAsync(ClientParameters clientParameters)
+        public Task<IClient> CreateClient(ClientParameters clientParameters)
         {
             var rnd = new Random();
             var advId = rnd.Next(0, advertisedHosts.Count);
@@ -49,7 +49,7 @@ namespace Tests
                     ["advertised_port"] = "5552"
                 }
             };
-            return ValueTask.FromResult<IClient>(fake);
+            return Task.FromResult<IClient>(fake);
         }
 
         public bool ValidateDns { get; set; } = false;
@@ -58,7 +58,7 @@ namespace Tests
     public class MisconfiguredLoadBalancerRouting : IRouting
     {
 
-        public ValueTask<IClient> CreateClientAsync(ClientParameters clientParameters)
+        public Task<IClient> CreateClient(ClientParameters clientParameters)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -69,7 +69,7 @@ namespace Tests
                 }
             };
 
-            return ValueTask.FromResult<IClient>(fake);
+            return Task.FromResult<IClient>(fake);
         }
 
         public bool ValidateDns { get; set; } = false;
@@ -78,13 +78,13 @@ namespace Tests
     //advertised_host is is missed
     public class MissingFieldsRouting : IRouting
     {
-        public ValueTask<IClient> CreateClientAsync(ClientParameters clientParameters)
+        public Task<IClient> CreateClient(ClientParameters clientParameters)
         {
             var fake = new FakeClient(clientParameters)
             {
                 ConnectionProperties = new Dictionary<string, string>() { ["advertised_port"] = "5552" }
             };
-            return ValueTask.FromResult<IClient>(fake);
+            return Task.FromResult<IClient>(fake);
         }
 
         public bool ValidateDns { get; set; } = false;
@@ -92,7 +92,7 @@ namespace Tests
 
     public class ReplicaRouting : IRouting
     {
-        public ValueTask<IClient> CreateClientAsync(ClientParameters clientParameters)
+        public Task<IClient> CreateClient(ClientParameters clientParameters)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -102,7 +102,7 @@ namespace Tests
                     ["advertised_host"] = "leader"
                 }
             };
-            return ValueTask.FromResult<IClient>(fake);
+            return Task.FromResult<IClient>(fake);
         }
 
         public bool ValidateDns { get; set; } = false;
