@@ -570,8 +570,8 @@ By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reco
 You can customize the behaviour implementing the `IReconnectStrategy` interface:
 
 ```csharp
-bool WhenDisconnected(string connectionInfo);
-void WhenConnected(string connectionInfo);
+ValueTask<bool> WhenDisconnected(string connectionInfo);
+ValueTask WhenConnected(string connectionInfo);
 ```
 
 If `WhenDisconnected` return is `true` Producer/Consumer will be reconnected else closed.
