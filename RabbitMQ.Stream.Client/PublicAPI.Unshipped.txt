@@ -396,7 +396,7 @@ RabbitMQ.Stream.Client.IOffsetType.OffsetType.get -> RabbitMQ.Stream.Client.Offs
 RabbitMQ.Stream.Client.IOffsetType.Size.get -> int
 RabbitMQ.Stream.Client.IOffsetType.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.IRouting
-RabbitMQ.Stream.Client.IRouting.CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters) -> RabbitMQ.Stream.Client.IClient
+RabbitMQ.Stream.Client.IRouting.CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 RabbitMQ.Stream.Client.IRouting.ValidateDns.get -> bool
 RabbitMQ.Stream.Client.IRouting.ValidateDns.set -> void
 RabbitMQ.Stream.Client.Keywords
@@ -633,8 +633,8 @@ RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.StreamNotAvailable = 6 -> Rab
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.UndefinedError = 200 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.WaitForConfirmation = 0 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
-RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenConnected(string connectionInfo) -> void
-RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenDisconnected(string connectionInfo) -> bool
+RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenConnected(string connectionInfo) -> System.Threading.Tasks.ValueTask
+RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenDisconnected(string connectionInfo) -> System.Threading.Tasks.ValueTask<bool>
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.InsertDateTime.get -> System.DateTime
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.InsertDateTime.init -> void
@@ -707,7 +707,7 @@ RabbitMQ.Stream.Client.ResponseCode.SubscriptionIdDoesNotExist = 4 -> RabbitMQ.S
 RabbitMQ.Stream.Client.ResponseCode.UnknownFrame = 13 -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.ResponseCode.VirtualHostAccessFailure = 12 -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.Routing
-RabbitMQ.Stream.Client.Routing.CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters) -> RabbitMQ.Stream.Client.IClient
+RabbitMQ.Stream.Client.Routing.CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 RabbitMQ.Stream.Client.Routing.Routing() -> void
 RabbitMQ.Stream.Client.Routing.ValidateDns.get -> bool
 RabbitMQ.Stream.Client.Routing.ValidateDns.set -> void

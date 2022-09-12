@@ -86,8 +86,9 @@ public class ReliableProducer : ReliableBase
                 MaxInFlight = _reliableProducerConfig.MaxInFlight,
                 MetadataHandler = update =>
                 {
-                    HandleMetaDataMaybeReconnect(update.Stream,
-                        _reliableProducerConfig.StreamSystem).Wait();
+                    // intentionally fire & forget
+                    _ = HandleMetaDataMaybeReconnect(update.Stream,
+                        _reliableProducerConfig.StreamSystem);
                 },
                 ConnectionClosedHandler = async _ =>
                 {
@@ -110,7 +111,7 @@ public class ReliableProducer : ReliableBase
                         confirmationStatus);
                 }
             });
-            _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
+            await _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
             if (boot)
             {
                 // Init the publishing id

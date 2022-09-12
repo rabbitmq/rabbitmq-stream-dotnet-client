@@ -75,8 +75,7 @@ public class ReliableConsumer : ReliableBase
                 },
                 MetadataHandler = update =>
                 {
-                    HandleMetaDataMaybeReconnect(update.Stream,
-                        _reliableConsumerConfig.StreamSystem).Wait();
+                    _ = HandleMetaDataMaybeReconnect(update.Stream, _reliableConsumerConfig.StreamSystem);
                 },
                 MessageHandler = async (consumer, ctx, message) =>
                 {
@@ -88,7 +87,7 @@ public class ReliableConsumer : ReliableBase
                     }
                 }
             });
-            _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
+            await _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
         }
 
         catch (Exception e)

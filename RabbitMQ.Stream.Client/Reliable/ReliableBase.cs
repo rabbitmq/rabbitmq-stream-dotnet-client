@@ -30,7 +30,7 @@ public abstract class ReliableBase
         _inReconnection = true;
         try
         {
-            var reconnect = reconnectStrategy.WhenDisconnected(ToString());
+            var reconnect = await reconnectStrategy.WhenDisconnected(ToString());
             var hasToReconnect = reconnect && _needReconnect;
             var addInfo = "Client won't reconnect";
             if (hasToReconnect)
@@ -72,7 +72,7 @@ public abstract class ReliableBase
     {
         // This sleep is needed. When a stream is deleted it takes sometime.
         // The StreamExists/1 could return true even the stream doesn't exist anymore.
-        Thread.Sleep(500);
+        await Task.Delay(500);
         if (await system.StreamExists(stream))
         {
             LogEventSource.Log.LogInformation(

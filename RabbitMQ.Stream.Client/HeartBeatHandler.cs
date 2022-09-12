@@ -16,10 +16,18 @@ public class HeartBeatHandler
     private DateTime _lastUpdate = DateTime.Now;
     private uint _missedHeartbeat;
 
+    private readonly Func<ValueTask<bool>> _sendHeartbeatFunc;
+    private readonly Func<string, Task<CloseResponse>> _close;
+    private readonly int _heartbeat;
+
     public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc,
         Func<string, Task<CloseResponse>> close,
         int heartbeat)
     {
+        _sendHeartbeatFunc = sendHeartbeatFunc;
+        _close = close;
+        _heartbeat = heartbeat;
+
         // the heartbeat is disabled when zero
         // so all the timer won't be enabled
 
@@ -32,33 +40,40 @@ public class HeartBeatHandler
         {
             _timer.Enabled = false;
             _timer.Interval = heartbeat * 1000;
-            _timer.Elapsed += (_, _) =>
-            {
-                var f = sendHeartbeatFunc();
-                f.AsTask().Wait(1000);
-
-                var seconds = (DateTime.Now - _lastUpdate).TotalSeconds;
-                if (seconds < heartbeat)
-                {
-                    return;
-                }
-
-                // missed the Heartbeat 
-                Interlocked.Increment(ref _missedHeartbeat);
-                LogEventSource.Log.LogWarning($"Heartbeat missed: {_missedHeartbeat}");
-                if (_missedHeartbeat <= 3)
-                {
-                    return;
-                }
-
-                // When the client does not receive the Heartbeat for three times the 
-                // client will be closed
-                LogEventSource.Log.LogError($"Too many Heartbeat missed: {_missedHeartbeat}");
-                Close();
-                close($"Too many Heartbeat missed: {_missedHeartbeat}. " +
-                      $"Client connection will be closed");
-            };
+            _timer.Elapsed += TimerElapsed;
         }
+    }
+
+    private void TimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        _ = PerformHeartBeatAsync();
+    }
+
+    private async Task PerformHeartBeatAsync()
+    {
+        var f = _sendHeartbeatFunc();
+        await f.AsTask().WaitAsync(TimeSpan.FromMilliseconds(1000));
+
+        var seconds = (DateTime.Now - _lastUpdate).TotalSeconds;
+        if (seconds < _heartbeat)
+        {
+            return;
+        }
+
+        // missed the Heartbeat 
+        Interlocked.Increment(ref _missedHeartbeat);
+        LogEventSource.Log.LogWarning($"Heartbeat missed: {_missedHeartbeat}");
+        if (_missedHeartbeat <= 3)
+        {
+            return;
+        }
+
+        // When the client does not receive the Heartbeat for three times the 
+        // client will be closed
+        LogEventSource.Log.LogError($"Too many Heartbeat missed: {_missedHeartbeat}");
+        Close();
+        await _close($"Too many Heartbeat missed: {_missedHeartbeat}. " +
+              $"Client connection will be closed");
     }
 
     internal void UpdateHeartBeat()

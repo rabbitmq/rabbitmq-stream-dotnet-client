@@ -3,7 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
-using System.Threading;
+using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -18,13 +18,13 @@ public interface IReconnectStrategy
     /// </summary>
     /// <param name="connectionInfo">Additional connection info. Just for logging</param>
     /// <returns>if True the client will be reconnected else closed</returns>
-    bool WhenDisconnected(string connectionInfo);
+    ValueTask<bool> WhenDisconnected(string connectionInfo);
 
     /// <summary>
     /// It is raised when the TCP client is connected successfully 
     /// </summary>
     /// <param name="connectionInfo">Additional connection info. Just for logging</param>
-    void WhenConnected(string connectionInfo);
+    ValueTask WhenConnected(string connectionInfo);
 }
 
 /// <summary>
@@ -36,17 +36,18 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
 {
     private int Tentatives { get; set; } = 1;
 
-    public bool WhenDisconnected(string connectionInfo)
+    public async ValueTask<bool> WhenDisconnected(string connectionInfo)
     {
         Tentatives <<= 1;
         LogEventSource.Log.LogInformation(
             $"{connectionInfo} disconnected, check if reconnection needed in {Tentatives * 100} ms.");
-        Thread.Sleep(TimeSpan.FromMilliseconds(Tentatives * 100));
+        await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100));
         return true;
     }
 
-    public void WhenConnected(string _)
+    public ValueTask WhenConnected(string connectionInfo)
     {
         Tentatives = 1;
+        return ValueTask.CompletedTask;
     }
 }

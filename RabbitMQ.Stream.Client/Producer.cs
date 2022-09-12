@@ -178,7 +178,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SemaphoreWait()
         {
-            if (!semaphore.Wait(0) && !client.IsClosed)
+            if (!await semaphore.WaitAsync(0) && !client.IsClosed)
             {
                 // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
                 if (!await semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
@@ -249,11 +249,11 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public Task<ResponseCode> Close()
+        public async Task<ResponseCode> Close()
         {
             if (client.IsClosed)
             {
-                return Task.FromResult(ResponseCode.Ok);
+                return ResponseCode.Ok;
             }
 
             var result = ResponseCode.Ok;
@@ -264,7 +264,7 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the producer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                deletePublisherResponseTask.Wait(TimeSpan.FromSeconds(3));
+                await deletePublisherResponseTask.WaitAsync(TimeSpan.FromSeconds(3));
                 if (deletePublisherResponseTask.IsCompletedSuccessfully)
                 {
                     result = deletePublisherResponseTask.Result.ResponseCode;
@@ -277,7 +277,7 @@ namespace RabbitMQ.Stream.Client
 
             var closed = client.MaybeClose($"client-close-publisher: {publisherId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {publisherId}");
-            return Task.FromResult(result);
+            return result;
         }
 
         public static async Task<Producer> Create(ClientParameters clientParameters,
