@@ -8,18 +8,14 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
-public record ReliableConsumerConfig
+public record ReliableConsumerConfig : ReliableConfig
 {
-    public StreamSystem StreamSystem { get; set; }
-    public string Stream { get; set; }
     public string Reference { get; set; }
     public string ClientProvidedName { get; set; } = "dotnet-stream-rconusmer";
 
     public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
     public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
-
-    public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 }
 
 /// <summary>
@@ -37,7 +33,7 @@ public class ReliableConsumer : ReliableBase
     private ulong _lastConsumerOffset = 0;
     private bool _consumedFirstTime = false;
 
-    private ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
+    internal ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
     {
         _reliableConsumerConfig = reliableConsumerConfig;
     }
@@ -45,64 +41,55 @@ public class ReliableConsumer : ReliableBase
     public static async Task<ReliableConsumer> CreateReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
     {
         var rConsumer = new ReliableConsumer(reliableConsumerConfig);
-        await rConsumer.Init();
+        await rConsumer.Init(reliableConsumerConfig.ReconnectStrategy);
         return rConsumer;
     }
 
-    protected override async Task GetNewReliable(bool boot)
+    internal override async Task CreateNewEntity(bool boot)
     {
-        await SemaphoreSlim.WaitAsync();
-
-        try
+        var offsetSpec = _reliableConsumerConfig.OffsetSpec;
+        // if is not the boot time and at least one message was consumed
+        // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume fro the next)
+        if (!boot && _consumedFirstTime)
         {
-            var offsetSpec = _reliableConsumerConfig.OffsetSpec;
-            // if is not the boot time and at least one message was consumed
-            // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume fro the next)
-            if (!boot && _consumedFirstTime)
-            {
-                offsetSpec = new OffsetTypeOffset(_lastConsumerOffset + 1);
-            }
+            offsetSpec = new OffsetTypeOffset(_lastConsumerOffset + 1);
+        }
 
-            _consumer = await _reliableConsumerConfig.StreamSystem.CreateConsumer(new ConsumerConfig()
+        _consumer = await _reliableConsumerConfig.StreamSystem.CreateConsumer(new ConsumerConfig()
+        {
+            Stream = _reliableConsumerConfig.Stream,
+            ClientProvidedName = _reliableConsumerConfig.ClientProvidedName,
+            Reference = _reliableConsumerConfig.Reference,
+            OffsetSpec = offsetSpec,
+            ConnectionClosedHandler = async _ =>
             {
-                Stream = _reliableConsumerConfig.Stream,
-                ClientProvidedName = _reliableConsumerConfig.ClientProvidedName,
-                Reference = _reliableConsumerConfig.Reference,
-                OffsetSpec = offsetSpec,
-                ConnectionClosedHandler = async _ =>
+                await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
+            },
+            MetadataHandler = update =>
+            {
+                // This is Async since the MetadataHandler is called from the Socket connection thread
+                // HandleMetaDataMaybeReconnect/2 could go in deadlock.
+                Task.Run(() =>
                 {
-                    await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
-                },
-                MetadataHandler = update =>
+                    HandleMetaDataMaybeReconnect(update.Stream,
+                        _reliableConsumerConfig.StreamSystem).WaitAsync(CancellationToken.None);
+                });
+            },
+            MessageHandler = async (consumer, ctx, message) =>
+            {
+                _consumedFirstTime = true;
+                _lastConsumerOffset = ctx.Offset;
+                if (_reliableConsumerConfig.MessageHandler != null)
                 {
-                    _ = HandleMetaDataMaybeReconnect(update.Stream, _reliableConsumerConfig.StreamSystem);
-                },
-                MessageHandler = async (consumer, ctx, message) =>
-                {
-                    _consumedFirstTime = true;
-                    _lastConsumerOffset = ctx.Offset;
-                    if (_reliableConsumerConfig.MessageHandler != null)
-                    {
-                        await _reliableConsumerConfig.MessageHandler(consumer, ctx, message);
-                    }
+                    await _reliableConsumerConfig.MessageHandler(consumer, ctx, message);
                 }
-            });
-            await _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
-        }
-
-        catch (Exception e)
-        {
-            LogEventSource.Log.LogError("Error during consumer initialization: ", e);
-            throw;
-        }
-        finally
-        {
-            SemaphoreSlim.Release();
-        }
+            },
+        });
+        await _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
     }
 
     // just close the consumer. See base/metadataupdate
-    protected override async Task CloseReliable()
+    protected override async Task CloseEntity()
     {
         await SemaphoreSlim.WaitAsync(10);
         try
@@ -120,8 +107,8 @@ public class ReliableConsumer : ReliableBase
 
     public override async Task Close()
     {
-        _needReconnect = false;
-        await CloseReliable();
+        _isOpen = false;
+        await CloseEntity();
     }
 
     public override string ToString()

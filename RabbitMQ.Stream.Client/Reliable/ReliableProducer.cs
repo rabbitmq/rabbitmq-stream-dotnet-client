@@ -10,16 +10,13 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
-public record ReliableProducerConfig
+public record ReliableProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
 
-    public StreamSystem StreamSystem { get; set; }
-    public string Stream { get; set; }
     public string Reference { get; set; }
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
-    public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 
     public int MaxInFlight { get; set; } = 1000;
 
@@ -65,75 +62,72 @@ public class ReliableProducer : ReliableBase
             reliableProducerConfig.MaxInFlight);
     }
 
+    // <summary>
+    // Create a new ReliableProducer
+    // </summary> 
     public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
         var rProducer = new ReliableProducer(reliableProducerConfig);
-        await rProducer.Init();
+        await rProducer.Init(reliableProducerConfig.ReconnectStrategy);
         return rProducer;
     }
 
-    protected override async Task GetNewReliable(bool boot)
+    internal override async Task CreateNewEntity(bool boot)
     {
-        await SemaphoreSlim.WaitAsync();
-
-        try
+        _producer = await _reliableProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
         {
-            _producer = await _reliableProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
+            Stream = _reliableProducerConfig.Stream,
+            ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
+            Reference = _reliableProducerConfig.Reference,
+            MaxInFlight = _reliableProducerConfig.MaxInFlight,
+            MetadataHandler = update =>
             {
-                Stream = _reliableProducerConfig.Stream,
-                ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
-                Reference = _reliableProducerConfig.Reference,
-                MaxInFlight = _reliableProducerConfig.MaxInFlight,
-                MetadataHandler = update =>
+                // This is Async since the MetadataHandler is called from the Socket connection thread
+                // HandleMetaDataMaybeReconnect/2 could go in deadlock.
+
+                Task.Run(() =>
                 {
                     // intentionally fire & forget
-                    _ = HandleMetaDataMaybeReconnect(update.Stream,
-                        _reliableProducerConfig.StreamSystem);
-                },
-                ConnectionClosedHandler = async _ =>
-                {
-                    await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
-                },
-                ConfirmHandler = confirmation =>
-                {
-                    var confirmationStatus = confirmation.Code switch
-                    {
-                        ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
-                        ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
-                        ResponseCode.InternalError => ConfirmationStatus.InternalError,
-                        ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
-                        ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
-                        ResponseCode.Ok => ConfirmationStatus.Confirmed,
-                        _ => ConfirmationStatus.UndefinedError
-                    };
-
-                    _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
-                        confirmationStatus);
-                }
-            });
-            await _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
-            if (boot)
+                    HandleMetaDataMaybeReconnect(update.Stream,
+                        _reliableProducerConfig.StreamSystem).WaitAsync(CancellationToken.None);
+                });
+            },
+            ConnectionClosedHandler = async _ =>
             {
-                // Init the publishing id
-                Interlocked.Exchange(ref _publishingId,
-                    await _producer.GetLastPublishingId());
+                await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
+            },
+            ConfirmHandler = confirmation =>
+            {
+                var confirmationStatus = confirmation.Code switch
+                {
+                    ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
+                    ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
+                    ResponseCode.InternalError => ConfirmationStatus.InternalError,
+                    ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
+                    ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
+                    ResponseCode.Ok => ConfirmationStatus.Confirmed,
+                    _ => ConfirmationStatus.UndefinedError
+                };
 
-                // confirmation Pipe can start only if the producer is ready
-                _confirmationPipe.Start();
+                _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
+                    confirmationStatus);
             }
-        }
-        catch (Exception e)
+        });
+
+        await _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
+
+        if (boot)
         {
-            LogEventSource.Log.LogError("Error during producer initialization: ", e);
-            throw;
-        }
-        finally
-        {
-            SemaphoreSlim.Release();
+            // Init the publishing id
+            Interlocked.Exchange(ref _publishingId,
+                await _producer.GetLastPublishingId());
+
+            // confirmation Pipe can start only if the producer is ready
+            _confirmationPipe.Start();
         }
     }
 
-    protected override async Task CloseReliable()
+    protected override async Task CloseEntity()
     {
         await SemaphoreSlim.WaitAsync(10);
         try
@@ -154,7 +148,7 @@ public class ReliableProducer : ReliableBase
         await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10));
         try
         {
-            _needReconnect = false;
+            _isOpen = false;
             _confirmationPipe.Stop();
             if (_producer != null)
             {

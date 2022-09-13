@@ -35,6 +35,15 @@ public interface IReconnectStrategy
 internal class BackOffReconnectStrategy : IReconnectStrategy
 {
     private int Tentatives { get; set; } = 1;
+    // reset the tentatives after a while 
+    // else the backoff will be too long
+    private void MaybeResetTentatives()
+    {
+        if (Tentatives > 1000)
+        {
+            Tentatives = 1;
+        }
+    }
 
     public async ValueTask<bool> WhenDisconnected(string connectionInfo)
     {
@@ -42,6 +51,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
         LogEventSource.Log.LogInformation(
             $"{connectionInfo} disconnected, check if reconnection needed in {Tentatives * 100} ms.");
         await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100));
+        MaybeResetTentatives();
         return true;
     }
 

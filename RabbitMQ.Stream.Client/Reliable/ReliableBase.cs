@@ -2,53 +2,107 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
+using System;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
+public record ReliableConfig
+{
+    public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
+    public StreamSystem StreamSystem { get; set; }
+    public string Stream { get; set; }
+}
+
 /// <summary>
 /// Base class for Reliable producer/ consumer
+/// With the term Entity we mean a Producer or a Consumer
 /// </summary>
 public abstract class ReliableBase
 {
     protected readonly SemaphoreSlim SemaphoreSlim = new(1);
-    protected bool _needReconnect = true;
+
+    protected bool _isOpen;
     protected bool _inReconnection;
 
-    protected async Task Init()
+    public async Task Init(IReconnectStrategy reconnectStrategy)
     {
-        await GetNewReliable(true);
+        await Init(true, reconnectStrategy);
     }
 
-    // boot is the first time is called. 
-    // used to init the producer/consumer
-    protected abstract Task GetNewReliable(bool boot);
+    // <summary>
+    /// Init the reliable client
+    /// <param name="boot"> If it is the First boot for the reliable P/C </param>
+    /// <param name="reconnectStrategy">IReconnectStrategy</param>
+    /// Try to Init the Entity, if it fails, it will try to reconnect
+    /// only if the exception is a known exception
+    // </summary>
+    private async Task Init(bool boot, IReconnectStrategy reconnectStrategy)
+    {
+        var reconnect = false;
+        await SemaphoreSlim.WaitAsync();
+        try
+        {
+            _isOpen = true;
+            await CreateNewEntity(boot);
+        }
 
+        catch (Exception e)
+        {
+            reconnect = IsAKnownException(e);
+            LogException(e);
+            if (!reconnect)
+            {
+                // We consider the client as closed
+                // since the exception is raised to the caller
+                _isOpen = false;
+                throw;
+            }
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
+
+        if (reconnect)
+        {
+            await TryToReconnect(reconnectStrategy);
+        }
+    }
+
+    // <summary>
+    /// Init the a new Entity (Producer/Consumer)
+    /// <param name="boot"> If it is the First boot for the reliable P/C </param>
+    /// Called by Init method
+    // </summary>
+    internal abstract Task CreateNewEntity(bool boot);
+
+    // <summary>
+    /// Try to reconnect to the broker
+    /// Based on the retry strategy
+    /// <param name="reconnectStrategy"> The Strategy for the reconnection
+    /// by default it is exponential backoff.
+    /// It it possible to change implementing the IReconnectStrategy interface </param>
+    // </summary>
     protected async Task TryToReconnect(IReconnectStrategy reconnectStrategy)
     {
         _inReconnection = true;
         try
         {
-            var reconnect = await reconnectStrategy.WhenDisconnected(ToString());
-            var hasToReconnect = reconnect && _needReconnect;
-            var addInfo = "Client won't reconnect";
-            if (hasToReconnect)
+            switch (await reconnectStrategy.WhenDisconnected(ToString()) && _isOpen)
             {
-                addInfo = "Client will try reconnect";
-            }
-
-            LogEventSource.Log.LogInformation(
-                $"{ToString()} is disconnected. {addInfo}");
-
-            if (hasToReconnect)
-            {
-                await GetNewReliable(false);
-            }
-            else
-            {
-                _needReconnect = false;
-                await Close();
+                case true:
+                    LogEventSource.Log.LogInformation(
+                        $"{ToString()} is disconnected. Client will try reconnect");
+                    await Init(false, reconnectStrategy);
+                    break;
+                case false:
+                    LogEventSource.Log.LogInformation(
+                        $"{ToString()} is asked to be closed");
+                    await Close();
+                    break;
             }
         }
         finally
@@ -80,7 +134,8 @@ public abstract class ReliableBase
                 $" Client: {ToString()}");
             // Here we just close the producer connection
             // the func TryToReconnect/0 will be called. 
-            await CloseReliable();
+
+            await CloseEntity();
         }
         else
         {
@@ -93,11 +148,49 @@ public abstract class ReliableBase
         }
     }
 
-    protected abstract Task CloseReliable();
+    // <summary>
+    /// IsAKnownException returns true if the exception is a known exception
+    /// We need it to reconnect when the producer/consumer.
+    /// - LeaderNotFoundException is a temporary exception
+    ///   It means that the leader is not available and the client can't reconnect.
+    ///   Especially the Producer that needs to know the leader.
+    /// - SocketException
+    ///   Client is trying to connect in a not ready endpoint.
+    ///   It is usually a temporary situation.
+    /// -  TimeoutException
+    ///    Some call went in timeout. Maybe a temporary DNS problem.
+    ///    In this case we can try to reconnect.
+    ///
+    ///  For the other kind of exception, we just throw back the exception.
+    //</summary>
+    internal static bool IsAKnownException(Exception exception)
+    {
+        return exception is (SocketException or TimeoutException or LeaderNotFoundException);
+    }
+
+    private void LogException(Exception exception)
+    {
+        LogEventSource.Log.LogError(IsAKnownException(exception)
+            ? $"Trying to reconnect {ToString()} due of: {exception.Message}"
+            : $"Error during initialization {ToString()} due of: {exception.Message}");
+    }
+
+    // <summary>
+    /// ONLY close the current Entity (Producer/Consumer)
+    /// without closing the Reliable(Producer/Consumer) instance.
+    /// It happens when the stream change topology, and the entity 
+    /// must be recreated. In the producer case for example when the
+    /// leader changes.
+    // </summary>
+    protected abstract Task CloseEntity();
+
+    // <summary>
+    /// Close the Reliable(Producer/Consumer) instance.
+    // </summary>
     public abstract Task Close();
 
     public bool IsOpen()
     {
-        return _needReconnect;
+        return _isOpen;
     }
 }
