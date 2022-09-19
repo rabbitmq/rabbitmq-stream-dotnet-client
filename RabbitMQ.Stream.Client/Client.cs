@@ -19,6 +19,12 @@ namespace RabbitMQ.Stream.Client
 {
     public record ClientParameters
     {
+        // internal list of endpoints where the client will try to connect
+        // the property Endpoint will use one of the endpoints in the list
+        // we keep it separate from the Endpoint property to avoid confusion
+        // only for internal user
+        internal IList<EndPoint> Endpoints { get; set; } = new List<EndPoint>();
+
         private string _clientProvidedName;
 
         public IDictionary<string, string> Properties { get; } =
@@ -39,6 +45,7 @@ namespace RabbitMQ.Stream.Client
         public string Password { get; set; } = "guest";
         public string VirtualHost { get; set; } = "/";
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
+
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
         public TimeSpan Heartbeat { get; set; } = TimeSpan.FromMinutes(1);

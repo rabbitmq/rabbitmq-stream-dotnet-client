@@ -51,10 +51,11 @@ namespace RabbitMQ.Stream.Client
                 Ssl = config.Ssl,
                 AddressResolver = config.AddressResolver,
                 ClientProvidedName = config.ClientProvidedName,
-                Heartbeat = config.Heartbeat
+                Heartbeat = config.Heartbeat,
+                Endpoints = config.Endpoints
             };
             // create the metadata client connection
-            foreach (var endPoint in config.Endpoints)
+            foreach (var endPoint in clientParams.Endpoints)
             {
                 try
                 {
@@ -87,6 +88,9 @@ namespace RabbitMQ.Stream.Client
 
         private async Task MayBeReconnectLocator()
         {
+            var rnd = new Random();
+            var advId = rnd.Next(0, clientParameters.Endpoints.Count);
+
             try
             {
                 await _semClientProvidedName.WaitAsync();
@@ -95,7 +99,8 @@ namespace RabbitMQ.Stream.Client
                     {
                         client = await Client.Create(client.Parameters with
                         {
-                            ClientProvidedName = clientParameters.ClientProvidedName
+                            ClientProvidedName = clientParameters.ClientProvidedName,
+                            Endpoint = clientParameters.Endpoints[advId]
                         });
                     }
                 }
@@ -103,6 +108,15 @@ namespace RabbitMQ.Stream.Client
             finally
             {
                 _semClientProvidedName.Release();
+            }
+        }
+
+        private static void CheckLeader(StreamInfo metaStreamInfo)
+        {
+            if (metaStreamInfo.Leader.Equals(default(Broker)))
+            {
+                throw new LeaderNotFoundException(
+                    $"No leader found for streams {string.Join(" ", metaStreamInfo.Stream)}");
             }
         }
 
@@ -122,11 +136,14 @@ namespace RabbitMQ.Stream.Client
 
             await MayBeReconnectLocator();
             var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
+
             var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
+
+            CheckLeader(metaStreamInfo);
 
             try
             {
@@ -224,6 +241,8 @@ namespace RabbitMQ.Stream.Client
             {
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
             }
+
+            CheckLeader(metaStreamInfo);
 
             try
             {

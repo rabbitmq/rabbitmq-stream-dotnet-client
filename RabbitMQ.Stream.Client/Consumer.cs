@@ -192,11 +192,11 @@ namespace RabbitMQ.Stream.Client
             throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
         }
 
-        public Task<ResponseCode> Close()
+        public async Task<ResponseCode> Close()
         {
             if (client.IsClosed)
             {
-                return Task.FromResult(ResponseCode.Ok);
+                return ResponseCode.Ok;
             }
 
             var result = ResponseCode.Ok;
@@ -207,7 +207,7 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the consumer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                deleteConsumerResponseTask.Wait(TimeSpan.FromSeconds(3));
+                await deleteConsumerResponseTask.WaitAsync(TimeSpan.FromSeconds(3));
                 if (deleteConsumerResponseTask.IsCompletedSuccessfully)
                 {
                     result = deleteConsumerResponseTask.Result.ResponseCode;
@@ -221,7 +221,7 @@ namespace RabbitMQ.Stream.Client
             var closed = client.MaybeClose($"client-close-subscriber: {subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {subscriberId}");
             _disposed = true;
-            return Task.FromResult(result);
+            return result;
         }
 
         //
