@@ -17,8 +17,6 @@ public record ReliableConsumerConfig : ReliableConfig
 
     public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
 
-    public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
-
     public bool IsSingleActiveConsumer { get; set; } = false;
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
 }
@@ -62,18 +60,18 @@ public class ReliableConsumer : ReliableBase
 
         _consumer = await _reliableConsumerConfig.StreamSystem.CreateConsumer(new ConsumerConfig()
         {
-    
-                Stream = _reliableConsumerConfig.Stream,
-                ClientProvidedName = _reliableConsumerConfig.ClientProvidedName,
-                Reference = _reliableConsumerConfig.Reference,
-                ConsumerUpdateListener = _reliableConsumerConfig.ConsumerUpdateListener,
-                IsSingleActiveConsumer = _reliableConsumerConfig.IsSingleActiveConsumer,
-                OffsetSpec = offsetSpec,
-                ConnectionClosedHandler = async _ =>
-                {
-                    await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
-                },
-                MetadataHandler = update =>
+            Stream = _reliableConsumerConfig.Stream,
+            ClientProvidedName = _reliableConsumerConfig.ClientProvidedName,
+            Reference = _reliableConsumerConfig.Reference,
+            ConsumerUpdateListener = _reliableConsumerConfig.ConsumerUpdateListener,
+            IsSingleActiveConsumer = _reliableConsumerConfig.IsSingleActiveConsumer,
+            OffsetSpec = offsetSpec,
+            ConnectionClosedHandler = async _ =>
+            {
+                await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
+            },
+            MetadataHandler = update =>
+            {
                 // This is Async since the MetadataHandler is called from the Socket connection thread
                 // HandleMetaDataMaybeReconnect/2 could go in deadlock.
                 Task.Run(() =>
