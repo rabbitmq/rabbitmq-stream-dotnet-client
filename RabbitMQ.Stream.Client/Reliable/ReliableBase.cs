@@ -27,7 +27,7 @@ public abstract class ReliableBase
     protected bool _isOpen;
     protected bool _inReconnection;
 
-    public async Task Init(IReconnectStrategy reconnectStrategy)
+    internal async Task Init(IReconnectStrategy reconnectStrategy)
     {
         await Init(true, reconnectStrategy);
     }

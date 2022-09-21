@@ -120,7 +120,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
+        public async Task<IProducer> CreateProducer(ProducerConfig producerConfig)
         {
             // Validate the ProducerConfig values
             if (producerConfig.Stream == "")

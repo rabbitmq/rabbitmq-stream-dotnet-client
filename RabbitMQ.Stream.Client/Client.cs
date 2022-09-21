@@ -337,6 +337,12 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        public async Task<PartitionsQueryResponse> QueryPartition(string superStream)
+        {
+            return await Request<PartitionsQueryRequest, PartitionsQueryResponse>(corr =>
+                new PartitionsQueryRequest(corr, superStream));
+        }
+
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
             where TIn : struct, ICommand where TOut : struct, ICommand
         {
@@ -503,6 +509,11 @@ namespace RabbitMQ.Stream.Client
                 case HeartBeatHandler.Key:
                     _heartBeatHandler.UpdateHeartBeat();
                     break;
+                case PartitionsQueryResponse.Key:
+                    PartitionsQueryResponse.Read(frame, out var partitionsQueryResponse);
+                    HandleCorrelatedResponse(partitionsQueryResponse);
+                    break;
+
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {

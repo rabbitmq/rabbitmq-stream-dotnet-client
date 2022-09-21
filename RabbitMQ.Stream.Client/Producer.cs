@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client
         public int MessagesBufferSize { get; set; } = 100;
     }
 
-    public class Producer : AbstractEntity, IDisposable
+    public class Producer : AbstractEntity, IProducer, IDisposable
     {
         private bool _disposed;
         private byte publisherId;
@@ -214,6 +214,11 @@ namespace RabbitMQ.Stream.Client
             return response.Sequence;
         }
 
+        public bool IsOpen()
+        {
+            return !_disposed && !client.IsClosed;
+        }
+
         public async ValueTask Send(ulong publishingId, Message message)
         {
             await SemaphoreWait();
@@ -280,7 +285,7 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
 
-        public static async Task<Producer> Create(ClientParameters clientParameters,
+        public static async Task<IProducer> Create(ClientParameters clientParameters,
             ProducerConfig config,
             StreamInfo metaStreamInfo)
         {

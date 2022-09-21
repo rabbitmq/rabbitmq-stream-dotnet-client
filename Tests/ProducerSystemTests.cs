@@ -53,6 +53,7 @@ namespace Tests
 
             Assert.True(testPassed.Task.Result);
             producer.Dispose();
+            Assert.False(producer.IsOpen());
             await system.DeleteStream(stream);
             await system.Close();
         }
