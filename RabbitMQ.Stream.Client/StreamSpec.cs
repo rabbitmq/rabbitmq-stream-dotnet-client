@@ -19,7 +19,7 @@ namespace RabbitMQ.Stream.Client
             set => Args["max-age"] = $"{value.TotalSeconds}s";
         }
 
-        public int MaxLengthBytes
+        public ulong MaxLengthBytes
         {
             set => Args["max-length-bytes"] = $"{value}";
         }
