@@ -128,7 +128,7 @@ var config = new StreamSystemConfig
     Password = "mypassword",
     VirtualHost = "myhost",
     Endpoints = new List<EndPoint> {new IPEndPoint(IPAddress.Parse("<<brokerip>>"), 5552)},
-}
+};
 ```
 
 ### Multi Host
@@ -158,14 +158,31 @@ var config = new StreamSystemConfig
     VirtualHost = "/",
     Ssl = new SslOption()
     {
-        Enabled = true                    
-},
+        Enabled = true
+    },
+};
+```
+
+### TLS with client certificate
+
+```csharp
+var config = new StreamSystemConfig
+{
+    UserName = "guest",
+    Password = "guest",
+    VirtualHost = "/",
+    Ssl = new SslOption()
+    {
+        Enabled = true,
+        CertPath = "C:\\path\\to\\cert\\file.pfx",
+        CertPassphrase = "Password"
+    },
+};
 ```
 
 ### Load Balancer
 
 ```csharp
-
 var lbAddressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("<<loadBalancerIP>>"), 5552));
 var config = new StreamSystemConfig
 {
@@ -174,7 +191,7 @@ var config = new StreamSystemConfig
     VirtualHost = "/",
     AddressResolver = lbAddressResolver,
     Endpoints = new List<EndPoint> {addressResolver.EndPoint},
-}    
+};  
 ```
 
 ### Manage Streams
