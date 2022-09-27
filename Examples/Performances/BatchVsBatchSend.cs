@@ -230,7 +230,7 @@ public class BatchVsBatchSend
         {
             await system.DeleteStream(stream);
         }
-        catch (Exception e)
+        catch (Exception)
         {
             // Console.WriteLine(e);
         }

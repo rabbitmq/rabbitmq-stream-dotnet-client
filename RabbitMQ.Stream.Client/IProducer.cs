@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -12,7 +13,6 @@ namespace RabbitMQ.Stream.Client;
 // There are different types of producers:
 // - Standard producer
 // - Super-Stream producer
-// - Reliable producer
 // </summary>
 
 public interface IProducer
@@ -36,4 +36,26 @@ public interface IProducer
     public int PublishCommandsSent { get; }
 
     public int PendingCount { get; }
+}
+
+public record IProducerConfig : INamedEntity
+{
+    public string Reference { get; set; }
+    public int MaxInFlight { get; set; } = 1000;
+    public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
+    public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
+
+    public Func<string, Task> ConnectionClosedHandler { get; set; }
+
+    public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+    public int BatchSize { get; set; } = 100;
+
+    /// <summary>
+    /// Number of the messages sent for each frame-send.
+    /// High values can increase the throughput.
+    /// Low values can reduce the messages latency.
+    /// Default value is 100.
+    /// </summary>
+    public int MessagesBufferSize { get; set; } = 100;
 }
