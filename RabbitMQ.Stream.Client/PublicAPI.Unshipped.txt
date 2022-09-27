@@ -465,7 +465,6 @@ RabbitMQ.Stream.Client.IRouting.CreateClient(RabbitMQ.Stream.Client.ClientParame
 RabbitMQ.Stream.Client.IRouting.ValidateDns.get -> bool
 RabbitMQ.Stream.Client.IRouting.ValidateDns.set -> void
 RabbitMQ.Stream.Client.IRoutingConfiguration
-RabbitMQ.Stream.Client.IRoutingConfiguration.Hash() -> RabbitMQ.Stream.Client.IRoutingConfiguration
 RabbitMQ.Stream.Client.IRoutingStrategy
 RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> streams) -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.Keywords

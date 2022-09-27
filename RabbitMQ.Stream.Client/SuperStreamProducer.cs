@@ -11,6 +11,11 @@ using RabbitMQ.Stream.Client.Hash;
 
 namespace RabbitMQ.Stream.Client;
 
+/// <summary>
+/// SuperStreamProducer is a producer that can send messages to multiple streams.
+/// Super Stream is available in RabbitMQ 3.11.0 and later.
+/// 
+/// </summary>
 public class SuperStreamProducer : IProducer
 {
     private readonly Dictionary<string, IProducer> _producers = new();
@@ -33,6 +38,7 @@ public class SuperStreamProducer : IProducer
         };
     }
 
+    // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
         return await Producer.Create(_config.Streams[stream].ClientParameters,
@@ -55,10 +61,12 @@ public class SuperStreamProducer : IProducer
         _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.RoutingKeyExtractor);
     }
 
-    public ValueTask Send(ulong publishingId, Message message)
+    public async ValueTask Send(ulong publishingId, Message message)
     {
-        var s = _defaultRoutingConfiguration.RoutingStrategy.Route(message, _config.Streams.Keys.ToList());
-        return GetProducer(s[0]).Result.Send(publishingId, message);
+        var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
+            _config.Streams.Keys.ToList());
+        var producer = await GetProducer(routes[0]);
+        await producer.Send(publishingId, message);
     }
 
     public ValueTask BatchSend(List<(ulong, Message)> messages)
@@ -119,8 +127,12 @@ public record SuperStreamProducerConfig : IProducerConfig
     // The partitioned streams.
     // For example:
     // invoices(super_stream) -> invoices-0, invoices-1, invoices-2
+    // Streams contains the configuration for each stream but not the connection
     internal Dictionary<string, StreamConfiguration> Streams { get; set; } = new();
 
+    // The routing key extractor is used to extract the routing key from the message
+    // The routing key is used to route the message to a stream
+    // The user _must_ provides a custom extractor
     public Func<Message, string> RoutingKeyExtractor { get; set; } = null;
 }
 
