@@ -21,8 +21,10 @@ namespace RabbitMQ.Stream.Client;
 /// When a message is sent to a stream, the producer will be selected based on the stream name and the partition key.
 /// SuperStreamProducer uses lazy initialization for the producers, when it starts there are no producers until the first message is sent.
 /// </summary>
-public class SuperStreamProducer : IProducer
+public class SuperStreamProducer : IProducer, IDisposable
 {
+    private bool _disposed;
+
     // ConcurrentDictionary because the producer can be closed from another thread
     // The send operations will check if the producer exists and if not it will be created
     private readonly ConcurrentDictionary<string, IProducer> _producers = new();
@@ -82,6 +84,8 @@ public class SuperStreamProducer : IProducer
     // based on the stream name and the partition key, we select the producer
     private async Task<IProducer> GetProducerForMessage(Message message)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(SuperStreamProducer));
+
         var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
             _streamInfos.Keys.ToList());
         return await GetProducer(routes[0]);
@@ -139,11 +143,8 @@ public class SuperStreamProducer : IProducer
 
     public Task<ResponseCode> Close()
     {
-        foreach (var (_, iProducer) in _producers)
-        {
-            iProducer.Close();
-        }
-
+        if (_disposed) Task.FromResult(ResponseCode.Ok);
+        Dispose();
         return Task.FromResult(ResponseCode.Ok);
     }
 
@@ -154,12 +155,17 @@ public class SuperStreamProducer : IProducer
 
     public bool IsOpen()
     {
-        throw new System.NotImplementedException();
+        return !_disposed;
     }
 
     public void Dispose()
     {
-        throw new System.NotImplementedException();
+        foreach (var (_, iProducer) in _producers)
+        {
+            iProducer.Close();
+        }
+        _disposed = true;
+        GC.SuppressFinalize(this);
     }
 
     public int MessagesSent { get; }
@@ -226,7 +232,7 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
         var index = BitConverter.ToUInt32(hash, 0) % (uint)streams.Count;
-        return new List<string>() { streams[(int)index] };
+        return new List<string>() {streams[(int)index]};
     }
 
     public HashRoutingMurmurStrategy(Func<Message, string> routingKeyExtractor)

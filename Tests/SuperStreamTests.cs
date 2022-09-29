@@ -47,10 +47,10 @@ public class SuperStreamTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
 
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() { SuperStream = "does-not-exist" }));
+            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() {SuperStream = "does-not-exist"}));
 
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() { SuperStream = "" }));
+            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() {SuperStream = ""}));
         await system.Close();
     }
 
@@ -63,8 +63,7 @@ public class SuperStreamTests
         await Assert.ThrowsAsync<CreateProducerException>(() =>
             system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
-                SuperStream = "invoices",
-                Routing = null
+                SuperStream = "invoices", Routing = null
             }));
         await system.Close();
     }
@@ -73,17 +72,17 @@ public class SuperStreamTests
     {
         public IEnumerator<object[]> GetEnumerator()
         {
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello1" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello2" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello3" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello4" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello5" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello6" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello7" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello8" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello9" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello10" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello88" } };
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-02", MessageId = "hello1"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-01", MessageId = "hello2"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-02", MessageId = "hello3"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-03", MessageId = "hello4"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-01", MessageId = "hello5"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-03", MessageId = "hello6"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-01", MessageId = "hello7"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-02", MessageId = "hello8"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-01", MessageId = "hello9"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-03", MessageId = "hello10"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-02", MessageId = "hello88"}};
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -100,10 +99,10 @@ public class SuperStreamTests
         var murmurStrategy = new HashRoutingMurmurStrategy(message => message.Properties.MessageId.ToString());
         var messageTest = new Message(Encoding.Default.GetBytes("hello"))
         {
-            Properties = new Properties() { MessageId = msg.MessageId }
+            Properties = new Properties() {MessageId = msg.MessageId}
         };
         var routes =
-            murmurStrategy.Route(messageTest, new List<string>() { "invoices-01", "invoices-02", "invoices-03" });
+            murmurStrategy.Route(messageTest, new List<string>() {"invoices-01", "invoices-02", "invoices-03"});
 
         Assert.Single(routes);
         Assert.Equal(msg.StreamExpected, routes[0]);
@@ -120,14 +119,13 @@ public class SuperStreamTests
         var streamProducer =
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
-                SuperStream = "invoices",
-                Routing = message1 => message1.Properties.MessageId.ToString()
+                SuperStream = "invoices", Routing = message1 => message1.Properties.MessageId.ToString()
             });
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
             await streamProducer.Send(i, message);
         }
@@ -152,15 +150,14 @@ public class SuperStreamTests
         var streamProducer =
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
-                SuperStream = "invoices",
-                Routing = message1 => message1.Properties.MessageId.ToString()
+                SuperStream = "invoices", Routing = message1 => message1.Properties.MessageId.ToString()
             });
         var messages = new List<(ulong, Message)>();
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
             messages.Add((i, message));
         }
@@ -188,15 +185,14 @@ public class SuperStreamTests
         var streamProducer =
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
-                SuperStream = "invoices",
-                Routing = message1 => message1.Properties.MessageId.ToString()
+                SuperStream = "invoices", Routing = message1 => message1.Properties.MessageId.ToString()
             });
         var messages = new List<Message>();
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
             messages.Add(message);
         }
@@ -235,7 +231,7 @@ public class SuperStreamTests
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
 
             if (i == 10)
@@ -256,5 +252,51 @@ public class SuperStreamTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 9);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
+    }
+
+
+    [Fact]
+    public async void ShouldRaiseAObjectDisposedExceptionWhenClose()
+    {
+        ResetSuperStreams();
+       
+        // This test is for OpenClose Status 
+        // When the producer is closed it should raise ObjectDisposedException
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var streamProducer =
+            await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
+            {
+                SuperStream = "invoices", Routing = message1 => message1.Properties.MessageId.ToString()
+            });
+        Assert.True(streamProducer.IsOpen());
+        Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        Assert.False(streamProducer.IsOpen());
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
+        {
+            await streamProducer.Send(1, new Message(Encoding.Default.GetBytes("hello")));
+        });
+    }
+    
+    
+    [Fact]
+    public async void ShouldRaiseAObjectDisposedExceptionWhenCloseWhitUsing()
+    {
+        ResetSuperStreams();
+       
+        // This test is for using and Dispose  
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+         var streamProducer =
+            await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
+            {
+                SuperStream = "invoices", Routing = message1 => message1.Properties.MessageId.ToString()
+            });
+        Assert.True(streamProducer.IsOpen());
+        streamProducer.Dispose();
+        Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        Assert.False(streamProducer.IsOpen());
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
+        {
+            await streamProducer.Send(1, new Message(Encoding.Default.GetBytes("hello")));
+        });
     }
 }
