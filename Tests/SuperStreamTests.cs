@@ -47,16 +47,10 @@ public class SuperStreamTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
 
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
-            {
-                SuperStream = "does-not-exist"
-            }));
+            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() { SuperStream = "does-not-exist" }));
 
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
-            {
-                SuperStream = ""
-            }));
+            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() { SuperStream = "" }));
         await system.Close();
     }
 
@@ -64,12 +58,13 @@ public class SuperStreamTests
     public async void ValidateRoutingKeyProducer()
     {
         ResetSuperStreams();
+        // RoutingKeyExtractor must be set else the traffic won't be routed
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await Assert.ThrowsAsync<CreateProducerException>(() =>
             system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
                 SuperStream = "invoices",
-                RoutingKeyExtractor = null
+                Routing = null
             }));
         await system.Close();
     }
@@ -126,7 +121,7 @@ public class SuperStreamTests
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
                 SuperStream = "invoices",
-                RoutingKeyExtractor = message1 => message1.Properties.MessageId.ToString()
+                Routing = message1 => message1.Properties.MessageId.ToString()
             });
         for (ulong i = 0; i < 20; i++)
         {
@@ -158,7 +153,7 @@ public class SuperStreamTests
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
                 SuperStream = "invoices",
-                RoutingKeyExtractor = message1 => message1.Properties.MessageId.ToString()
+                Routing = message1 => message1.Properties.MessageId.ToString()
             });
         var messages = new List<(ulong, Message)>();
         for (ulong i = 0; i < 20; i++)
@@ -194,7 +189,7 @@ public class SuperStreamTests
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
                 SuperStream = "invoices",
-                RoutingKeyExtractor = message1 => message1.Properties.MessageId.ToString()
+                Routing = message1 => message1.Properties.MessageId.ToString()
             });
         var messages = new List<Message>();
         for (ulong i = 0; i < 20; i++)
@@ -212,6 +207,50 @@ public class SuperStreamTests
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 9);
+        Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SendMessageToSuperStreamRecreateConnectionsIfKilled()
+    {
+        ResetSuperStreams();
+        // This test validates that the super stream producer is able to recreate the connection
+        // if the connection is killed
+        // It is NOT meant to test the availability of the super stream producer
+        // just the reconnect mechanism
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var clientName = Guid.NewGuid().ToString();
+        var streamProducer =
+            await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
+            {
+                SuperStream = "invoices",
+                Routing = message1 => message1.Properties.MessageId.ToString(),
+                ClientProvidedName = clientName
+            });
+        for (ulong i = 0; i < 20; i++)
+        {
+            var message = new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() { MessageId = $"hello{i}" }
+            };
+
+            if (i == 10)
+            {
+                SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientName).Result == 3);
+                // We just decide to close the connections
+            }
+
+            // Here the connection _must_ be recreated  and the message sent
+            await streamProducer.Send(i, message);
+        }
+
+        SystemUtils.Wait();
+        // Total messages must be 20
+        // according to the routing strategy hello{i} that must be the correct routing
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 4);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 9);

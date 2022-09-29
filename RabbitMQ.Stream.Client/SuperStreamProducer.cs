@@ -3,6 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,7 +23,9 @@ namespace RabbitMQ.Stream.Client;
 /// </summary>
 public class SuperStreamProducer : IProducer
 {
-    private readonly Dictionary<string, IProducer> _producers = new();
+    // ConcurrentDictionary because the producer can be closed from another thread
+    // The send operations will check if the producer exists and if not it will be created
+    private readonly ConcurrentDictionary<string, IProducer> _producers = new();
     private readonly SuperStreamProducerConfig _config;
 
     private readonly DefaultRoutingConfiguration _defaultRoutingConfiguration = new();
@@ -44,7 +47,14 @@ public class SuperStreamProducer : IProducer
             ConfirmHandler = _config.ConfirmHandler,
             Reference = _config.Reference,
             MaxInFlight = _config.MaxInFlight,
-            ConnectionClosedHandler = _config.ConnectionClosedHandler,
+            ConnectionClosedHandler = s =>
+            {
+                // In case of connection closed, we need to remove the producer from the list
+                // We hide the behavior of the producer to the user
+                // if needed the connection will be created again
+                _producers.TryRemove(stream, out _);
+                return Task.CompletedTask;
+            },
             MetadataHandler = _config.MetadataHandler,
             ClientProvidedName = _config.ClientProvidedName,
             BatchSize = _config.BatchSize,
@@ -63,7 +73,7 @@ public class SuperStreamProducer : IProducer
     {
         if (!_producers.ContainsKey(stream))
         {
-            _producers.Add(stream, await InitProducer(stream));
+            _producers.TryAdd(stream, await InitProducer(stream));
         }
 
         return _producers[stream];
@@ -83,7 +93,7 @@ public class SuperStreamProducer : IProducer
         _config = config;
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
-        _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.RoutingKeyExtractor);
+        _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.Routing);
     }
 
     public async ValueTask Send(ulong publishingId, Message message)
@@ -174,7 +184,7 @@ public record SuperStreamProducerConfig : IProducerConfig
     // The routing key extractor is used to extract the routing key from the message
     // The routing key is used to route the message to a stream
     // The user _must_ provides a custom extractor
-    public Func<Message, string> RoutingKeyExtractor { get; set; } = null;
+    public Func<Message, string> Routing { get; set; } = null;
 }
 
 public interface IRoutingConfiguration

@@ -20,6 +20,7 @@ namespace RabbitMQ.Stream.Client
     public record ProducerConfig : IProducerConfig
     {
         public string Stream { get; set; }
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
     }
 
     public class Producer : AbstractEntity, IProducer, IDisposable

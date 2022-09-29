@@ -45,8 +45,6 @@ public record IProducerConfig : INamedEntity
     public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
     public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
 
-    public Func<string, Task> ConnectionClosedHandler { get; set; }
-
     public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
     public int BatchSize { get; set; } = 100;
