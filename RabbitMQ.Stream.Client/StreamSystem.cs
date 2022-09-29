@@ -120,6 +120,37 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        public async Task<IProducer> CreateSuperStreamProducer(SuperStreamProducerConfig config)
+        {
+            await MayBeReconnectLocator();
+            if (config.SuperStream == "")
+            {
+                throw new CreateProducerException($"Super Stream name can't be empty");
+            }
+
+            if (config.MessagesBufferSize < Consts.MinBatchSize)
+            {
+                throw new CreateProducerException(
+                    $"Batch Size must be bigger than 0");
+            }
+
+            if (config.RoutingKeyExtractor == null)
+            {
+                throw new CreateProducerException(
+                    $"Routing Key Extractor must be provided");
+            }
+
+            var partitions = await client.QueryPartition(config.SuperStream);
+            if (partitions.ResponseCode != ResponseCode.Ok)
+            {
+                throw new CreateProducerException($"producer could not be created code: {partitions.ResponseCode}");
+            }
+
+            var metaDataResponse = await client.QueryMetadata(partitions.Streams);
+
+            return SuperStreamProducer.Create(config, metaDataResponse.StreamInfos, clientParameters);
+        }
+
         public async Task<IProducer> CreateProducer(ProducerConfig producerConfig)
         {
             // Validate the ProducerConfig values

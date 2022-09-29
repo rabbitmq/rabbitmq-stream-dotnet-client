@@ -14,14 +14,28 @@ namespace RabbitMQ.Stream.Client;
 /// <summary>
 /// SuperStreamProducer is a producer that can send messages to multiple streams.
 /// Super Stream is available in RabbitMQ 3.11.0 and later.
-/// 
+/// SuperStreamProducer is actually an abstraction over multiple Producers.
+/// It does not contain any connection or state, it is just a way to send messages 
+/// to multiple streams using multi producers.
+/// When a message is sent to a stream, the producer will be selected based on the stream name and the partition key.
+/// SuperStreamProducer uses lazy initialization for the producers, when it starts there are no producers until the first message is sent.
 /// </summary>
 public class SuperStreamProducer : IProducer
 {
     private readonly Dictionary<string, IProducer> _producers = new();
     private readonly SuperStreamProducerConfig _config;
+
     private readonly DefaultRoutingConfiguration _defaultRoutingConfiguration = new();
 
+    // streams are the streams created by the super stream
+    // The partitioned streams.
+    // For example:
+    // invoices(super_stream) -> invoices-0, invoices-1, invoices-2
+    // Streams contains the configuration for each stream but not the connection
+    private readonly IDictionary<string, StreamInfo> _streamInfos;
+    private readonly ClientParameters _clientParameters;
+
+    // We need to copy the config from the super producer to the standard producer
     private ProducerConfig FromStreamConfig(string stream)
     {
         return new ProducerConfig()
@@ -41,8 +55,8 @@ public class SuperStreamProducer : IProducer
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        return await Producer.Create(_config.Streams[stream].ClientParameters,
-            FromStreamConfig(stream), _config.Streams[stream].MetaStreamInfo);
+        return await Producer.Create(_clientParameters,
+            FromStreamConfig(stream), _streamInfos[stream]);
     }
 
     private async Task<IProducer> GetProducer(string stream)
@@ -55,33 +69,72 @@ public class SuperStreamProducer : IProducer
         return _producers[stream];
     }
 
-    private SuperStreamProducer(SuperStreamProducerConfig config)
+    // based on the stream name and the partition key, we select the producer
+    private async Task<IProducer> GetProducerForMessage(Message message)
+    {
+        var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
+            _streamInfos.Keys.ToList());
+        return await GetProducer(routes[0]);
+    }
+
+    private SuperStreamProducer(SuperStreamProducerConfig config,
+        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
     {
         _config = config;
+        _streamInfos = streamInfos;
+        _clientParameters = clientParameters;
         _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.RoutingKeyExtractor);
     }
 
     public async ValueTask Send(ulong publishingId, Message message)
     {
-        var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
-            _config.Streams.Keys.ToList());
-        var producer = await GetProducer(routes[0]);
+        var producer = await GetProducerForMessage(message);
         await producer.Send(publishingId, message);
     }
 
-    public ValueTask BatchSend(List<(ulong, Message)> messages)
+    public async ValueTask BatchSend(List<(ulong, Message)> messages)
     {
-        throw new System.NotImplementedException();
+        foreach (var (id, message) in messages)
+        {
+            var producer = await GetProducerForMessage(message);
+            await producer.Send(id, message);
+        }
     }
 
-    public ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType)
+    public async ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType)
     {
-        throw new System.NotImplementedException();
+        var aggregate = new List<(IProducer, List<Message>)>();
+
+        // this part is not super-optimized
+        // we have to re-assemble the messages in the right order
+        // and send them to the right producer
+        foreach (var subMessage in subEntryMessages)
+        {
+            var p = await GetProducerForMessage(subMessage);
+            if (aggregate.Count == 0 || aggregate[^1].Item1 != p)
+            {
+                aggregate.Add((p, new List<Message>()));
+            }
+
+            aggregate[^1].Item2.Add(subMessage);
+        }
+
+        // Here we send the messages to the right producer
+        // sub aggregate is a list of messages that have to be sent to the same producer
+        foreach (var (producer, messages) in aggregate)
+        {
+            await producer.Send(publishingId, messages, compressionType);
+        }
     }
 
     public Task<ResponseCode> Close()
     {
-        throw new System.NotImplementedException();
+        foreach (var (_, iProducer) in _producers)
+        {
+            iProducer.Close();
+        }
+
+        return Task.FromResult(ResponseCode.Ok);
     }
 
     public Task<ulong> GetLastPublishingId()
@@ -105,16 +158,11 @@ public class SuperStreamProducer : IProducer
     public int PublishCommandsSent { get; }
     public int PendingCount { get; }
 
-    public static IProducer Create(SuperStreamProducerConfig superStreamProducerConfig)
+    public static IProducer Create(SuperStreamProducerConfig superStreamProducerConfig,
+        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
     {
-        return new SuperStreamProducer(superStreamProducerConfig);
+        return new SuperStreamProducer(superStreamProducerConfig, streamInfos, clientParameters);
     }
-}
-
-internal record StreamConfiguration
-{
-    public ClientParameters ClientParameters { get; init; }
-    public StreamInfo MetaStreamInfo { get; init; }
 }
 
 public record SuperStreamProducerConfig : IProducerConfig
@@ -122,13 +170,6 @@ public record SuperStreamProducerConfig : IProducerConfig
     // SuperStreamName. The user interacts with this it
     // In AMQP this is the exchange name
     public string SuperStream { get; set; }
-
-    // streams are the streams created by the super stream
-    // The partitioned streams.
-    // For example:
-    // invoices(super_stream) -> invoices-0, invoices-1, invoices-2
-    // Streams contains the configuration for each stream but not the connection
-    internal Dictionary<string, StreamConfiguration> Streams { get; set; } = new();
 
     // The routing key extractor is used to extract the routing key from the message
     // The routing key is used to route the message to a stream
@@ -175,8 +216,6 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
         var index = BitConverter.ToUInt32(hash, 0) % (uint)streams.Count;
-        Console.WriteLine($"{key} -> {streams[(int)index]}- > hash Num:{BitConverter.ToUInt32(hash, 0)}");
-
         return new List<string>() { streams[(int)index] };
     }
 
