@@ -110,13 +110,14 @@ namespace Tests
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             ITestOutputHelper testOutputHelper)
         {
-            testOutputHelper.WriteLine("Publishing messages...");
-            await PublishMessages(system, stream, numberOfMessages, "producer");
+            await PublishMessages(system, stream, numberOfMessages, "producer", testOutputHelper);
         }
 
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
-            string producerName)
+            string producerName, ITestOutputHelper testOutputHelper)
         {
+            testOutputHelper.WriteLine("Publishing messages...");
+
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
             var producer = await system.CreateProducer(
@@ -222,7 +223,8 @@ namespace Tests
                 var deleteResult = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
                 if (!deleteResult.IsSuccessStatusCode)
                 {
-                    throw new XunitException($"HTTP DELETE failed: {deleteResult.StatusCode} {deleteResult.ReasonPhrase}");
+                    throw new XunitException(
+                        $"HTTP DELETE failed: {deleteResult.StatusCode} {deleteResult.ReasonPhrase}");
                 }
 
                 killed += 1;
