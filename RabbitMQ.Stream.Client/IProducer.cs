@@ -2,7 +2,6 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 VMware, Inc.
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -42,10 +41,7 @@ public record IProducerConfig : INamedEntity
 {
     public string Reference { get; set; }
     public int MaxInFlight { get; set; } = 1000;
-    public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
     public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
-
-    public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
     public int BatchSize { get; set; } = 100;
 

@@ -21,6 +21,10 @@ namespace RabbitMQ.Stream.Client
     {
         public string Stream { get; set; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
+        public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
+
+        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
     }
 
     public class Producer : AbstractEntity, IProducer, IDisposable

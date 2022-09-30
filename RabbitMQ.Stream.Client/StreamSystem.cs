@@ -140,6 +140,8 @@ namespace RabbitMQ.Stream.Client
                     $"Routing Key Extractor must be provided");
             }
 
+            superStreamProducerConfig.Client = client;
+
             var partitions = await client.QueryPartition(superStreamProducerConfig.SuperStream);
             if (partitions.ResponseCode != ResponseCode.Ok)
             {
@@ -148,7 +150,9 @@ namespace RabbitMQ.Stream.Client
 
             var metaDataResponse = await client.QueryMetadata(partitions.Streams);
 
-            return SuperStreamProducer.Create(superStreamProducerConfig, metaDataResponse.StreamInfos, clientParameters with { ClientProvidedName = superStreamProducerConfig.ClientProvidedName });
+            return SuperStreamProducer.Create(superStreamProducerConfig,
+                metaDataResponse.StreamInfos,
+                clientParameters with { ClientProvidedName = superStreamProducerConfig.ClientProvidedName });
         }
 
         public async Task<IProducer> CreateProducer(ProducerConfig producerConfig)
@@ -203,10 +207,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] { stream };
-            var response = await client.QueryMetadata(streams);
-            return response.StreamInfos is { Count: >= 1 } &&
-                   response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
+            return await client.StreamExists(stream);
         }
 
         private static void MaybeThrowQueryException(string reference, string stream)

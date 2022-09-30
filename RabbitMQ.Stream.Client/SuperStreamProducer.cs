@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client.Hash;
 
@@ -46,7 +47,13 @@ public class SuperStreamProducer : IProducer, IDisposable
         return new ProducerConfig()
         {
             Stream = stream,
-            ConfirmHandler = _config.ConfirmHandler,
+            ConfirmHandler = confirmation =>
+            {
+                // The confirmation handler is routed to the super stream confirmation handler
+                // The user doesn't see the confirmation for the each partitioned stream
+                // but the global confirmation for the super stream
+                _config.ConfirmHandler?.Invoke((stream, confirmation));
+            },
             Reference = _config.Reference,
             MaxInFlight = _config.MaxInFlight,
             ConnectionClosedHandler = s =>
@@ -57,7 +64,29 @@ public class SuperStreamProducer : IProducer, IDisposable
                 _producers.TryRemove(stream, out _);
                 return Task.CompletedTask;
             },
-            MetadataHandler = _config.MetadataHandler,
+            MetadataHandler = update =>
+            {
+                // In case of stream update we remove the producer from the list
+                // We hide the behavior of the producer to the user
+                // if needed the connection will be created again
+                // we "should" always have the stream
+
+                // but we have to handle the case¬
+                // We need to wait a bit it can take some time to update the configuration
+                Thread.Sleep(500);
+
+                var exists = _config.Client.StreamExists(update.Stream);
+                if (!exists.Result)
+                {
+                    // The stream doesn't exist anymore
+                    // but this condition should be avoided since the hash routing 
+                    // can be compromised
+                    LogEventSource.Log.LogWarning($" Stream {update.Stream} is not available anymore");
+                    _streamInfos.Remove(update.Stream);
+                }
+
+                _producers.TryRemove(update.Stream, out _);
+            },
             ClientProvidedName = _config.ClientProvidedName,
             BatchSize = _config.BatchSize,
             MessagesBufferSize = _config.MessagesBufferSize,
@@ -84,7 +113,10 @@ public class SuperStreamProducer : IProducer, IDisposable
     // based on the stream name and the partition key, we select the producer
     private async Task<IProducer> GetProducerForMessage(Message message)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(SuperStreamProducer));
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(SuperStreamProducer));
+        }
 
         var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
             _streamInfos.Keys.ToList());
@@ -143,7 +175,11 @@ public class SuperStreamProducer : IProducer, IDisposable
 
     public Task<ResponseCode> Close()
     {
-        if (_disposed) Task.FromResult(ResponseCode.Ok);
+        if (_disposed)
+        {
+            Task.FromResult(ResponseCode.Ok);
+        }
+
         Dispose();
         return Task.FromResult(ResponseCode.Ok);
     }
@@ -164,6 +200,7 @@ public class SuperStreamProducer : IProducer, IDisposable
         {
             iProducer.Close();
         }
+
         _disposed = true;
         GC.SuppressFinalize(this);
     }
@@ -191,6 +228,9 @@ public record SuperStreamProducerConfig : IProducerConfig
     // The routing key is used to route the message to a stream
     // The user _must_ provides a custom extractor
     public Func<Message, string> Routing { get; set; } = null;
+    public Action<(string, Confirmation)> ConfirmHandler { get; set; } = _ => { };
+
+    internal Client Client { get; set; }
 }
 
 public interface IRoutingConfiguration
@@ -232,7 +272,7 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
         var index = BitConverter.ToUInt32(hash, 0) % (uint)streams.Count;
-        return new List<string>() {streams[(int)index]};
+        return new List<string>() { streams[(int)index] };
     }
 
     public HashRoutingMurmurStrategy(Func<Message, string> routingKeyExtractor)

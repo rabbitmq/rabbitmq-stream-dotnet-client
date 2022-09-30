@@ -607,6 +607,13 @@ namespace RabbitMQ.Stream.Client
             return await Request<MetaDataQuery, MetaDataResponse>(corr => new MetaDataQuery(corr, streams.ToList()));
         }
 
+        public async Task<bool> StreamExists(string stream)
+        {
+            var streams = new[] { stream };
+            var response = await QueryMetadata(streams);
+            return response.StreamInfos is { Count: >= 1 } &&
+                   response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
+        }
         public async ValueTask<QueryOffsetResponse> QueryOffset(string reference, string stream)
         {
             return await Request<QueryOffsetRequest, QueryOffsetResponse>(corr =>
