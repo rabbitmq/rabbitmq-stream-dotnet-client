@@ -126,7 +126,7 @@ namespace Tests
                     ConfirmHandler = _ =>
                     {
                         count++;
-                        // testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
+                        testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
                         if (count != numberOfMessages)
                         {
                             return;
