@@ -22,7 +22,7 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
-        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
+        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
 
         public AddressResolver AddressResolver { get; set; } = null;
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
@@ -59,7 +59,7 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with {Endpoint = endPoint});
+                    var client = await Client.Create(clientParams with { Endpoint = endPoint });
                     if (!client.IsClosed)
                     {
                         return new StreamSystem(clientParams, client);
@@ -151,14 +151,14 @@ namespace RabbitMQ.Stream.Client
             IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
             foreach (var partitionsStream in partitions.Streams)
             {
-                var metaDataResponse = await client.QueryMetadata(new[] {partitionsStream});
+                var metaDataResponse = await client.QueryMetadata(new[] { partitionsStream });
                 streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
-                
+
             }
-            
+
             return SuperStreamProducer.Create(superStreamProducerConfig,
                 streamInfos,
-                clientParameters with {ClientProvidedName = superStreamProducerConfig.ClientProvidedName});
+                clientParameters with { ClientProvidedName = superStreamProducerConfig.ClientProvidedName });
         }
 
         public async Task<IProducer> CreateProducer(ProducerConfig producerConfig)
@@ -176,7 +176,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             await MayBeReconnectLocator();
-            var meta = await client.QueryMetadata(new[] {producerConfig.Stream});
+            var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
 
             var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
@@ -191,7 +191,7 @@ namespace RabbitMQ.Stream.Client
                 await _semClientProvidedName.WaitAsync();
 
                 return await Producer.Create(
-                    clientParameters with {ClientProvidedName = producerConfig.ClientProvidedName},
+                    clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName },
                     producerConfig, metaStreamInfo);
             }
             finally
@@ -273,7 +273,7 @@ namespace RabbitMQ.Stream.Client
         public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
             await MayBeReconnectLocator();
-            var meta = await client.QueryMetadata(new[] {consumerConfig.Stream});
+            var meta = await client.QueryMetadata(new[] { consumerConfig.Stream });
             var metaStreamInfo = meta.StreamInfos[consumerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
@@ -285,7 +285,7 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 await _semClientProvidedName.WaitAsync();
-                var s = clientParameters with {ClientProvidedName = consumerConfig.ClientProvidedName};
+                var s = clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName };
                 return await Consumer.Create(s,
                     consumerConfig, metaStreamInfo);
             }

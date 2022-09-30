@@ -155,7 +155,7 @@ public class SuperStreamProducer : IProducer, IDisposable
             }
             else
             {
-                aggregate.Add((p, new List<(ulong, Message)>() {(subMessage.Item1, subMessage.Item2)}));
+                aggregate.Add((p, new List<(ulong, Message)>() { (subMessage.Item1, subMessage.Item2) }));
             }
         }
 
@@ -181,7 +181,7 @@ public class SuperStreamProducer : IProducer, IDisposable
             }
             else
             {
-                aggregate.Add((p, new List<Message>() {subMessage}));
+                aggregate.Add((p, new List<Message>() { subMessage }));
             }
         }
 
@@ -297,7 +297,7 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
         var index = BitConverter.ToUInt32(hash, 0) % (uint)partitions.Count;
-        return new List<string>() {partitions[(int)index]};
+        return new List<string>() { partitions[(int)index] };
     }
 
     public HashRoutingMurmurStrategy(Func<Message, string> routingKeyExtractor)
