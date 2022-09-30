@@ -110,11 +110,12 @@ namespace Tests
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             ITestOutputHelper testOutputHelper)
         {
-            await PublishMessages(system, stream, numberOfMessages, "producer", testOutputHelper);
+            testOutputHelper.WriteLine("Publishing messages...");
+            await PublishMessages(system, stream, numberOfMessages, "producer");
         }
 
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
-            string producerName, ITestOutputHelper testOutputHelper)
+            string producerName)
         {
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
@@ -126,7 +127,7 @@ namespace Tests
                     ConfirmHandler = _ =>
                     {
                         count++;
-                        testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
+                        // testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
                         if (count != numberOfMessages)
                         {
                             return;
