@@ -399,7 +399,7 @@ RabbitMQ.Stream.Client.Hash.Murmur3.Murmur3(uint seed) -> void
 RabbitMQ.Stream.Client.Hash.Murmur3.Seed.get -> uint
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.HashRoutingMurmurStrategy(System.Func<RabbitMQ.Stream.Client.Message, string> routingKeyExtractor) -> void
-RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> streams) -> System.Collections.Generic.List<string>
+RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.HeartBeatHandler
 RabbitMQ.Stream.Client.HeartBeatHandler.HeartBeatHandler(System.Func<System.Threading.Tasks.ValueTask<bool>> sendHeartbeatFunc, System.Func<string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse>> close, int heartbeat) -> void
 RabbitMQ.Stream.Client.HeartBeatRequest
@@ -461,7 +461,7 @@ RabbitMQ.Stream.Client.IRouting.ValidateDns.get -> bool
 RabbitMQ.Stream.Client.IRouting.ValidateDns.set -> void
 RabbitMQ.Stream.Client.IRoutingConfiguration
 RabbitMQ.Stream.Client.IRoutingStrategy
-RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> streams) -> System.Collections.Generic.List<string>
+RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.Keywords
 RabbitMQ.Stream.Client.LeaderLocator
 RabbitMQ.Stream.Client.LeaderLocator.LeaderLocator() -> void

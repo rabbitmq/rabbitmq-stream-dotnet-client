@@ -140,10 +140,28 @@ public class SuperStreamProducer : IProducer, IDisposable
 
     public async ValueTask BatchSend(List<(ulong, Message)> messages)
     {
-        foreach (var (id, message) in messages)
+        var aggregate = new List<(IProducer, List<(ulong, Message)>)>();
+
+        // this part is not super-optimized
+        // we have to re-assemble the messages in the right order
+        // and send them to the right producer
+        foreach (var subMessage in messages)
         {
-            var producer = await GetProducerForMessage(message);
-            await producer.Send(id, message);
+            var p = await GetProducerForMessage(subMessage.Item2);
+            if (aggregate.Any(a => a.Item1 == p))
+            {
+                aggregate.First(a => a.Item1 == p).Item2.Add((subMessage.Item1,
+                    subMessage.Item2));
+            }
+            else
+            {
+                aggregate.Add((p, new List<(ulong, Message)>() {(subMessage.Item1, subMessage.Item2)}));
+            }
+        }
+
+        foreach (var (producer, list) in aggregate)
+        {
+            await producer.BatchSend(list);
         }
     }
 
@@ -157,12 +175,14 @@ public class SuperStreamProducer : IProducer, IDisposable
         foreach (var subMessage in subEntryMessages)
         {
             var p = await GetProducerForMessage(subMessage);
-            if (aggregate.Count == 0 || aggregate[^1].Item1 != p)
+            if (aggregate.Any(a => a.Item1 == p))
             {
-                aggregate.Add((p, new List<Message>()));
+                aggregate.First(a => a.Item1 == p).Item2.Add(subMessage);
             }
-
-            aggregate[^1].Item2.Add(subMessage);
+            else
+            {
+                aggregate.Add((p, new List<Message>() {subMessage}));
+            }
         }
 
         // Here we send the messages to the right producer
@@ -184,9 +204,14 @@ public class SuperStreamProducer : IProducer, IDisposable
         return Task.FromResult(ResponseCode.Ok);
     }
 
+    //<summary>
+    /// Returns MAX from the LastPublishingId for all the producers
+    // </summary> 
     public Task<ulong> GetLastPublishingId()
     {
-        throw new System.NotImplementedException();
+        var v = _producers.Values.Min(p => p.GetLastPublishingId().Result);
+
+        return Task.FromResult(v);
     }
 
     public bool IsOpen()
@@ -251,7 +276,7 @@ internal class DefaultRoutingConfiguration : IRoutingConfiguration
 /// </summary>
 public interface IRoutingStrategy
 {
-    List<string> Route(Message message, List<string> streams);
+    List<string> Route(Message message, List<string> partitions);
 }
 
 /// <summary>
@@ -267,12 +292,12 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
     private const int Seed = 104729; //  must be the same to all the clients to be compatible
 
     // Routing based on the Murmur hash function
-    public List<string> Route(Message message, List<string> streams)
+    public List<string> Route(Message message, List<string> partitions)
     {
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
-        var index = BitConverter.ToUInt32(hash, 0) % (uint)streams.Count;
-        return new List<string>() { streams[(int)index] };
+        var index = BitConverter.ToUInt32(hash, 0) % (uint)partitions.Count;
+        return new List<string>() {partitions[(int)index]};
     }
 
     public HashRoutingMurmurStrategy(Func<Message, string> routingKeyExtractor)

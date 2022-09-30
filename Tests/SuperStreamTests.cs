@@ -51,10 +51,10 @@ public class SuperStreamTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
 
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() { SuperStream = "does-not-exist" }));
+            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() {SuperStream = "does-not-exist"}));
 
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() { SuperStream = "" }));
+            system.CreateSuperStreamProducer(new SuperStreamProducerConfig() {SuperStream = ""}));
         await system.Close();
     }
 
@@ -67,8 +67,7 @@ public class SuperStreamTests
         await Assert.ThrowsAsync<CreateProducerException>(() =>
             system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
-                SuperStream = "invoices",
-                Routing = null
+                SuperStream = "invoices", Routing = null
             }));
         await system.Close();
     }
@@ -77,17 +76,17 @@ public class SuperStreamTests
     {
         public IEnumerator<object[]> GetEnumerator()
         {
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello1" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello2" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello3" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello4" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello5" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello6" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello7" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello8" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello9" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello10" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello88" } };
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-02", MessageId = "hello1"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-01", MessageId = "hello2"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-02", MessageId = "hello3"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-03", MessageId = "hello4"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-01", MessageId = "hello5"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-03", MessageId = "hello6"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-01", MessageId = "hello7"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-02", MessageId = "hello8"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-01", MessageId = "hello9"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-03", MessageId = "hello10"}};
+            yield return new object[] {new MessageIdToStream {StreamExpected = "invoices-02", MessageId = "hello88"}};
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -104,10 +103,10 @@ public class SuperStreamTests
         var murmurStrategy = new HashRoutingMurmurStrategy(message => message.Properties.MessageId.ToString());
         var messageTest = new Message(Encoding.Default.GetBytes("hello"))
         {
-            Properties = new Properties() { MessageId = msg.MessageId }
+            Properties = new Properties() {MessageId = msg.MessageId}
         };
         var routes =
-            murmurStrategy.Route(messageTest, new List<string>() { "invoices-01", "invoices-02", "invoices-03" });
+            murmurStrategy.Route(messageTest, new List<string>() {"invoices-01", "invoices-02", "invoices-03"});
 
         Assert.Single(routes);
         Assert.Equal(msg.StreamExpected, routes[0]);
@@ -126,12 +125,13 @@ public class SuperStreamTests
             {
                 SuperStream = "invoices",
                 Routing = message1 => message1.Properties.MessageId.ToString(),
+                Reference = "reference"
             });
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
             await streamProducer.Send(i, message);
         }
@@ -139,9 +139,11 @@ public class SuperStreamTests
         SystemUtils.Wait();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 9);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        Assert.Equal(await streamProducer.GetLastPublishingId(), (ulong)10);
+
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
@@ -157,14 +159,15 @@ public class SuperStreamTests
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
                 SuperStream = "invoices",
-                Routing = message1 => message1.Properties.MessageId.ToString()
+                Routing = message1 => message1.Properties.MessageId.ToString(),
+                Reference = "reference"
             });
         var messages = new List<(ulong, Message)>();
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
             messages.Add((i, message));
         }
@@ -175,9 +178,11 @@ public class SuperStreamTests
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 9);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        SystemUtils.Wait();
+
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
@@ -193,14 +198,15 @@ public class SuperStreamTests
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
                 SuperStream = "invoices",
-                Routing = message1 => message1.Properties.MessageId.ToString()
+                Routing = message1 => message1.Properties.MessageId.ToString(),
+                Reference = "ref1"
             });
         var messages = new List<Message>();
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
             messages.Add(message);
         }
@@ -211,9 +217,10 @@ public class SuperStreamTests
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 9);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        Assert.Equal(await streamProducer.GetLastPublishingId(), (ulong)1);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
@@ -239,7 +246,7 @@ public class SuperStreamTests
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
 
             if (i == 10)
@@ -255,9 +262,9 @@ public class SuperStreamTests
         SystemUtils.Wait();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 9);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
@@ -273,8 +280,7 @@ public class SuperStreamTests
         var streamProducer =
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
-                SuperStream = "invoices",
-                Routing = message1 => message1.Properties.MessageId.ToString()
+                SuperStream = "invoices", Routing = message1 => message1.Properties.MessageId.ToString()
             });
         Assert.True(streamProducer.IsOpen());
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
@@ -286,7 +292,7 @@ public class SuperStreamTests
     }
 
     [Fact]
-    public async void ShouldRaiseAObjectDisposedExceptionWhenCloseWhitUsing()
+    public async void ShouldRaiseAObjectDisposedExceptionWhenCloseWhitDispose()
     {
         ResetSuperStreams();
 
@@ -295,8 +301,7 @@ public class SuperStreamTests
         var streamProducer =
             await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
             {
-                SuperStream = "invoices",
-                Routing = message1 => message1.Properties.MessageId.ToString()
+                SuperStream = "invoices", Routing = message1 => message1.Properties.MessageId.ToString()
             });
         Assert.True(streamProducer.IsOpen());
         streamProducer.Dispose();
@@ -340,16 +345,16 @@ public class SuperStreamTests
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i.ToString()}"}
             };
             await streamProducer.Send(i, message);
         }
 
         SystemUtils.Wait();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        Assert.Equal(4, confirmedList.Count(x => x.Item1 == "invoices-0"));
+        Assert.Equal(9, confirmedList.Count(x => x.Item1 == "invoices-0"));
         Assert.Equal(7, confirmedList.Count(x => x.Item1 == "invoices-1"));
-        Assert.Equal(9, confirmedList.Count(x => x.Item1 == "invoices-2"));
+        Assert.Equal(4, confirmedList.Count(x => x.Item1 == "invoices-2"));
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
@@ -389,7 +394,7 @@ public class SuperStreamTests
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
-                Properties = new Properties() { MessageId = $"hello{i}" }
+                Properties = new Properties() {MessageId = $"hello{i}"}
             };
 
             if (i == 5)
@@ -408,6 +413,103 @@ public class SuperStreamTests
         SystemUtils.Wait();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.Close();
+    }
+
+     [Fact]
+    public async void SendMessagesInDifferentWaysShouldAppendToTheStreams()
+    {
+        ResetSuperStreams();
+        // In this test we are going to send 20 messages with the same message id
+        // without reference so the messages in the stream must be appended
+        // so the total count must be 20 * 3 (standard send,batch send, subentry send)
+        // se also: SuperStreamDeduplicationDifferentWaysShouldGiveSameResults 
+        // same scenario but with deduplication
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var streamProducer =
+            await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
+            {
+                SuperStream = "invoices",
+                Routing = message1 => message1.Properties.MessageId.ToString(),
+            });
+        // List for the batch send 
+        var batchSendMessages = new List<(ulong, Message)>();
+        // List for sub entry messages 
+        var messagesForSubEntry = new List<Message>();
+
+        for (ulong i = 0; i < 20; i++)
+        {
+            var message = new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() {MessageId = $"hello{i}"}
+            };
+            // we just prepare the lists
+            batchSendMessages.Add((i, message));
+            messagesForSubEntry.Add(message);
+            
+            await streamProducer.Send(i, message);
+        }
+       
+        await streamProducer.BatchSend(batchSendMessages);
+        await streamProducer.Send(1, messagesForSubEntry, CompressionType.Gzip);
+        
+        
+        SystemUtils.Wait();
+        // Total messages must be 20 * 3
+        // according to the routing strategy hello{i} that must be the correct routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9 * 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7* 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4* 3);
+        await system.Close();
+    }
+    
+    [Fact]
+    public async void SuperStreamDeduplicationDifferentWaysShouldGiveSameResults()
+    {
+        ResetSuperStreams();
+        // In this test we are going to send 20 messages with the same message id
+        // and the same REFERENCE, in this way we enable the deduplication
+        // so the result messages in the streams but always the same for the first
+        // insert. 
+        
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var streamProducer =
+            await system.CreateSuperStreamProducer(new SuperStreamProducerConfig()
+            {
+                SuperStream = "invoices",
+                Routing = message1 => message1.Properties.MessageId.ToString(),
+                Reference = "reference"
+            });
+        // List for the batch send 
+        var batchSendMessages = new List<(ulong, Message)>();
+        // List for sub entry messages 
+        var messagesForSubEntry = new List<Message>();
+
+        for (ulong i = 0; i < 20; i++)
+        {
+            var message = new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() {MessageId = $"hello{i}"}
+            };
+            // we just prepare the lists
+            batchSendMessages.Add((i, message));
+            messagesForSubEntry.Add(message);
+            
+            await streamProducer.Send(i, message);
+        }
+        // starting form here the number of the messages in the stream must be the same
+        // the following send(s) will enable the deduplication
+        await streamProducer.BatchSend(batchSendMessages);
+        await streamProducer.Send(1, messagesForSubEntry, CompressionType.Gzip);
+        
+        
+        SystemUtils.Wait();
+        // Total messages must be 20
+        // according to the routing strategy hello{i} that must be the correct routing
+        // Deduplication in action
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
         await system.Close();
     }
 }
