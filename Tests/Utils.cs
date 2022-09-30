@@ -116,6 +116,8 @@ namespace Tests
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             string producerName, ITestOutputHelper testOutputHelper)
         {
+            testOutputHelper.WriteLine("Publishing messages...");
+
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
             var producer = await system.CreateProducer(

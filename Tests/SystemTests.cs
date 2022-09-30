@@ -97,6 +97,19 @@ namespace Tests
         }
 
         [Fact]
+        public async void Create_Stream_With_Max_Length_Maximum_Value()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            var spec = new StreamSpec(stream) { MaxLengthBytes = ulong.MaxValue };
+            await system.CreateStream(spec);
+            Assert.Equal(ulong.MaxValue.ToString(), spec.Args["max-length-bytes"]);
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
             var config = new StreamSystemConfig { VirtualHost = "DOES_NOT_EXIST" };

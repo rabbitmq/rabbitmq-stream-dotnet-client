@@ -25,10 +25,12 @@ namespace Tests
         [Fact]
         public void CanOverrideAnyStreamSpecAttributes()
         {
-            var spec = new StreamSpec("theStreamName");
-            spec.MaxAge = TimeSpan.FromHours(3);
-            spec.MaxLengthBytes = 10000;
-            spec.LeaderLocator = LeaderLocator.Random; // this is an override because the spec has already a default value
+            var spec = new StreamSpec("theStreamName")
+            {
+                MaxAge = TimeSpan.FromHours(3),
+                MaxLengthBytes = 10000,
+                LeaderLocator = LeaderLocator.Random // this is an override because the spec has already a default value
+            };
 
             // can override any settings being set
             spec.MaxAge = TimeSpan.FromHours(5);
@@ -41,6 +43,17 @@ namespace Tests
                 MaxAge = TimeSpan.FromHours(5)
             };
             Assert.Equal(expectedSpec.Args, spec.Args);
+        }
+
+        [Fact]
+        public void MaxLengthAttributeCanContainUInt64ValuesRange()
+        {
+            var spec = new StreamSpec("theStreamName")
+            {
+                MaxLengthBytes = ulong.MaxValue
+            };
+
+            Assert.Equal(ulong.MaxValue.ToString(), $"{spec.Args["max-length-bytes"]}");
         }
     }
 }
