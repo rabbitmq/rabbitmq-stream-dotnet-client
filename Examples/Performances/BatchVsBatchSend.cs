@@ -10,7 +10,7 @@ public class BatchVsBatchSend
     private const int AggregateBatchSize = 300;
     private const int ModPrintMessages = 10_000_000;
 
-    public async Task Start()
+    public static async Task Start()
     {
         Console.WriteLine("Stream Client Performance Test");
         Console.WriteLine("==============================");
@@ -230,7 +230,7 @@ public class BatchVsBatchSend
         {
             await system.DeleteStream(stream);
         }
-        catch (Exception e)
+        catch (Exception)
         {
             // Console.WriteLine(e);
         }

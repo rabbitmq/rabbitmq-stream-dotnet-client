@@ -101,10 +101,7 @@ namespace Tests
             string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig
-            {
-                ClientProvidedName = clientProviderNameLocator
-            };
+            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();
@@ -119,6 +116,8 @@ namespace Tests
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             string producerName, ITestOutputHelper testOutputHelper)
         {
+            testOutputHelper.WriteLine("Publishing messages...");
+
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
             var producer = await system.CreateProducer(
@@ -129,7 +128,6 @@ namespace Tests
                     ConfirmHandler = _ =>
                     {
                         count++;
-                        testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
                         if (count != numberOfMessages)
                         {
                             return;
@@ -147,7 +145,7 @@ namespace Tests
             }
 
             testPassed.Task.Wait(TimeSpan.FromSeconds(10));
-            Assert.Equal(producer.MessagesSent, numberOfMessages);
+            Assert.Equal(numberOfMessages, testPassed.Task.Result);
             Assert.True(producer.ConfirmFrames >= 1);
             Assert.True(producer.IncomingFrames >= 1);
             Assert.True(producer.PublishCommandsSent >= 1);
@@ -169,7 +167,8 @@ namespace Tests
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
             }
 
             var obj = JsonSerializer.Deserialize(result.Content.ReadAsStream(), typeof(IEnumerable<Connection>));
@@ -223,7 +222,8 @@ namespace Tests
                 var deleteResult = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
                 if (!deleteResult.IsSuccessStatusCode)
                 {
-                    throw new XunitException($"HTTP DELETE failed: {deleteResult.StatusCode} {deleteResult.ReasonPhrase}");
+                    throw new XunitException(
+                        $"HTTP DELETE failed: {deleteResult.StatusCode} {deleteResult.ReasonPhrase}");
                 }
 
                 killed += 1;
@@ -232,17 +232,70 @@ namespace Tests
             return killed;
         }
 
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            return new HttpClient(handler);
+        }
+
+        public static int HttpGetQMsgCount(string queue)
+        {
+            var task = CreateHttpClient().GetAsync($"http://localhost:15672/api/queues/%2F/{queue}");
+            task.Wait(TimeSpan.FromSeconds(10));
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException($"HTTP GET failed: {result.StatusCode} {result.ReasonPhrase}");
+            }
+
+            var responseBody = result.Content.ReadAsStringAsync();
+            responseBody.Wait(TimeSpan.FromSeconds(10));
+            var json = responseBody.Result;
+            var obj = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            if (obj == null)
+            {
+                return 0;
+            }
+
+            return obj.ContainsKey("messages_ready") ? Convert.ToInt32(obj["messages_ready"].ToString()) : 0;
+        }
+
         public static void HttpPost(string jsonBody, string api)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
-            using var client = new HttpClient(handler);
             HttpContent content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-            var task = client.PostAsync($"http://localhost:15672/api/{api}", content);
+            var task = CreateHttpClient().PostAsync($"http://localhost:15672/api/{api}", content);
             task.Wait();
             var result = task.Result;
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
+            }
+        }
+
+        public static void HttpDeleteQueue(string queue)
+        {
+
+            var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/queues/%2F/{queue}");
+            task.Wait();
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
+            {
+                throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
+            }
+        }
+
+        public static void HttpDeleteExchange(string exchange)
+        {
+
+            var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/exchanges/%2F/{exchange}");
+            task.Wait();
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
+            {
+                throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
             }
         }
 

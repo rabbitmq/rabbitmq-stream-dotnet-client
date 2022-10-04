@@ -113,8 +113,8 @@ namespace RabbitMQ.Stream.Client
 
         private byte nextSubscriptionId;
 
-        private readonly IDictionary<byte, Func<Deliver, Task>> consumers =
-            new ConcurrentDictionary<byte, Func<Deliver, Task>>();
+        internal readonly IDictionary<byte, ConsumerEvents> consumers =
+            new ConcurrentDictionary<byte, ConsumerEvents>();
 
         private int publishCommandsSent;
 
@@ -293,13 +293,32 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType,
             ushort initialCredit,
-            Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler)
+            Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
+            Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
+        {
+            return await Subscribe(new ConsumerConfig() { Stream = stream, OffsetSpec = offsetType },
+                initialCredit,
+                properties,
+                deliverHandler,
+                consumerUpdateHandler);
+        }
+
+        public async Task<(byte, SubscribeResponse)> Subscribe(ConsumerConfig config,
+            ushort initialCredit,
+            Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
+            Func<bool, Task<IOffsetType>> consumerUpdateHandler)
         {
             var subscriptionId = GetNextSubscriptionId();
-            consumers.Add(subscriptionId, deliverHandler);
+
+            consumers.Add(subscriptionId,
+                new ConsumerEvents(
+                    deliverHandler,
+                    consumerUpdateHandler));
+
             return (subscriptionId,
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
-                    new SubscribeRequest(corr, subscriptionId, stream, offsetType, initialCredit, properties)));
+                    new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
+                        properties)));
         }
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
@@ -316,6 +335,12 @@ namespace RabbitMQ.Stream.Client
                 // remove consumer after RPC returns, this should avoid uncorrelated data being sent
                 consumers.Remove(subscriptionId);
             }
+        }
+
+        public async Task<PartitionsQueryResponse> QueryPartition(string superStream)
+        {
+            return await Request<PartitionsQueryRequest, PartitionsQueryResponse>(corr =>
+                new PartitionsQueryRequest(corr, superStream));
         }
 
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
@@ -362,6 +387,7 @@ namespace RabbitMQ.Stream.Client
             // so there is no need to send the heartbeat when not necessary 
             _heartBeatHandler.UpdateHeartBeat();
 
+            ConsumerEvents consumerEvents;
             switch (tag)
             {
                 case PublishConfirm.Key:
@@ -377,8 +403,8 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case Deliver.Key:
                     Deliver.Read(frame, out var deliver);
-                    var deliverHandler = consumers[deliver.SubscriptionId];
-                    await deliverHandler(deliver).ConfigureAwait(false);
+                    consumerEvents = consumers[deliver.SubscriptionId];
+                    await consumerEvents.DeliverHandler(deliver).ConfigureAwait(false);
                     break;
                 case PublishError.Key:
                     PublishError.Read(frame, out var error);
@@ -392,6 +418,14 @@ namespace RabbitMQ.Stream.Client
                 case TuneResponse.Key:
                     TuneResponse.Read(frame, out var tuneResponse);
                     tuneReceived.SetResult(tuneResponse);
+                    break;
+                case ConsumerUpdateQueryResponse.Key:
+                    ConsumerUpdateQueryResponse.Read(frame, out var consumerUpdateQueryResponse);
+                    HandleCorrelatedResponse(consumerUpdateQueryResponse);
+                    var consumerEventsUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
+                    await ConsumerUpdateResponse(
+                        consumerUpdateQueryResponse.CorrelationId,
+                        await consumerEventsUpd.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive));
                     break;
                 case CreditResponse.Key:
                     CreditResponse.Read(frame, out var creditResponse);
@@ -475,6 +509,11 @@ namespace RabbitMQ.Stream.Client
                 case HeartBeatHandler.Key:
                     _heartBeatHandler.UpdateHeartBeat();
                     break;
+                case PartitionsQueryResponse.Key:
+                    PartitionsQueryResponse.Read(frame, out var partitionsQueryResponse);
+                    HandleCorrelatedResponse(partitionsQueryResponse);
+                    break;
+
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
@@ -507,6 +546,11 @@ namespace RabbitMQ.Stream.Client
         {
             _heartBeatHandler.Close();
             IsClosed = true;
+        }
+
+        private async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
+        {
+            return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification));
         }
 
         public async Task<CloseResponse> Close(string reason)
@@ -563,6 +607,13 @@ namespace RabbitMQ.Stream.Client
             return await Request<MetaDataQuery, MetaDataResponse>(corr => new MetaDataQuery(corr, streams.ToList()));
         }
 
+        public async Task<bool> StreamExists(string stream)
+        {
+            var streams = new[] { stream };
+            var response = await QueryMetadata(streams);
+            return response.StreamInfos is { Count: >= 1 } &&
+                   response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
+        }
         public async ValueTask<QueryOffsetResponse> QueryOffset(string reference, string stream)
         {
             return await Request<QueryOffsetRequest, QueryOffsetResponse>(corr =>

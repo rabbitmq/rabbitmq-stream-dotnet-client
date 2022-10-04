@@ -16,6 +16,7 @@ namespace RabbitMQ.Stream.Client
         Offset = 4,
         Timestamp = 5
     }
+
     public interface IOffsetType
     {
         int Size { get; }
@@ -24,6 +25,7 @@ namespace RabbitMQ.Stream.Client
 
         int Write(Span<byte> span);
     }
+
     public readonly struct OffsetTypeFirst : IOffsetType
     {
         public int Size => 2;
@@ -35,6 +37,7 @@ namespace RabbitMQ.Stream.Client
             return 2;
         }
     }
+
     public readonly struct OffsetTypeLast : IOffsetType
     {
         public int Size => 2;
@@ -46,10 +49,12 @@ namespace RabbitMQ.Stream.Client
             return 2;
         }
     }
+
     public readonly struct OffsetTypeNext : IOffsetType
     {
         public int Size => 2;
         public OffsetTypeEnum OffsetType => OffsetTypeEnum.Next;
+
         public int Write(Span<byte> span)
         {
             WireFormatting.WriteUInt16(span, (ushort)OffsetType);
@@ -59,21 +64,21 @@ namespace RabbitMQ.Stream.Client
 
     public readonly struct OffsetTypeOffset : IOffsetType
     {
-        private readonly ulong offsetValue;
         public OffsetTypeEnum OffsetType => OffsetTypeEnum.Offset;
+
         public OffsetTypeOffset(ulong offset)
         {
-            offsetValue = offset;
+            OffsetValue = offset;
         }
 
-        internal ulong OffsetValue => offsetValue;
+        internal ulong OffsetValue { get; }
 
         public int Size => 2 + 8;
 
         public int Write(Span<byte> span)
         {
             var offset = WireFormatting.WriteUInt16(span, (ushort)OffsetType);
-            offset += WireFormatting.WriteUInt64(span.Slice(offset), offsetValue);
+            offset += WireFormatting.WriteUInt64(span.Slice(offset), OffsetValue);
             return offset;
         }
     }
@@ -82,11 +87,13 @@ namespace RabbitMQ.Stream.Client
     {
         private readonly long timestamp;
         public OffsetTypeEnum OffsetType => OffsetTypeEnum.Timestamp;
+
         public OffsetTypeTimestamp(long timestamp)
         {
             this.timestamp = timestamp;
         }
 
+        internal long TimeStamp => timestamp;
         public int Size => 10;
 
         public int Write(Span<byte> span)
@@ -96,6 +103,7 @@ namespace RabbitMQ.Stream.Client
             return offset;
         }
     }
+
     public readonly struct SubscribeResponse : ICommand
     {
         public const ushort Key = 7;
@@ -117,8 +125,8 @@ namespace RabbitMQ.Stream.Client
         public int Write(Span<byte> span)
         {
             throw new NotImplementedException();
-
         }
+
         internal static int Read(ReadOnlySequence<byte> frame, out SubscribeResponse command)
         {
             var offset = WireFormatting.ReadUInt16(frame, out _);
@@ -140,7 +148,8 @@ namespace RabbitMQ.Stream.Client
         private readonly IDictionary<string, string> properties;
         public const ushort Key = 7;
 
-        public SubscribeRequest(uint correlationId, byte subscriptionId, string stream, IOffsetType offsetType, ushort credit, IDictionary<string, string> properties)
+        public SubscribeRequest(uint correlationId, byte subscriptionId, string stream, IOffsetType offsetType,
+            ushort credit, IDictionary<string, string> properties)
         {
             this.correlationId = correlationId;
             this.subscriptionId = subscriptionId;
@@ -155,9 +164,13 @@ namespace RabbitMQ.Stream.Client
             get
             {
                 var size = 2 + 2 + 4 + 1 + WireFormatting.StringSize(stream) + offsetType.Size + 2;
+                if (properties.Count > 0)
+                {
+                    size += 4; // size of the properties map
+                }
+
                 foreach (var (key, value) in properties)
                 {
-                    size = 4; // size of the dict
                     // TODO: unnecessary conversion work here to work out the correct size of the frame
                     size += WireFormatting.StringSize(key) + WireFormatting.StringSize(value); //
                 }
