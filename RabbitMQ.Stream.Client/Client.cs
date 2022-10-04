@@ -294,26 +294,26 @@ namespace RabbitMQ.Stream.Client
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType,
             ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
-            Func<bool, Task<IOffsetType>> updateConsumerHandler = null)
+            Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
             return await Subscribe(new ConsumerConfig() { Stream = stream, OffsetSpec = offsetType },
                 initialCredit,
                 properties,
                 deliverHandler,
-                updateConsumerHandler);
+                consumerUpdateHandler);
         }
 
         public async Task<(byte, SubscribeResponse)> Subscribe(ConsumerConfig config,
             ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
-            Func<bool, Task<IOffsetType>> updateConsumerHandler)
+            Func<bool, Task<IOffsetType>> consumerUpdateHandler)
         {
             var subscriptionId = GetNextSubscriptionId();
 
             consumers.Add(subscriptionId,
                 new ConsumerEvents(
                     deliverHandler,
-                    updateConsumerHandler));
+                    consumerUpdateHandler));
 
             return (subscriptionId,
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
@@ -425,7 +425,7 @@ namespace RabbitMQ.Stream.Client
                     var consumerEventsUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
                     await ConsumerUpdateResponse(
                         consumerUpdateQueryResponse.CorrelationId,
-                        await consumerEventsUpd.UpdateConsumerHandler(consumerUpdateQueryResponse.IsActive));
+                        await consumerEventsUpd.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive));
                     break;
                 case CreditResponse.Key:
                     CreditResponse.Read(frame, out var creditResponse);

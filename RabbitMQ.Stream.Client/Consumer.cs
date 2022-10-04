@@ -24,14 +24,14 @@ namespace RabbitMQ.Stream.Client
     internal struct ConsumerEvents
     {
         public ConsumerEvents(Func<Deliver, Task> deliverHandler,
-            Func<bool, Task<IOffsetType>> updateConsumerHandler)
+            Func<bool, Task<IOffsetType>> consumerUpdateHandler)
         {
             DeliverHandler = deliverHandler;
-            UpdateConsumerHandler = updateConsumerHandler;
+            ConsumerUpdateHandler = consumerUpdateHandler;
         }
 
         public Func<Deliver, Task> DeliverHandler { get; }
-        public Func<bool, Task<IOffsetType>> UpdateConsumerHandler { get; }
+        public Func<bool, Task<IOffsetType>> ConsumerUpdateHandler { get; }
     }
 
     public record ConsumerConfig : INamedEntity
