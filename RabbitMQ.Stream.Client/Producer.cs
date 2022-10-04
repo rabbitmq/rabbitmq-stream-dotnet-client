@@ -17,31 +17,17 @@ namespace RabbitMQ.Stream.Client
         public ResponseCode Code { get; set; }
     }
 
-    public record ProducerConfig : INamedEntity
+    public record ProducerConfig : IProducerConfig
     {
         public string Stream { get; set; }
-        public string Reference { get; set; }
-        public int MaxInFlight { get; set; } = 1000;
-        public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
-
         public Func<string, Task> ConnectionClosedHandler { get; set; }
-
-        public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
+        public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
-        public int BatchSize { get; set; } = 100;
-
-        /// <summary>
-        /// Number of the messages sent for each frame-send.
-        /// High values can increase the throughput.
-        /// Low values can reduce the messages latency.
-        /// Default value is 100.
-        /// </summary>
-        public int MessagesBufferSize { get; set; } = 100;
     }
 
-    public class Producer : AbstractEntity, IDisposable
+    public class Producer : AbstractEntity, IProducer, IDisposable
     {
         private bool _disposed;
         private byte publisherId;
@@ -214,6 +200,11 @@ namespace RabbitMQ.Stream.Client
             return response.Sequence;
         }
 
+        public bool IsOpen()
+        {
+            return !_disposed && !client.IsClosed;
+        }
+
         public async ValueTask Send(ulong publishingId, Message message)
         {
             await SemaphoreWait();
@@ -280,7 +271,7 @@ namespace RabbitMQ.Stream.Client
             return result;
         }
 
-        public static async Task<Producer> Create(ClientParameters clientParameters,
+        public static async Task<IProducer> Create(ClientParameters clientParameters,
             ProducerConfig config,
             StreamInfo metaStreamInfo)
         {

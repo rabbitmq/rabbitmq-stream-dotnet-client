@@ -48,7 +48,7 @@ public record ReliableProducerConfig : ReliableConfig
 /// </summary>
 public class ReliableProducer : ReliableBase
 {
-    private Producer _producer;
+    private IProducer _producer;
     private ulong _publishingId;
     private readonly ReliableProducerConfig _reliableProducerConfig;
     private readonly ConfirmationPipe _confirmationPipe;
@@ -221,7 +221,6 @@ public class ReliableProducer : ReliableBase
             messagesToSend.Add((_publishingId, message));
         }
 
-        _producer.PreValidateBatch(messagesToSend);
         foreach (var msg in messagesToSend)
         {
             _confirmationPipe.AddUnConfirmedMessage(msg.Item1, msg.Item2);
@@ -237,7 +236,7 @@ public class ReliableProducer : ReliableBase
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
             {
-                await _producer.InternalBatchSend(messagesToSend);
+                await _producer.BatchSend(messagesToSend);
             }
         }
 

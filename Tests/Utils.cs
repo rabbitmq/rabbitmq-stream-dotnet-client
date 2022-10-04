@@ -128,7 +128,6 @@ namespace Tests
                     ConfirmHandler = _ =>
                     {
                         count++;
-                        // testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
                         if (count != numberOfMessages)
                         {
                             return;
@@ -233,17 +232,69 @@ namespace Tests
             return killed;
         }
 
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            return new HttpClient(handler);
+        }
+
+        public static int HttpGetQMsgCount(string queue)
+        {
+            var task = CreateHttpClient().GetAsync($"http://localhost:15672/api/queues/%2F/{queue}");
+            task.Wait(TimeSpan.FromSeconds(10));
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException($"HTTP GET failed: {result.StatusCode} {result.ReasonPhrase}");
+            }
+
+            var responseBody = result.Content.ReadAsStringAsync();
+            responseBody.Wait(TimeSpan.FromSeconds(10));
+            var json = responseBody.Result;
+            var obj = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            if (obj == null)
+            {
+                return 0;
+            }
+
+            return obj.ContainsKey("messages_ready") ? Convert.ToInt32(obj["messages_ready"].ToString()) : 0;
+        }
+
         public static void HttpPost(string jsonBody, string api)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
-            using var client = new HttpClient(handler);
             HttpContent content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-            var task = client.PostAsync($"http://localhost:15672/api/{api}", content);
+            var task = CreateHttpClient().PostAsync($"http://localhost:15672/api/{api}", content);
             task.Wait();
             var result = task.Result;
             if (!result.IsSuccessStatusCode)
             {
                 throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
+            }
+        }
+
+        public static void HttpDeleteQueue(string queue)
+        {
+
+            var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/queues/%2F/{queue}");
+            task.Wait();
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
+            {
+                throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
+            }
+        }
+
+        public static void HttpDeleteExchange(string exchange)
+        {
+
+            var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/exchanges/%2F/{exchange}");
+            task.Wait();
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
+            {
+                throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode,
                     result.ReasonPhrase));
             }
         }

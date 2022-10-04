@@ -294,26 +294,26 @@ namespace RabbitMQ.Stream.Client
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType,
             ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
-            Func<bool, Task<IOffsetType>> updateConsumerHandler = null)
+            Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
             return await Subscribe(new ConsumerConfig() { Stream = stream, OffsetSpec = offsetType },
                 initialCredit,
                 properties,
                 deliverHandler,
-                updateConsumerHandler);
+                consumerUpdateHandler);
         }
 
         public async Task<(byte, SubscribeResponse)> Subscribe(ConsumerConfig config,
             ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
-            Func<bool, Task<IOffsetType>> updateConsumerHandler)
+            Func<bool, Task<IOffsetType>> consumerUpdateHandler)
         {
             var subscriptionId = GetNextSubscriptionId();
 
             consumers.Add(subscriptionId,
                 new ConsumerEvents(
                     deliverHandler,
-                    updateConsumerHandler));
+                    consumerUpdateHandler));
 
             return (subscriptionId,
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
@@ -335,6 +335,12 @@ namespace RabbitMQ.Stream.Client
                 // remove consumer after RPC returns, this should avoid uncorrelated data being sent
                 consumers.Remove(subscriptionId);
             }
+        }
+
+        public async Task<PartitionsQueryResponse> QueryPartition(string superStream)
+        {
+            return await Request<PartitionsQueryRequest, PartitionsQueryResponse>(corr =>
+                new PartitionsQueryRequest(corr, superStream));
         }
 
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
@@ -419,7 +425,7 @@ namespace RabbitMQ.Stream.Client
                     var consumerEventsUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
                     await ConsumerUpdateResponse(
                         consumerUpdateQueryResponse.CorrelationId,
-                        await consumerEventsUpd.UpdateConsumerHandler(consumerUpdateQueryResponse.IsActive));
+                        await consumerEventsUpd.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive));
                     break;
                 case CreditResponse.Key:
                     CreditResponse.Read(frame, out var creditResponse);
@@ -503,6 +509,11 @@ namespace RabbitMQ.Stream.Client
                 case HeartBeatHandler.Key:
                     _heartBeatHandler.UpdateHeartBeat();
                     break;
+                case PartitionsQueryResponse.Key:
+                    PartitionsQueryResponse.Read(frame, out var partitionsQueryResponse);
+                    HandleCorrelatedResponse(partitionsQueryResponse);
+                    break;
+
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
@@ -596,6 +607,13 @@ namespace RabbitMQ.Stream.Client
             return await Request<MetaDataQuery, MetaDataResponse>(corr => new MetaDataQuery(corr, streams.ToList()));
         }
 
+        public async Task<bool> StreamExists(string stream)
+        {
+            var streams = new[] { stream };
+            var response = await QueryMetadata(streams);
+            return response.StreamInfos is { Count: >= 1 } &&
+                   response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
+        }
         public async ValueTask<QueryOffsetResponse> QueryOffset(string reference, string stream)
         {
             return await Request<QueryOffsetRequest, QueryOffsetResponse>(corr =>

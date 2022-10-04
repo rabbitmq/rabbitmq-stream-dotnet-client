@@ -120,7 +120,48 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<Producer> CreateProducer(ProducerConfig producerConfig)
+        public async Task<IProducer> CreateSuperStreamProducer(SuperStreamProducerConfig superStreamProducerConfig)
+        {
+            await MayBeReconnectLocator();
+            if (superStreamProducerConfig.SuperStream == "")
+            {
+                throw new CreateProducerException($"Super Stream name can't be empty");
+            }
+
+            if (superStreamProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
+            {
+                throw new CreateProducerException(
+                    $"Batch Size must be bigger than 0");
+            }
+
+            if (superStreamProducerConfig.Routing == null)
+            {
+                throw new CreateProducerException(
+                    $"Routing Key Extractor must be provided");
+            }
+
+            superStreamProducerConfig.Client = client;
+
+            var partitions = await client.QueryPartition(superStreamProducerConfig.SuperStream);
+            if (partitions.ResponseCode != ResponseCode.Ok)
+            {
+                throw new CreateProducerException($"producer could not be created code: {partitions.ResponseCode}");
+            }
+
+            IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
+            foreach (var partitionsStream in partitions.Streams)
+            {
+                var metaDataResponse = await client.QueryMetadata(new[] { partitionsStream });
+                streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
+
+            }
+
+            return SuperStreamProducer.Create(superStreamProducerConfig,
+                streamInfos,
+                clientParameters with { ClientProvidedName = superStreamProducerConfig.ClientProvidedName });
+        }
+
+        public async Task<IProducer> CreateProducer(ProducerConfig producerConfig)
         {
             // Validate the ProducerConfig values
             if (producerConfig.Stream == "")
@@ -172,10 +213,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] { stream };
-            var response = await client.QueryMetadata(streams);
-            return response.StreamInfos is { Count: >= 1 } &&
-                   response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
+            return await client.StreamExists(stream);
         }
 
         private static void MaybeThrowQueryException(string reference, string stream)
