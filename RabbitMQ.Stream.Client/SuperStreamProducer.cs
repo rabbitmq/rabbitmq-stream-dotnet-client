@@ -104,7 +104,8 @@ public class SuperStreamProducer : IProducer, IDisposable
     {
         if (!_producers.ContainsKey(stream))
         {
-            _producers.TryAdd(stream, await InitProducer(stream));
+            var p = await InitProducer(stream);
+            _producers.TryAdd(stream, p);
         }
 
         return _producers[stream];
@@ -209,6 +210,11 @@ public class SuperStreamProducer : IProducer, IDisposable
     // </summary> 
     public Task<ulong> GetLastPublishingId()
     {
+        foreach (var stream in _streamInfos.Keys.ToList())
+        {
+            GetProducer(stream).Wait();
+        }
+
         var v = _producers.Values.Min(p => p.GetLastPublishingId().Result);
 
         return Task.FromResult(v);

@@ -10,6 +10,12 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
+public record SuperStreamConfig()
+{
+    public bool Enabled { get; init; } = true;
+    public Func<Message, string> Routing { get; set; } = null;
+}
+
 public record ReliableProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
@@ -19,6 +25,9 @@ public record ReliableProducerConfig : ReliableConfig
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
 
     public int MaxInFlight { get; set; } = 1000;
+
+    // SuperStream configuration enables the SuperStream feature
+    public SuperStreamConfig SuperStreamConfig { get; set; } = null;
 
     public TimeSpan TimeoutMessageAfter
     {
@@ -46,12 +55,10 @@ public record ReliableProducerConfig : ReliableConfig
 /// - Set automatically the next PublisherID
 /// - Automatically retrieves the last sequence. By default is AutoPublishingId see IPublishingIdStrategy.
 /// </summary>
-public class ReliableProducer : ReliableBase
+public class ReliableProducer : ProducerFactory
 {
     private IProducer _producer;
     private ulong _publishingId;
-    private readonly ReliableProducerConfig _reliableProducerConfig;
-    private readonly ConfirmationPipe _confirmationPipe;
 
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
@@ -74,45 +81,7 @@ public class ReliableProducer : ReliableBase
 
     internal override async Task CreateNewEntity(bool boot)
     {
-        _producer = await _reliableProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
-        {
-            Stream = _reliableProducerConfig.Stream,
-            ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
-            Reference = _reliableProducerConfig.Reference,
-            MaxInFlight = _reliableProducerConfig.MaxInFlight,
-            MetadataHandler = update =>
-            {
-                // This is Async since the MetadataHandler is called from the Socket connection thread
-                // HandleMetaDataMaybeReconnect/2 could go in deadlock.
-
-                Task.Run(() =>
-                {
-                    // intentionally fire & forget
-                    HandleMetaDataMaybeReconnect(update.Stream,
-                        _reliableProducerConfig.StreamSystem).WaitAsync(CancellationToken.None);
-                });
-            },
-            ConnectionClosedHandler = async _ =>
-            {
-                await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
-            },
-            ConfirmHandler = confirmation =>
-            {
-                var confirmationStatus = confirmation.Code switch
-                {
-                    ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
-                    ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
-                    ResponseCode.InternalError => ConfirmationStatus.InternalError,
-                    ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
-                    ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
-                    ResponseCode.Ok => ConfirmationStatus.Confirmed,
-                    _ => ConfirmationStatus.UndefinedError
-                };
-
-                _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
-                    confirmationStatus);
-            }
-        });
+        _producer = await CreateProducer();
 
         await _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
 

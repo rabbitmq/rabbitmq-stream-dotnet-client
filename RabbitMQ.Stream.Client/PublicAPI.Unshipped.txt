@@ -267,6 +267,8 @@ RabbitMQ.Stream.Client.Confirmation.Code.set -> void
 RabbitMQ.Stream.Client.Confirmation.Confirmation() -> void
 RabbitMQ.Stream.Client.Confirmation.PublishingId.get -> ulong
 RabbitMQ.Stream.Client.Confirmation.PublishingId.set -> void
+RabbitMQ.Stream.Client.Confirmation.Stream.get -> string
+RabbitMQ.Stream.Client.Confirmation.Stream.set -> void
 RabbitMQ.Stream.Client.Connection
 RabbitMQ.Stream.Client.Connection.Dispose() -> void
 RabbitMQ.Stream.Client.Connection.IsClosed.get -> bool
@@ -688,7 +690,7 @@ RabbitMQ.Stream.Client.Reliable.ConfirmationPipe
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.AddUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Message message) -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.AddUnConfirmedMessage(ulong publishingId, System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.ConfirmationPipe(System.Func<RabbitMQ.Stream.Client.Reliable.MessagesConfirmation, System.Threading.Tasks.Task> confirmHandler, System.TimeSpan messageTimeout, int maxInFlightMessages) -> void
-RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.RemoveUnConfirmedMessage(ulong publishingId, RabbitMQ.Stream.Client.Reliable.ConfirmationStatus confirmationStatus) -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.RemoveUnConfirmedMessage(RabbitMQ.Stream.Client.Reliable.ConfirmationStatus confirmationStatus, ulong publishingId, string stream) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.Start() -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationPipe.Stop() -> void
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
@@ -711,6 +713,12 @@ RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.Messages.get -> System.Coll
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.MessagesConfirmation() -> void
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.PublishingId.get -> ulong
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.Status.get -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
+RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.Stream.get -> string
+RabbitMQ.Stream.Client.Reliable.ProducerFactory
+RabbitMQ.Stream.Client.Reliable.ProducerFactory.CreateProducer() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
+RabbitMQ.Stream.Client.Reliable.ProducerFactory.ProducerFactory() -> void
+RabbitMQ.Stream.Client.Reliable.ProducerFactory._confirmationPipe -> RabbitMQ.Stream.Client.Reliable.ConfirmationPipe
+RabbitMQ.Stream.Client.Reliable.ProducerFactory._reliableProducerConfig -> RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig
 RabbitMQ.Stream.Client.Reliable.ReliableBase
 RabbitMQ.Stream.Client.Reliable.ReliableBase.IsOpen() -> bool
 RabbitMQ.Stream.Client.Reliable.ReliableBase.ReliableBase() -> void
@@ -751,8 +759,16 @@ RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.MaxInFlight.get -> int
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.MaxInFlight.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.Reference.get -> string
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.Reference.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.SuperStreamConfig.get -> RabbitMQ.Stream.Client.Reliable.SuperStreamConfig
+RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.SuperStreamConfig.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.TimeoutMessageAfter.get -> System.TimeSpan
 RabbitMQ.Stream.Client.Reliable.ReliableProducerConfig.TimeoutMessageAfter.init -> void
+RabbitMQ.Stream.Client.Reliable.SuperStreamConfig
+RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.Enabled.get -> bool
+RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.Enabled.init -> void
+RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.Routing.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
+RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.Routing.set -> void
+RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.SuperStreamConfig() -> void
 RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.ResponseCode.AccessRefused = 16 -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.ResponseCode.AuthenticationFailure = 8 -> RabbitMQ.Stream.Client.ResponseCode

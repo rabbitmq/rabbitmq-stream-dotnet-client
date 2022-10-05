@@ -15,6 +15,8 @@ namespace RabbitMQ.Stream.Client
     {
         public ulong PublishingId { get; set; }
         public ResponseCode Code { get; set; }
+
+        public string Stream { get; set; }
     }
 
     public record ProducerConfig : IProducerConfig
@@ -24,7 +26,6 @@ namespace RabbitMQ.Stream.Client
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
-
     }
 
     public class Producer : AbstractEntity, IProducer, IDisposable
@@ -79,7 +80,12 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var id in publishingIds.Span)
                     {
-                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = ResponseCode.Ok, });
+                        config.ConfirmHandler(new Confirmation
+                        {
+                            PublishingId = id,
+                            Code = ResponseCode.Ok,
+                            Stream = config.Stream
+                        });
                     }
 
                     semaphore.Release(publishingIds.Length);
