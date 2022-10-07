@@ -10,16 +10,34 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
+public record SuperStreamConfig()
+{
+    public bool Enabled { get; init; } = true;
+    public Func<Message, string> Routing { get; set; } = null;
+}
+
 public record ReliableProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
 
+    // Reference is mostly used for deduplication. In most of the cases reference is not needed.
     public string Reference { get; set; }
+
+    // Confirmation is used to confirm that the message has been received by the server.
+    // After the timeout TimeoutMessageAfter/0 the message is considered not confirmed.
+    // See MessagesConfirmation.ConfirmationStatus for more details.
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
+    // The client name used to identify the producer. 
+    // You can see this value on the Management UI or in the connection detail
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
 
     public int MaxInFlight { get; set; } = 1000;
 
+    // SuperStream configuration enables the SuperStream feature
+    public SuperStreamConfig SuperStreamConfig { get; set; } = null;
+
+    // TimeoutMessageAfter is the time after which a message is considered as timed out
+    // If client does not receive a confirmation for a message after this time, the message is considered as timed out
     public TimeSpan TimeoutMessageAfter
     {
         get => _timeoutMessageAfter;
@@ -36,7 +54,7 @@ public record ReliableProducerConfig : ReliableConfig
 }
 
 /// <summary>
-/// ReliableProducer is a wrapper around the standard Producer.
+/// ReliableProducer is a wrapper around the standard Producer/SuperStream Consumer.
 /// Main features are:
 /// - Auto-reconnection if the connection is dropped
 /// - Trace sent and received messages. The event ReliableProducer:ConfirmationHandler/2
@@ -46,12 +64,10 @@ public record ReliableProducerConfig : ReliableConfig
 /// - Set automatically the next PublisherID
 /// - Automatically retrieves the last sequence. By default is AutoPublishingId see IPublishingIdStrategy.
 /// </summary>
-public class ReliableProducer : ReliableBase
+public class ReliableProducer : ProducerFactory
 {
     private IProducer _producer;
     private ulong _publishingId;
-    private readonly ReliableProducerConfig _reliableProducerConfig;
-    private readonly ConfirmationPipe _confirmationPipe;
 
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
     {
@@ -74,45 +90,7 @@ public class ReliableProducer : ReliableBase
 
     internal override async Task CreateNewEntity(bool boot)
     {
-        _producer = await _reliableProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
-        {
-            Stream = _reliableProducerConfig.Stream,
-            ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
-            Reference = _reliableProducerConfig.Reference,
-            MaxInFlight = _reliableProducerConfig.MaxInFlight,
-            MetadataHandler = update =>
-            {
-                // This is Async since the MetadataHandler is called from the Socket connection thread
-                // HandleMetaDataMaybeReconnect/2 could go in deadlock.
-
-                Task.Run(() =>
-                {
-                    // intentionally fire & forget
-                    HandleMetaDataMaybeReconnect(update.Stream,
-                        _reliableProducerConfig.StreamSystem).WaitAsync(CancellationToken.None);
-                });
-            },
-            ConnectionClosedHandler = async _ =>
-            {
-                await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
-            },
-            ConfirmHandler = confirmation =>
-            {
-                var confirmationStatus = confirmation.Code switch
-                {
-                    ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
-                    ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
-                    ResponseCode.InternalError => ConfirmationStatus.InternalError,
-                    ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
-                    ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
-                    ResponseCode.Ok => ConfirmationStatus.Confirmed,
-                    _ => ConfirmationStatus.UndefinedError
-                };
-
-                _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
-                    confirmationStatus);
-            }
-        });
+        _producer = await CreateProducer();
 
         await _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
 

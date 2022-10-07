@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
+using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -128,6 +129,10 @@ public class SuperStreamTests
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference"
             });
+        Assert.True(streamProducer.MessagesSent == 0);
+        Assert.True(streamProducer.ConfirmFrames == 0);
+        Assert.True(streamProducer.PublishCommandsSent == 0);
+        Assert.True(streamProducer.PendingCount == 0);
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
@@ -144,6 +149,10 @@ public class SuperStreamTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
         Assert.Equal(await streamProducer.GetLastPublishingId(), (ulong)10);
+
+        Assert.True(streamProducer.MessagesSent == 20);
+        SystemUtils.WaitUntil(() => streamProducer.ConfirmFrames > 0);
+        SystemUtils.WaitUntil(() => streamProducer.PublishCommandsSent > 0);
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
@@ -499,6 +508,7 @@ public class SuperStreamTests
 
             await streamProducer.Send(i, message);
         }
+
         // starting form here the number of the messages in the stream must be the same
         // the following send(s) will enable the deduplication
         await streamProducer.BatchSend(batchSendMessages);
@@ -508,6 +518,142 @@ public class SuperStreamTests
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // Deduplication in action
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        await system.Close();
+    }
+
+    // super stream reliable producer tests
+    [Fact]
+    public async void SuperStreamReliableProducerSendMessagesDifferentWays()
+    {
+        ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var streamProducer = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
+        {
+            StreamSystem = system,
+            Stream = "invoices",
+            SuperStreamConfig = new SuperStreamConfig()
+            {
+                Routing = message1 => message1.Properties.MessageId.ToString()
+            }
+        }
+        );
+
+        var batchSendMessages = new List<Message>();
+
+        for (ulong i = 0; i < 20; i++)
+        {
+            var message = new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() { MessageId = $"hello{i}" }
+            };
+            await streamProducer.Send(message);
+            batchSendMessages.Add(message);
+        }
+
+        await streamProducer.BatchSend(batchSendMessages);
+        await streamProducer.Send(batchSendMessages, CompressionType.Gzip);
+
+        SystemUtils.Wait();
+        // Total messages must be 20 * 3 (standard send,batch send, subentry send)
+        // according to the routing strategy hello{i} that must be the correct routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9 * 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7 * 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4 * 3);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void HandleConfirmationToReliableSuperStream()
+    {
+        ResetSuperStreams();
+        // This test is for the confirmation mechanism
+        // We send 20 messages and we should have confirmation messages == stream messages count
+        // total count must be 20 divided by 3 streams (not in equals way..)
+        var testPassed = new TaskCompletionSource<bool>();
+        var confirmedList = new ConcurrentBag<(string, Message)>();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var streamProducer = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
+        {
+            StreamSystem = system,
+            Stream = "invoices",
+            SuperStreamConfig =
+                new SuperStreamConfig() { Routing = message1 => message1.Properties.MessageId.ToString() },
+            ConfirmationHandler = confirmation =>
+            {
+                if (confirmation.Status == ConfirmationStatus.Confirmed)
+                {
+                    confirmedList.Add((confirmation.Stream, confirmation.Messages[0]));
+                }
+
+                if (confirmedList.Count == 20)
+                {
+                    testPassed.SetResult(true);
+                }
+
+                return Task.CompletedTask;
+            }
+        });
+
+        for (ulong i = 0; i < 20; i++)
+        {
+            var message = new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() { MessageId = $"hello{i.ToString()}" }
+            };
+            await streamProducer.Send(message);
+        }
+
+        SystemUtils.Wait();
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        Assert.Equal(9, confirmedList.Count(x => x.Item1 == "invoices-0"));
+        Assert.Equal(7, confirmedList.Count(x => x.Item1 == "invoices-1"));
+        Assert.Equal(4, confirmedList.Count(x => x.Item1 == "invoices-2"));
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SendMessageToReliableSuperStreamRecreateConnectionsIfKilled()
+    {
+        ResetSuperStreams();
+        // This test validates that the Reliable super stream producer is able to recreate the connection
+        // if the connection is killed
+        // It is NOT meant to test the availability of the super stream producer
+        // just the reconnect mechanism
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var clientName = Guid.NewGuid().ToString();
+        var streamProducer = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
+        {
+            StreamSystem = system,
+            Stream = "invoices",
+            SuperStreamConfig = new SuperStreamConfig()
+            {
+                Routing = message1 => message1.Properties.MessageId.ToString()
+            },
+            ClientProvidedName = clientName
+        });
+        for (ulong i = 0; i < 20; i++)
+        {
+            var message = new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() { MessageId = $"hello{i}" }
+            };
+
+            if (i == 10)
+            {
+                SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientName).Result == 3);
+                // We just decide to close the connections
+            }
+
+            // Here the connection _must_ be recreated  and the message sent
+            await streamProducer.Send(message);
+        }
+
+        SystemUtils.Wait();
+        // Total messages must be 20
+        // according to the routing strategy hello{i} that must be the correct routing
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-0") == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);

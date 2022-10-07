@@ -75,8 +75,8 @@ public class ReliableTests
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
         confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
-        confirmationPipe.RemoveUnConfirmedMessage(1, ConfirmationStatus.Confirmed);
-        confirmationPipe.RemoveUnConfirmedMessage(2, ConfirmationStatus.Confirmed);
+        confirmationPipe.RemoveUnConfirmedMessage(ConfirmationStatus.Confirmed, 1, null);
+        confirmationPipe.RemoveUnConfirmedMessage(ConfirmationStatus.Confirmed, 2, null);
         new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         Assert.Equal(ConfirmationStatus.Confirmed, confirmationTask.Task.Result[0].Status);
         Assert.Equal(ConfirmationStatus.Confirmed, confirmationTask.Task.Result[1].Status);
