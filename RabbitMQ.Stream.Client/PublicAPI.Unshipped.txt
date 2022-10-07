@@ -278,8 +278,6 @@ RabbitMQ.Stream.Client.Consumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.
 RabbitMQ.Stream.Client.Consumer.Dispose() -> void
 RabbitMQ.Stream.Client.Consumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.ConsumerConfig
-RabbitMQ.Stream.Client.ConsumerConfig.ClientProvidedName.get -> string
-RabbitMQ.Stream.Client.ConsumerConfig.ClientProvidedName.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.ConsumerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.ConsumerUpdateListener.get -> System.Func<string, string, bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>>
@@ -292,8 +290,6 @@ RabbitMQ.Stream.Client.ConsumerConfig.MetadataHandler.get -> System.Action<Rabbi
 RabbitMQ.Stream.Client.ConsumerConfig.MetadataHandler.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
 RabbitMQ.Stream.Client.ConsumerConfig.OffsetSpec.set -> void
-RabbitMQ.Stream.Client.ConsumerConfig.Reference.get -> string
-RabbitMQ.Stream.Client.ConsumerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.Stream.get -> string
 RabbitMQ.Stream.Client.ConsumerConfig.Stream.set -> void
 RabbitMQ.Stream.Client.ConsumerUpdateQueryResponse
