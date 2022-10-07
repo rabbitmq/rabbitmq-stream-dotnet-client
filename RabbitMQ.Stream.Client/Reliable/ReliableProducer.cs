@@ -20,8 +20,15 @@ public record ReliableProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
 
+    // Reference is mostly used for deduplication. In most of the cases reference is not needed.
     public string Reference { get; set; }
+
+    // Confirmation is used to confirm that the message has been received by the server.
+    // After the timeout TimeoutMessageAfter/0 the message is considered not confirmed.
+    // See MessagesConfirmation.ConfirmationStatus for more details.
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
+    // The client name used to identify the producer. 
+    // You can see this value on the Management UI or in the connection detail
     public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
 
     public int MaxInFlight { get; set; } = 1000;
@@ -29,6 +36,8 @@ public record ReliableProducerConfig : ReliableConfig
     // SuperStream configuration enables the SuperStream feature
     public SuperStreamConfig SuperStreamConfig { get; set; } = null;
 
+    // TimeoutMessageAfter is the time after which a message is considered as timed out
+    // If client does not receive a confirmation for a message after this time, the message is considered as timed out
     public TimeSpan TimeoutMessageAfter
     {
         get => _timeoutMessageAfter;
@@ -45,7 +54,7 @@ public record ReliableProducerConfig : ReliableConfig
 }
 
 /// <summary>
-/// ReliableProducer is a wrapper around the standard Producer.
+/// ReliableProducer is a wrapper around the standard Producer/SuperStream Consumer.
 /// Main features are:
 /// - Auto-reconnection if the connection is dropped
 /// - Trace sent and received messages. The event ReliableProducer:ConfirmationHandler/2

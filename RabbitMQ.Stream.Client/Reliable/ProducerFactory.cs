@@ -7,6 +7,13 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
+// <summary>
+// ProducerFactory is a middleware component that creates a producer for a given configuration.
+// There are two possible producers:
+// - standard producer 
+// - super stream producer
+// </summary>
+
 public abstract class ProducerFactory : ReliableBase
 {
     protected ReliableProducerConfig _reliableProducerConfig;
@@ -31,9 +38,10 @@ public abstract class ProducerFactory : ReliableBase
             Reference = _reliableProducerConfig.Reference,
             MaxInFlight = _reliableProducerConfig.MaxInFlight,
             Routing = _reliableProducerConfig.SuperStreamConfig.Routing,
-            ConfirmHandler = confirmation =>
+            ConfirmHandler = confirmationHandler =>
             {
-                var confirmationStatus = confirmation.Item2.Code switch
+                var (stream, confirmation) = confirmationHandler;
+                var confirmationStatus = confirmation.Code switch
                 {
                     ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
                     ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
@@ -43,8 +51,8 @@ public abstract class ProducerFactory : ReliableBase
                     ResponseCode.Ok => ConfirmationStatus.Confirmed,
                     _ => ConfirmationStatus.UndefinedError
                 };
-                _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.Item2.PublishingId,
-                    confirmation.Item1);
+                _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
+                    stream);
             }
         });
     }

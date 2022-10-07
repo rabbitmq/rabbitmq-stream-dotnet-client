@@ -236,11 +236,11 @@ public class SuperStreamProducer : IProducer, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public int MessagesSent { get; }
-    public int ConfirmFrames { get; }
-    public int IncomingFrames { get; }
-    public int PublishCommandsSent { get; }
-    public int PendingCount { get; }
+    public int MessagesSent => _producers.Sum(x => x.Value.MessagesSent);
+    public int ConfirmFrames => _producers.Sum(x => x.Value.ConfirmFrames);
+    public int IncomingFrames => _producers.Sum(x => x.Value.IncomingFrames);
+    public int PublishCommandsSent => _producers.Sum(x => x.Value.PublishCommandsSent);
+    public int PendingCount => _producers.Sum(x => x.Value.PendingCount);
 
     public static IProducer Create(SuperStreamProducerConfig superStreamProducerConfig,
         IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)

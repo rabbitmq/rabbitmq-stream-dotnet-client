@@ -129,6 +129,10 @@ public class SuperStreamTests
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference"
             });
+        Assert.True(streamProducer.MessagesSent == 0);
+        Assert.True(streamProducer.ConfirmFrames == 0);
+        Assert.True(streamProducer.PublishCommandsSent == 0);
+        Assert.True(streamProducer.PendingCount == 0);
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
@@ -145,6 +149,10 @@ public class SuperStreamTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-1") == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
         Assert.Equal(await streamProducer.GetLastPublishingId(), (ulong)10);
+
+        Assert.True(streamProducer.MessagesSent == 20);
+        SystemUtils.WaitUntil(() => streamProducer.ConfirmFrames > 0);
+        SystemUtils.WaitUntil(() => streamProducer.PublishCommandsSent > 0);
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
