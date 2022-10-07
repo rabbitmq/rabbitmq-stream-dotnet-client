@@ -78,7 +78,7 @@ namespace RabbitMQ.Stream.Client
         public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
     }
 
-    public class Consumer : AbstractEntity, IDisposable
+    public class Consumer : AbstractEntity, IConsumer, IDisposable
     {
         private bool _disposed;
         private readonly ConsumerConfig config;
@@ -109,7 +109,7 @@ namespace RabbitMQ.Stream.Client
             await client.StoreOffset(config.Reference, config.Stream, offset);
         }
 
-        public static async Task<Consumer> Create(ClientParameters clientParameters,
+        public static async Task<IConsumer> Create(ClientParameters clientParameters,
             ConsumerConfig config,
             StreamInfo metaStreamInfo)
         {

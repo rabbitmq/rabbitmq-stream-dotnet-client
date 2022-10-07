@@ -270,7 +270,7 @@ namespace RabbitMQ.Stream.Client
             throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
         }
 
-        public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
+        public async Task<IConsumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
             await MayBeReconnectLocator();
             var meta = await client.QueryMetadata(new[] { consumerConfig.Stream });

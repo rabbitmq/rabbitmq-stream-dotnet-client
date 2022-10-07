@@ -426,6 +426,10 @@ RabbitMQ.Stream.Client.ICompressionCodec.MessagesCount.get -> int
 RabbitMQ.Stream.Client.ICompressionCodec.UnCompress(System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) -> System.Buffers.ReadOnlySequence<byte>
 RabbitMQ.Stream.Client.ICompressionCodec.UnCompressedSize.get -> int
 RabbitMQ.Stream.Client.ICompressionCodec.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.IConsumer
+RabbitMQ.Stream.Client.IConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+RabbitMQ.Stream.Client.IConsumer.Dispose() -> void
+RabbitMQ.Stream.Client.IConsumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.INamedEntity
 RabbitMQ.Stream.Client.INamedEntity.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.INamedEntity.ClientProvidedName.set -> void
@@ -872,7 +876,7 @@ RabbitMQ.Stream.Client.StreamSpec.Name.init -> void
 RabbitMQ.Stream.Client.StreamSpec.StreamSpec(string Name) -> void
 RabbitMQ.Stream.Client.StreamSystem
 RabbitMQ.Stream.Client.StreamSystem.Close() -> System.Threading.Tasks.Task
-RabbitMQ.Stream.Client.StreamSystem.CreateConsumer(RabbitMQ.Stream.Client.ConsumerConfig consumerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Consumer>
+RabbitMQ.Stream.Client.StreamSystem.CreateConsumer(RabbitMQ.Stream.Client.ConsumerConfig consumerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
 RabbitMQ.Stream.Client.StreamSystem.CreateProducer(RabbitMQ.Stream.Client.ProducerConfig producerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
 RabbitMQ.Stream.Client.StreamSystem.CreateStream(RabbitMQ.Stream.Client.StreamSpec spec) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystem.CreateSuperStreamProducer(RabbitMQ.Stream.Client.SuperStreamProducerConfig superStreamProducerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
@@ -978,7 +982,7 @@ static RabbitMQ.Stream.Client.Client.Create(RabbitMQ.Stream.Client.ClientParamet
 static RabbitMQ.Stream.Client.CompressionHelper.Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) -> RabbitMQ.Stream.Client.ICompressionCodec
 static RabbitMQ.Stream.Client.CompressionHelper.UnCompress(RabbitMQ.Stream.Client.CompressionType compressionType, System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) -> System.Buffers.ReadOnlySequence<byte>
 static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>
-static RabbitMQ.Stream.Client.Consumer.Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ConsumerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Consumer>
+static RabbitMQ.Stream.Client.Consumer.Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ConsumerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
 static RabbitMQ.Stream.Client.LeaderLocator.ClientLocal.get -> RabbitMQ.Stream.Client.LeaderLocator
 static RabbitMQ.Stream.Client.LeaderLocator.LeastLeaders.get -> RabbitMQ.Stream.Client.LeaderLocator
 static RabbitMQ.Stream.Client.LeaderLocator.Random.get -> RabbitMQ.Stream.Client.LeaderLocator

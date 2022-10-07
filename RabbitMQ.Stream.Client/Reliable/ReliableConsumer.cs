@@ -31,7 +31,7 @@ public record ReliableConsumerConfig : ReliableConfig
 /// </summary>
 public class ReliableConsumer : ReliableBase
 {
-    private Consumer _consumer;
+    private IConsumer _consumer;
     private readonly ReliableConsumerConfig _reliableConsumerConfig;
     private ulong _lastConsumerOffset = 0;
     private bool _consumedFirstTime = false;
