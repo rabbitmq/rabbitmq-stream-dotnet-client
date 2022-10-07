@@ -12,3 +12,11 @@ public interface IConsumer
     public Task<ResponseCode> Close();
     public void Dispose();
 }
+
+public record IConsumerConfig : INamedEntity
+{
+    // ClientProvidedName is used to identify TCP connection name.
+    public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
+
+    public string Reference { get; set; }
+}

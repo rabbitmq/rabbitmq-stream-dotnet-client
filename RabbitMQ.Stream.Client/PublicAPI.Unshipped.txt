@@ -430,6 +430,11 @@ RabbitMQ.Stream.Client.IConsumer
 RabbitMQ.Stream.Client.IConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.IConsumer.Dispose() -> void
 RabbitMQ.Stream.Client.IConsumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.IConsumerConfig
+RabbitMQ.Stream.Client.IConsumerConfig.ClientProvidedName.get -> string
+RabbitMQ.Stream.Client.IConsumerConfig.ClientProvidedName.set -> void
+RabbitMQ.Stream.Client.IConsumerConfig.Reference.get -> string
+RabbitMQ.Stream.Client.IConsumerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.INamedEntity
 RabbitMQ.Stream.Client.INamedEntity.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.INamedEntity.ClientProvidedName.set -> void

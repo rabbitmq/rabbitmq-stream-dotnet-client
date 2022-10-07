@@ -645,6 +645,9 @@ public class SuperStreamTests
             {
                 SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientName).Result == 3);
                 // We just decide to close the connections
+                // we just wait a bit to be sure that the connections 
+                // will be re-opened
+                SystemUtils.Wait(TimeSpan.FromSeconds(1));
             }
 
             // Here the connection _must_ be recreated  and the message sent

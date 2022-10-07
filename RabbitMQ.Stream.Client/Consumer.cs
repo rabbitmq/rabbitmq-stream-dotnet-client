@@ -34,7 +34,7 @@ namespace RabbitMQ.Stream.Client
         public Func<bool, Task<IOffsetType>> ConsumerUpdateHandler { get; }
     }
 
-    public record ConsumerConfig : INamedEntity
+    public record ConsumerConfig : IConsumerConfig
     {
         // StoredOffsetSpec configuration it is needed to keep the offset spec.
         // since the offset can be decided from the ConsumerConfig.OffsetSpec.
@@ -54,14 +54,10 @@ namespace RabbitMQ.Stream.Client
         // stream name where the consumer will consume the messages.
         // stream must exist before the consumer is created.
         public string Stream { get; set; }
-        public string Reference { get; set; }
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
 
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
-
-        // ClientProvidedName is used to identify TCP connection name.
-        public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
