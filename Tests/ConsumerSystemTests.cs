@@ -270,6 +270,9 @@ namespace Tests
             const string ChineseStringTest =
                 "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父。 [10]";
 
+            // 255 string length
+            const string ByteString = "Alan  Mathison Turing  ( 23 June 1912 – 7 June 1954 ) was an English  mathematician, computer scientist, logician, cryptanalyst,  philosopher, and theoretical biologist. Turing  was   highly  influential in the development of theoretical computer science.";
+
             var testPassed = new TaskCompletionSource<Message>();
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -321,7 +324,8 @@ namespace Tests
                     ["keyuni"] = "07-10-2022 午後11:1", //  unicode string,
                     ["keyuni2"] = "良い一日を過ごし、クライアントを楽しんでください", //  unicode string 
                     ["keyuni3"] = "祝您有美好的一天，并享受客户", //  unicode string 
-                    ["keylonguni"] = ChineseStringTest //  unicode string 
+                    ["keylonguni"] = ChineseStringTest, //  unicode string 
+                    ["key255"] = ByteString //  unicode string 
                 }
             };
 
@@ -356,6 +360,7 @@ namespace Tests
             Assert.Equal("良い一日を過ごし、クライアントを楽しんでください", testPassed.Task.Result.ApplicationProperties["keyuni2"]);
             Assert.Equal("祝您有美好的一天，并享受客户", testPassed.Task.Result.ApplicationProperties["keyuni3"]);
             Assert.Equal(ChineseStringTest, testPassed.Task.Result.ApplicationProperties["keylonguni"]);
+            Assert.Equal(ByteString, testPassed.Task.Result.ApplicationProperties["key255"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey2"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey3"]);
 
