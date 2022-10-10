@@ -372,6 +372,26 @@ namespace Tests
         }
 
         [Fact]
+        public void ValidateMessagesFromGoUnicode()
+        {
+
+            const string ByteString = "Alan  Mathison Turing  ( 23 June 1912 – 7 June 1954 ) was an English  mathematician, computer scientist, logician, cryptanalyst,  philosopher, and theoretical biologist. Turing  was   highly  influential in the development of theoretical computer science.";
+            const string ChineseStringTest = "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父。 [10]";
+
+            const string GreekTest = "Ο Άλαν Μάθισον Τούρινγκ (23 Ιουνίου 1912 – 7 Ιουνίου 1954) ήταν Άγγλος μαθηματικός, επιστήμονας υπολογιστών, λογικός, κρυπαναλυτής, φιλόσοφος και θεωρητικός βιολόγος. Ο Τούρινγκ είχε μεγάλη επιρροή στην ανάπτυξη της θεωρητικής επιστήμης των υπολογιστών.";
+
+            var staticTest = SystemUtils.GetFileContent("message_unicode_message");
+            var msgStaticTest = Message.From(new ReadOnlySequence<byte>(staticTest));
+            Assert.NotNull(msgStaticTest);
+            Assert.Equal(ByteString, Encoding.Default.GetString(msgStaticTest.Data.Contents.ToArray()));
+            Assert.Equal(ChineseStringTest, msgStaticTest.ApplicationProperties["from_go_ch_long"]);
+            Assert.Equal(GreekTest, msgStaticTest.ApplicationProperties["from_go_greek"]);
+            Assert.Equal("祝您有美好的一天，并享受客户", msgStaticTest.ApplicationProperties["from_go"]);
+            Assert.Equal(ByteString, msgStaticTest.ApplicationProperties["from_go_byte"]);
+
+        }
+
+        [Fact]
         public void ValidateMapsType()
         {
             const double DoubleValue = 6665555.34566;
