@@ -165,13 +165,13 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case FormatCode.Sym8:
                     offset += WireFormatting.ReadByte(seq.Slice(offset), out var lenC);
                     value = Encoding.UTF8.GetString(seq.Slice(offset, lenC));
-                    return offset + lenC;
+                    return offset + s_encoding.GetBytes(value).Length;
 
                 case FormatCode.Sym32:
                 case FormatCode.Str32:
                     offset += WireFormatting.ReadInt32(seq.Slice(offset), out var len);
                     value = Encoding.UTF8.GetString(seq.Slice(offset, len));
-                    return offset + len;
+                    return offset + s_encoding.GetBytes(value).Length;
             }
 
             throw new AMQP.AmqpParseException($"ReadString invalid type {type}");

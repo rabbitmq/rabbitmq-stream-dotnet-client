@@ -5,6 +5,7 @@
 using System;
 using System.Buffers;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
@@ -35,10 +36,10 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         private static int WriteString(Span<byte> seq, string value)
         {
-            var len = value.Length;
+            var len = s_encoding.GetBytes(value).Length;
             var offset = 0;
             // Str8
-            if (len < byte.MaxValue)
+            if (len <= byte.MaxValue)
             {
                 offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Str8);
                 offset += WireFormatting.WriteByte(seq.Slice(offset), (byte)len);
@@ -226,13 +227,14 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         private static int GetStringSize(string value)
         {
-            return value.Length switch
+            var len = Encoding.UTF8.GetByteCount(value);
+            return len switch
             {
                 0 => 1, // 0x40
-                < 256 => value.Length + 1 + //marker 1 byte FormatCode.Vbin8
+                < 256 => len + 1 + //marker 1 byte FormatCode.Vbin8
                          1,
-                _ => value.Length + 1 //marker 1 byte  FormatCode.Vbin32 
-                                  + 4
+                _ => len + 1 //marker 1 byte  FormatCode.Vbin32 
+                         + 4
             };
         }
 

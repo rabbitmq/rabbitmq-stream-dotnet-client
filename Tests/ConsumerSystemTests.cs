@@ -264,6 +264,12 @@ namespace Tests
         [Fact]
         public async void ConsumerValidationAmqpAttributes()
         {
+            // To test large unicode string
+            // The Alan Mathison Turing story from wikipedia
+            // google translate form English to Chinese ( I don't know chinese )
+            const string ChineseStringTest =
+                "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父。 [10]";
+
             var testPassed = new TaskCompletionSource<Message>();
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -282,8 +288,7 @@ namespace Tests
                         await Task.CompletedTask;
                     }
                 });
-            var msgData = new Data("apple".AsReadonlySequence());
-            var message = new Message(msgData)
+            var message = new Message(Encoding.UTF8.GetBytes(ChineseStringTest))
             {
                 Properties = new Properties()
                 {
@@ -301,12 +306,22 @@ namespace Tests
                     UserId = new byte[] { 0x0, 0xF },
                     ReplyToGroupId = "replyToGroupId"
                 },
-                Annotations = new Annotations { ["akey1"] = "value1", [1] = 1, [1_000_000] = 1_000_000, },
+                Annotations = new Annotations
+                {
+                    ["akey1"] = "value1",
+                    [1] = 1,
+                    [1_000_000] = 1_000_000,
+                    ["akey2"] = "value2",
+                },
                 ApplicationProperties = new ApplicationProperties()
                 {
                     ["apkey1"] = "value1",
                     ["apkey2"] = "", //  returns  0x40(Null)  when string is empty or null
                     ["apkey3"] = null, //  returns  0x40(Null)  when string is empty or null 
+                    ["keyuni"] = "07-10-2022 午後11:1", //  unicode string,
+                    ["keyuni2"] = "良い一日を過ごし、クライアントを楽しんでください", //  unicode string 
+                    ["keyuni3"] = "祝您有美好的一天，并享受客户", //  unicode string 
+                    ["keylonguni"] = ChineseStringTest //  unicode string 
                 }
             };
 
@@ -315,7 +330,7 @@ namespace Tests
 
             new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Data.Contents.ToArray());
+            Assert.Equal(ChineseStringTest, Encoding.UTF8.GetString(testPassed.Task.Result.Data.Contents.ToArray()));
             Assert.Equal("subject", testPassed.Task.Result.Properties.Subject);
             Assert.Equal("to", testPassed.Task.Result.Properties.To);
             Assert.Equal("contentEncoding", testPassed.Task.Result.Properties.ContentEncoding);
@@ -337,6 +352,10 @@ namespace Tests
             Assert.Equal(1_000_000, testPassed.Task.Result.Annotations[1_000_000]);
 
             Assert.Equal("value1", testPassed.Task.Result.ApplicationProperties["apkey1"]);
+            Assert.Equal("07-10-2022 午後11:1", testPassed.Task.Result.ApplicationProperties["keyuni"]);
+            Assert.Equal("良い一日を過ごし、クライアントを楽しんでください", testPassed.Task.Result.ApplicationProperties["keyuni2"]);
+            Assert.Equal("祝您有美好的一天，并享受客户", testPassed.Task.Result.ApplicationProperties["keyuni3"]);
+            Assert.Equal(ChineseStringTest, testPassed.Task.Result.ApplicationProperties["keylonguni"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey2"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey3"]);
 
