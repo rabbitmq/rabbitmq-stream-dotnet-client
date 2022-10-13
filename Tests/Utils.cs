@@ -152,10 +152,74 @@ namespace Tests
             producer.Dispose();
         }
 
+        public static async Task PublishMessagesSuperStream(StreamSystem system, string stream, int numberOfMessages,
+            string producerName, ITestOutputHelper testOutputHelper)
+        {
+            testOutputHelper.WriteLine("Publishing super stream messages...");
+
+            var testPassed = new TaskCompletionSource<int>();
+            var count = 0;
+            var producer = await system.CreateSuperStreamProducer(
+                new SuperStreamProducerConfig()
+                {
+                    Reference = producerName,
+                    SuperStream = stream,
+                    Routing = message1 => message1.Properties.MessageId.ToString(),
+                    ConfirmHandler = _ =>
+                    {
+                        count++;
+                        if (count != numberOfMessages)
+                        {
+                            return;
+                        }
+
+                        testPassed.SetResult(count);
+                    }
+                });
+
+            for (var i = 0; i < numberOfMessages; i++)
+            {
+                var message = new Message(Encoding.Default.GetBytes("hello"))
+                {
+                    Properties = new Properties() { MessageId = $"hello{i}" }
+                };
+                await producer.Send(Convert.ToUInt64(i), message);
+            }
+
+            testPassed.Task.Wait(TimeSpan.FromSeconds(10));
+            Assert.Equal(numberOfMessages, testPassed.Task.Result);
+            Assert.True(producer.ConfirmFrames >= 1);
+            Assert.True(producer.IncomingFrames >= 1);
+            Assert.True(producer.PublishCommandsSent >= 1);
+            producer.Dispose();
+        }
+
         private class Connection
         {
             public string name { get; set; }
             public Dictionary<string, string> client_properties { get; set; }
+        }
+
+        public static async Task<int> ConnectionsCountByName(string connectionName)
+        {
+            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var client = new HttpClient(handler);
+
+            var result = await client.GetAsync("http://localhost:15672/api/connections");
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
+            }
+
+            var obj = await JsonSerializer.DeserializeAsync(await result.Content.ReadAsStreamAsync(), typeof(IEnumerable<Connection>));
+            return obj switch
+            {
+                null => 0,
+                IEnumerable<Connection> connections => connections.Sum(connection =>
+                    connection.client_properties["connection_name"] == connectionName ? 1 : 0),
+                _ => 0
+            };
         }
 
         public static async Task<bool> IsConnectionOpen(string connectionName)
@@ -186,7 +250,6 @@ namespace Tests
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
 
-            var uri = new Uri("http://localhost:15672/api/connections");
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             if (!result.IsSuccessStatusCode)
             {
@@ -286,7 +349,7 @@ namespace Tests
             }
         }
 
-        public static void HttpDeleteExchange(string exchange)
+        private static void HttpDeleteExchange(string exchange)
         {
 
             var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/exchanges/%2F/{exchange}");
@@ -304,15 +367,28 @@ namespace Tests
             var codeBaseUrl = new Uri(Assembly.GetExecutingAssembly().Location);
             var codeBasePath = Uri.UnescapeDataString(codeBaseUrl.AbsolutePath);
             var dirPath = Path.GetDirectoryName(codeBasePath);
-            if (dirPath != null)
+            if (dirPath == null)
             {
-                var filename = Path.Combine(dirPath, "Resources", fileName);
-                var fileTask = File.ReadAllBytesAsync(filename);
-                fileTask.Wait(TimeSpan.FromSeconds(1));
-                return fileTask.Result;
+                return null;
             }
 
-            return null;
+            var filename = Path.Combine(dirPath, "Resources", fileName);
+            var fileTask = File.ReadAllBytesAsync(filename);
+            fileTask.Wait(TimeSpan.FromSeconds(1));
+            return fileTask.Result;
+
+        }
+
+        public static void ResetSuperStreams()
+        {
+            HttpDeleteExchange("invoices");
+            HttpDeleteQueue("invoices-0");
+            HttpDeleteQueue("invoices-1");
+            HttpDeleteQueue("invoices-2");
+            Wait();
+            HttpPost(
+                Encoding.Default.GetString(
+                    GetFileContent("definition_test.json")), "definitions");
         }
     }
 }

@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
@@ -20,9 +21,90 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     private readonly ClientParameters _clientParameters;
 
     // We need to copy the config from the super consumer to the standard consumer
-    private static ConsumerConfig FromStreamConfig(string stream)
+
+    private ConsumerConfig FromStreamConfig(string stream)
     {
-        return new ConsumerConfig() { Stream = stream };
+        return new ConsumerConfig()
+        {
+            Stream = stream,
+            Reference = _config.Reference,
+            IsSingleActiveConsumer = _config.IsSingleActiveConsumer,
+            MessageHandler = async (consumer, context, message) =>
+            {
+                await _config.MessageHandler(stream, consumer, context, message);
+            },
+            MetadataHandler = update =>
+            {
+                // In case of stream update we remove the producer from the list
+                // We hide the behavior of the producer to the user
+                // if needed the connection will be created again
+                // we "should" always have the stream
+
+                // but we have to handle the case¬
+                // We need to wait a bit it can take some time to update the configuration
+                Thread.Sleep(500);
+
+                var exists = _config.Client.StreamExists(update.Stream);
+                if (!exists.Result)
+                {
+                    // The stream doesn't exist anymore
+                    // but this condition should be avoided since the hash routing 
+                    // can be compromised
+                    LogEventSource.Log.LogWarning(
+                        $"SuperStream Consumer. Stream {update.Stream} is not available anymore");
+                    _streamInfos.Remove(update.Stream);
+                    _consumers[update.Stream].Close();
+                    _consumers.TryRemove(update.Stream, out _);
+                }
+                else
+                {
+                    _consumers.TryRemove(update.Stream, out _);
+                    GetConsumer(update.Stream).WaitAsync(CancellationToken.None);
+                }
+            },
+            OffsetSpec = _config.OffsetSpec,
+        };
+    }
+
+    private async Task<IConsumer> InitConsumer(string stream)
+    {
+        return await Consumer.Create(_clientParameters,
+            FromStreamConfig(stream), _streamInfos[stream]);
+    }
+
+    private async Task<IConsumer> GetConsumer(string stream)
+    {
+        if (!_consumers.ContainsKey(stream))
+        {
+            var p = await InitConsumer(stream);
+            _consumers.TryAdd(stream, p);
+        }
+
+        return _consumers[stream];
+    }
+
+    private SuperStreamConsumer(SuperStreamConsumerConfig config,
+        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
+    {
+        _config = config;
+        _streamInfos = streamInfos;
+        _clientParameters = clientParameters;
+
+        StartConsumers().Wait(CancellationToken.None);
+    }
+
+    private async Task StartConsumers()
+    {
+        foreach (var stream in _streamInfos.Keys)
+        {
+            await GetConsumer(stream);
+        }
+    }
+
+    public static IConsumer Create(SuperStreamConsumerConfig superStreamConsumerConfig,
+        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
+    {
+        return new SuperStreamConsumer(superStreamConsumerConfig, streamInfos, clientParameters);
     }
 
     public Task StoreOffset(ulong offset)
@@ -57,4 +139,9 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
 public record SuperStreamConsumerConfig : IConsumerConfig
 {
+    public Func<string, Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
+
+    public string SuperStream { get; set; }
+
+    internal Client Client { get; set; }
 }

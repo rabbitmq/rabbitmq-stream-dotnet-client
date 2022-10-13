@@ -36,12 +36,6 @@ namespace RabbitMQ.Stream.Client
 
     public record ConsumerConfig : IConsumerConfig
     {
-        // StoredOffsetSpec configuration it is needed to keep the offset spec.
-        // since the offset can be decided from the ConsumerConfig.OffsetSpec.
-        // and from ConsumerConfig.ConsumerUpdateListener.
-        // needed also See also consumer:MaybeDispatch/1.
-        // It is not public because it is not needed for the user.
-        internal IOffsetType StoredOffsetSpec { get; set; }
 
         internal void Validate()
         {
@@ -57,21 +51,8 @@ namespace RabbitMQ.Stream.Client
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
 
-        public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
-
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
-        // SingleActiveConsumer is used to indicate that there is only one consumer active for the stream.
-        // given a consumer reference. 
-        // Consumer Reference can't be null or Empty.
-
-        public bool IsSingleActiveConsumer { get; set; } = false;
-
-        // config.ConsumerUpdateListener is the callback for when the consumer is updated due
-        // to single active consumer. 
-        // return IOffsetType to indicate the offset to be used for the next consumption.
-        // if the ConsumerUpdateListener==null the OffsetSpec will be used.
-        public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
     }
 
     public class Consumer : AbstractEntity, IConsumer, IDisposable

@@ -81,7 +81,7 @@ public class SuperStreamProducer : IProducer, IDisposable
                     // The stream doesn't exist anymore
                     // but this condition should be avoided since the hash routing 
                     // can be compromised
-                    LogEventSource.Log.LogWarning($" Stream {update.Stream} is not available anymore");
+                    LogEventSource.Log.LogWarning($"SuperStream Producer. Stream {update.Stream} is not available anymore");
                     _streamInfos.Remove(update.Stream);
                 }
 
