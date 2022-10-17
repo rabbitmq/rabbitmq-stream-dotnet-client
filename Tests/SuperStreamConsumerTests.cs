@@ -254,7 +254,6 @@ public class SuperStreamConsumerTests
             Stream = "invoices",
             OffsetSpec = new OffsetTypeFirst(),
             IsSuperStream = true,
-            IsSingleActiveConsumer = true,
             MessageHandler = (stream, consumer1, context, message) =>
             {
                 listConsumed.Add(stream);
