@@ -26,8 +26,6 @@ public record IConsumerConfig : INamedEntity
     // ClientProvidedName is used to identify TCP connection name.
     public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
 
-    public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
-
     // SingleActiveConsumer is used to indicate that there is only one consumer active for the stream.
     // given a consumer reference. 
     // Consumer Reference can't be null or Empty.
@@ -40,4 +38,6 @@ public record IConsumerConfig : INamedEntity
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
 
     public string Reference { get; set; }
+
+    public Func<string, Task> ConnectionClosedHandler { get; set; }
 }

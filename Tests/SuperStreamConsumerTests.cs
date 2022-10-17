@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -34,6 +35,7 @@ public class SuperStreamConsumerTests
         {
             SuperStream = "invoices",
             ClientProvidedName = connectionName,
+            OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst())
         });
 
         Assert.NotNull(consumer);
@@ -53,13 +55,13 @@ public class SuperStreamConsumerTests
         const int NumberOfMessages = 20;
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
-        var connectionName = Guid.NewGuid().ToString();
+        var clientProvidedName = Guid.NewGuid().ToString();
 
         var consumer = await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig()
         {
             SuperStream = "invoices",
-            ClientProvidedName = connectionName,
-            OffsetSpec = new OffsetTypeFirst(),
+            ClientProvidedName = clientProvidedName,
+            OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
             MessageHandler = (stream, consumer1, context, message) =>
             {
                 listConsumed.Add(stream);
@@ -89,23 +91,23 @@ public class SuperStreamConsumerTests
         // When a stream is deleted, the consumer should remove the connection
         // This is to test the metadata update functionality
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        var connectionName = Guid.NewGuid().ToString();
+        var clientProvidedName = Guid.NewGuid().ToString();
         var consumer = await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig()
         {
             SuperStream = "invoices",
-            ClientProvidedName = connectionName,
+            ClientProvidedName = clientProvidedName,
         });
 
         Assert.NotNull(consumer);
         SystemUtils.Wait();
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(connectionName).Result == 3);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 3);
         SystemUtils.HttpDeleteQueue("invoices-0");
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(connectionName).Result == 2);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 2);
         SystemUtils.HttpDeleteQueue("invoices-1");
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(connectionName).Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 1);
         await consumer.Close();
         // in this case we don't have any connection anymore since the super stream consumer is closed
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(connectionName).Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 0);
         await system.Close();
     }
 
@@ -195,7 +197,7 @@ public class SuperStreamConsumerTests
         const int NumberOfMessages = 20;
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
-        var connectionName = Guid.NewGuid().ToString();
+        var clientProvidedName = Guid.NewGuid().ToString();
         var consumers = new Dictionary<string, IConsumer>();
 
         async Task<IConsumer> NewConsumer()
@@ -203,8 +205,8 @@ public class SuperStreamConsumerTests
             var iConsumer = await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig()
             {
                 SuperStream = "invoices",
-                ClientProvidedName = connectionName,
-                OffsetSpec = new OffsetTypeFirst(),
+                ClientProvidedName = clientProvidedName,
+                OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
                 IsSingleActiveConsumer = saCConsumerExpected.IsSingleActiveConsumer,
                 Reference = "super_stream_consumer_name",
                 MessageHandler = (stream, consumer1, context, message) =>
@@ -236,6 +238,38 @@ public class SuperStreamConsumerTests
             listConsumed.Sum(x => x == "invoices-1" ? 1 : 0));
         Assert.Equal(saCConsumerExpected.MessagesPerStream["invoices-2"],
             listConsumed.Sum(x => x == "invoices-2" ? 1 : 0));
+        await system.Close();
+    }
+
+    [Fact]
+    public async void ReliableConsumerNumberOfMessagesConsumedShouldBeEqualsToPublished()
+    {
+        SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        await SystemUtils.PublishMessagesSuperStream(system, "invoices", 20, "", _testOutputHelper);
+        var listConsumed = new ConcurrentBag<string>();
+        var consumer = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
+        {
+            StreamSystem = system,
+            Stream = "invoices",
+            OffsetSpec = new OffsetTypeFirst(),
+            IsSuperStream = true,
+            IsSingleActiveConsumer = true,
+            MessageHandler = (stream, consumer1, context, message) =>
+            {
+                listConsumed.Add(stream);
+                return Task.CompletedTask;
+            }
+        });
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        Assert.Equal(9,
+            listConsumed.Sum(x => x == "invoices-0" ? 1 : 0));
+        Assert.Equal(7,
+            listConsumed.Sum(x => x == "invoices-1" ? 1 : 0));
+        Assert.Equal(4,
+            listConsumed.Sum(x => x == "invoices-2" ? 1 : 0));
+        await consumer.Close();
         await system.Close();
     }
 }

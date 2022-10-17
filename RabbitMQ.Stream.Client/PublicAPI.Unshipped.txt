@@ -278,12 +278,12 @@ RabbitMQ.Stream.Client.Consumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.
 RabbitMQ.Stream.Client.Consumer.Dispose() -> void
 RabbitMQ.Stream.Client.Consumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.ConsumerConfig
-RabbitMQ.Stream.Client.ConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
-RabbitMQ.Stream.Client.ConsumerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.MessageHandler.get -> System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.ConsumerConfig.MessageHandler.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.MetadataHandler.get -> System.Action<RabbitMQ.Stream.Client.MetaDataUpdate>
 RabbitMQ.Stream.Client.ConsumerConfig.MetadataHandler.set -> void
+RabbitMQ.Stream.Client.ConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
+RabbitMQ.Stream.Client.ConsumerConfig.OffsetSpec.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.Stream.get -> string
 RabbitMQ.Stream.Client.ConsumerConfig.Stream.set -> void
 RabbitMQ.Stream.Client.ConsumerUpdateQueryResponse
@@ -423,12 +423,12 @@ RabbitMQ.Stream.Client.IConsumer.StoreOffset(ulong offset) -> System.Threading.T
 RabbitMQ.Stream.Client.IConsumerConfig
 RabbitMQ.Stream.Client.IConsumerConfig.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.IConsumerConfig.ClientProvidedName.set -> void
+RabbitMQ.Stream.Client.IConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.IConsumerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.get -> System.Func<string, string, bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>>
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.get -> bool
 RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.set -> void
-RabbitMQ.Stream.Client.IConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
-RabbitMQ.Stream.Client.IConsumerConfig.OffsetSpec.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.Reference.get -> string
 RabbitMQ.Stream.Client.IConsumerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.INamedEntity
@@ -708,6 +708,12 @@ RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.PublisherDoesNotExist = 18 ->
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.StreamNotAvailable = 6 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.UndefinedError = 200 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.WaitForConfirmation = 0 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory.ConsumerFactory() -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory.CreateConsumer(bool boot) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory._consumedFirstTime -> bool
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory._lastOffsetConsumed -> System.Collections.Concurrent.ConcurrentDictionary<string, ulong>
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory._reliableConsumerConfig -> RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenConnected(string connectionInfo) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenDisconnected(string connectionInfo) -> System.Threading.Tasks.ValueTask<bool>
@@ -745,7 +751,9 @@ RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ConsumerUpdateListener.ge
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ConsumerUpdateListener.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSingleActiveConsumer.get -> bool
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSingleActiveConsumer.set -> void
-RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.get -> System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSuperStream.get -> bool
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSuperStream.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.get -> System.Func<string, RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.OffsetSpec.set -> void
@@ -885,6 +893,7 @@ RabbitMQ.Stream.Client.StreamSystem.CreateSuperStreamProducer(RabbitMQ.Stream.Cl
 RabbitMQ.Stream.Client.StreamSystem.DeleteStream(string stream) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystem.IsClosed.get -> bool
 RabbitMQ.Stream.Client.StreamSystem.QueryOffset(string reference, string stream) -> System.Threading.Tasks.Task<ulong>
+RabbitMQ.Stream.Client.StreamSystem.QueryPartition(string superStream) -> System.Threading.Tasks.Task<string[]>
 RabbitMQ.Stream.Client.StreamSystem.QuerySequence(string reference, string stream) -> System.Threading.Tasks.Task<ulong>
 RabbitMQ.Stream.Client.StreamSystem.StreamExists(string stream) -> System.Threading.Tasks.Task<bool>
 RabbitMQ.Stream.Client.StreamSystemConfig
@@ -929,6 +938,8 @@ RabbitMQ.Stream.Client.SuperStreamConsumer.StoreOffset(ulong offset) -> System.T
 RabbitMQ.Stream.Client.SuperStreamConsumerConfig
 RabbitMQ.Stream.Client.SuperStreamConsumerConfig.MessageHandler.get -> System.Func<string, RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.SuperStreamConsumerConfig.MessageHandler.set -> void
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.OffsetSpec.get -> System.Collections.Concurrent.ConcurrentDictionary<string, RabbitMQ.Stream.Client.IOffsetType>
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.OffsetSpec.set -> void
 RabbitMQ.Stream.Client.SuperStreamConsumerConfig.SuperStream.get -> string
 RabbitMQ.Stream.Client.SuperStreamConsumerConfig.SuperStream.set -> void
 RabbitMQ.Stream.Client.SuperStreamProducer

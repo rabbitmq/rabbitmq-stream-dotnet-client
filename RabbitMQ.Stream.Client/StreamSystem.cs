@@ -160,6 +160,18 @@ namespace RabbitMQ.Stream.Client
                 clientParameters with { ClientProvidedName = superStreamProducerConfig.ClientProvidedName });
         }
 
+        public async Task<string[]> QueryPartition(string superStream)
+        {
+            await MayBeReconnectLocator();
+            var partitions = await client.QueryPartition(superStream);
+            if (partitions.ResponseCode != ResponseCode.Ok)
+            {
+                throw new QueryException($"query partitions failed code: {partitions.ResponseCode}");
+            }
+
+            return partitions.Streams;
+        }
+
         public async Task<IConsumer> CreateSuperStreamConsumer(SuperStreamConsumerConfig superStreamConsumerConfig)
         {
             await MayBeReconnectLocator();

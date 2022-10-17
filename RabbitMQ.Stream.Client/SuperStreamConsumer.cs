@@ -62,7 +62,8 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                     GetConsumer(update.Stream).WaitAsync(CancellationToken.None);
                 }
             },
-            OffsetSpec = _config.OffsetSpec,
+
+            OffsetSpec = _config.OffsetSpec.ContainsKey(stream) ? _config.OffsetSpec[stream] : new OffsetTypeNext(),
         };
     }
 
@@ -109,7 +110,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
     public Task StoreOffset(ulong offset)
     {
-        throw new System.NotImplementedException();
+        throw new NotImplementedException("use the store offset on the stream consumer, instead");
     }
 
     public Task<ResponseCode> Close()
@@ -139,6 +140,8 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
 public record SuperStreamConsumerConfig : IConsumerConfig
 {
+    public ConcurrentDictionary<string, IOffsetType> OffsetSpec { get; set; } = new();
+
     public Func<string, Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
     public string SuperStream { get; set; }

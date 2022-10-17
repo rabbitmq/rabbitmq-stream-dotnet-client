@@ -514,7 +514,7 @@ public class SuperStreamProducerTests
 
     // super stream reliable producer tests
     [Fact]
-    public async void SuperStreamReliableProducerSendMessagesDifferentWays()
+    public async void ReliableProducerSuperStreamSendMessagesDifferentWays()
     {
         SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -554,7 +554,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void HandleConfirmationToReliableSuperStream()
+    public async void ReliableProducerHandleConfirmation()
     {
         SystemUtils.ResetSuperStreams();
         // This test is for the confirmation mechanism
@@ -603,7 +603,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void SendMessageToReliableSuperStreamRecreateConnectionsIfKilled()
+    public async void ReliableProducerSendMessageConnectionsIfKilled()
     {
         SystemUtils.ResetSuperStreams();
         // This test validates that the Reliable super stream producer is able to recreate the connection

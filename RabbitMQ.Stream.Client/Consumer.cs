@@ -45,11 +45,12 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
+
         // stream name where the consumer will consume the messages.
         // stream must exist before the consumer is created.
         public string Stream { get; set; }
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
-        public Func<string, Task> ConnectionClosedHandler { get; set; }
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 

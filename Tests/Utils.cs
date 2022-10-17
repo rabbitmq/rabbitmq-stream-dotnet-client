@@ -3,6 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -152,6 +153,19 @@ namespace Tests
             producer.Dispose();
         }
 
+        public static async Task<ConcurrentDictionary<string, IOffsetType>> OffsetsForSuperStreamConsumer(StreamSystem system, string stream,
+            IOffsetType offsetType)
+        {
+            var partitions = await system.QueryPartition("invoices");
+            var offsetSpecs = new ConcurrentDictionary<string, IOffsetType>();
+            foreach (var partition in partitions)
+            {
+                offsetSpecs.TryAdd(partition, offsetType);
+            }
+
+            return offsetSpecs;
+        }
+
         public static async Task PublishMessagesSuperStream(StreamSystem system, string stream, int numberOfMessages,
             string producerName, ITestOutputHelper testOutputHelper)
         {
@@ -212,7 +226,8 @@ namespace Tests
                     result.ReasonPhrase));
             }
 
-            var obj = await JsonSerializer.DeserializeAsync(await result.Content.ReadAsStreamAsync(), typeof(IEnumerable<Connection>));
+            var obj = await JsonSerializer.DeserializeAsync(await result.Content.ReadAsStreamAsync(),
+                typeof(IEnumerable<Connection>));
             return obj switch
             {
                 null => 0,
@@ -338,7 +353,6 @@ namespace Tests
 
         public static void HttpDeleteQueue(string queue)
         {
-
             var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/queues/%2F/{queue}");
             task.Wait();
             var result = task.Result;
@@ -351,7 +365,6 @@ namespace Tests
 
         private static void HttpDeleteExchange(string exchange)
         {
-
             var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/exchanges/%2F/{exchange}");
             task.Wait();
             var result = task.Result;
@@ -376,7 +389,6 @@ namespace Tests
             var fileTask = File.ReadAllBytesAsync(filename);
             fileTask.Wait(TimeSpan.FromSeconds(1));
             return fileTask.Result;
-
         }
 
         public static void ResetSuperStreams()

@@ -334,13 +334,14 @@ public class ReliableTests
             StreamSystem = system,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
-            MessageHandler = async (_, _, _) =>
+            MessageHandler = async (streamC, _, _, _) =>
             {
                 if (Interlocked.Increment(ref messagesReceived) >= NumberOfMessages)
                 {
                     testPassed.SetResult(true);
                 }
 
+                Assert.Equal(stream, streamC);
                 await Task.CompletedTask;
             }
         });
@@ -380,7 +381,7 @@ public class ReliableTests
             StreamSystem = system,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
-            MessageHandler = async (_, ctx, _) =>
+            MessageHandler = async (streamC, _, ctx, _) =>
             {
                 // ctx.Offset starts from zero
                 // here we check if the offset is NumberOfMessages *2 ( we publish two times)
@@ -389,6 +390,7 @@ public class ReliableTests
                     testPassed.SetResult(true);
                 }
 
+                Assert.Equal(stream, streamC);
                 await Task.CompletedTask;
             }
         });
