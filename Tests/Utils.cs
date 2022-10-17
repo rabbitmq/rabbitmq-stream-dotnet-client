@@ -156,7 +156,7 @@ namespace Tests
         public static async Task<ConcurrentDictionary<string, IOffsetType>> OffsetsForSuperStreamConsumer(StreamSystem system, string stream,
             IOffsetType offsetType)
         {
-            var partitions = await system.QueryPartition("invoices");
+            var partitions = await system.QueryPartition(stream);
             var offsetSpecs = new ConcurrentDictionary<string, IOffsetType>();
             foreach (var partition in partitions)
             {
