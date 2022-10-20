@@ -304,7 +304,7 @@ namespace Tests
                  */
                 var s = Uri.EscapeDataString(conn.name);
                 var deleteResult = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
-                if (!deleteResult.IsSuccessStatusCode)
+                if (!deleteResult.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
                 {
                     throw new XunitException(
                         $"HTTP DELETE failed: {deleteResult.StatusCode} {deleteResult.ReasonPhrase}");
