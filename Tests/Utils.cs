@@ -272,7 +272,7 @@ namespace Tests
             using var client = new HttpClient(handler);
 
             var result = await client.GetAsync("http://localhost:15672/api/connections");
-            if (!result.IsSuccessStatusCode)
+            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
             {
                 throw new XunitException($"HTTP GET failed: {result.StatusCode} {result.ReasonPhrase}");
             }
