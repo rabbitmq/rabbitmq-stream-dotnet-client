@@ -12,8 +12,8 @@ namespace RabbitMQ.Stream.Client.Reliable;
 public abstract class ConsumerFactory : ReliableBase
 {
     protected ReliableConsumerConfig _reliableConsumerConfig;
-    protected ConcurrentDictionary<string, ulong> _lastOffsetConsumed = new();
-    protected bool _consumedFirstTime = false;
+    private readonly ConcurrentDictionary<string, ulong> _lastOffsetConsumed = new();
+    private bool _consumedFirstTime = false;
 
     protected async Task<IConsumer> CreateConsumer(bool boot)
     {
@@ -32,7 +32,7 @@ public abstract class ConsumerFactory : ReliableBase
         // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume fro the next)
         if (!boot && _consumedFirstTime)
         {
-            offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_reliableConsumerConfig.Stream] + 2);
+            offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_reliableConsumerConfig.Stream] + 1);
         }
 
         return await _reliableConsumerConfig.StreamSystem.CreateConsumer(new ConsumerConfig()
@@ -101,10 +101,6 @@ public abstract class ConsumerFactory : ReliableBase
             ConsumerUpdateListener = _reliableConsumerConfig.ConsumerUpdateListener,
             IsSingleActiveConsumer = _reliableConsumerConfig.IsSingleActiveConsumer,
             OffsetSpec = offsetSpecs,
-            ConnectionClosedHandler = async _ =>
-            {
-                await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
-            },
             MessageHandler = async (stream, consumer, ctx, message) =>
             {
                 _consumedFirstTime = true;

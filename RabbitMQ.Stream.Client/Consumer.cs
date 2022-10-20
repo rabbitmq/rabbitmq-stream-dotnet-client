@@ -36,7 +36,6 @@ namespace RabbitMQ.Stream.Client
 
     public record ConsumerConfig : IConsumerConfig
     {
-
         internal void Validate()
         {
             if (IsSingleActiveConsumer && (Reference == null || Reference.Trim() == string.Empty))
@@ -53,7 +52,6 @@ namespace RabbitMQ.Stream.Client
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
-
     }
 
     public class Consumer : AbstractEntity, IConsumer, IDisposable
@@ -137,11 +135,19 @@ namespace RabbitMQ.Stream.Client
                             continue;
                         }
 
-                        var message = Message.From(messageEntry.Data);
-                        await config.MessageHandler(this,
-                            new MessageContext(messageEntry.Offset,
-                                TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
-                            message);
+                        try
+                        {
+                            var message = Message.From(messageEntry.Data);
+                            await config.MessageHandler(this,
+                                new MessageContext(messageEntry.Offset,
+                                    TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
+                                message);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                            // throw;
+                        }
                     }
 
                     // give one credit after each chunk

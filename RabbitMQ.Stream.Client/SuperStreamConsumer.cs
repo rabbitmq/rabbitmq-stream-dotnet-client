@@ -29,6 +29,15 @@ public class SuperStreamConsumer : IConsumer, IDisposable
             Stream = stream,
             Reference = _config.Reference,
             IsSingleActiveConsumer = _config.IsSingleActiveConsumer,
+            ConsumerUpdateListener = _config.ConsumerUpdateListener,
+            ConnectionClosedHandler = async (string s) =>
+            {
+                if (_consumers.ContainsKey(stream))
+                {
+                    _consumers.TryRemove(stream, out _);
+                    await GetConsumer(stream);
+                }
+            },
             MessageHandler = async (consumer, context, message) =>
             {
                 await _config.MessageHandler(stream, consumer, context, message);
@@ -62,14 +71,14 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                     GetConsumer(update.Stream).WaitAsync(CancellationToken.None);
                 }
             },
-
             OffsetSpec = _config.OffsetSpec.ContainsKey(stream) ? _config.OffsetSpec[stream] : new OffsetTypeNext(),
         };
     }
 
+
     private async Task<IConsumer> InitConsumer(string stream)
     {
-        return await Consumer.Create(_clientParameters,
+        return await Consumer.Create(_clientParameters with {ClientProvidedName = _clientParameters.ClientProvidedName},
             FromStreamConfig(stream), _streamInfos[stream]);
     }
 
@@ -126,12 +135,11 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
     public void Dispose()
     {
-        foreach (var (_, iConsumer) in _consumers)
+        foreach (var stream in _consumers.Keys)
         {
-            iConsumer.Close();
+            _consumers.TryRemove(stream, out var consumer);
+            consumer?.Close();
         }
-
-        _consumers.Clear();
 
         _disposed = true;
         GC.SuppressFinalize(this);

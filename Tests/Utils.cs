@@ -60,6 +60,11 @@ namespace Tests
 
     public static class SystemUtils
     {
+        public const string InvoicesExchange = "invoices";
+        public const string InvoicesStream0 = "invoices-0";
+        public const string InvoicesStream1 = "invoices-1";
+        public const string InvoicesStream2 = "invoices-2";
+
         // Waits for 10 seconds total by default
         public static void WaitUntil(Func<bool> func, ushort retries = 40)
         {
@@ -102,7 +107,7 @@ namespace Tests
             string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
+            var config = new StreamSystemConfig {ClientProvidedName = clientProviderNameLocator};
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();
@@ -153,7 +158,8 @@ namespace Tests
             producer.Dispose();
         }
 
-        public static async Task<ConcurrentDictionary<string, IOffsetType>> OffsetsForSuperStreamConsumer(StreamSystem system, string stream,
+        public static async Task<ConcurrentDictionary<string, IOffsetType>> OffsetsForSuperStreamConsumer(
+            StreamSystem system, string stream,
             IOffsetType offsetType)
         {
             var partitions = await system.QueryPartition(stream);
@@ -195,7 +201,7 @@ namespace Tests
             {
                 var message = new Message(Encoding.Default.GetBytes("hello"))
                 {
-                    Properties = new Properties() { MessageId = $"hello{i}" }
+                    Properties = new Properties() {MessageId = $"hello{i}"}
                 };
                 await producer.Send(Convert.ToUInt64(i), message);
             }
@@ -216,7 +222,7 @@ namespace Tests
 
         public static async Task<int> ConnectionsCountByName(string connectionName)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
             using var client = new HttpClient(handler);
 
             var result = await client.GetAsync("http://localhost:15672/api/connections");
@@ -239,7 +245,7 @@ namespace Tests
 
         public static async Task<bool> IsConnectionOpen(string connectionName)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
             using var client = new HttpClient(handler);
             var isOpen = false;
 
@@ -262,7 +268,7 @@ namespace Tests
 
         public static async Task<int> HttpKillConnections(string connectionName)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
             using var client = new HttpClient(handler);
 
             var result = await client.GetAsync("http://localhost:15672/api/connections");
@@ -312,7 +318,7 @@ namespace Tests
 
         private static HttpClient CreateHttpClient()
         {
-            var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
             return new HttpClient(handler);
         }
 

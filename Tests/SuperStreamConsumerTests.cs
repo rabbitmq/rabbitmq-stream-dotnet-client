@@ -41,6 +41,7 @@ public class SuperStreamConsumerTests
         Assert.NotNull(consumer);
         SystemUtils.Wait();
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(connectionName).Result == 3);
+        Assert.Equal(ResponseCode.Ok ,  await consumer.Close());
         await system.Close();
     }
 
@@ -78,9 +79,10 @@ public class SuperStreamConsumerTests
         Assert.NotNull(consumer);
         SystemUtils.Wait();
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        Assert.Equal(9, listConsumed.Sum(x => x == "invoices-0" ? 1 : 0));
-        Assert.Equal(7, listConsumed.Sum(x => x == "invoices-1" ? 1 : 0));
-        Assert.Equal(4, listConsumed.Sum(x => x == "invoices-2" ? 1 : 0));
+        Assert.Equal(9, listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
+        Assert.Equal(7, listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
+        Assert.Equal(4, listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
+        Assert.Equal(ResponseCode.Ok ,  await consumer.Close());
         await system.Close();
     }
 
@@ -94,20 +96,20 @@ public class SuperStreamConsumerTests
         var clientProvidedName = Guid.NewGuid().ToString();
         var consumer = await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig()
         {
-            SuperStream = "invoices",
-            ClientProvidedName = clientProvidedName,
+            SuperStream = "invoices", ClientProvidedName = clientProvidedName,
         });
 
         Assert.NotNull(consumer);
         SystemUtils.Wait();
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 3);
-        SystemUtils.HttpDeleteQueue("invoices-0");
+        SystemUtils.HttpDeleteQueue(SystemUtils.InvoicesStream0);
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 2);
-        SystemUtils.HttpDeleteQueue("invoices-1");
+        SystemUtils.HttpDeleteQueue(SystemUtils.InvoicesStream1);
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 1);
         await consumer.Close();
         // in this case we don't have any connection anymore since the super stream consumer is closed
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 0);
+        Assert.Equal(ResponseCode.Ok ,  await consumer.Close());
         await system.Close();
     }
 
@@ -120,7 +122,7 @@ public class SuperStreamConsumerTests
 
         await Assert.ThrowsAsync<AggregateException>(() =>
             system.CreateSuperStreamConsumer(
-                new SuperStreamConsumerConfig() { SuperStream = "invoices", IsSingleActiveConsumer = true, }));
+                new SuperStreamConsumerConfig() {SuperStream = "invoices", IsSingleActiveConsumer = true,}));
     }
 
     [Serializable]
@@ -145,7 +147,9 @@ public class SuperStreamConsumerTests
                     IsSingleActiveConsumer = true,
                     MessagesPerStream = new Dictionary<string, int>()
                     {
-                        {"invoices-0", 9}, {"invoices-1", 7}, {"invoices-2", 4}
+                        {SystemUtils.InvoicesStream0, 9},
+                        {SystemUtils.InvoicesStream1, 7},
+                        {SystemUtils.InvoicesStream2, 4}
                     },
                     Consumers = 3,
                     ClosedConsumers = 0,
@@ -159,7 +163,9 @@ public class SuperStreamConsumerTests
                     IsSingleActiveConsumer = false,
                     MessagesPerStream = new Dictionary<string, int>()
                     {
-                        {"invoices-0", 9 * 3}, {"invoices-1", 7 * 3}, {"invoices-2", 4 * 3}
+                        {SystemUtils.InvoicesStream0, 9 * 3},
+                        {SystemUtils.InvoicesStream1, 7 * 3},
+                        {SystemUtils.InvoicesStream2, 4 * 3}
                     },
                     Consumers = 3,
                     ClosedConsumers = 0,
@@ -173,7 +179,9 @@ public class SuperStreamConsumerTests
                     IsSingleActiveConsumer = true,
                     MessagesPerStream = new Dictionary<string, int>()
                     {
-                        {"invoices-0", 9 * 2}, {"invoices-1", 7 * 2}, {"invoices-2", 4 * 2}
+                        {SystemUtils.InvoicesStream0, 9 * 2},
+                        {SystemUtils.InvoicesStream1, 7 * 2},
+                        {SystemUtils.InvoicesStream2, 4 * 2}
                     },
                     Consumers = 3,
                     ClosedConsumers = 1,
@@ -232,12 +240,13 @@ public class SuperStreamConsumerTests
         }
 
         SystemUtils.Wait(TimeSpan.FromSeconds(3));
-        Assert.Equal(saCConsumerExpected.MessagesPerStream["invoices-0"],
-            listConsumed.Sum(x => x == "invoices-0" ? 1 : 0));
-        Assert.Equal(saCConsumerExpected.MessagesPerStream["invoices-1"],
-            listConsumed.Sum(x => x == "invoices-1" ? 1 : 0));
-        Assert.Equal(saCConsumerExpected.MessagesPerStream["invoices-2"],
-            listConsumed.Sum(x => x == "invoices-2" ? 1 : 0));
+        Assert.Equal(saCConsumerExpected.MessagesPerStream[SystemUtils.InvoicesStream0],
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
+        Assert.Equal(saCConsumerExpected.MessagesPerStream[SystemUtils.InvoicesStream1],
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
+        Assert.Equal(saCConsumerExpected.MessagesPerStream[SystemUtils.InvoicesStream2],
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
+        
         await system.Close();
     }
 
@@ -246,12 +255,12 @@ public class SuperStreamConsumerTests
     {
         SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        await SystemUtils.PublishMessagesSuperStream(system, "invoices", 20, "", _testOutputHelper);
+        await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
         var listConsumed = new ConcurrentBag<string>();
         var consumer = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
         {
             StreamSystem = system,
-            Stream = "invoices",
+            Stream = SystemUtils.InvoicesExchange,
             OffsetSpec = new OffsetTypeFirst(),
             IsSuperStream = true,
             MessageHandler = (stream, consumer1, context, message) =>
@@ -263,12 +272,85 @@ public class SuperStreamConsumerTests
 
         SystemUtils.Wait(TimeSpan.FromSeconds(2));
         Assert.Equal(9,
-            listConsumed.Sum(x => x == "invoices-0" ? 1 : 0));
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
         Assert.Equal(7,
-            listConsumed.Sum(x => x == "invoices-1" ? 1 : 0));
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
         Assert.Equal(4,
-            listConsumed.Sum(x => x == "invoices-2" ? 1 : 0));
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
         await consumer.Close();
+        await system.Close();
+    }
+
+
+    [Fact]
+    public async void ReliableConsumerNumberOfMessagesConsumedShouldBeEqualsToPublishedInSaC()
+    {
+        SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
+        var listConsumed = new ConcurrentBag<string>();
+        var reference = Guid.NewGuid().ToString();
+        var consumers = new List<ReliableConsumer>();
+
+        async Task<ReliableConsumer> NewReliableConsumer(string refConsumer, string clientProvidedName,
+            Func<string, string, bool, Task<IOffsetType>> consumerUpdateListener
+        )
+        {
+            return await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
+            {
+                StreamSystem = system,
+                Stream = SystemUtils.InvoicesExchange,
+                OffsetSpec = new OffsetTypeFirst(),
+                Reference = refConsumer,
+                ClientProvidedName = clientProvidedName,
+                IsSuperStream = true,
+                IsSingleActiveConsumer = true,
+                ConsumerUpdateListener = consumerUpdateListener,
+                MessageHandler = async (stream, consumer1, context, message) =>
+                {
+                    await consumer1.StoreOffset(context.Offset);
+                    listConsumed.Add(stream);
+                }
+            });
+        }
+
+
+        var clientProvidedName = $"first_{Guid.NewGuid().ToString()}";
+        var consumerSingle = await NewReliableConsumer(reference, clientProvidedName, null);
+        consumers.Add(consumerSingle);
+        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        for (var i = 0; i < 2; i++)
+        {
+            var consumer = await NewReliableConsumer(reference, Guid.NewGuid().ToString(),
+                async (consumerRef, stream, arg3) => 
+                    new OffsetTypeOffset(await system.QueryOffset(consumerRef, stream) + 1));
+            consumers.Add(consumer);
+        }
+
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        Assert.Equal(9,
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
+        Assert.Equal(7,
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
+        Assert.Equal(4,
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        Assert.Equal(3, await SystemUtils.HttpKillConnections(clientProvidedName));
+        SystemUtils.Wait(TimeSpan.FromSeconds(3));
+
+        Assert.Equal(9,
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
+        Assert.Equal(7,
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
+        Assert.Equal(4,
+            listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
+        foreach (var reliableConsumer in consumers)
+        {
+            await reliableConsumer.Close();
+        }
+
         await system.Close();
     }
 }

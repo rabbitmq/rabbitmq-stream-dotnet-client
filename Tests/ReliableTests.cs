@@ -45,7 +45,7 @@ public class ReliableTests
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
+        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() {message});
         new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
@@ -74,7 +74,7 @@ public class ReliableTests
         confirmationPipe.Start();
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
+        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() {message});
         confirmationPipe.RemoveUnConfirmedMessage(ConfirmationStatus.Confirmed, 1, null);
         confirmationPipe.RemoveUnConfirmedMessage(ConfirmationStatus.Confirmed, 2, null);
         new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
@@ -175,7 +175,7 @@ public class ReliableTests
 
         for (var i = 0; i < 5; i++)
         {
-            List<Message> messages = new() { new Message(Encoding.UTF8.GetBytes($"hello list")) };
+            List<Message> messages = new() {new Message(Encoding.UTF8.GetBytes($"hello list"))};
             await rProducer.Send(messages, CompressionType.None);
         }
 
@@ -374,6 +374,7 @@ public class ReliableTests
         var testPassed = new TaskCompletionSource<bool>();
         var clientProviderName = Guid.NewGuid().ToString();
         var reference = Guid.NewGuid().ToString();
+        var messagesReceived = 0;
         var cR = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
         {
             Reference = reference,
@@ -385,7 +386,7 @@ public class ReliableTests
             {
                 // ctx.Offset starts from zero
                 // here we check if the offset is NumberOfMessages *2 ( we publish two times)
-                if ((ctx.Offset + 1) == (NumberOfMessages * 2))
+                if (Interlocked.Increment(ref messagesReceived) == (NumberOfMessages * 2))
                 {
                     testPassed.SetResult(true);
                 }
@@ -420,9 +421,7 @@ public class ReliableTests
         var rConsumer = await ReliableConsumer.CreateReliableConsumer(
             new ReliableConsumerConfig()
             {
-                Stream = stream,
-                StreamSystem = system,
-                ClientProvidedName = clientProviderName,
+                Stream = stream, StreamSystem = system, ClientProvidedName = clientProviderName,
             }
         );
 
@@ -548,7 +547,7 @@ public class ReliableTests
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
-        var c = new FakeThrowExceptionConsumer(new ReliableConsumerConfig() { StreamSystem = system, Stream = stream },
+        var c = new FakeThrowExceptionConsumer(new ReliableConsumerConfig() {StreamSystem = system, Stream = stream},
             new Exception("Fake Exception"));
 
         await Assert.ThrowsAsync<Exception>(() => c.Init(new BackOffReconnectStrategy()));
@@ -572,7 +571,7 @@ public class ReliableTests
     public async void RConsumerShouldBeOpenWhenThrowKnownException(Exception exception)
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
-        var c = new FakeThrowExceptionConsumer(new ReliableConsumerConfig() { StreamSystem = system, Stream = stream },
+        var c = new FakeThrowExceptionConsumer(new ReliableConsumerConfig() {StreamSystem = system, Stream = stream},
             exception);
         Assert.True(ReliableBase.IsAKnownException(exception));
         await c.Init(new BackOffReconnectStrategy());
@@ -591,9 +590,9 @@ internal class ReliableExceptionTestCases : IEnumerable<object[]>
 {
     public IEnumerator<object[]> GetEnumerator()
     {
-        yield return new object[] { new LeaderNotFoundException(" Leader Not Found") };
-        yield return new object[] { new SocketException(3) };
-        yield return new object[] { new TimeoutException(" TimeoutException") };
+        yield return new object[] {new LeaderNotFoundException(" Leader Not Found")};
+        yield return new object[] {new SocketException(3)};
+        yield return new object[] {new TimeoutException(" TimeoutException")};
     }
 
     IEnumerator IEnumerable.GetEnumerator()

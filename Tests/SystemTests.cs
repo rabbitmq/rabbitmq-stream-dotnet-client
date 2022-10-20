@@ -102,7 +102,7 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
-            var spec = new StreamSpec(stream) { MaxLengthBytes = ulong.MaxValue };
+            var spec = new StreamSpec(stream) {MaxLengthBytes = ulong.MaxValue};
             await system.CreateStream(spec);
             Assert.Equal(ulong.MaxValue.ToString(), spec.Args["max-length-bytes"]);
             await system.DeleteStream(stream);
@@ -112,7 +112,7 @@ namespace Tests
         [Fact]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
-            var config = new StreamSystemConfig { VirtualHost = "DOES_NOT_EXIST" };
+            var config = new StreamSystemConfig {VirtualHost = "DOES_NOT_EXIST"};
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
                 async () => { await StreamSystem.Create(config); }
             );
@@ -121,7 +121,7 @@ namespace Tests
         [Fact]
         public async void CreateSystemThrowsWhenAuthenticationAccess()
         {
-            var config = new StreamSystemConfig { UserName = "user_does_not_exist" };
+            var config = new StreamSystemConfig {UserName = "user_does_not_exist"};
             await Assert.ThrowsAsync<AuthenticationFailureException>(
                 async () => { await StreamSystem.Create(config); }
             );
@@ -153,12 +153,12 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
-            await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 20, });
+            await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 20,});
 
             await Assert.ThrowsAsync<CreateStreamException>(
                 async () =>
                 {
-                    await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 10000, });
+                    await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 10000,});
                 }
             );
             await system.DeleteStream(stream);
@@ -168,7 +168,8 @@ namespace Tests
         [Fact]
         public async void ValidateQueryOffset()
         {
-            // here we just validate the Query for Offset and Sequence
+            // here we just validate the Query for Offset, Sequence 
+            // and Partitions
             // if the reference is == "" return must be 0
             // stream name is mandatory
             var config = new StreamSystemConfig();
@@ -192,6 +193,13 @@ namespace Tests
                 async () =>
                 {
                     await system.QueryOffset(string.Empty, string.Empty);
+                }
+            );
+
+            await Assert.ThrowsAsync<QueryException>(
+                async () =>
+                {
+                    await system.QueryPartition("stream_does_not_exist");
                 }
             );
             await system.Close();
@@ -244,12 +252,11 @@ namespace Tests
             var producer =
                 await system.CreateProducer(new ProducerConfig
                 {
-                    Stream = stream,
-                    ClientProvidedName = clientProvidedName
+                    Stream = stream, ClientProvidedName = clientProvidedName
                 });
             SystemUtils.Wait();
             var consumer = await system.CreateConsumer(
-                new ConsumerConfig { Stream = stream, ClientProvidedName = clientProvidedName });
+                new ConsumerConfig {Stream = stream, ClientProvidedName = clientProvidedName});
             SystemUtils.Wait();
 
             // Here we have to wait the management stats refresh time before killing the connections.
@@ -273,16 +280,29 @@ namespace Tests
         {
             // Just test the heartbeat setting
             // TODO find a smarter way to test the heartbeat disconnection
-            var config = new StreamSystemConfig() { Heartbeat = TimeSpan.FromMinutes(1), };
+            var config = new StreamSystemConfig() {Heartbeat = TimeSpan.FromMinutes(1),};
             var system = await StreamSystem.Create(config);
             var stream = Guid.NewGuid().ToString();
             await system.CreateStream(new StreamSpec(stream));
             var producer =
-                await system.CreateProducer(new ProducerConfig { Stream = stream });
+                await system.CreateProducer(new ProducerConfig {Stream = stream});
             SystemUtils.Wait();
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);
             await system.Close();
+        }
+
+        [Fact]
+        public async void NumberOfPartitionsShouldBeAsDefinition()
+        {
+            SystemUtils.ResetSuperStreams();
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            var partitions = await system.QueryPartition(SystemUtils.InvoicesExchange);
+            Assert.True(partitions.Length == 3);
+            Assert.Contains(SystemUtils.InvoicesStream0, partitions);
+            Assert.Contains(SystemUtils.InvoicesStream1, partitions);
+            Assert.Contains(SystemUtils.InvoicesStream2, partitions);
+            Assert.DoesNotContain(SystemUtils.InvoicesExchange, partitions);
         }
     }
 }

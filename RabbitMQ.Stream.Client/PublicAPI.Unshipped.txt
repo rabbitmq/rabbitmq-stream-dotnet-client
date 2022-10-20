@@ -711,8 +711,6 @@ RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.WaitForConfirmation = 0 -> Ra
 RabbitMQ.Stream.Client.Reliable.ConsumerFactory
 RabbitMQ.Stream.Client.Reliable.ConsumerFactory.ConsumerFactory() -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerFactory.CreateConsumer(bool boot) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
-RabbitMQ.Stream.Client.Reliable.ConsumerFactory._consumedFirstTime -> bool
-RabbitMQ.Stream.Client.Reliable.ConsumerFactory._lastOffsetConsumed -> System.Collections.Concurrent.ConcurrentDictionary<string, ulong>
 RabbitMQ.Stream.Client.Reliable.ConsumerFactory._reliableConsumerConfig -> RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenConnected(string connectionInfo) -> System.Threading.Tasks.ValueTask

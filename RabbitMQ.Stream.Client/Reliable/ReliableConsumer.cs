@@ -48,7 +48,7 @@ public class ReliableConsumer : ConsumerFactory
 
     internal override async Task CreateNewEntity(bool boot)
     {
-        _consumer = await CreateConsumer(!boot && _consumedFirstTime);
+        _consumer = await CreateConsumer(boot);
         await _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
     }
 
