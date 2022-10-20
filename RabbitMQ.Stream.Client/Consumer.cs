@@ -145,8 +145,7 @@ namespace RabbitMQ.Stream.Client
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine(e);
-                            // throw;
+                            LogEventSource.Log.LogError($"Error while processing message {messageEntry.Offset} {e}");
                         }
                     }
 
