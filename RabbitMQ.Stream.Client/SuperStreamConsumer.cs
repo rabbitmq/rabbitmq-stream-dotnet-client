@@ -75,10 +75,9 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         };
     }
 
-
     private async Task<IConsumer> InitConsumer(string stream)
     {
-        return await Consumer.Create(_clientParameters with {ClientProvidedName = _clientParameters.ClientProvidedName},
+        return await Consumer.Create(_clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream]);
     }
 
