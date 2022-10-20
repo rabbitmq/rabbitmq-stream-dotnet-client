@@ -345,12 +345,11 @@ public class ReliableTests
                 await Task.CompletedTask;
             }
         });
-        SystemUtils.Wait(TimeSpan.FromSeconds(6));
+        SystemUtils.Wait(TimeSpan.FromSeconds(4));
         // in this case we kill the connection before consume consume any message
         // so it should use the selected   OffsetSpec in this case = new OffsetTypeFirst(),
 
-        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
-        await SystemUtils.HttpKillConnections(clientProviderName);
+        Assert.Equal(1, await SystemUtils.HttpKillConnections(clientProviderName));
         await SystemUtils.PublishMessages(system, stream, NumberOfMessages, _testOutputHelper);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         await cR.Close();
