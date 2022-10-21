@@ -196,6 +196,11 @@ public class SuperStreamConsumerTests
         }
     }
 
+    /// <summary>
+    /// We test the single active consumer functionality in different scenarios.
+    /// The class SaCConsumerExpectedTestCases contains the different scenarios and the expected results.
+    /// </summary>
+    /// <param name="saCConsumerExpected"></param>
     [Theory]
     [ClassData(typeof(SaCConsumerExpectedTestCases))]
     public async void SaCNumberOfMessagesConsumedShouldBeEqualsToPublished(SaCConsumerExpected saCConsumerExpected)
@@ -282,6 +287,15 @@ public class SuperStreamConsumerTests
         await system.Close();
     }
 
+    /// <summary>
+    /// The most complex test where we test the consumer with the following configuration:
+    /// Single Active Consumer = true
+    /// Super Stream = true
+    /// There are 3 consumers and 1 is closed by killing the connection ( so it should be recreated)
+    /// When the consumer is killed a second consumer becomes active and consumes the messages
+    /// But given the event: consumerUpdateListener we restart from the last stored offset
+    /// So the number of messages consumed should be the same as the number of messages published 
+    /// </summary>
     [Fact]
     public async void ReliableConsumerNumberOfMessagesConsumedShouldBeEqualsToPublishedInSaC()
     {
@@ -315,9 +329,11 @@ public class SuperStreamConsumerTests
         }
 
         var clientProvidedName = $"first_{Guid.NewGuid().ToString()}";
+        // this is the first consumer that is active and consumes the messages
         var consumerSingle = await NewReliableConsumer(reference, clientProvidedName, null);
         consumers.Add(consumerSingle);
         SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        // these are two consumers that are not active and won't consume the messages
         for (var i = 0; i < 2; i++)
         {
             var consumer = await NewReliableConsumer(reference, Guid.NewGuid().ToString(),
@@ -326,7 +342,8 @@ public class SuperStreamConsumerTests
             consumers.Add(consumer);
         }
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        // The sum og the messages must be 20 as the publisher published 20 messages
         Assert.Equal(9,
             listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
         Assert.Equal(7,
@@ -335,9 +352,12 @@ public class SuperStreamConsumerTests
             listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
 
         SystemUtils.Wait(TimeSpan.FromSeconds(2));
-        Assert.Equal(3, await SystemUtils.HttpKillConnections(clientProvidedName));
+        // we kill the connections of the first super stream consumer ( so 3 connections one per stream)
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 3);
         SystemUtils.Wait(TimeSpan.FromSeconds(3));
-
+        //  at this point the second consumer should be active and consume the messages
+        // and the consumerUpdateListener should be called and the offset should be restored
+        // so the sum of the messages must be 20 as the publisher published 20 messages
         Assert.Equal(9,
             listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
         Assert.Equal(7,
@@ -349,6 +369,10 @@ public class SuperStreamConsumerTests
             await reliableConsumer.Close();
         }
 
+        // just to be sure that the connections are killed
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 0);
+
         await system.Close();
+
     }
 }

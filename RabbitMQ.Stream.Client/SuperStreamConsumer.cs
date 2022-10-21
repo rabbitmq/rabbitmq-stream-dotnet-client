@@ -16,7 +16,10 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     // The send operations will check if the producer exists and if not it will be created
     private readonly ConcurrentDictionary<string, IConsumer> _consumers = new();
     private bool _disposed;
+
     private readonly SuperStreamConsumerConfig _config;
+
+    //  Contains the info about the streams (one per partition)
     private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
 
@@ -32,6 +35,10 @@ public class SuperStreamConsumer : IConsumer, IDisposable
             ConsumerUpdateListener = _config.ConsumerUpdateListener,
             ConnectionClosedHandler = async (string s) =>
             {
+                // if the stream is still in the consumer list
+                // means that the consumer was not closed voluntarily
+                // and it is needed to recreate it.
+                // The stream will be removed from the list when the consumer is closed
                 if (_consumers.ContainsKey(stream))
                 {
                     LogEventSource.Log.LogInformation(
@@ -42,7 +49,13 @@ public class SuperStreamConsumer : IConsumer, IDisposable
             },
             MessageHandler = async (consumer, context, message) =>
             {
-                await _config.MessageHandler(stream, consumer, context, message);
+                // in the message handler we need to add also the source stream
+                // since there could be multiple streams (one per partition)
+                // it is useful client side to know from which stream the message is coming from
+                if (_config.MessageHandler != null)
+                {
+                    await _config.MessageHandler(stream, consumer, context, message);
+                }
             },
             MetadataHandler = update =>
             {
@@ -81,9 +94,11 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
     private async Task<IConsumer> InitConsumer(string stream)
     {
-        var c = await Consumer.Create(_clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
+        var c = await Consumer.Create(
+            _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream]);
-        LogEventSource.Log.LogInformation($"SuperStream Consumer. Consumer {_config.Reference} created for Stream {stream}");
+        LogEventSource.Log.LogInformation(
+            $"SuperStream Consumer. Consumer {_config.Reference} created for Stream {stream}");
         return c;
     }
 
@@ -116,12 +131,26 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         }
     }
 
+    /// <summary>
+    /// Create a new super stream consumer
+    /// </summary>
+    /// <param name="superStreamConsumerConfig"></param>
+    /// <param name="streamInfos"></param>
+    /// <param name="clientParameters"></param>
+    /// <returns></returns>
     public static IConsumer Create(SuperStreamConsumerConfig superStreamConsumerConfig,
         IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
     {
         return new SuperStreamConsumer(superStreamConsumerConfig, streamInfos, clientParameters);
     }
 
+    /// <summary>
+    /// It is not possible to close store the offset here since the consumer is not aware of the stream
+    /// you need to use the consumer inside the MessageHandler to store the offset
+    /// </summary>
+    /// <param name="offset"></param>
+    /// <returns></returns>
+    /// <exception cref="NotImplementedException"></exception>
     public Task StoreOffset(ulong offset)
     {
         throw new NotImplementedException("use the store offset on the stream consumer, instead");
@@ -153,8 +182,16 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
 public record SuperStreamConsumerConfig : IConsumerConfig
 {
+    /// <summary>
+    /// the offset spec for each stream
+    /// the user can specify the offset for each stream
+    /// </summary>
     public ConcurrentDictionary<string, IOffsetType> OffsetSpec { get; set; } = new();
 
+    /// <summary>
+    /// MessageHandler is called when a message is received
+    /// The first parameter is the stream name from which the message is coming from
+    /// </summary>
     public Func<string, Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
     public string SuperStream { get; set; }

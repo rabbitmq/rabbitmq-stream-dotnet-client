@@ -9,9 +9,16 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
+/// <summary>
+/// ConsumerFactory is the class to decide which kind on the consumer is needed
+/// Consumers are: Standard Consumer and Super Stream Consumer
+/// </summary>
 public abstract class ConsumerFactory : ReliableBase
 {
     protected ReliableConsumerConfig _reliableConsumerConfig;
+    // this list contains the map between the stream and last consumed offset 
+    // standard consumer is just one 
+    // super stream consumer is one per stream-partition
     private readonly ConcurrentDictionary<string, ulong> _lastOffsetConsumed = new();
     private bool _consumedFirstTime = false;
 
