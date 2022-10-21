@@ -57,7 +57,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                     await _config.MessageHandler(stream, consumer, context, message);
                 }
             },
-            MetadataHandler = update =>
+            MetadataHandler = async update =>
             {
                 // In case of stream update we remove the producer from the list
                 // We hide the behavior of the producer to the user
@@ -68,6 +68,18 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                 // We need to wait a bit it can take some time to update the configuration
                 Thread.Sleep(500);
 
+                _streamInfos.Remove(update.Stream);
+                _consumers.TryRemove(update.Stream, out var consumerMetadata);
+                consumerMetadata?.Close();
+
+                // this check is needed only for an edge case 
+                // when the system is closed and the connections for the steam are still open for
+                // some reason. So if the Client IsClosed we can't operate on it
+                if (_config.Client.IsClosed || _disposed)
+                {
+                    return;
+                }
+
                 var exists = _config.Client.StreamExists(update.Stream);
                 if (!exists.Result)
                 {
@@ -76,16 +88,22 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                     // can be compromised
                     LogEventSource.Log.LogWarning(
                         $"SuperStream Consumer. Stream {update.Stream} is not available anymore");
-                    _streamInfos.Remove(update.Stream);
-                    _consumers[update.Stream].Close();
-                    _consumers.TryRemove(update.Stream, out _);
                 }
                 else
                 {
-                    LogEventSource.Log.LogInformation(
-                        $"Super Stream Consumer. {_config.Reference}. Metadata update for stream {update.Stream}. Client will try reconnect");
-                    _consumers.TryRemove(update.Stream, out _);
-                    GetConsumer(update.Stream).WaitAsync(CancellationToken.None);
+                    await Task.Run(async () =>
+                    {
+                        // this is an edge case when the user remove a replica for the stream
+                        // s0 the topology is changed and the consumer is disconnected
+                        // this is why in this case we need to query the QueryMetadata again
+                        // most of the time this code is not executed
+                        LogEventSource.Log.LogInformation(
+                            $"Super Stream Consumer. Consumer: {_config.Reference}. Metadata update for stream {update.Stream}. Client will try reconnect");
+                        var x = await _config.Client.QueryMetadata(new[] { update.Stream });
+                        x.StreamInfos.TryGetValue(update.Stream, out var streamInfo);
+                        _streamInfos.Add(update.Stream, streamInfo);
+                        await GetConsumer(update.Stream);
+                    });
                 }
             },
             OffsetSpec = _config.OffsetSpec.ContainsKey(stream) ? _config.OffsetSpec[stream] : new OffsetTypeNext(),

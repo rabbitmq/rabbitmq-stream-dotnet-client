@@ -85,7 +85,8 @@ public class SuperStreamProducer : IProducer, IDisposable
                     _streamInfos.Remove(update.Stream);
                 }
 
-                _producers.TryRemove(update.Stream, out _);
+                _producers.TryRemove(update.Stream, out var producer);
+                producer?.Close();
             },
             ClientProvidedName = _config.ClientProvidedName,
             BatchSize = _config.BatchSize,
