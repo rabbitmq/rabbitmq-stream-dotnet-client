@@ -34,6 +34,8 @@ public class SuperStreamConsumer : IConsumer, IDisposable
             {
                 if (_consumers.ContainsKey(stream))
                 {
+                    LogEventSource.Log.LogInformation(
+                        $"Super Stream Consumer. Consumer {_config.Reference} is disconnected from {stream}. Client will try reconnect");
                     _consumers.TryRemove(stream, out _);
                     await GetConsumer(stream);
                 }
@@ -67,6 +69,8 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                 }
                 else
                 {
+                    LogEventSource.Log.LogInformation(
+                        $"Super Stream Consumer. {_config.Reference}. Metadata update for stream {update.Stream}. Client will try reconnect");
                     _consumers.TryRemove(update.Stream, out _);
                     GetConsumer(update.Stream).WaitAsync(CancellationToken.None);
                 }
@@ -77,8 +81,10 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
     private async Task<IConsumer> InitConsumer(string stream)
     {
-        return await Consumer.Create(_clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
+        var c = await Consumer.Create(_clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream]);
+        LogEventSource.Log.LogInformation($"SuperStream Consumer. Consumer {_config.Reference} created for Stream {stream}");
+        return c;
     }
 
     private async Task<IConsumer> GetConsumer(string stream)

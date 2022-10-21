@@ -96,8 +96,10 @@ public class SuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        return await Producer.Create(_clientParameters,
+        var p = await Producer.Create(_clientParameters,
             FromStreamConfig(stream), _streamInfos[stream]);
+        LogEventSource.Log.LogInformation($"SuperStream Producer. Producer {_config.Reference} created for Stream {stream}");
+        return p;
     }
 
     private async Task<IProducer> GetProducer(string stream)
