@@ -34,15 +34,8 @@ namespace RabbitMQ.Stream.Client
         public Func<bool, Task<IOffsetType>> ConsumerUpdateHandler { get; }
     }
 
-    public record ConsumerConfig : INamedEntity
+    public record ConsumerConfig : IConsumerConfig
     {
-        // StoredOffsetSpec configuration it is needed to keep the offset spec.
-        // since the offset can be decided from the ConsumerConfig.OffsetSpec.
-        // and from ConsumerConfig.ConsumerUpdateListener.
-        // needed also See also consumer:MaybeDispatch/1.
-        // It is not public because it is not needed for the user.
-        internal IOffsetType StoredOffsetSpec { get; set; }
-
         internal void Validate()
         {
             if (IsSingleActiveConsumer && (Reference == null || Reference.Trim() == string.Empty))
@@ -51,34 +44,17 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
+
         // stream name where the consumer will consume the messages.
         // stream must exist before the consumer is created.
         public string Stream { get; set; }
-        public string Reference { get; set; }
         public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
-        public Func<string, Task> ConnectionClosedHandler { get; set; }
-
-        public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
-
-        // ClientProvidedName is used to identify TCP connection name.
-        public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
-
-        // SingleActiveConsumer is used to indicate that there is only one consumer active for the stream.
-        // given a consumer reference. 
-        // Consumer Reference can't be null or Empty.
-
-        public bool IsSingleActiveConsumer { get; set; } = false;
-
-        // config.ConsumerUpdateListener is the callback for when the consumer is updated due
-        // to single active consumer. 
-        // return IOffsetType to indicate the offset to be used for the next consumption.
-        // if the ConsumerUpdateListener==null the OffsetSpec will be used.
-        public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
     }
 
-    public class Consumer : AbstractEntity, IDisposable
+    public class Consumer : AbstractEntity, IConsumer, IDisposable
     {
         private bool _disposed;
         private readonly ConsumerConfig config;
@@ -109,7 +85,7 @@ namespace RabbitMQ.Stream.Client
             await client.StoreOffset(config.Reference, config.Stream, offset);
         }
 
-        public static async Task<Consumer> Create(ClientParameters clientParameters,
+        public static async Task<IConsumer> Create(ClientParameters clientParameters,
             ConsumerConfig config,
             StreamInfo metaStreamInfo)
         {
@@ -159,11 +135,18 @@ namespace RabbitMQ.Stream.Client
                             continue;
                         }
 
-                        var message = Message.From(messageEntry.Data);
-                        await config.MessageHandler(this,
-                            new MessageContext(messageEntry.Offset,
-                                TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
-                            message);
+                        try
+                        {
+                            var message = Message.From(messageEntry.Data);
+                            await config.MessageHandler(this,
+                                new MessageContext(messageEntry.Offset,
+                                    TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
+                                message);
+                        }
+                        catch (Exception e)
+                        {
+                            LogEventSource.Log.LogError($"Error while processing message {messageEntry.Offset} {e}");
+                        }
                     }
 
                     // give one credit after each chunk

@@ -278,22 +278,12 @@ RabbitMQ.Stream.Client.Consumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.
 RabbitMQ.Stream.Client.Consumer.Dispose() -> void
 RabbitMQ.Stream.Client.Consumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.ConsumerConfig
-RabbitMQ.Stream.Client.ConsumerConfig.ClientProvidedName.get -> string
-RabbitMQ.Stream.Client.ConsumerConfig.ClientProvidedName.set -> void
-RabbitMQ.Stream.Client.ConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
-RabbitMQ.Stream.Client.ConsumerConfig.ConnectionClosedHandler.set -> void
-RabbitMQ.Stream.Client.ConsumerConfig.ConsumerUpdateListener.get -> System.Func<string, string, bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>>
-RabbitMQ.Stream.Client.ConsumerConfig.ConsumerUpdateListener.set -> void
-RabbitMQ.Stream.Client.ConsumerConfig.IsSingleActiveConsumer.get -> bool
-RabbitMQ.Stream.Client.ConsumerConfig.IsSingleActiveConsumer.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.MessageHandler.get -> System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.ConsumerConfig.MessageHandler.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.MetadataHandler.get -> System.Action<RabbitMQ.Stream.Client.MetaDataUpdate>
 RabbitMQ.Stream.Client.ConsumerConfig.MetadataHandler.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
 RabbitMQ.Stream.Client.ConsumerConfig.OffsetSpec.set -> void
-RabbitMQ.Stream.Client.ConsumerConfig.Reference.get -> string
-RabbitMQ.Stream.Client.ConsumerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.ConsumerConfig.Stream.get -> string
 RabbitMQ.Stream.Client.ConsumerConfig.Stream.set -> void
 RabbitMQ.Stream.Client.ConsumerUpdateQueryResponse
@@ -426,6 +416,21 @@ RabbitMQ.Stream.Client.ICompressionCodec.MessagesCount.get -> int
 RabbitMQ.Stream.Client.ICompressionCodec.UnCompress(System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) -> System.Buffers.ReadOnlySequence<byte>
 RabbitMQ.Stream.Client.ICompressionCodec.UnCompressedSize.get -> int
 RabbitMQ.Stream.Client.ICompressionCodec.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.IConsumer
+RabbitMQ.Stream.Client.IConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+RabbitMQ.Stream.Client.IConsumer.Dispose() -> void
+RabbitMQ.Stream.Client.IConsumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.IConsumerConfig
+RabbitMQ.Stream.Client.IConsumerConfig.ClientProvidedName.get -> string
+RabbitMQ.Stream.Client.IConsumerConfig.ClientProvidedName.set -> void
+RabbitMQ.Stream.Client.IConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.IConsumerConfig.ConnectionClosedHandler.set -> void
+RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.get -> System.Func<string, string, bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>>
+RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.set -> void
+RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.get -> bool
+RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.set -> void
+RabbitMQ.Stream.Client.IConsumerConfig.Reference.get -> string
+RabbitMQ.Stream.Client.IConsumerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.INamedEntity
 RabbitMQ.Stream.Client.INamedEntity.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.INamedEntity.ClientProvidedName.set -> void
@@ -703,6 +708,10 @@ RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.PublisherDoesNotExist = 18 ->
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.StreamNotAvailable = 6 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.UndefinedError = 200 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
 RabbitMQ.Stream.Client.Reliable.ConfirmationStatus.WaitForConfirmation = 0 -> RabbitMQ.Stream.Client.Reliable.ConfirmationStatus
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory.ConsumerFactory() -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory.CreateConsumer(bool boot) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
+RabbitMQ.Stream.Client.Reliable.ConsumerFactory._reliableConsumerConfig -> RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenConnected(string connectionInfo) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenDisconnected(string connectionInfo) -> System.Threading.Tasks.ValueTask<bool>
@@ -740,7 +749,9 @@ RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ConsumerUpdateListener.ge
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.ConsumerUpdateListener.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSingleActiveConsumer.get -> bool
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSingleActiveConsumer.set -> void
-RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.get -> System.Func<RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSuperStream.get -> bool
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.IsSuperStream.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.get -> System.Func<string, RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.MessageHandler.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
 RabbitMQ.Stream.Client.Reliable.ReliableConsumerConfig.OffsetSpec.set -> void
@@ -872,13 +883,15 @@ RabbitMQ.Stream.Client.StreamSpec.Name.init -> void
 RabbitMQ.Stream.Client.StreamSpec.StreamSpec(string Name) -> void
 RabbitMQ.Stream.Client.StreamSystem
 RabbitMQ.Stream.Client.StreamSystem.Close() -> System.Threading.Tasks.Task
-RabbitMQ.Stream.Client.StreamSystem.CreateConsumer(RabbitMQ.Stream.Client.ConsumerConfig consumerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Consumer>
+RabbitMQ.Stream.Client.StreamSystem.CreateConsumer(RabbitMQ.Stream.Client.ConsumerConfig consumerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
 RabbitMQ.Stream.Client.StreamSystem.CreateProducer(RabbitMQ.Stream.Client.ProducerConfig producerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
 RabbitMQ.Stream.Client.StreamSystem.CreateStream(RabbitMQ.Stream.Client.StreamSpec spec) -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.StreamSystem.CreateSuperStreamConsumer(RabbitMQ.Stream.Client.SuperStreamConsumerConfig superStreamConsumerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
 RabbitMQ.Stream.Client.StreamSystem.CreateSuperStreamProducer(RabbitMQ.Stream.Client.SuperStreamProducerConfig superStreamProducerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
 RabbitMQ.Stream.Client.StreamSystem.DeleteStream(string stream) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystem.IsClosed.get -> bool
 RabbitMQ.Stream.Client.StreamSystem.QueryOffset(string reference, string stream) -> System.Threading.Tasks.Task<ulong>
+RabbitMQ.Stream.Client.StreamSystem.QueryPartition(string superStream) -> System.Threading.Tasks.Task<string[]>
 RabbitMQ.Stream.Client.StreamSystem.QuerySequence(string reference, string stream) -> System.Threading.Tasks.Task<ulong>
 RabbitMQ.Stream.Client.StreamSystem.StreamExists(string stream) -> System.Threading.Tasks.Task<bool>
 RabbitMQ.Stream.Client.StreamSystemConfig
@@ -916,6 +929,17 @@ RabbitMQ.Stream.Client.SubscribeResponse.ResponseCode.get -> RabbitMQ.Stream.Cli
 RabbitMQ.Stream.Client.SubscribeResponse.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.SubscribeResponse.SubscribeResponse() -> void
 RabbitMQ.Stream.Client.SubscribeResponse.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.SuperStreamConsumer
+RabbitMQ.Stream.Client.SuperStreamConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+RabbitMQ.Stream.Client.SuperStreamConsumer.Dispose() -> void
+RabbitMQ.Stream.Client.SuperStreamConsumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.MessageHandler.get -> System.Func<string, RabbitMQ.Stream.Client.Consumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.MessageHandler.set -> void
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.OffsetSpec.get -> System.Collections.Concurrent.ConcurrentDictionary<string, RabbitMQ.Stream.Client.IOffsetType>
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.OffsetSpec.set -> void
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.SuperStream.get -> string
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.SuperStream.set -> void
 RabbitMQ.Stream.Client.SuperStreamProducer
 RabbitMQ.Stream.Client.SuperStreamProducer.BatchSend(System.Collections.Generic.List<(ulong, RabbitMQ.Stream.Client.Message)> messages) -> System.Threading.Tasks.ValueTask
 RabbitMQ.Stream.Client.SuperStreamProducer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
@@ -978,7 +1002,7 @@ static RabbitMQ.Stream.Client.Client.Create(RabbitMQ.Stream.Client.ClientParamet
 static RabbitMQ.Stream.Client.CompressionHelper.Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) -> RabbitMQ.Stream.Client.ICompressionCodec
 static RabbitMQ.Stream.Client.CompressionHelper.UnCompress(RabbitMQ.Stream.Client.CompressionType compressionType, System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) -> System.Buffers.ReadOnlySequence<byte>
 static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>
-static RabbitMQ.Stream.Client.Consumer.Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ConsumerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Consumer>
+static RabbitMQ.Stream.Client.Consumer.Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.ConsumerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
 static RabbitMQ.Stream.Client.LeaderLocator.ClientLocal.get -> RabbitMQ.Stream.Client.LeaderLocator
 static RabbitMQ.Stream.Client.LeaderLocator.LeastLeaders.get -> RabbitMQ.Stream.Client.LeaderLocator
 static RabbitMQ.Stream.Client.LeaderLocator.Random.get -> RabbitMQ.Stream.Client.LeaderLocator
@@ -996,5 +1020,6 @@ static RabbitMQ.Stream.Client.StreamCompressionCodecs.RegisterCodec<T>(RabbitMQ.
 static RabbitMQ.Stream.Client.StreamCompressionCodecs.UnRegisterCodec(RabbitMQ.Stream.Client.CompressionType compressionType) -> void
 static RabbitMQ.Stream.Client.StreamSystem.Create(RabbitMQ.Stream.Client.StreamSystemConfig config) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamSystem>
 static RabbitMQ.Stream.Client.SubEntryPublish.Version.get -> byte
+static RabbitMQ.Stream.Client.SuperStreamConsumer.Create(RabbitMQ.Stream.Client.SuperStreamConsumerConfig superStreamConsumerConfig, System.Collections.Generic.IDictionary<string, RabbitMQ.Stream.Client.StreamInfo> streamInfos, RabbitMQ.Stream.Client.ClientParameters clientParameters) -> RabbitMQ.Stream.Client.IConsumer
 static RabbitMQ.Stream.Client.SuperStreamProducer.Create(RabbitMQ.Stream.Client.SuperStreamProducerConfig superStreamProducerConfig, System.Collections.Generic.IDictionary<string, RabbitMQ.Stream.Client.StreamInfo> streamInfos, RabbitMQ.Stream.Client.ClientParameters clientParameters) -> RabbitMQ.Stream.Client.IProducer
 static RabbitMQ.Stream.Client.Version.VersionString.get -> string

@@ -13,8 +13,9 @@ public record ReliableConsumerConfig : ReliableConfig
     public string Reference { get; set; }
     public string ClientProvidedName { get; set; } = "dotnet-stream-rconusmer";
 
-    public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
+    public Func<string, Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
+    public bool IsSuperStream { get; set; }
     public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
 
     public bool IsSingleActiveConsumer { get; set; } = false;
@@ -29,12 +30,9 @@ public record ReliableConsumerConfig : ReliableConfig
 /// - Handle the Metadata Update. In case the stream is deleted ReliableProducer closes Producer/Connection.
 ///   Reconnect the Consumer if the stream still exists.
 /// </summary>
-public class ReliableConsumer : ReliableBase
+public class ReliableConsumer : ConsumerFactory
 {
-    private Consumer _consumer;
-    private readonly ReliableConsumerConfig _reliableConsumerConfig;
-    private ulong _lastConsumerOffset = 0;
-    private bool _consumedFirstTime = false;
+    private IConsumer _consumer;
 
     internal ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
     {
@@ -50,46 +48,7 @@ public class ReliableConsumer : ReliableBase
 
     internal override async Task CreateNewEntity(bool boot)
     {
-        var offsetSpec = _reliableConsumerConfig.OffsetSpec;
-        // if is not the boot time and at least one message was consumed
-        // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume fro the next)
-        if (!boot && _consumedFirstTime)
-        {
-            offsetSpec = new OffsetTypeOffset(_lastConsumerOffset + 1);
-        }
-
-        _consumer = await _reliableConsumerConfig.StreamSystem.CreateConsumer(new ConsumerConfig()
-        {
-            Stream = _reliableConsumerConfig.Stream,
-            ClientProvidedName = _reliableConsumerConfig.ClientProvidedName,
-            Reference = _reliableConsumerConfig.Reference,
-            ConsumerUpdateListener = _reliableConsumerConfig.ConsumerUpdateListener,
-            IsSingleActiveConsumer = _reliableConsumerConfig.IsSingleActiveConsumer,
-            OffsetSpec = offsetSpec,
-            ConnectionClosedHandler = async _ =>
-            {
-                await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
-            },
-            MetadataHandler = update =>
-            {
-                // This is Async since the MetadataHandler is called from the Socket connection thread
-                // HandleMetaDataMaybeReconnect/2 could go in deadlock.
-                Task.Run(() =>
-                {
-                    HandleMetaDataMaybeReconnect(update.Stream,
-                        _reliableConsumerConfig.StreamSystem).WaitAsync(CancellationToken.None);
-                });
-            },
-            MessageHandler = async (consumer, ctx, message) =>
-            {
-                _consumedFirstTime = true;
-                _lastConsumerOffset = ctx.Offset;
-                if (_reliableConsumerConfig.MessageHandler != null)
-                {
-                    await _reliableConsumerConfig.MessageHandler(consumer, ctx, message);
-                }
-            },
-        });
+        _consumer = await CreateConsumer(boot);
         await _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
     }
 

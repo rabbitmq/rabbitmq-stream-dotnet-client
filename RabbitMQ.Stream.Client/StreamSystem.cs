@@ -153,12 +153,51 @@ namespace RabbitMQ.Stream.Client
             {
                 var metaDataResponse = await client.QueryMetadata(new[] { partitionsStream });
                 streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
-
             }
 
             return SuperStreamProducer.Create(superStreamProducerConfig,
                 streamInfos,
                 clientParameters with { ClientProvidedName = superStreamProducerConfig.ClientProvidedName });
+        }
+
+        public async Task<string[]> QueryPartition(string superStream)
+        {
+            await MayBeReconnectLocator();
+            var partitions = await client.QueryPartition(superStream);
+            if (partitions.ResponseCode != ResponseCode.Ok)
+            {
+                throw new QueryException($"query partitions failed code: {partitions.ResponseCode}");
+            }
+
+            return partitions.Streams;
+        }
+
+        public async Task<IConsumer> CreateSuperStreamConsumer(SuperStreamConsumerConfig superStreamConsumerConfig)
+        {
+            await MayBeReconnectLocator();
+            if (superStreamConsumerConfig.SuperStream == "")
+            {
+                throw new CreateProducerException($"Super Stream name can't be empty");
+            }
+
+            superStreamConsumerConfig.Client = client;
+
+            var partitions = await client.QueryPartition(superStreamConsumerConfig.SuperStream);
+            if (partitions.ResponseCode != ResponseCode.Ok)
+            {
+                throw new CreateConsumerException($"consumer could not be created code: {partitions.ResponseCode}");
+            }
+
+            IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
+            foreach (var partitionsStream in partitions.Streams)
+            {
+                var metaDataResponse = await client.QueryMetadata(new[] { partitionsStream });
+                streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
+            }
+
+            return SuperStreamConsumer.Create(superStreamConsumerConfig,
+                streamInfos,
+                clientParameters with { ClientProvidedName = superStreamConsumerConfig.ClientProvidedName });
         }
 
         public async Task<IProducer> CreateProducer(ProducerConfig producerConfig)
@@ -270,7 +309,7 @@ namespace RabbitMQ.Stream.Client
             throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
         }
 
-        public async Task<Consumer> CreateConsumer(ConsumerConfig consumerConfig)
+        public async Task<IConsumer> CreateConsumer(ConsumerConfig consumerConfig)
         {
             await MayBeReconnectLocator();
             var meta = await client.QueryMetadata(new[] { consumerConfig.Stream });

@@ -168,7 +168,8 @@ namespace Tests
         [Fact]
         public async void ValidateQueryOffset()
         {
-            // here we just validate the Query for Offset and Sequence
+            // here we just validate the Query for Offset, Sequence 
+            // and Partitions
             // if the reference is == "" return must be 0
             // stream name is mandatory
             var config = new StreamSystemConfig();
@@ -192,6 +193,13 @@ namespace Tests
                 async () =>
                 {
                     await system.QueryOffset(string.Empty, string.Empty);
+                }
+            );
+
+            await Assert.ThrowsAsync<QueryException>(
+                async () =>
+                {
+                    await system.QueryPartition("stream_does_not_exist");
                 }
             );
             await system.Close();
@@ -283,6 +291,19 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);
             await system.Close();
+        }
+
+        [Fact]
+        public async void NumberOfPartitionsShouldBeAsDefinition()
+        {
+            SystemUtils.ResetSuperStreams();
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            var partitions = await system.QueryPartition(SystemUtils.InvoicesExchange);
+            Assert.True(partitions.Length == 3);
+            Assert.Contains(SystemUtils.InvoicesStream0, partitions);
+            Assert.Contains(SystemUtils.InvoicesStream1, partitions);
+            Assert.Contains(SystemUtils.InvoicesStream2, partitions);
+            Assert.DoesNotContain(SystemUtils.InvoicesExchange, partitions);
         }
     }
 }

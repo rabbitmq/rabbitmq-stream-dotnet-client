@@ -81,11 +81,12 @@ public class SuperStreamProducer : IProducer, IDisposable
                     // The stream doesn't exist anymore
                     // but this condition should be avoided since the hash routing 
                     // can be compromised
-                    LogEventSource.Log.LogWarning($" Stream {update.Stream} is not available anymore");
+                    LogEventSource.Log.LogWarning($"SuperStream Producer. Stream {update.Stream} is not available anymore");
                     _streamInfos.Remove(update.Stream);
                 }
 
-                _producers.TryRemove(update.Stream, out _);
+                _producers.TryRemove(update.Stream, out var producer);
+                producer?.Close();
             },
             ClientProvidedName = _config.ClientProvidedName,
             BatchSize = _config.BatchSize,
@@ -96,8 +97,10 @@ public class SuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        return await Producer.Create(_clientParameters,
+        var p = await Producer.Create(_clientParameters,
             FromStreamConfig(stream), _streamInfos[stream]);
+        LogEventSource.Log.LogInformation($"SuperStream Producer. Producer {_config.Reference} created for Stream {stream}");
+        return p;
     }
 
     private async Task<IProducer> GetProducer(string stream)

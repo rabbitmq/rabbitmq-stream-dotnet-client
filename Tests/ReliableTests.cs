@@ -334,22 +334,22 @@ public class ReliableTests
             StreamSystem = system,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
-            MessageHandler = async (_, _, _) =>
+            MessageHandler = async (streamC, _, _, _) =>
             {
                 if (Interlocked.Increment(ref messagesReceived) >= NumberOfMessages)
                 {
                     testPassed.SetResult(true);
                 }
 
+                Assert.Equal(stream, streamC);
                 await Task.CompletedTask;
             }
         });
-        SystemUtils.Wait(TimeSpan.FromSeconds(6));
+        SystemUtils.Wait(TimeSpan.FromSeconds(1));
         // in this case we kill the connection before consume consume any message
         // so it should use the selected   OffsetSpec in this case = new OffsetTypeFirst(),
 
-        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
-        await SystemUtils.HttpKillConnections(clientProviderName);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         await SystemUtils.PublishMessages(system, stream, NumberOfMessages, _testOutputHelper);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         await cR.Close();
@@ -373,6 +373,7 @@ public class ReliableTests
         var testPassed = new TaskCompletionSource<bool>();
         var clientProviderName = Guid.NewGuid().ToString();
         var reference = Guid.NewGuid().ToString();
+        var messagesReceived = 0;
         var cR = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
         {
             Reference = reference,
@@ -380,27 +381,27 @@ public class ReliableTests
             StreamSystem = system,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
-            MessageHandler = async (_, ctx, _) =>
+            MessageHandler = async (streamC, _, ctx, _) =>
             {
                 // ctx.Offset starts from zero
                 // here we check if the offset is NumberOfMessages *2 ( we publish two times)
-                if ((ctx.Offset + 1) == (NumberOfMessages * 2))
+                if (Interlocked.Increment(ref messagesReceived) == (NumberOfMessages * 2))
                 {
                     testPassed.SetResult(true);
                 }
 
+                Assert.Equal(stream, streamC);
                 await Task.CompletedTask;
             }
         });
-        SystemUtils.Wait(TimeSpan.FromSeconds(6));
+        SystemUtils.Wait(TimeSpan.FromSeconds(4));
         // kill the first time 
-        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
-        await SystemUtils.HttpKillConnections(clientProviderName);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
             Guid.NewGuid().ToString(),
             _testOutputHelper);
-        SystemUtils.Wait(TimeSpan.FromSeconds(6));
-        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProviderName).Result);
+        SystemUtils.Wait(TimeSpan.FromSeconds(4));
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // after kill the consumer must be open
         Assert.True(cR.IsOpen());
