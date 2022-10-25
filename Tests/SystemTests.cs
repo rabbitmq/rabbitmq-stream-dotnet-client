@@ -175,21 +175,21 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<QueryException>(
+            await Assert.ThrowsAsync<ArgumentException>(
                 async () =>
                 {
                     await system.QueryOffset(string.Empty, "stream_we_don_t_care");
                 }
             );
 
-            await Assert.ThrowsAsync<QueryException>(
+            await Assert.ThrowsAsync<ArgumentException>(
                 async () =>
                 {
                     await system.QueryOffset("reference_we_don_care", string.Empty);
                 }
             );
 
-            await Assert.ThrowsAsync<QueryException>(
+            await Assert.ThrowsAsync<ArgumentException>(
                 async () =>
                 {
                     await system.QueryOffset(string.Empty, string.Empty);
@@ -214,21 +214,21 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<QueryException>(
+            await Assert.ThrowsAsync<ArgumentException>(
                 async () =>
                 {
                     await system.QuerySequence(string.Empty, "stream_we_don_t_care");
                 }
             );
 
-            await Assert.ThrowsAsync<QueryException>(
+            await Assert.ThrowsAsync<ArgumentException>(
                 async () =>
                 {
                     await system.QuerySequence("reference_we_don_care", string.Empty);
                 }
             );
 
-            await Assert.ThrowsAsync<QueryException>(
+            await Assert.ThrowsAsync<ArgumentException>(
                 async () =>
                 {
                     await system.QuerySequence(string.Empty, string.Empty);
