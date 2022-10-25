@@ -16,13 +16,42 @@ namespace RabbitMQ.Stream.Client;
 
 public interface IProducer
 {
+    /// <summary>
+    /// Send the message to the stream in asynchronous mode.
+    /// The client will aggregate messages and send them in batches.
+    /// It works in most cases.
+    /// </summary>
+    /// <param name="publishingId">Publishing id</param>
+    /// <param name="message"> Message </param>
+    /// <returns></returns>
     public ValueTask Send(ulong publishingId, Message message);
-    public ValueTask BatchSend(List<(ulong, Message)> messages);
 
+    /// <summary>
+    /// Send the messages in batch to the stream in synchronous mode.
+    /// It is needed when you need to aggregate messages in your application.
+    /// </summary>
+    /// <param name="messages"></param>
+    /// <returns></returns>
+    public ValueTask Send(List<(ulong, Message)> messages);
+
+    /// <summary>
+    /// Enable sub-batch feature.
+    /// It is needed when you need to sub aggregate the messages and compress them.
+    /// For example you can aggregate 100 log messages and compress to reduce the space.
+    /// One single publishingId can have multiple sub-batches messages.
+    /// </summary>
+    /// <param name="publishingId"></param>
+    /// <param name="subEntryMessages">Messages to aggregate</param>
+    /// <param name="compressionType"> Type of compression. By default the client supports GZIP and none</param>
+    /// <returns></returns>
     public ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType);
 
     public Task<ResponseCode> Close();
 
+    /// <summary>
+    /// Return the last publishing id.
+    /// </summary>
+    /// <returns></returns>
     public Task<ulong> GetLastPublishingId();
 
     public bool IsOpen();

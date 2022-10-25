@@ -250,14 +250,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer =
-                await system.CreateProducer(new ProducerConfig
-                {
-                    Stream = stream,
-                    ClientProvidedName = clientProvidedName
-                });
+                await system.CreateRawProducer(new RawProducerConfig(stream) { ClientProvidedName = clientProvidedName });
             SystemUtils.Wait();
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig { Stream = stream, ClientProvidedName = clientProvidedName });
+            var consumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream) { ClientProvidedName = clientProvidedName });
             SystemUtils.Wait();
 
             // Here we have to wait the management stats refresh time before killing the connections.
@@ -286,7 +282,7 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             await system.CreateStream(new StreamSpec(stream));
             var producer =
-                await system.CreateProducer(new ProducerConfig { Stream = stream });
+                await system.CreateRawProducer(new RawProducerConfig(stream));
             SystemUtils.Wait();
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);

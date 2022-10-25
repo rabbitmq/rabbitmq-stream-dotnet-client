@@ -15,7 +15,7 @@ namespace RabbitMQ.Stream.Client.Reliable;
 /// </summary>
 public abstract class ConsumerFactory : ReliableBase
 {
-    protected ReliableConsumerConfig _reliableConsumerConfig;
+    protected ConsumerConfig _consumerConfig;
     // this list contains the map between the stream and last consumed offset 
     // standard consumer is just one 
     // super stream consumer is one per stream-partition
@@ -24,7 +24,7 @@ public abstract class ConsumerFactory : ReliableBase
 
     protected async Task<IConsumer> CreateConsumer(bool boot)
     {
-        if (_reliableConsumerConfig.IsSuperStream)
+        if (_consumerConfig.IsSuperStream)
         {
             return await SuperConsumer(boot);
         }
@@ -34,25 +34,24 @@ public abstract class ConsumerFactory : ReliableBase
 
     private async Task<IConsumer> StandardConsumer(bool boot)
     {
-        var offsetSpec = _reliableConsumerConfig.OffsetSpec;
+        var offsetSpec = _consumerConfig.OffsetSpec;
         // if is not the boot time and at least one message was consumed
         // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume fro the next)
         if (!boot && _consumedFirstTime)
         {
-            offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_reliableConsumerConfig.Stream] + 1);
+            offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_consumerConfig.Stream] + 1);
         }
 
-        return await _reliableConsumerConfig.StreamSystem.CreateConsumer(new ConsumerConfig()
+        return await _consumerConfig.StreamSystem.CreateRawConsumer(new RawConsumerConfig(_consumerConfig.Stream)
         {
-            Stream = _reliableConsumerConfig.Stream,
-            ClientProvidedName = _reliableConsumerConfig.ClientProvidedName,
-            Reference = _reliableConsumerConfig.Reference,
-            ConsumerUpdateListener = _reliableConsumerConfig.ConsumerUpdateListener,
-            IsSingleActiveConsumer = _reliableConsumerConfig.IsSingleActiveConsumer,
+            ClientProvidedName = _consumerConfig.ClientProvidedName,
+            Reference = _consumerConfig.Reference,
+            ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
+            IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
             OffsetSpec = offsetSpec,
             ConnectionClosedHandler = async _ =>
             {
-                await TryToReconnect(_reliableConsumerConfig.ReconnectStrategy);
+                await TryToReconnect(_consumerConfig.ReconnectStrategy);
             },
             MetadataHandler = update =>
             {
@@ -61,16 +60,16 @@ public abstract class ConsumerFactory : ReliableBase
                 Task.Run(() =>
                 {
                     HandleMetaDataMaybeReconnect(update.Stream,
-                        _reliableConsumerConfig.StreamSystem).WaitAsync(CancellationToken.None);
+                        _consumerConfig.StreamSystem).WaitAsync(CancellationToken.None);
                 });
             },
             MessageHandler = async (consumer, ctx, message) =>
             {
                 _consumedFirstTime = true;
-                _lastOffsetConsumed[_reliableConsumerConfig.Stream] = ctx.Offset;
-                if (_reliableConsumerConfig.MessageHandler != null)
+                _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+                if (_consumerConfig.MessageHandler != null)
                 {
-                    await _reliableConsumerConfig.MessageHandler(_reliableConsumerConfig.Stream, consumer, ctx,
+                    await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx,
                         message);
                 }
             },
@@ -92,29 +91,29 @@ public abstract class ConsumerFactory : ReliableBase
         }
         else
         {
-            var partitions = await _reliableConsumerConfig.StreamSystem.QueryPartition(_reliableConsumerConfig.Stream);
+            var partitions = await _consumerConfig.StreamSystem.QueryPartition(_consumerConfig.Stream);
             foreach (var partition in partitions)
             {
                 offsetSpecs[partition] =
-                    _reliableConsumerConfig.OffsetSpec;
+                    _consumerConfig.OffsetSpec;
             }
         }
 
-        return await _reliableConsumerConfig.StreamSystem.CreateSuperStreamConsumer(new SuperStreamConsumerConfig()
+        return await _consumerConfig.StreamSystem.CreateSuperStreamConsumer(new SuperStreamConsumerConfig()
         {
-            SuperStream = _reliableConsumerConfig.Stream,
-            ClientProvidedName = _reliableConsumerConfig.ClientProvidedName,
-            Reference = _reliableConsumerConfig.Reference,
-            ConsumerUpdateListener = _reliableConsumerConfig.ConsumerUpdateListener,
-            IsSingleActiveConsumer = _reliableConsumerConfig.IsSingleActiveConsumer,
+            SuperStream = _consumerConfig.Stream,
+            ClientProvidedName = _consumerConfig.ClientProvidedName,
+            Reference = _consumerConfig.Reference,
+            ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
+            IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
             OffsetSpec = offsetSpecs,
             MessageHandler = async (stream, consumer, ctx, message) =>
             {
                 _consumedFirstTime = true;
-                _lastOffsetConsumed[_reliableConsumerConfig.Stream] = ctx.Offset;
-                if (_reliableConsumerConfig.MessageHandler != null)
+                _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+                if (_consumerConfig.MessageHandler != null)
                 {
-                    await _reliableConsumerConfig.MessageHandler(stream, consumer, ctx,
+                    await _consumerConfig.MessageHandler(stream, consumer, ctx,
                         message);
                 }
             },

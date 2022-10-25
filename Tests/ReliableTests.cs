@@ -89,11 +89,9 @@ public class ReliableTests
         var testPassed = new TaskCompletionSource<bool>();
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var count = 0;
-        var rProducer = await ReliableProducer.CreateReliableProducer(
-            new ReliableProducerConfig()
+        var producer = await Producer.Create(
+            new ProducerConfig(system, stream)
             {
-                Stream = stream,
-                StreamSystem = system,
                 ConfirmationHandler = _ =>
                 {
                     if (Interlocked.Increment(ref count) ==
@@ -111,7 +109,7 @@ public class ReliableTests
         );
         for (var i = 0; i < 5; i++)
         {
-            await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
+            await producer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
         }
 
         List<Message> messages = new()
@@ -122,14 +120,14 @@ public class ReliableTests
 
         for (var i = 0; i < 5; i++)
         {
-            await rProducer.Send(messages, CompressionType.None);
+            await producer.Send(messages, CompressionType.None);
         }
 
         // batch send, it will produce (messages,count) confirmation
-        await rProducer.BatchSend(messages);
+        await producer.Send(messages);
 
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        await rProducer.Close();
+        await producer.Close();
         await system.Close();
     }
 
@@ -147,11 +145,9 @@ public class ReliableTests
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream, clientProvidedNameLocator);
         var count = 0;
         var clientProvidedName = Guid.NewGuid().ToString();
-        var rProducer = await ReliableProducer.CreateReliableProducer(
-            new ReliableProducerConfig()
+        var producer = await Producer.Create(
+            new ProducerConfig(system, stream)
             {
-                Stream = stream,
-                StreamSystem = system,
                 ClientProvidedName = clientProvidedName,
                 ConfirmationHandler = _ =>
                 {
@@ -166,7 +162,7 @@ public class ReliableTests
         );
         for (var i = 0; i < 5; i++)
         {
-            await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
+            await producer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
         }
 
         SystemUtils.Wait(TimeSpan.FromSeconds(6));
@@ -176,14 +172,14 @@ public class ReliableTests
         for (var i = 0; i < 5; i++)
         {
             List<Message> messages = new() { new Message(Encoding.UTF8.GetBytes($"hello list")) };
-            await rProducer.Send(messages, CompressionType.None);
+            await producer.Send(messages, CompressionType.None);
         }
 
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // here the locator connection is closed. 
         // the auto-reconnect has to connect the locator again
         await system.DeleteStream(stream);
-        await rProducer.Close();
+        await producer.Close();
         await system.Close();
     }
 
@@ -192,23 +188,21 @@ public class ReliableTests
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
-        var rProducer = await ReliableProducer.CreateReliableProducer(
-            new ReliableProducerConfig()
+        var producer = await Producer.Create(
+            new ProducerConfig(system, stream)
             {
-                Stream = stream,
-                StreamSystem = system,
                 ClientProvidedName = clientProviderName,
                 ConfirmationHandler = _ => Task.CompletedTask
             }
         );
 
-        Assert.True(rProducer.IsOpen());
+        Assert.True(producer.IsOpen());
         // When the stream is deleted the producer has to close the 
         // connection an become inactive.
         await system.DeleteStream(stream);
 
         SystemUtils.Wait(TimeSpan.FromSeconds(5));
-        Assert.False(rProducer.IsOpen());
+        Assert.False(producer.IsOpen());
         await system.Close();
     }
 
@@ -216,24 +210,22 @@ public class ReliableTests
     public async void HandleChangeStreamConfigurationWithMetaDataUpdate()
     {
         // When stream topology changes the MetadataUpdate is raised.
-        // in this test we simulate it using await ReliableProducer:HandleMetaDataMaybeReconnect/1;
+        // in this test we simulate it using await Producer:HandleMetaDataMaybeReconnect/1;
         // Producer must reconnect
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
-        var rProducer = await ReliableProducer.CreateReliableProducer(
-            new ReliableProducerConfig()
+        var producer = await Producer.Create(
+            new ProducerConfig(system, stream)
             {
-                Stream = stream,
-                StreamSystem = system,
                 ClientProvidedName = clientProviderName,
                 ConfirmationHandler = _ => Task.CompletedTask
             }
         );
 
-        Assert.True(rProducer.IsOpen());
-        await rProducer.HandleMetaDataMaybeReconnect(stream, system);
+        Assert.True(producer.IsOpen());
+        await producer.HandleMetaDataMaybeReconnect(stream, system);
         SystemUtils.Wait();
-        Assert.True(rProducer.IsOpen());
+        Assert.True(producer.IsOpen());
         // await system.DeleteStream(stream);
         await system.Close();
     }
@@ -251,11 +243,9 @@ public class ReliableTests
         var clientProviderName = Guid.NewGuid().ToString();
         var reference = Guid.NewGuid().ToString();
         var count = 0;
-        var rProducer = await ReliableProducer.CreateReliableProducer(
-            new ReliableProducerConfig()
+        var producer = await Producer.Create(
+            new ProducerConfig(system, stream)
             {
-                Stream = stream,
-                StreamSystem = system,
                 ClientProvidedName = clientProviderName,
                 Reference = reference,
                 ConfirmationHandler = confirm =>
@@ -277,24 +267,22 @@ public class ReliableTests
             }
         );
 
-        Assert.True(rProducer.IsOpen());
+        Assert.True(producer.IsOpen());
 
         for (var i = 0; i < 5; i++)
         {
-            await rProducer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
+            await producer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
         }
 
         // We check if the publishing id is actually 5
         new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         Assert.Equal((ulong)5, testPassed.Task.Result);
 
-        await rProducer.Close();
+        await producer.Close();
         var testPassedSecond = new TaskCompletionSource<ulong>();
-        var rProducerSecond = await ReliableProducer.CreateReliableProducer(
-            new ReliableProducerConfig()
+        var producerSecond = await Producer.Create(
+            new ProducerConfig(system, stream)
             {
-                Stream = stream,
-                StreamSystem = system,
                 Reference = reference,
                 ClientProvidedName = clientProviderName,
                 ConfirmationHandler = confirm =>
@@ -307,12 +295,12 @@ public class ReliableTests
 
         // given the same reference, the publishingId should restart from the last
         // in this cas5 is 5
-        await rProducerSecond.Send(new Message(Encoding.UTF8.GetBytes($"hello")));
+        await producerSecond.Send(new Message(Encoding.UTF8.GetBytes($"hello")));
         // +1 here, so 6
         new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(testPassedSecond);
         Assert.Equal((ulong)6, testPassedSecond.Task.Result);
 
-        await rProducerSecond.Close();
+        await producerSecond.Close();
         await system.DeleteStream(stream);
         await system.Close();
     }
@@ -327,11 +315,9 @@ public class ReliableTests
         var clientProviderName = Guid.NewGuid().ToString();
         var reference = Guid.NewGuid().ToString();
         var messagesReceived = 0;
-        var cR = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
+        var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
             Reference = reference,
-            Stream = stream,
-            StreamSystem = system,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
             MessageHandler = async (streamC, _, _, _) =>
@@ -352,7 +338,7 @@ public class ReliableTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         await SystemUtils.PublishMessages(system, stream, NumberOfMessages, _testOutputHelper);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        await cR.Close();
+        await consumer.Close();
         await system.DeleteStream(stream);
         await system.Close();
     }
@@ -374,11 +360,9 @@ public class ReliableTests
         var clientProviderName = Guid.NewGuid().ToString();
         var reference = Guid.NewGuid().ToString();
         var messagesReceived = 0;
-        var cR = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
+        var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
             Reference = reference,
-            Stream = stream,
-            StreamSystem = system,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
             MessageHandler = async (streamC, _, ctx, _) =>
@@ -404,9 +388,9 @@ public class ReliableTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // after kill the consumer must be open
-        Assert.True(cR.IsOpen());
-        await cR.Close();
-        Assert.False(cR.IsOpen());
+        Assert.True(consumer.IsOpen());
+        await consumer.Close();
+        Assert.False(consumer.IsOpen());
         await system.DeleteStream(stream);
         await system.Close();
     }
@@ -416,21 +400,16 @@ public class ReliableTests
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
-        var rConsumer = await ReliableConsumer.CreateReliableConsumer(
-            new ReliableConsumerConfig()
-            {
-                Stream = stream,
-                StreamSystem = system,
-                ClientProvidedName = clientProviderName,
-            }
+        var consumer = await Consumer.Create(
+            new ConsumerConfig(system, stream) { ClientProvidedName = clientProviderName, }
         );
 
-        Assert.True(rConsumer.IsOpen());
+        Assert.True(consumer.IsOpen());
         // When the stream is deleted the consumer has to close the 
         // connection an become inactive.
         await system.DeleteStream(stream);
         SystemUtils.Wait(TimeSpan.FromSeconds(5));
-        Assert.False(rConsumer.IsOpen());
+        Assert.False(consumer.IsOpen());
         await system.Close();
     }
 
@@ -461,23 +440,21 @@ public class ReliableTests
         // testing the ReconnectStrategy override with a new 
         // class MyReconnection. In this case we don't want the reconnection
         // the first time the client is disconnected we set reconnect = false;
-        // so the ReliableConsumer just close the connection
+        // so the Consumer just close the connection
 
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
 
-        var rConsumer = await ReliableConsumer.CreateReliableConsumer(
-            new ReliableConsumerConfig()
+        var consumer = await Consumer.Create(
+            new ConsumerConfig(system, stream)
             {
-                StreamSystem = system,
-                Stream = stream,
                 ClientProvidedName = clientProviderName,
                 ReconnectStrategy = new MyReconnection(_testOutputHelper),
                 Reference = Guid.NewGuid().ToString()
             }
         );
 
-        SystemUtils.WaitUntil(() => rConsumer.IsOpen());
+        SystemUtils.WaitUntil(() => consumer.IsOpen());
 
         await SystemUtils.PublishMessages(system, stream, 10, _testOutputHelper);
         SystemUtils.WaitUntil(() => SystemUtils.IsConnectionOpen(clientProviderName).Result);
@@ -500,7 +477,7 @@ public class ReliableTests
         // since the set reconnect = false
         try
         {
-            SystemUtils.WaitUntil(() => false == rConsumer.IsOpen());
+            SystemUtils.WaitUntil(() => false == consumer.IsOpen());
         }
         finally
         {
@@ -509,14 +486,14 @@ public class ReliableTests
         }
     }
 
-    private class FakeThrowExceptionConsumer : ReliableConsumer
+    private class FakeThrowExceptionConsumer : Consumer
     {
         private readonly Exception _exceptionType;
         private bool _firstTime = true;
 
-        internal FakeThrowExceptionConsumer(ReliableConsumerConfig reliableConsumerConfig, Exception exceptionType)
+        internal FakeThrowExceptionConsumer(ConsumerConfig consumerConfig, Exception exceptionType)
             : base(
-                reliableConsumerConfig)
+                consumerConfig)
         {
             _exceptionType = exceptionType;
         }
@@ -537,17 +514,17 @@ public class ReliableTests
 
     [Fact]
     //<summary>
-    // This test is to check the behavior of the ReliableConsumer when the
+    // This test is to check the behavior of the Consumer when the
     // CreateNewEntity throws an exception.
     // An example could be a GrantException when the consumer is not authorized
-    // The ReliableConsumer should be closed and the exception should be
+    // The Consumer should be closed and the exception should be
     // propagated to the caller.
     //</summary>
     public async void RConsumerShouldStopWhenThrowUnknownException()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
-        var c = new FakeThrowExceptionConsumer(new ReliableConsumerConfig() { StreamSystem = system, Stream = stream },
+        var c = new FakeThrowExceptionConsumer(new ConsumerConfig(system, stream),
             new Exception("Fake Exception"));
 
         await Assert.ThrowsAsync<Exception>(() => c.Init(new BackOffReconnectStrategy()));
@@ -561,21 +538,21 @@ public class ReliableTests
     [Theory]
     [ClassData(typeof(ReliableExceptionTestCases))]
     //<summary>
-    // This test is to check the behavior of the ReliableConsumer when the
+    // This test is to check the behavior of the Consumer when the
     // CreateNewEntity throws an known exception.
-    // In this case the ReliableConsumer should reconnect due of known exception.
+    // In this case the Consumer should reconnect due of known exception.
     // For example SocketException means that the endpoint is not available
-    // it could be a temporary problem so the ReliableConsumer should try to
+    // it could be a temporary problem so the Consumer should try to
     // reconnect.
     //</summary>
     public async void RConsumerShouldBeOpenWhenThrowKnownException(Exception exception)
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
-        var c = new FakeThrowExceptionConsumer(new ReliableConsumerConfig() { StreamSystem = system, Stream = stream },
+        var c = new FakeThrowExceptionConsumer(new ConsumerConfig(system, stream),
             exception);
         Assert.True(ReliableBase.IsAKnownException(exception));
         await c.Init(new BackOffReconnectStrategy());
-        // Here the ReliableConsumer should be open
+        // Here the Consumer should be open
         // The exception is raised only the first time
         // so it is not propagated to the caller
         Assert.True(c.IsOpen());
