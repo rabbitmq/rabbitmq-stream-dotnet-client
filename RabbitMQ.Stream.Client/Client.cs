@@ -296,14 +296,14 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new ConsumerConfig() { Stream = stream, OffsetSpec = offsetType },
+            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
                 initialCredit,
                 properties,
                 deliverHandler,
                 consumerUpdateHandler);
         }
 
-        public async Task<(byte, SubscribeResponse)> Subscribe(ConsumerConfig config,
+        public async Task<(byte, SubscribeResponse)> Subscribe(RawConsumerConfig config,
             ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler)
@@ -614,6 +614,7 @@ namespace RabbitMQ.Stream.Client
             return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
+
         public async ValueTask<QueryOffsetResponse> QueryOffset(string reference, string stream)
         {
             return await Request<QueryOffsetRequest, QueryOffsetResponse>(corr =>

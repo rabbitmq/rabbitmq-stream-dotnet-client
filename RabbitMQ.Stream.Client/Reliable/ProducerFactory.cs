@@ -16,12 +16,12 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 public abstract class ProducerFactory : ReliableBase
 {
-    protected ReliableProducerConfig _reliableProducerConfig;
+    protected ProducerConfig _producerConfig;
     protected ConfirmationPipe _confirmationPipe;
 
     protected async Task<IProducer> CreateProducer()
     {
-        if (_reliableProducerConfig.SuperStreamConfig is { Enabled: true })
+        if (_producerConfig.SuperStreamConfig is { Enabled: true })
         {
             return await SuperStreamProducer();
         }
@@ -31,13 +31,12 @@ public abstract class ProducerFactory : ReliableBase
 
     private async Task<IProducer> SuperStreamProducer()
     {
-        return await _reliableProducerConfig.StreamSystem.CreateSuperStreamProducer(new SuperStreamProducerConfig()
+        return await _producerConfig.StreamSystem.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(_producerConfig.Stream)
         {
-            SuperStream = _reliableProducerConfig.Stream,
-            ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
-            Reference = _reliableProducerConfig.Reference,
-            MaxInFlight = _reliableProducerConfig.MaxInFlight,
-            Routing = _reliableProducerConfig.SuperStreamConfig.Routing,
+            ClientProvidedName = _producerConfig.ClientProvidedName,
+            Reference = _producerConfig.Reference,
+            MaxInFlight = _producerConfig.MaxInFlight,
+            Routing = _producerConfig.SuperStreamConfig.Routing,
             ConfirmHandler = confirmationHandler =>
             {
                 var (stream, confirmation) = confirmationHandler;
@@ -59,12 +58,11 @@ public abstract class ProducerFactory : ReliableBase
 
     private async Task<IProducer> StandardProducer()
     {
-        return await _reliableProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
+        return await _producerConfig.StreamSystem.CreateRawProducer(new RawProducerConfig(_producerConfig.Stream)
         {
-            Stream = _reliableProducerConfig.Stream,
-            ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
-            Reference = _reliableProducerConfig.Reference,
-            MaxInFlight = _reliableProducerConfig.MaxInFlight,
+            ClientProvidedName = _producerConfig.ClientProvidedName,
+            Reference = _producerConfig.Reference,
+            MaxInFlight = _producerConfig.MaxInFlight,
             MetadataHandler = update =>
             {
                 // This is Async since the MetadataHandler is called from the Socket connection thread
@@ -74,10 +72,10 @@ public abstract class ProducerFactory : ReliableBase
                 {
                     // intentionally fire & forget
                     HandleMetaDataMaybeReconnect(update.Stream,
-                        _reliableProducerConfig.StreamSystem).WaitAsync(CancellationToken.None);
+                        _producerConfig.StreamSystem).WaitAsync(CancellationToken.None);
                 });
             },
-            ConnectionClosedHandler = async _ => { await TryToReconnect(_reliableProducerConfig.ReconnectStrategy); },
+            ConnectionClosedHandler = async _ => { await TryToReconnect(_producerConfig.ReconnectStrategy); },
             ConfirmHandler = confirmation =>
             {
                 var confirmationStatus = confirmation.Code switch

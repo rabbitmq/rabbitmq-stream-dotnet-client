@@ -28,14 +28,12 @@ public class SacTests
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => system.CreateConsumer(new ConsumerConfig()
-        {
-            Stream = stream,
-            IsSingleActiveConsumer = true,
-        }));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            system.CreateRawConsumer(
+                new RawConsumerConfig(stream) { IsSingleActiveConsumer = true, }));
 
-        await Assert.ThrowsAsync<ArgumentException>(() => ReliableConsumer.CreateReliableConsumer(
-            new ReliableConsumerConfig() { StreamSystem = system, Stream = stream, IsSingleActiveConsumer = true, }));
+        await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
+            new ConsumerConfig(system, stream) { IsSingleActiveConsumer = true, }));
 
         await system.DeleteStream(stream);
         await system.Close();
@@ -126,9 +124,8 @@ public class SacTests
 
         await SystemUtils.PublishMessages(system, stream, TotalMessages, _testOutputHelper);
         var testPassedConsumer1 = new TaskCompletionSource<int>();
-        var consumer1 = await system.CreateConsumer(new ConsumerConfig()
+        var consumer1 = await system.CreateRawConsumer(new RawConsumerConfig(stream)
         {
-            Stream = stream,
             Reference = AppName,
             OffsetSpec = offsetSpecFirstConsumer,
             IsSingleActiveConsumer = true,
@@ -147,9 +144,8 @@ public class SacTests
 
         var testPassedConsumer2 = new TaskCompletionSource<int>();
         var messagesConsumed = 0;
-        var consumer2 = await system.CreateConsumer(new ConsumerConfig()
+        var consumer2 = await system.CreateRawConsumer(new RawConsumerConfig(stream)
         {
-            Stream = stream,
             Reference = AppName,
             OffsetSpec = offsetSpecSecondConsumer,
             ConsumerUpdateListener = offsetTypeFunc,

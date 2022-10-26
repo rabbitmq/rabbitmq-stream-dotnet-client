@@ -120,29 +120,30 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<IProducer> CreateSuperStreamProducer(SuperStreamProducerConfig superStreamProducerConfig)
+        public async Task<IProducer> CreateRawSuperStreamProducer(
+            RawSuperStreamProducerConfig rawSuperStreamProducerConfig)
         {
             await MayBeReconnectLocator();
-            if (superStreamProducerConfig.SuperStream == "")
+            if (rawSuperStreamProducerConfig.SuperStream == "")
             {
                 throw new CreateProducerException($"Super Stream name can't be empty");
             }
 
-            if (superStreamProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
+            if (rawSuperStreamProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
             {
                 throw new CreateProducerException(
                     $"Batch Size must be bigger than 0");
             }
 
-            if (superStreamProducerConfig.Routing == null)
+            if (rawSuperStreamProducerConfig.Routing == null)
             {
                 throw new CreateProducerException(
                     $"Routing Key Extractor must be provided");
             }
 
-            superStreamProducerConfig.Client = client;
+            rawSuperStreamProducerConfig.Client = client;
 
-            var partitions = await client.QueryPartition(superStreamProducerConfig.SuperStream);
+            var partitions = await client.QueryPartition(rawSuperStreamProducerConfig.SuperStream);
             if (partitions.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateProducerException($"producer could not be created code: {partitions.ResponseCode}");
@@ -155,9 +156,9 @@ namespace RabbitMQ.Stream.Client
                 streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
             }
 
-            return SuperStreamProducer.Create(superStreamProducerConfig,
+            return RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
                 streamInfos,
-                clientParameters with { ClientProvidedName = superStreamProducerConfig.ClientProvidedName });
+                clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName });
         }
 
         public async Task<string[]> QueryPartition(string superStream)
@@ -200,24 +201,18 @@ namespace RabbitMQ.Stream.Client
                 clientParameters with { ClientProvidedName = superStreamConsumerConfig.ClientProvidedName });
         }
 
-        public async Task<IProducer> CreateProducer(ProducerConfig producerConfig)
+        public async Task<IProducer> CreateRawProducer(RawProducerConfig rawProducerConfig)
         {
-            // Validate the ProducerConfig values
-            if (producerConfig.Stream == "")
-            {
-                throw new CreateProducerException($"Stream name can't be empty");
-            }
-
-            if (producerConfig.MessagesBufferSize < Consts.MinBatchSize)
+            if (rawProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
             {
                 throw new CreateProducerException(
                     $"Batch Size must be bigger than 0");
             }
 
             await MayBeReconnectLocator();
-            var meta = await client.QueryMetadata(new[] { producerConfig.Stream });
+            var meta = await client.QueryMetadata(new[] { rawProducerConfig.Stream });
 
-            var metaStreamInfo = meta.StreamInfos[producerConfig.Stream];
+            var metaStreamInfo = meta.StreamInfos[rawProducerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
@@ -229,9 +224,9 @@ namespace RabbitMQ.Stream.Client
             {
                 await _semClientProvidedName.WaitAsync();
 
-                return await Producer.Create(
-                    clientParameters with { ClientProvidedName = producerConfig.ClientProvidedName },
-                    producerConfig, metaStreamInfo);
+                return await RawProducer.Create(
+                    clientParameters with { ClientProvidedName = rawProducerConfig.ClientProvidedName },
+                    rawProducerConfig, metaStreamInfo);
             }
             finally
             {
@@ -257,9 +252,9 @@ namespace RabbitMQ.Stream.Client
 
         private static void MaybeThrowQueryException(string reference, string stream)
         {
-            if (string.IsNullOrEmpty(reference) || string.IsNullOrEmpty(stream))
+            if (string.IsNullOrWhiteSpace(reference) || string.IsNullOrWhiteSpace(stream))
             {
-                throw new QueryException("Stream name and reference can't be empty or null");
+                throw new ArgumentException("Stream name and reference can't be empty or null");
             }
         }
 
@@ -309,11 +304,11 @@ namespace RabbitMQ.Stream.Client
             throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
         }
 
-        public async Task<IConsumer> CreateConsumer(ConsumerConfig consumerConfig)
+        public async Task<IConsumer> CreateRawConsumer(RawConsumerConfig rawConsumerConfig)
         {
             await MayBeReconnectLocator();
-            var meta = await client.QueryMetadata(new[] { consumerConfig.Stream });
-            var metaStreamInfo = meta.StreamInfos[consumerConfig.Stream];
+            var meta = await client.QueryMetadata(new[] { rawConsumerConfig.Stream });
+            var metaStreamInfo = meta.StreamInfos[rawConsumerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
@@ -324,9 +319,9 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 await _semClientProvidedName.WaitAsync();
-                var s = clientParameters with { ClientProvidedName = consumerConfig.ClientProvidedName };
-                return await Consumer.Create(s,
-                    consumerConfig, metaStreamInfo);
+                var s = clientParameters with { ClientProvidedName = rawConsumerConfig.ClientProvidedName };
+                return await RawConsumer.Create(s,
+                    rawConsumerConfig, metaStreamInfo);
             }
             finally
             {

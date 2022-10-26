@@ -126,11 +126,10 @@ namespace Tests
 
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
-            var producer = await system.CreateProducer(
-                new ProducerConfig
+            var producer = await system.CreateRawProducer(
+                new RawProducerConfig(stream)
                 {
                     Reference = producerName,
-                    Stream = stream,
                     ConfirmHandler = _ =>
                     {
                         count++;
@@ -179,11 +178,10 @@ namespace Tests
 
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
-            var producer = await system.CreateSuperStreamProducer(
-                new SuperStreamProducerConfig()
+            var producer = await system.CreateRawSuperStreamProducer(
+                new RawSuperStreamProducerConfig(stream)
                 {
                     Reference = producerName,
-                    SuperStream = stream,
                     Routing = message1 => message1.Properties.MessageId.ToString(),
                     ConfirmHandler = _ =>
                     {

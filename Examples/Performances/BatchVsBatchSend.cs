@@ -35,10 +35,8 @@ public class BatchVsBatchSend
         var total = 0;
         var confirmed = 0;
         var error = 0;
-        var reliableProducer = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
+        var reliableProducer = await Producer.Create(new ProducerConfig(system, stream)
         {
-            Stream = stream,
-            StreamSystem = system,
             MaxInFlight = 1_000_000,
             ConfirmationHandler = messagesConfirmed =>
             {
@@ -87,10 +85,8 @@ public class BatchVsBatchSend
         var total = 0;
         var confirmed = 0;
         var error = 0;
-        var reliableProducer = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
+        var producer = await Producer.Create(new ProducerConfig(system,stream)
         {
-            Stream = stream,
-            StreamSystem = system,
             MaxInFlight = 1_000_000,
             ConfirmationHandler = messagesConfirmed =>
             {
@@ -122,7 +118,7 @@ public class BatchVsBatchSend
             messages.Add(new Message(array));
             if (i % AggregateBatchSize == 0)
             {
-                await reliableProducer.BatchSend(messages);
+                await producer.Send(messages);
                 messages.Clear();
             }
 
@@ -132,13 +128,13 @@ public class BatchVsBatchSend
             }
         }
 
-        await reliableProducer.BatchSend(messages);
+        await producer.Send(messages);
         messages.Clear();
 
         Console.WriteLine(
             $"*****Reliable Producer Batch Send***** time: {DateTime.Now - start}, messages sent: {TotalMessages}");
         Thread.Sleep(1000);
-        await reliableProducer.Close();
+        await producer.Close();
     }
 
 
@@ -146,9 +142,8 @@ public class BatchVsBatchSend
     {
         Console.WriteLine("*****Standard Producer Send*****");
         var confirmed = 0;
-        var producer = await system.CreateProducer(new ProducerConfig()
+        var producer = await system.CreateRawProducer(new RawProducerConfig(stream)
         {
-            Stream = stream,
             MaxInFlight = 1_000_000,
             ConfirmHandler = _ =>
             {
@@ -182,9 +177,8 @@ public class BatchVsBatchSend
     {
         Console.WriteLine("*****Standard Batch Send*****");
         var confirmed = 0;
-        var producer = await system.CreateProducer(new ProducerConfig()
+        var producer = await system.CreateRawProducer(new RawProducerConfig(stream)
         {
-            Stream = stream,
             MaxInFlight = 1_000_000,
             ConfirmHandler = _ =>
             {
@@ -202,7 +196,7 @@ public class BatchVsBatchSend
             messages.Add((i, new Message(array)));
             if (i % AggregateBatchSize == 0)
             {
-                await producer.BatchSend(messages);
+                await producer.Send(messages);
                 messages.Clear();
             }
 
@@ -212,7 +206,7 @@ public class BatchVsBatchSend
             }
         }
 
-        await producer.BatchSend(messages);
+        await producer.Send(messages);
         messages.Clear();
 
         Console.WriteLine(

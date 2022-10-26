@@ -34,8 +34,18 @@ namespace RabbitMQ.Stream.Client
         public Func<bool, Task<IOffsetType>> ConsumerUpdateHandler { get; }
     }
 
-    public record ConsumerConfig : IConsumerConfig
+    public record RawConsumerConfig : IConsumerConfig
     {
+        public RawConsumerConfig(string stream)
+        {
+            if (string.IsNullOrWhiteSpace(stream))
+            {
+                throw new ArgumentException("Stream cannot be null or whitespace.", nameof(stream));
+            }
+
+            Stream = stream;
+        }
+
         internal void Validate()
         {
             if (IsSingleActiveConsumer && (Reference == null || Reference.Trim() == string.Empty))
@@ -48,19 +58,20 @@ namespace RabbitMQ.Stream.Client
 
         // stream name where the consumer will consume the messages.
         // stream must exist before the consumer is created.
-        public string Stream { get; set; }
-        public Func<Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
+        public string Stream { get; }
+
+        public Func<RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
     }
 
-    public class Consumer : AbstractEntity, IConsumer, IDisposable
+    public class RawConsumer : AbstractEntity, IConsumer, IDisposable
     {
         private bool _disposed;
-        private readonly ConsumerConfig config;
+        private readonly RawConsumerConfig config;
         private byte subscriberId;
 
-        private Consumer(Client client, ConsumerConfig config)
+        private RawConsumer(Client client, RawConsumerConfig config)
         {
             this.client = client;
             this.config = config;
@@ -86,11 +97,11 @@ namespace RabbitMQ.Stream.Client
         }
 
         public static async Task<IConsumer> Create(ClientParameters clientParameters,
-            ConsumerConfig config,
+            RawConsumerConfig config,
             StreamInfo metaStreamInfo)
         {
             var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo);
-            var consumer = new Consumer((Client)client, config);
+            var consumer = new RawConsumer((Client)client, config);
             await consumer.Init();
             return consumer;
         }

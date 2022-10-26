@@ -25,11 +25,10 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
     // We need to copy the config from the super consumer to the standard consumer
 
-    private ConsumerConfig FromStreamConfig(string stream)
+    private RawConsumerConfig FromStreamConfig(string stream)
     {
-        return new ConsumerConfig()
+        return new RawConsumerConfig(stream)
         {
-            Stream = stream,
             Reference = _config.Reference,
             IsSingleActiveConsumer = _config.IsSingleActiveConsumer,
             ConsumerUpdateListener = _config.ConsumerUpdateListener,
@@ -112,7 +111,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
     private async Task<IConsumer> InitConsumer(string stream)
     {
-        var c = await Consumer.Create(
+        var c = await RawConsumer.Create(
             _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream]);
         LogEventSource.Log.LogInformation(
@@ -210,7 +209,7 @@ public record SuperStreamConsumerConfig : IConsumerConfig
     /// MessageHandler is called when a message is received
     /// The first parameter is the stream name from which the message is coming from
     /// </summary>
-    public Func<string, Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
+    public Func<string, RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
     public string SuperStream { get; set; }
 

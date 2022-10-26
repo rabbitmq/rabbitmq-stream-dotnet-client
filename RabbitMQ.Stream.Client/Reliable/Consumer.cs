@@ -8,48 +8,62 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
-public record ReliableConsumerConfig : ReliableConfig
+public record ConsumerConfig : ReliableConfig
 {
+    /// <summary>
+    /// Consumer reference name.
+    /// Used to identify the consumer server side when store the messages offset.
+    /// see also <see cref="StreamSystem.QueryOffset"/> to retrieve the last offset.
+    /// </summary>
     public string Reference { get; set; }
-    public string ClientProvidedName { get; set; } = "dotnet-stream-rconusmer";
 
-    public Func<string, Consumer, MessageContext, Message, Task> MessageHandler { get; set; }
+    // <summary>
+    // The client name used to identify the Consumer. 
+    // You can see this value on the Management UI or in the connection detail
+    // </summary>
+    public string ClientProvidedName { get; set; } = "dotnet-stream-conusmer";
+
+    public Func<string, RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
     public bool IsSuperStream { get; set; }
     public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
 
     public bool IsSingleActiveConsumer { get; set; } = false;
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
+
+    public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
+    {
+    }
 }
 
 /// <summary>
-/// ReliableConsumer is a wrapper around the standard Consumer.
+/// Consumer is a wrapper around the standard RawConsumer.
 /// Main features are:
 /// - Auto-reconnection if the connection is dropped
 ///   Automatically restart consuming from the last offset 
-/// - Handle the Metadata Update. In case the stream is deleted ReliableProducer closes Producer/Connection.
+/// - Handle the Metadata Update. In case the stream is deleted Producer closes Producer/Connection.
 ///   Reconnect the Consumer if the stream still exists.
 /// </summary>
-public class ReliableConsumer : ConsumerFactory
+public class Consumer : ConsumerFactory
 {
     private IConsumer _consumer;
 
-    internal ReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
+    internal Consumer(ConsumerConfig consumerConfig)
     {
-        _reliableConsumerConfig = reliableConsumerConfig;
+        _consumerConfig = consumerConfig;
     }
 
-    public static async Task<ReliableConsumer> CreateReliableConsumer(ReliableConsumerConfig reliableConsumerConfig)
+    public static async Task<Consumer> Create(ConsumerConfig consumerConfig)
     {
-        var rConsumer = new ReliableConsumer(reliableConsumerConfig);
-        await rConsumer.Init(reliableConsumerConfig.ReconnectStrategy);
+        var rConsumer = new Consumer(consumerConfig);
+        await rConsumer.Init(consumerConfig.ReconnectStrategy);
         return rConsumer;
     }
 
     internal override async Task CreateNewEntity(bool boot)
     {
         _consumer = await CreateConsumer(boot);
-        await _reliableConsumerConfig.ReconnectStrategy.WhenConnected(ToString());
+        await _consumerConfig.ReconnectStrategy.WhenConnected(ToString());
     }
 
     // just close the consumer. See base/metadataupdate
@@ -77,7 +91,7 @@ public class ReliableConsumer : ConsumerFactory
 
     public override string ToString()
     {
-        return $"Consumer reference: {_reliableConsumerConfig.Reference},  " +
-               $"stream: {_reliableConsumerConfig.Stream} ";
+        return $"Consumer reference: {_consumerConfig.Reference},  " +
+               $"stream: {_consumerConfig.Stream} ";
     }
 }

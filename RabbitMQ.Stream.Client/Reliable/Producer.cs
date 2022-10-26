@@ -16,20 +16,28 @@ public record SuperStreamConfig()
     public Func<Message, string> Routing { get; set; } = null;
 }
 
-public record ReliableProducerConfig : ReliableConfig
+public record ProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
 
+    // <summary>
     // Reference is mostly used for deduplication. In most of the cases reference is not needed.
+    // </summary>
     public string Reference { get; set; }
 
+    // <summary>
     // Confirmation is used to confirm that the message has been received by the server.
     // After the timeout TimeoutMessageAfter/0 the message is considered not confirmed.
     // See MessagesConfirmation.ConfirmationStatus for more details.
+    // </summary>
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
+
+    // <summary>
     // The client name used to identify the producer. 
     // You can see this value on the Management UI or in the connection detail
-    public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
+    // </summary>
+
+    public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
 
     public int MaxInFlight { get; set; } = 1000;
 
@@ -51,40 +59,44 @@ public record ReliableProducerConfig : ReliableConfig
             _timeoutMessageAfter = value;
         }
     }
+
+    public ProducerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
+    {
+    }
 }
 
 /// <summary>
-/// ReliableProducer is a wrapper around the standard Producer/SuperStream Consumer.
+/// Producer is a wrapper around the standard RawProducer/RawSuperStream Consumer.
 /// Main features are:
 /// - Auto-reconnection if the connection is dropped
-/// - Trace sent and received messages. The event ReliableProducer:ConfirmationHandler/2
+/// - Trace sent and received messages. The event Producer:ConfirmationHandler/2
 ///   receives back messages sent with the status.
-/// - Handle the Metadata Update. In case the stream is deleted ReliableProducer closes Producer/Connection.
+/// - Handle the Metadata Update. In case the stream is deleted Producer closes Producer/Connection.
 ///   Reconnect the Producer if the stream still exists.
 /// - Set automatically the next PublisherID
 /// - Automatically retrieves the last sequence. By default is AutoPublishingId see IPublishingIdStrategy.
 /// </summary>
-public class ReliableProducer : ProducerFactory
+public class Producer : ProducerFactory
 {
     private IProducer _producer;
     private ulong _publishingId;
 
-    private ReliableProducer(ReliableProducerConfig reliableProducerConfig)
+    private Producer(ProducerConfig producerConfig)
     {
-        _reliableProducerConfig = reliableProducerConfig;
+        _producerConfig = producerConfig;
         _confirmationPipe = new ConfirmationPipe(
-            reliableProducerConfig.ConfirmationHandler,
-            reliableProducerConfig.TimeoutMessageAfter,
-            reliableProducerConfig.MaxInFlight);
+            producerConfig.ConfirmationHandler,
+            producerConfig.TimeoutMessageAfter,
+            producerConfig.MaxInFlight);
     }
 
     // <summary>
-    // Create a new ReliableProducer
+    // Create a new Producer
     // </summary> 
-    public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig)
+    public static async Task<Producer> Create(ProducerConfig producerConfig)
     {
-        var rProducer = new ReliableProducer(reliableProducerConfig);
-        await rProducer.Init(reliableProducerConfig.ReconnectStrategy);
+        var rProducer = new Producer(producerConfig);
+        await rProducer.Init(producerConfig.ReconnectStrategy);
         return rProducer;
     }
 
@@ -92,7 +104,7 @@ public class ReliableProducer : ProducerFactory
     {
         _producer = await CreateProducer();
 
-        await _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
+        await _producerConfig.ReconnectStrategy.WhenConnected(ToString());
 
         if (boot)
         {
@@ -139,6 +151,12 @@ public class ReliableProducer : ProducerFactory
         }
     }
 
+    /// <summary>
+    /// Send a message to the stream.
+    /// The client aggregates the messages and sends them to the server in batches.
+    /// The publisherId is automatically set. 
+    /// </summary>
+    /// <param name="message">Standard Message</param>
     public async ValueTask Send(Message message)
     {
         Interlocked.Increment(ref _publishingId);
@@ -167,6 +185,16 @@ public class ReliableProducer : ProducerFactory
         }
     }
 
+    /// <summary>
+    /// Enable sub-batch feature.
+    /// It is needed when you need to sub aggregate the messages and compress them.
+    /// For example you can aggregate 100 log messages and compress to reduce the space.
+    /// One single publishingId can have multiple sub-batches messages.
+    /// See also: https://rabbitmq.github.io/rabbitmq-stream-java-client/stable/htmlsingle/#sub-entry-batching-and-compression
+    /// </summary>
+    /// <param name="messages">Messages to aggregate</param>
+    /// <param name="compressionType"> Type of compression. By default the client supports GZIP and none</param>
+    /// <returns></returns>
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
         Interlocked.Increment(ref _publishingId);
@@ -190,7 +218,14 @@ public class ReliableProducer : ProducerFactory
         }
     }
 
-    public async ValueTask BatchSend(List<Message> messages)
+    /// <summary>
+    /// Send the messages in batch to the stream in synchronous mode.
+    /// The aggregation is provided by the user.
+    /// The client will send the messages in the order they are provided.
+    /// </summary>
+    /// <param name="messages">Batch messages to send</param>
+    /// <returns></returns>
+    public async ValueTask Send(List<Message> messages)
     {
         var messagesToSend = new List<(ulong, Message)>();
         foreach (var message in messages)
@@ -214,7 +249,7 @@ public class ReliableProducer : ProducerFactory
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
             {
-                await _producer.BatchSend(messagesToSend);
+                await _producer.Send(messagesToSend);
             }
         }
 
@@ -230,6 +265,6 @@ public class ReliableProducer : ProducerFactory
 
     public override string ToString()
     {
-        return $"Producer reference: {_reliableProducerConfig.Reference}, stream: {_reliableProducerConfig.Stream} ";
+        return $"Producer reference: {_producerConfig.Reference}, stream: {_producerConfig.Stream} ";
     }
 }

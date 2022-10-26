@@ -19,26 +19,36 @@ namespace RabbitMQ.Stream.Client
         public string Stream { get; set; }
     }
 
-    public record ProducerConfig : IProducerConfig
+    public record RawProducerConfig : IProducerConfig
     {
-        public string Stream { get; set; }
+        public string Stream { get; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+        public RawProducerConfig(string stream)
+        {
+            if (string.IsNullOrWhiteSpace(stream))
+            {
+                throw new ArgumentException("Stream cannot be null or whitespace.", nameof(stream));
+            }
+
+            Stream = stream;
+        }
     }
 
-    public class Producer : AbstractEntity, IProducer, IDisposable
+    public class RawProducer : AbstractEntity, IProducer, IDisposable
     {
         private bool _disposed;
         private byte publisherId;
-        private readonly ProducerConfig config;
+        private readonly RawProducerConfig config;
         private readonly Channel<OutgoingMsg> messageBuffer;
         private readonly SemaphoreSlim semaphore;
 
         public int PendingCount => config.MaxInFlight - semaphore.CurrentCount;
 
-        private Producer(Client client, ProducerConfig config)
+        private RawProducer(Client client, RawProducerConfig config)
         {
             this.client = client;
             this.config = config;
@@ -132,7 +142,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async ValueTask BatchSend(List<(ulong, Message)> messages)
+        public async ValueTask Send(List<(ulong, Message)> messages)
         {
             PreValidateBatch(messages);
             await InternalBatchSend(messages);
@@ -278,11 +288,11 @@ namespace RabbitMQ.Stream.Client
         }
 
         public static async Task<IProducer> Create(ClientParameters clientParameters,
-            ProducerConfig config,
+            RawProducerConfig config,
             StreamInfo metaStreamInfo)
         {
             var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new Producer((Client)client, config);
+            var producer = new RawProducer((Client)client, config);
             await producer.Init();
             return producer;
         }

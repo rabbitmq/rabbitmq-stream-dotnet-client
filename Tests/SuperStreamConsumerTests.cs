@@ -13,6 +13,7 @@ using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
+using ConsumerConfig = RabbitMQ.Stream.Client.Reliable.ConsumerConfig;
 
 namespace Tests;
 
@@ -263,10 +264,8 @@ public class SuperStreamConsumerTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
         var listConsumed = new ConcurrentBag<string>();
-        var consumer = await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
+        var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
         {
-            StreamSystem = system,
-            Stream = SystemUtils.InvoicesExchange,
             OffsetSpec = new OffsetTypeFirst(),
             IsSuperStream = true,
             MessageHandler = (stream, consumer1, context, message) =>
@@ -304,16 +303,14 @@ public class SuperStreamConsumerTests
         await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
         var listConsumed = new ConcurrentBag<string>();
         var reference = Guid.NewGuid().ToString();
-        var consumers = new List<ReliableConsumer>();
+        var consumers = new List<Consumer>();
 
-        async Task<ReliableConsumer> NewReliableConsumer(string refConsumer, string clientProvidedName,
+        async Task<Consumer> NewReliableConsumer(string refConsumer, string clientProvidedName,
             Func<string, string, bool, Task<IOffsetType>> consumerUpdateListener
         )
         {
-            return await ReliableConsumer.CreateReliableConsumer(new ReliableConsumerConfig()
+            return await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
             {
-                StreamSystem = system,
-                Stream = SystemUtils.InvoicesExchange,
                 OffsetSpec = new OffsetTypeFirst(),
                 Reference = refConsumer,
                 ClientProvidedName = clientProvidedName,

@@ -12,8 +12,19 @@ namespace RabbitMQ.Stream.Client.Reliable;
 public record ReliableConfig
 {
     public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
-    public StreamSystem StreamSystem { get; set; }
-    public string Stream { get; set; }
+    public StreamSystem StreamSystem { get; }
+    public string Stream { get; }
+
+    protected ReliableConfig(StreamSystem streamSystem, string stream)
+    {
+        if (string.IsNullOrWhiteSpace(stream))
+        {
+            throw new ArgumentException("Stream cannot be null or whitespace.", nameof(stream));
+        }
+
+        Stream = stream;
+        StreamSystem = streamSystem ?? throw new ArgumentNullException(nameof(streamSystem));
+    }
 }
 
 /// <summary>

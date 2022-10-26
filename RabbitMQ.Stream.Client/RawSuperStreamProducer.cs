@@ -14,22 +14,21 @@ using RabbitMQ.Stream.Client.Hash;
 namespace RabbitMQ.Stream.Client;
 
 /// <summary>
-/// SuperStreamProducer is a producer that can send messages to multiple streams.
+/// RawSuperStreamProducer is a producer that can send messages to multiple streams.
 /// Super Stream is available in RabbitMQ 3.11.0 and later.
-/// SuperStreamProducer is actually an abstraction over multiple Producers.
-/// It does not contain any connection or state, it is just a way to send messages 
-/// to multiple streams using multi producers.
+/// See https://rabbitmq.com/streams.html#super-streams for more information.
+///
 /// When a message is sent to a stream, the producer will be selected based on the stream name and the partition key.
 /// SuperStreamProducer uses lazy initialization for the producers, when it starts there are no producers until the first message is sent.
 /// </summary>
-public class SuperStreamProducer : IProducer, IDisposable
+public class RawSuperStreamProducer : IProducer, IDisposable
 {
     private bool _disposed;
 
     // ConcurrentDictionary because the producer can be closed from another thread
     // The send operations will check if the producer exists and if not it will be created
     private readonly ConcurrentDictionary<string, IProducer> _producers = new();
-    private readonly SuperStreamProducerConfig _config;
+    private readonly RawSuperStreamProducerConfig _config;
 
     private readonly DefaultRoutingConfiguration _defaultRoutingConfiguration = new();
 
@@ -42,11 +41,10 @@ public class SuperStreamProducer : IProducer, IDisposable
     private readonly ClientParameters _clientParameters;
 
     // We need to copy the config from the super producer to the standard producer
-    private ProducerConfig FromStreamConfig(string stream)
+    private RawProducerConfig FromStreamConfig(string stream)
     {
-        return new ProducerConfig()
+        return new RawProducerConfig(stream)
         {
-            Stream = stream,
             ConfirmHandler = confirmation =>
             {
                 // The confirmation handler is routed to the super stream confirmation handler
@@ -97,7 +95,7 @@ public class SuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var p = await Producer.Create(_clientParameters,
+        var p = await RawProducer.Create(_clientParameters,
             FromStreamConfig(stream), _streamInfos[stream]);
         LogEventSource.Log.LogInformation($"SuperStream Producer. Producer {_config.Reference} created for Stream {stream}");
         return p;
@@ -119,7 +117,7 @@ public class SuperStreamProducer : IProducer, IDisposable
     {
         if (_disposed)
         {
-            throw new ObjectDisposedException(nameof(SuperStreamProducer));
+            throw new ObjectDisposedException(nameof(RawSuperStreamProducer));
         }
 
         var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
@@ -127,7 +125,7 @@ public class SuperStreamProducer : IProducer, IDisposable
         return await GetProducer(routes[0]);
     }
 
-    private SuperStreamProducer(SuperStreamProducerConfig config,
+    private RawSuperStreamProducer(RawSuperStreamProducerConfig config,
         IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
     {
         _config = config;
@@ -142,7 +140,7 @@ public class SuperStreamProducer : IProducer, IDisposable
         await producer.Send(publishingId, message);
     }
 
-    public async ValueTask BatchSend(List<(ulong, Message)> messages)
+    public async ValueTask Send(List<(ulong, Message)> messages)
     {
         var aggregate = new List<(IProducer, List<(ulong, Message)>)>();
 
@@ -165,7 +163,7 @@ public class SuperStreamProducer : IProducer, IDisposable
 
         foreach (var (producer, list) in aggregate)
         {
-            await producer.BatchSend(list);
+            await producer.Send(list);
         }
     }
 
@@ -209,7 +207,7 @@ public class SuperStreamProducer : IProducer, IDisposable
     }
 
     //<summary>
-    /// Returns MAX from the LastPublishingId for all the producers
+    /// Returns lower from the LastPublishingId for all the producers
     // </summary> 
     public Task<ulong> GetLastPublishingId()
     {
@@ -245,18 +243,28 @@ public class SuperStreamProducer : IProducer, IDisposable
     public int PublishCommandsSent => _producers.Sum(x => x.Value.PublishCommandsSent);
     public int PendingCount => _producers.Sum(x => x.Value.PendingCount);
 
-    public static IProducer Create(SuperStreamProducerConfig superStreamProducerConfig,
+    public static IProducer Create(RawSuperStreamProducerConfig rawSuperStreamProducerConfig,
         IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
     {
-        return new SuperStreamProducer(superStreamProducerConfig, streamInfos, clientParameters);
+        return new RawSuperStreamProducer(rawSuperStreamProducerConfig, streamInfos, clientParameters);
     }
 }
 
-public record SuperStreamProducerConfig : IProducerConfig
+public record RawSuperStreamProducerConfig : IProducerConfig
 {
+    public RawSuperStreamProducerConfig(string superStream)
+    {
+        if (string.IsNullOrWhiteSpace(superStream))
+        {
+            throw new ArgumentException("SuperStream name cannot be null or empty", nameof(superStream));
+        }
+
+        SuperStream = superStream;
+    }
+
     // SuperStreamName. The user interacts with this it
     // In AMQP this is the exchange name
-    public string SuperStream { get; set; }
+    public string SuperStream { get; }
 
     // The routing key extractor is used to extract the routing key from the message
     // The routing key is used to route the message to a stream
