@@ -19,7 +19,7 @@ public interface IProducer
     /// <summary>
     /// Send the message to the stream in asynchronous mode.
     /// The client will aggregate messages and send them in batches.
-    /// It works in most cases.
+    /// The batch size is configurable. See IProducerConfig.BatchSize.
     /// </summary>
     /// <param name="publishingId">Publishing id</param>
     /// <param name="message"> Message </param>
@@ -28,9 +28,10 @@ public interface IProducer
 
     /// <summary>
     /// Send the messages in batch to the stream in synchronous mode.
-    /// It is needed when you need to aggregate messages in your application.
+    /// The aggregation is provided by the user.
+    /// The client will send the messages in the order they are provided.
     /// </summary>
-    /// <param name="messages"></param>
+    /// <param name="messages">Batch messages to send</param>
     /// <returns></returns>
     public ValueTask Send(List<(ulong, Message)> messages);
 
@@ -39,6 +40,7 @@ public interface IProducer
     /// It is needed when you need to sub aggregate the messages and compress them.
     /// For example you can aggregate 100 log messages and compress to reduce the space.
     /// One single publishingId can have multiple sub-batches messages.
+    /// See also: https://rabbitmq.github.io/rabbitmq-stream-java-client/stable/htmlsingle/#sub-entry-batching-and-compression
     /// </summary>
     /// <param name="publishingId"></param>
     /// <param name="subEntryMessages">Messages to aggregate</param>
@@ -70,7 +72,7 @@ public record IProducerConfig : INamedEntity
 {
     public string Reference { get; set; }
     public int MaxInFlight { get; set; } = 1000;
-    public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
+    public string ClientProvidedName { get; set; } = "dotnet-stream-raw-producer";
 
     public int BatchSize { get; set; } = 100;
 

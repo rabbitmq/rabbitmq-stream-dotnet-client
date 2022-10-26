@@ -178,7 +178,7 @@ namespace Tests
 
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
-            var producer = await system.RawCreateSuperStreamProducer(
+            var producer = await system.CreateRawSuperStreamProducer(
                 new RawSuperStreamProducerConfig(stream)
                 {
                     Reference = producerName,

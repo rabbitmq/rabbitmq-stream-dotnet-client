@@ -16,9 +16,8 @@ namespace RabbitMQ.Stream.Client;
 /// <summary>
 /// RawSuperStreamProducer is a producer that can send messages to multiple streams.
 /// Super Stream is available in RabbitMQ 3.11.0 and later.
-/// SuperStreamProducer is actually an abstraction over multiple Producers.
-/// It does not contain any connection or state, it is just a way to send messages 
-/// to multiple streams using multi producers.
+/// See https://rabbitmq.com/streams.html#super-streams for more information.
+///
 /// When a message is sent to a stream, the producer will be selected based on the stream name and the partition key.
 /// SuperStreamProducer uses lazy initialization for the producers, when it starts there are no producers until the first message is sent.
 /// </summary>
@@ -208,7 +207,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     }
 
     //<summary>
-    /// Returns MAX from the LastPublishingId for all the producers
+    /// Returns lower from the LastPublishingId for all the producers
     // </summary> 
     public Task<ulong> GetLastPublishingId()
     {

@@ -59,6 +59,7 @@ namespace RabbitMQ.Stream.Client
         // stream name where the consumer will consume the messages.
         // stream must exist before the consumer is created.
         public string Stream { get; }
+
         public Func<RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };

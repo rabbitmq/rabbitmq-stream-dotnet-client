@@ -20,17 +20,24 @@ public record ProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
 
+    // <summary>
     // Reference is mostly used for deduplication. In most of the cases reference is not needed.
+    // </summary>
     public string Reference { get; set; }
 
+    // <summary>
     // Confirmation is used to confirm that the message has been received by the server.
     // After the timeout TimeoutMessageAfter/0 the message is considered not confirmed.
     // See MessagesConfirmation.ConfirmationStatus for more details.
+    // </summary>
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
 
+    // <summary>
     // The client name used to identify the producer. 
     // You can see this value on the Management UI or in the connection detail
-    public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
+    // </summary>
+
+    public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
 
     public int MaxInFlight { get; set; } = 1000;
 
@@ -144,6 +151,12 @@ public class Producer : ProducerFactory
         }
     }
 
+    /// <summary>
+    /// Send a message to the stream.
+    /// The client aggregates the messages and sends them to the server in batches.
+    /// The publisherId is automatically set. 
+    /// </summary>
+    /// <param name="message">Standard Message</param>
     public async ValueTask Send(Message message)
     {
         Interlocked.Increment(ref _publishingId);
@@ -172,6 +185,16 @@ public class Producer : ProducerFactory
         }
     }
 
+    /// <summary>
+    /// Enable sub-batch feature.
+    /// It is needed when you need to sub aggregate the messages and compress them.
+    /// For example you can aggregate 100 log messages and compress to reduce the space.
+    /// One single publishingId can have multiple sub-batches messages.
+    /// See also: https://rabbitmq.github.io/rabbitmq-stream-java-client/stable/htmlsingle/#sub-entry-batching-and-compression
+    /// </summary>
+    /// <param name="messages">Messages to aggregate</param>
+    /// <param name="compressionType"> Type of compression. By default the client supports GZIP and none</param>
+    /// <returns></returns>
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
         Interlocked.Increment(ref _publishingId);
@@ -195,6 +218,13 @@ public class Producer : ProducerFactory
         }
     }
 
+    /// <summary>
+    /// Send the messages in batch to the stream in synchronous mode.
+    /// The aggregation is provided by the user.
+    /// The client will send the messages in the order they are provided.
+    /// </summary>
+    /// <param name="messages">Batch messages to send</param>
+    /// <returns></returns>
     public async ValueTask Send(List<Message> messages)
     {
         var messagesToSend = new List<(ulong, Message)>();

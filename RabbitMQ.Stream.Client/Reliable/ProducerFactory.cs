@@ -31,7 +31,7 @@ public abstract class ProducerFactory : ReliableBase
 
     private async Task<IProducer> SuperStreamProducer()
     {
-        return await _producerConfig.StreamSystem.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(_producerConfig.Stream)
+        return await _producerConfig.StreamSystem.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(_producerConfig.Stream)
         {
             ClientProvidedName = _producerConfig.ClientProvidedName,
             Reference = _producerConfig.Reference,

@@ -10,8 +10,18 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 public record ConsumerConfig : ReliableConfig
 {
+    /// <summary>
+    /// Consumer reference name.
+    /// Used to identify the consumer server side when store the messages offset.
+    /// see also <see cref="StreamSystem.QueryOffset"/> to retrieve the last offset.
+    /// </summary>
     public string Reference { get; set; }
-    public string ClientProvidedName { get; set; } = "dotnet-stream-rconusmer";
+
+    // <summary>
+    // The client name used to identify the Consumer. 
+    // You can see this value on the Management UI or in the connection detail
+    // </summary>
+    public string ClientProvidedName { get; set; } = "dotnet-stream-conusmer";
 
     public Func<string, RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 

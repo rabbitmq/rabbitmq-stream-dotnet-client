@@ -40,10 +40,10 @@ public class SuperStreamProducerTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
 
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig("does-not-exist") { }));
+            system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig("does-not-exist") { }));
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig("")));
+            system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig("")));
         await system.Close();
     }
 
@@ -54,7 +54,7 @@ public class SuperStreamProducerTests
         // RoutingKeyExtractor must be set else the traffic won't be routed
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = null
             }));
@@ -110,7 +110,7 @@ public class SuperStreamProducerTests
         // the message should be routed to the correct stream
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference"
@@ -152,7 +152,7 @@ public class SuperStreamProducerTests
         // The number of the messages per queue _must_ be the same as SendMessageToSuperStream test
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference"
@@ -190,7 +190,7 @@ public class SuperStreamProducerTests
         // The number of the messages per queue _must_ be the same as SendMessageToSuperStream test
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "ref1"
@@ -230,7 +230,7 @@ public class SuperStreamProducerTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientName = Guid.NewGuid().ToString();
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 ClientProvidedName = clientName
@@ -271,7 +271,7 @@ public class SuperStreamProducerTests
         // When the producer is closed it should raise ObjectDisposedException
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString()
             });
@@ -292,7 +292,7 @@ public class SuperStreamProducerTests
         // This test is for using and Dispose  
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString()
             });
@@ -317,7 +317,7 @@ public class SuperStreamProducerTests
         var confirmedList = new ConcurrentBag<(string, Confirmation)>();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 ConfirmHandler = conf =>
@@ -362,7 +362,7 @@ public class SuperStreamProducerTests
         var testPassed = new TaskCompletionSource<bool>();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 ConfirmHandler = conf =>
@@ -418,7 +418,7 @@ public class SuperStreamProducerTests
         // same scenario but with deduplication
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
             });
@@ -463,7 +463,7 @@ public class SuperStreamProducerTests
 
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer =
-            await system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference"

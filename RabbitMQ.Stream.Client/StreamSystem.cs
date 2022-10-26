@@ -120,7 +120,8 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<IProducer> RawCreateSuperStreamProducer(RawSuperStreamProducerConfig rawSuperStreamProducerConfig)
+        public async Task<IProducer> CreateRawSuperStreamProducer(
+            RawSuperStreamProducerConfig rawSuperStreamProducerConfig)
         {
             await MayBeReconnectLocator();
             if (rawSuperStreamProducerConfig.SuperStream == "")
@@ -202,7 +203,6 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<IProducer> CreateRawProducer(RawProducerConfig rawProducerConfig)
         {
-
             if (rawProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
             {
                 throw new CreateProducerException(
