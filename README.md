@@ -1,3 +1,4 @@
+
 <h1 style="text-align:center;">RabbitMQ client for the stream protocol</h1>
 
 ---
@@ -51,70 +52,85 @@ The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.St
 A rapid getting started
 
 ```csharp
- var config = new StreamSystemConfig
-{
-    UserName = "guest",
-    Password = "guest",
-    VirtualHost = "/"
-};
-// Connect to the broker 
-var system = await StreamSystem.Create(config);
-
-const string stream = "my_first_stream";
-
-// Create the stream. It is important to put some retention policy 
-// in this case is 200000 bytes.
-await system.CreateStream(new StreamSpec(stream)
-{
-    MaxLengthBytes = 200000,
-});
-var producer = await system.CreateProducer(
-    new ProducerConfig
-    {
-        Reference = Guid.NewGuid().ToString(),
-        Stream = stream,
-        // Here you can receive the messages confirmation
-        // it means the message is stored on the server
-        ConfirmHandler = conf =>
-        {
-            Console.WriteLine($"message: {conf.PublishingId} - confirmed");        
-        }
-    });
-
-// Publish the messages and set the publishingId that
-// should be sequential
-for (ulong i = 0; i < 100; i++)
-{
-    var message = new Message(Encoding.UTF8.GetBytes($"hello {i}"));
-    await producer.Send(i, message);
-}
-
-// not mandatory. Just to show the confirmation
-Thread.Sleep(TimeSpan.FromSeconds(1));
-
-// Create a consumer
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = Guid.NewGuid().ToString(),
-        Stream = stream,
-        // Consume the stream from the beginning 
-        // See also other OffsetSpec 
-        OffsetSpec = new OffsetTypeFirst(),
-        // Receive the messages
-        MessageHandler = async (consumer, ctx, message) =>
-        {
-            Console.WriteLine($"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())} - consumed");
-            await Task.CompletedTask;
-        }
-    });
-Console.WriteLine($"Press to stop");
-Console.ReadLine();
-
-await producer.Close();
-await consumer.Close();
-await system.DeleteStream(stream);
-await system.Close();
+public static async Task Start()  
+  {  
+  var config = new StreamSystemConfig  
+  {  
+  UserName = "guest",  
+  Password = "guest",  
+  VirtualHost = "/"  
+  };  
+  // Connect to the broker and create the system object  
+ // the entry point for the client.  var system = await StreamSystem.Create(config);  
+  
+  const string stream = "my_first_stream";  
+  
+  // Create the stream. It is important to put some retention policy   
+        // in this case is 200000 bytes.  
+  await system.CreateStream(new StreamSpec(stream)  
+ {  MaxLengthBytes = 200000,  
+  });  
+  
+  var producer = await Producer.Create(  
+  new ProducerConfig(system, stream)  
+ {  Reference = Guid.NewGuid().ToString(),  
+  
+  
+  // Receive the confirmation of the messages sent  
+  ConfirmationHandler = confirmation =>  
+                {  
+  switch (confirmation.Status)  
+ {  // ConfirmationStatus.Confirmed: The message was successfully sent  
+  case ConfirmationStatus.Confirmed:  
+                            Console.WriteLine($"Message {confirmation.PublishingId} confirmed");  
+  break;  
+  // There is an error during the sending of the message  
+  case ConfirmationStatus.WaitForConfirmation:  
+                        case ConfirmationStatus.ClientTimeoutError  
+  : // The client didn't receive the confirmation in time.   
+                        // but it doesn't mean that the message was not sent  
+ // maybe the broker needs more time to confirm the message // see TimeoutMessageAfter in the ProducerConfig  case ConfirmationStatus.StreamNotAvailable:  
+                        case ConfirmationStatus.InternalError:  
+                        case ConfirmationStatus.AccessRefused:  
+                        case ConfirmationStatus.PreconditionFailed:  
+                        case ConfirmationStatus.PublisherDoesNotExist:  
+                        case ConfirmationStatus.UndefinedError:  
+                        default:  
+                            Console.WriteLine(  
+  $"Message  {confirmation.PublishingId} not confirmed. Error {confirmation.Status}");  
+  break;  
+ }  
+  return Task.CompletedTask;  
+ } });  
+  // Publish the messages  
+  for (var i = 0; i < 100; i++)  
+ {  var message = new Message(Encoding.UTF8.GetBytes($"hello {i}"));  
+  await producer.Send(message);  
+ }  
+// not mandatory. Just to show the confirmation  
+  Thread.Sleep(TimeSpan.FromSeconds(1));  
+  
+// Create a consumer  
+  var consumer = await Consumer.Create(  
+  new ConsumerConfig(system, stream)  
+ {  Reference = "my_consumer",  
+  // Consume the stream from the beginning   
+                // See also other OffsetSpec   
+ OffsetSpec = new OffsetTypeFirst(),  
+  // Receive the messages  
+  MessageHandler = async (sourceStream, consumer, ctx, message) =>  
+                {  
+  Console.WriteLine(  
+  $"message: coming from {sourceStream} data: {Encoding.Default.GetString(message.Data.Contents.ToArray())} - consumed");  
+  await Task.CompletedTask;  
+ } });  Console.WriteLine($"Press to stop");  
+  Console.ReadLine();  
+  
+  await producer.Close();  
+  await consumer.Close();  
+  await system.DeleteStream(stream);  
+  await system.Close();  
+ }
 ```
 
 ## Usage
@@ -131,6 +147,8 @@ var config = new StreamSystemConfig
     VirtualHost = "myhost",
     Endpoints = new List<EndPoint> {new IPEndPoint(IPAddress.Parse("<<brokerip>>"), 5552)},
 };
+
+var system = await StreamSystem.Create(config);
 ```
 
 ### Multi Host
@@ -148,6 +166,7 @@ var config = new StreamSystemConfig
         new IPEndPoint(IPAddress.Parse("<<brokerip3>>"), 5552)
     },
 };
+var system = await StreamSystem.Create(config);
 ```
 
 ### TLS
@@ -163,6 +182,7 @@ var config = new StreamSystemConfig
         Enabled = true
     },
 };
+var system = await StreamSystem.Create(config);
 ```
 
 ### TLS with client certificate
@@ -180,9 +200,12 @@ var config = new StreamSystemConfig
         CertPassphrase = "Password"
     },
 };
+var system = await StreamSystem.Create(config);
 ```
 
 ### Load Balancer
+
+See https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/#with-a-load-balancer for more information
 
 ```csharp
 var lbAddressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("<<loadBalancerIP>>"), 5552));
@@ -237,341 +260,38 @@ await system.CreateStream(new StreamSpec(stream)
 
 ### Producer
 
-A Producer instance is created from the `System`.
+A Producer instance is created from the `Producer`.
 
 ```csharp
-var producer = await system.CreateProducer(
-    new ProducerConfig
-    {
-        Stream = "my_stream",
-    });
+var producer = await Producer.Create(  
+  new ProducerConfig(system, stream)
 ```
 
 Consider a Producer instance like a long-lived object, do not create one to send just one message.
 
 | Parameter               | Description                            | Default                        |
 |-------------------------|----------------------------------------|--------------------------------|
+| StreamSystem                  | the stream system where to connect              | No default, mandatory setting. | 
 | Stream                  | The stream to publish to.              | No default, mandatory setting. | 
 | Reference               | The logical name of the producer.      | null (no deduplication)        | 
 | ClientProvidedName      | Set the TCP Client Name                | `dotnet-stream-producer`       | 
-| ConfirmHandler          | Handler with confirmed messages        | It is an event                 |
-| ConnectionClosedHandler | Event when the client is disconnected  | It is an event                 | 
-| MaxInFlight             | Max Number of messages before send     | 1000                           | 
+| ConfirmationHandler          | Handler with confirmed messages        | It is an event                 |
+| TimeoutMessageAfter          | TimeoutMessageAfter is the time after which a message is considered as timed out        | TimeSpan.FromSeconds(3)                 |
 
 Producer with a reference name stores the sequence id on the server.
 It is possible to retrieve the id using `producer.GetLastPublishingId()`
 or more generic `system.QuerySequence("reference", "my_stream")`.
 
-### Publish Messages
 
-#### Standard publish
+`Producer` handles the following feature automatically:
 
-```csharp
-    var publishingId = 0;
-    var message = new Message(Encoding.UTF8.GetBytes("hello"));
-    await producer.Send(publishingId, message);
-```
-
-`publishingId` must be incremented for each send.
-
-#### Standard Batch publish
-
-Batch send is a synchronous operation.
-It allows to pre-aggregate messages and send them in a single synchronous call.
-
-```csharp
-var messages = new List<(ulong, Message)>();
-for (ulong i = 0; i < 30; i++)
-{
-    messages.Add((i, new Message(Encoding.UTF8.GetBytes($"batch {i}"))));
-}
-await producer.BatchSend(messages);
-messages.Clear();
-```
-
-In most cases, the standard `Send` is easier and works in most of the cases.
-
-#### Sub Entries Batching
-
-A sub-entry is one "slot" in a publishing frame, meaning outbound messages are not only batched in publishing frames,
-but in sub-entries as well. Use this feature to increase throughput at the cost of increased latency.
-
-```csharp
-var subEntryMessages = List<Messages>();
-for (var i = 1; i <= 500; i++)
-{
-    var message = new Message(Encoding.UTF8.GetBytes($"SubBatchMessage_{i}"));
-    subEntryMessages.Add(message);
-}
-var publishingId = 1; 
-await producer.Send(publishingId, subEntryMessages, CompressionType.Gzip);
-messages.Clear();
-```
-
-Not all the compressions are implemented by defaults, to avoid to many dependencies.
-See the table:
-
-| Compression            | Description    | Provided by client |
-|------------------------|----------------|--------------------|
-| CompressionType.None   | No compression | yes                |
-| CompressionType.GZip   | GZip           | yes                |
-| CompressionType.Lz4    | Lz4            | No                 |
-| CompressionType.Snappy | Snappy         | No                 |
-| CompressionType.Zstd   | Zstd           | No                 |
-
-You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
-See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
-
-### Deduplication
-
-[See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
-Set a producer reference to enable the deduplication:
-
-```csharp
-var producer = await system.CreateProducer(
-    new ProducerConfig
-    {
-        Reference = "my_producer",
-        Stream = "my_stream",
-    });
-```
-
-then:
-
-```csharp
-var publishingId = 0;
-var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
-await producer.Send(publishingId, message);
-```
-
-### Consume Messages
-
-Define a consumer:
-
-```csharp
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = "my_consumer",
-        Stream = stream,
-        MessageHandler = async (consumer, ctx, message) =>
-        {
-            Console.WriteLine(
-                $"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())}");
-            await Task.CompletedTask;
-        }
-});
-```
-
-### Offset Types
-
-There are five types of Offset and they can be set by the `ConsumerConfig.OffsetSpec` property that must be passed to
-the Consumer constructor, in the example we use `OffsetTypeFirst`:
-
-```csharp
-var consumerOffsetTypeFirst = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = "my_consumer_offset_first",
-        Stream = stream,
-        OffsetSpec = new OffsetTypeFirst(),
-        MessageHandler = async (consumer, ctx, message) =>
-        {
- 
-            await Task.CompletedTask;
-        }
-    });
-```
-
-The five types are:
-
-- First: it takes messages from the first message of the stream.
-
-```csharp
-var offsetTypeFirst = new OffsetTypeFirst();
-```
-
-- Last: it takes messages from the last chunk of the stream, i.e. it doesn’t start from the last message, but the last
-  “group” of messages.
-
-```csharp
-var offsetTypeLast = new OffsetTypeLast();
-```
-
-- Next: it takes messages published after the consumer connection.
-
-```csharp
-var offsetTypeNext = new OffsetTypeNext()
-```
-
-- Offset: it takes messages starting from the message with id equal to the passed value. If the value is less than the
-  first message of the stream, it starts from the first (i.e. if you pass 0, but the stream starts from 10, it starts
-  from 10). If the message with the id hasn’t yet been published it waits until this publishingId is reached.
-
-```csharp
-ulong iWantToStartFromPubId = 10;
-var offsetTypeOffset = new OffsetTypeOffset(iWantToStartFromPubId);
-```
-
-- Timestamp: it takes messages starting from the first message with timestamp bigger than the one passed
-
-```csharp
-var anHourAgo = (long)DateTime.UtcNow.AddHours(-1).Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-var offsetTypeTimestamp = new OffsetTypeTimestamp(anHourAgo);
-```
-
-### Track Offset
-
-The server can store the current delivered offset given a consumer with `StoreOffset` in this way:
-
-```csharp
-var messagesConsumed = 0;
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = "my_consumer",
-        Stream = stream,
-        MessageHandler = async (consumer, ctx, message) =>
-        {
-            if (++messagesConsumed % 1000 == 0)
-            {
-                await consumer.StoreOffset(ctx.Offset);
-            }
-```
-
-Note: **Avoid** storing the offset for every single message, it can reduce performance.
-
-It is possible to retrieve the offset with `QueryOffset`:
-
-```csharp
-var trackedOffset = await system.QueryOffset("my_consumer", stream);
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = "my_consumer",
-        Stream = stream,
-        OffsetSpec = new OffsetTypeOffset(trackedOffset),    
-```
-
-Note: if you try to store an offset that doesn't exist yet for the consumer's reference on the stream you get will get
-an `OffsetNotFoundException` exception.
-
-### Single Active Consumer
-
-Use the `ConsumerConfig#IsSingleActiveConsumer()` method to enable the feature:
-
-Enabling single active consumer
-
-```csharp
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = "application-1", // Set the consumer name (mandatory to enable single active consumer)
-        IsSingleActiveConsumer = true, // Enable single active consumer
-        Stream = "my-stream",
-        OffsetSpec = new OffsetTypeFirst(),
-    ...
-    });
-```
-
-With the configuration above, the consumer will take part in the `application-1` group on the `my-stream` stream.
-If the consumer instance is the first in a group, it will get messages as soon as there are some available.
-If it is not the first in the group, it will remain idle until it is its turn to be active
-(likely when all the instances registered before it are gone).
-
-By default the Single Active Consumer start consuming form the `OffsetSpec` but you can override it with the
-`ConsumerUpdateListener` event.
-
-`ConsumerUpdateListener` returns an `OffsetType` that will be used to start consuming from.
-
-For example, if you want to start from the last tracked message can do it like this:
-
-```csharp
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = "application-1",
-        Stream = "my-stream",
-        IsSingleActiveConsumer = true,
-        // When the consumer is actived it will start from the last tracked offset
-        ConsumerUpdateListener = async (reference, stream, isActive) =>
-        {
-            var trackedOffset = await system.QueryOffset(reference, stream);
-            return new OffsetTypeOffset(trackedOffset);
-        }
-    });
-```
-
-Single Active Consumer is available for the standard `Consumer` and also for the `ReliableConsumer`.
-For `ReliableConsumer` just use `ReliableConsumerConfig#IsSingleActiveConsumer()` to enable it.
-
-### Handle Close
-
-Producers/Consumers raise and event when the client is disconnected:
-
-```csharp
- new ProducerConfig/ConsumerConfig
- {
-  ConnectionClosedHandler = s =>
-   {
-    Console.WriteLine($"Connection Closed: {s}");
-    return Task.CompletedTask;
-   },
-```
-
-### Handle Metadata Update
-
-Stream metadata update is raised when the stream topology changes or the stream is deleted.
-You can use `MetadataHandler` to handle it:
-
-```csharp
- new ProducerConfig/ConsumerConfig
- {
-  MetadataHandler = update =>
-   {
-   ......  
-   },
- }
-```
-
-### Heartbeat
-
-It is possible to configure the heartbeat using:
-
-```csharp
- var config = new StreamSystemConfig()
-{
-     Heartbeat = TimeSpan.FromSeconds(30),
-}
-```
-
-- `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
-- `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
-
-Heartbeat value shouldn't be too low.
-
-### Reliable
-
-- Reliable Producer
-- Reliable Consumer
-
-See the directory [Examples/Reliable](./Examples/Reliable) for code examples.
-
-### Reliable Producer
-
-Reliable Producer is a smart layer built up of the standard `Producer`.
-
-The idea is to give the user ability to choose between the standard or reliable producer.
-
-The main features are:
-
-- Provide publishingID automatically
+- Provide incremental publishingId 
 - Auto-Reconnect in case of disconnection
 - Trace sent and received messages
 - Invalidate messages
 - [Handle the metadata Update](#reliable-handle-metadata-update)
 
-#### Provide publishingID automatically
+#### Provide publishingId automatically
 
 Reliable Producer retrieves the last publishingID given the producer name.
 
@@ -627,19 +347,103 @@ If the client doesn't receive a confirmation within configured timeout (3 second
 the message from the internal messages cache.
 The user will receive `ConfirmationStatus.ClientTimeoutError` in the `ConfirmationHandler`.
 
-#### Send API
+### Publish Messages
 
-Reliable Producer implements two `send(..)`
+#### Standard publish
 
-- `Send(Message message)` // standard
-- `Send(List<Message> messages, CompressionType compressionType)` //sub-batching with compression
+```csharp
+    var message = new Message(Encoding.UTF8.GetBytes("hello"));
+    await producer.Send(message);
+```
 
-### Reliable Consumer
+#### Standard Batch publish
 
-Reliable Consumer is a smart layer built up of the standard `Consumer`. </b>   
-The idea is to leave the user decides what to use, the standard or reliable Consumer. </b>
+Batch send is a synchronous operation.
+It allows to pre-aggregate messages and send them in a single synchronous call.
 
-The main features are:
+```csharp
+var messages = new List<Message>();
+for (ulong i = 0; i < 30; i++)
+{
+    messages.Add(new Message(Encoding.UTF8.GetBytes($"batch {i}")));
+}
+await producer.Send(messages);
+messages.Clear();
+```
+
+In most cases, the standard `Send` is easier and works in most of the cases.
+
+#### Sub Entries Batching
+
+A sub-entry is one "slot" in a publishing frame, meaning outbound messages are not only batched in publishing frames,
+but in sub-entries as well. Use this feature to increase throughput at the cost of increased latency.
+
+```csharp
+var subEntryMessages = List<Messages>();
+for (var i = 1; i <= 500; i++)
+{
+    var message = new Message(Encoding.UTF8.GetBytes($"SubBatchMessage_{i}"));
+    subEntryMessages.Add(message);
+}
+await producer.Send(subEntryMessages, CompressionType.Gzip);
+messages.Clear();
+```
+
+Not all the compressions are implemented by defaults, to avoid to many dependencies.
+See the table:
+
+| Compression            | Description    | Provided by client |
+|------------------------|----------------|--------------------|
+| CompressionType.None   | No compression | yes                |
+| CompressionType.GZip   | GZip           | yes                |
+| CompressionType.Lz4    | Lz4            | No                 |
+| CompressionType.Snappy | Snappy         | No                 |
+| CompressionType.Zstd   | Zstd           | No                 |
+
+You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
+See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
+
+### Deduplication
+
+[See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
+Set a producer reference to enable the deduplication:
+
+```csharp
+var producer = await system.CreateProducer(
+    new ProducerConfig
+    {
+        Reference = "my_producer",
+        Stream = "my_stream",
+    });
+```
+
+then:
+
+```csharp
+var publishingId = 0;
+var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
+await producer.Send(publishingId, message);
+```
+
+### Consume Messages
+
+Define a consumer:
+
+```csharp
+var consumer = await Consumer.Create(
+    new ConsumerConfig(system,stream)
+    {
+        Reference = "my_consumer",
+        MessageHandler = async (sourceStream, consumer, ctx, message) =>
+        {
+            Console.WriteLine(
+                $"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())}");
+            await Task.CompletedTask;
+        }
+});
+```
+
+`Consumer` handle the following feature automatically:
 
 - Auto-Reconnect in case of disconnection
 - Auto restart consuming from the last offset
@@ -647,9 +451,197 @@ The main features are:
 
 #### Auto-Reconnect
 
-Reliable Consumer restores the TCP connection in case the Producer is disconnected for some reason.
-Reliable Consumer will restart consuming from the last offset stored.
+`Consumer` restores the TCP connection in case the Producer is disconnected for some reason.
+`Consumer` will restart consuming from the last offset stored.
 See [Reconnection Strategy](#reconnection-strategy)
+
+
+### Offset Types
+
+There are five types of Offset and they can be set by the `ConsumerConfig.OffsetSpec` property that must be passed to
+the Consumer constructor, in the example we use `OffsetTypeFirst`:
+
+```csharp
+...        
+ OffsetSpec = new OffsetTypeFirst(),
+ ...      
+```
+
+The five types are:
+
+- First: it takes messages from the first message of the stream.
+
+```csharp
+var offsetTypeFirst = new OffsetTypeFirst();
+```
+
+- Last: it takes messages from the last chunk of the stream, i.e. it doesn’t start from the last message, but the last
+  “group” of messages.
+
+```csharp
+var offsetTypeLast = new OffsetTypeLast();
+```
+
+- Next: it takes messages published after the consumer connection.
+
+```csharp
+var offsetTypeNext = new OffsetTypeNext()
+```
+
+- Offset: it takes messages starting from the message with id equal to the passed value. If the value is less than the
+  first message of the stream, it starts from the first (i.e. if you pass 0, but the stream starts from 10, it starts
+  from 10). If the message with the id hasn’t yet been published it waits until this publishingId is reached.
+
+```csharp
+ulong iWantToStartFromPubId = 10;
+var offsetTypeOffset = new OffsetTypeOffset(iWantToStartFromPubId);
+```
+
+- Timestamp: it takes messages starting from the first message with timestamp bigger than the one passed
+
+```csharp
+var anHourAgo = (long)DateTime.UtcNow.AddHours(-1).Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+var offsetTypeTimestamp = new OffsetTypeTimestamp(anHourAgo);
+```
+
+### Track Offset
+
+The server can store the current delivered offset given a consumer with `StoreOffset` in this way:
+
+```csharp
+....        
+         MessageHandler = async (sourceStream,consumer, ctx, message) =>
+        {
+            if (++messagesConsumed % 1000 == 0)
+            {
+                await consumer.StoreOffset(ctx.Offset);
+            }
+```
+
+Note: **Avoid** storing the offset for every single message, it can reduce performance.
+
+It is possible to retrieve the offset with `QueryOffset`:
+
+```csharp
+var trackedOffset = await system.QueryOffset("my_consumer", stream);
+...
+    new ConsumerConfig(system,stream)
+    {
+        Reference = "my_consumer",
+        OffsetSpec = new OffsetTypeOffset(trackedOffset),    
+```
+
+Note: if you try to store an offset that doesn't exist yet for the consumer's reference on the stream you get will get
+an `OffsetNotFoundException` exception.
+
+### Single Active Consumer
+
+Use the `ConsumerConfig#IsSingleActiveConsumer()` method to enable the feature:
+
+Enabling single active consumer
+
+```csharp
+     new ConsumerConfig(system,stream)
+    {
+        Reference = "application-1", // Set the consumer name (mandatory to enable single active consumer)
+        IsSingleActiveConsumer = true, // Enable single active consumer
+        OffsetSpec = new OffsetTypeFirst(),
+    ...
+    });
+```
+
+With the configuration above, the consumer will take part in the `application-1` group on the `my-stream` stream.
+If the consumer instance is the first in a group, it will get messages as soon as there are some available.
+If it is not the first in the group, it will remain idle until it is its turn to be active
+(likely when all the instances registered before it are gone).
+
+By default the Single Active Consumer start consuming form the `OffsetSpec` but you can override it with the
+`ConsumerUpdateListener` event.
+
+`ConsumerUpdateListener` returns an `OffsetType` that will be used to start consuming from.
+
+For example, if you want to start from the last tracked message can do it like this:
+
+```csharp
+    new ConsumerConfig(system,stream)
+    {
+        Reference = "application-1",
+        Stream = "my-stream",
+        IsSingleActiveConsumer = true,
+        // When the consumer is actived it will start from the last tracked offset
+        ConsumerUpdateListener = async (reference, stream, isActive) =>
+        {
+            var trackedOffset = await system.QueryOffset(reference, stream);
+            return new OffsetTypeOffset(trackedOffset);
+        };
+```
+
+### Handle Close
+
+Producers/Consumers raise and event when the client is disconnected:
+
+```csharp
+ new ProducerConfig/ConsumerConfig
+ {
+  ConnectionClosedHandler = s =>
+   {
+    Console.WriteLine($"Connection Closed: {s}");
+    return Task.CompletedTask;
+   },
+```
+
+### Handle Metadata Update
+
+Stream metadata update is raised when the stream topology changes or the stream is deleted.
+You can use `MetadataHandler` to handle it:
+
+```csharp
+ new ProducerConfig/ConsumerConfig
+ {
+  MetadataHandler = update =>
+   {
+   ......  
+   },
+ }
+```
+
+### Heartbeat
+
+It is possible to configure the heartbeat using:
+
+```csharp
+ var config = new StreamSystemConfig()
+{
+     Heartbeat = TimeSpan.FromSeconds(30),
+}
+```
+
+- `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
+- `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
+
+Heartbeat value shouldn't be too low.
+
+### Raw 
+
+- Raw Producer
+- Raw Consumer
+
+
+### Raw Producer
+
+Reliable Producer is a smart layer built up of the standard `Producer`.
+
+The idea is to give the user ability to choose between the standard or reliable producer.
+
+
+
+
+### Raw Consumer
+
+Reliable Consumer is a smart layer built up of the standard `Consumer`. </b>   
+The idea is to leave the user decides what to use, the standard or reliable Consumer. </b>
+
+
 
 ### Reconnection Strategy
 
