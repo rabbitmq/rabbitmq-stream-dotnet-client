@@ -25,10 +25,10 @@
     - [Producer](#producer)
       - [Publish Messages](#publish-messages)
     - [Deduplication](#Deduplication)
-    - [Consume Messages](#consume-messages)
-        - [Offset Types](#offset-types)
-        - [Track Offset](#track-offset)
-        - [Single Active Consumer](#single-active-consumer)
+    - [Consumer](#consumer)
+      - [Offset Types](#offset-types)
+      - [Track Offset](#track-offset)
+      - [Single Active Consumer](#single-active-consumer)
     - [Handle Close](#handle-close)
     - [Handle Metadata Update](#handle-metadata-update)
     - [Heartbeat](#heartbeat)
@@ -453,7 +453,7 @@ See: https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super
 See `Tests.SuperStreamProducerTests.ValidateHashRoutingStrategy` for more examples.
 
 
-### Consume Messages
+### Consumer
 
 Define a consumer:
 
