@@ -15,6 +15,7 @@
 - [Overview](#overview)
 - [Installing via NuGet](#installing-via-nuget)
 - [Getting started](#getting-started)
+    - [Main Concepts](#main-concepts)
     - [Usage](#usage)
         - [Connect](#connect)
         - [Multi Host](#multi-host)
@@ -22,7 +23,7 @@
         - [Load Balancer](#load-balancer)
     - [Manage Streams](#manage-streams)
     - [Producer](#producer)
-    - [Publish Messages](#publish-messages)
+      - [Publish Messages](#publish-messages)
     - [Deduplication](#Deduplication)
     - [Consume Messages](#consume-messages)
         - [Offset Types](#offset-types)
@@ -146,7 +147,20 @@ public static async Task Start()
     }
 
 ```
+### Main Concepts
 
+The client is based on the following concepts:
+
+| Class  | Description  | How to get  | Note | Documentation| 
+|---|---|---|-----------------|--------------|
+|  `Producer`    | Hight Level producer. | `Producer.Create(new ProducerConfig(system, stream))`  | -Handle `RawProducer` and  `RawSuperStreamProducer` <br> - Auto reconnect <br> - Auto publishing id <br> - Handle Metadata update <br> - Confirm Messages with errors (timeout..etc) | [Doc Producer](#producer) |
+|  `Consumer`    | Hight Level Consumer. | `Consumer.Create(new ConsumerConfig(system, stream))`  | -Handle `RawConsumer` and  `RawSuperStreamConsumer` <br> - Auto reconnect <br> - Handle Metadata update <br>                                                                         | [Doc Consumer](#consumer) |
+|  `RawProducer` | Low-Level producer   |  `system.CreateRawProducer(new RawProducerConfig("stream")` || [Doc Raw Producer](#raw-producer)                                                                                                                                                    |
+|  `RawSuperStreamProducer` | Low Level Super Stream Producer   |  `system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig("superStream")` ||                                                                                                                                                                                      |
+|  `RawConsumer` | Low Level consumer   |  `system.CreateRawConsumer(newRawConsumerConfig("stream")` || [Doc Raw Consumer](#raw-consumer)                                                                                                                                                    |
+|  `RawSuperStreamConsumer` | Low Level Super Stream Consumer   |  `system.RawCreateSuperStreamConsumer(new RawSuperStreamConsumerConfig("superStream")` ||
+
+You should use `Producer` and `Consumer` classes unless you need to handle the low-level details.
 ## Usage
 
 ---
@@ -277,8 +291,10 @@ await system.CreateStream(new StreamSpec(stream)
 A Producer instance is created from the `Producer`.
 
 ```csharp
-var producer = await Producer.Create(  
-  new ProducerConfig(system, stream)
+  var producer = await Producer.Create(  
+  new ProducerConfig(system, stream) {
+  
+  });
 ```
 
 Consider a Producer instance like a long-lived object, do not create one to send just one message.
@@ -297,30 +313,30 @@ It is possible to retrieve the id using `producer.GetLastPublishingId()`
 or more generic `system.QuerySequence("reference", "my_stream")`.
 
 
-`Producer` handles the following feature automatically:
+`Producer` handles the following features automatically:
 
 - Provide incremental publishingId 
 - Auto-Reconnect in case of disconnection
 - Trace sent and received messages
 - Invalidate messages
-- [Handle the metadata Update](#reliable-handle-metadata-update)
+- [Handle the metadata Update](#handle-metadata-update)
 
 #### Provide publishingId automatically
 
-Reliable Producer retrieves the last publishingID given the producer name.
+`Producer` retrieves the last publishingID given the producer name.
 
-Zero(0) is the default value in case there is no publishingID for given producer reference.
+Zero(0) is the default value in case there is no publishingId for given producer reference.
 
 #### Auto-Reconnect
 
-Reliable Producer restores the TCP connection in case the Producer is disconnected for some reason.
+`Producer` restores the TCP connection in case the `Producer` is disconnected for some reason.
 During the reconnection it continues to store the messages in a local-list.
 The user will receive back the confirmed or un-confirmed messages.
 See [Reconnection Strategy](#reconnection-strategy)
 
 #### Trace sent and received messages
 
-Reliable Producer keeps in memory each sent message and removes it from the memory when the message is confirmed or
+`Producer` keeps in memory each sent message and removes it from the memory when the message is confirmed or
 times out.
 `ConfirmationHandler` receives the messages back with the status.
 `confirmation.Status` can have different values, but in general `ConfirmationStatus.Confirmed` means the messages
@@ -370,7 +386,7 @@ The user will receive `ConfirmationStatus.ClientTimeoutError` in the `Confirmati
     await producer.Send(message);
 ```
 
-#### Standard Batch publish
+#### Batch publish
 
 Batch send is a synchronous operation.
 It allows to pre-aggregate messages and send them in a single synchronous call.
@@ -417,27 +433,25 @@ See the table:
 You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
 See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
 
-### Deduplication
-
-[See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
-Set a producer reference to enable the deduplication:
+### Publish SuperStream
+See: https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams for more details.
 
 ```csharp
-var producer = await system.CreateProducer(
-    new ProducerConfig
-    {
-        Reference = "my_producer",
-        Stream = "my_stream",
-    });
+ var producer = await Producer.Create(new ProducerConfig(system, "super_stream")
+        {
+            SuperStreamConfig = new SuperStreamConfig()
+            {
+                Routing = message1 => message1.Properties.MessageId.ToString()
+            }
+        }
+        );
 ```
 
-then:
+`SuperStreamConfig` is mandatory to enable the super stream feature.
+`Routing` is a function that extracts the routing key from the message. By default it uses a `HashRoutingMurmurStrategy` strategy.
 
-```csharp
-var publishingId = 0;
-var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
-await producer.Send(publishingId, message);
-```
+See `Tests.SuperStreamProducerTests.ValidateHashRoutingStrategy` for more examples.
+
 
 ### Consume Messages
 
@@ -590,6 +604,99 @@ For example, if you want to start from the last tracked message can do it like t
         };
 ```
 
+### Reconnection Strategy
+
+By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
+You can customize the behaviour implementing the `IReconnectStrategy` interface:
+
+```csharp
+ValueTask<bool> WhenDisconnected(string connectionInfo);
+ValueTask WhenConnected(string connectionInfo);
+```
+
+If `WhenDisconnected` return is `true` Producer/Consumer will be reconnected else closed.
+`connectionInfo` add information about the connection.
+
+You can use it:
+
+```csharp
+var p = await Producer.Create(new ReliableProducerConfig(system, stream)
+{
+    ...
+        ReconnectStrategy = MyReconnectStrategy
+    ...
+});
+```
+
+### Handle metadata update
+
+If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate`
+event.
+Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the
+producer/consumer.
+
+
+### Heartbeat
+
+It is possible to configure the heartbeat using:
+
+```csharp
+ var config = new StreamSystemConfig()
+{
+     Heartbeat = TimeSpan.FromSeconds(30),
+}
+```
+
+- `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
+- `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
+
+Heartbeat value shouldn't be too low.
+
+### Raw 
+
+- Raw Producer
+- Raw Consumer
+
+
+### Raw Producer
+
+`RawProducer` is the low level producer provided `system` 
+
+### Deduplication
+
+[See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
+Set a producer reference to enable the deduplication:
+
+```csharp
+var producer = await system.CreateRawProducer(
+    new ProducerConfig("my_stream")
+    {
+        Reference = "my_producer",
+        
+    });
+```
+
+then:
+
+```csharp
+var publishingId = 0;
+var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
+await producer.Send(publishingId, message);
+```
+
+
+### Raw Consumer
+
+`RawConsumer` is the low level consumer provided `system` 
+
+```csharp
+  var rawConsumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
+                {..}
+            ); 
+```
+
+
 ### Handle Close
 
 Producers/Consumers raise and event when the client is disconnected:
@@ -618,70 +725,6 @@ You can use `MetadataHandler` to handle it:
    },
  }
 ```
-
-### Heartbeat
-
-It is possible to configure the heartbeat using:
-
-```csharp
- var config = new StreamSystemConfig()
-{
-     Heartbeat = TimeSpan.FromSeconds(30),
-}
-```
-
-- `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
-- `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
-
-Heartbeat value shouldn't be too low.
-
-### Raw 
-
-- Raw Producer
-- Raw Consumer
-
-
-### Raw Producer
-
-`RawProducer` is the low level producer provided `system` 
-
-
-
-### Raw Consumer
-
-`RawConsumer` is the low level consumer provided `system` 
-
-
-
-
-### Reconnection Strategy
-
-By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
-You can customize the behaviour implementing the `IReconnectStrategy` interface:
-
-```csharp
-ValueTask<bool> WhenDisconnected(string connectionInfo);
-ValueTask WhenConnected(string connectionInfo);
-```
-
-If `WhenDisconnected` return is `true` Producer/Consumer will be reconnected else closed.
-`connectionInfo` add information about the connection.
-
-You can use it:
-
-```csharp
-var p = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
-{
-...
-ReconnectStrategy = MyReconnectStrategy
-```
-
-### Reliable handle metadata update
-
-If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate`
-event.
-Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the
-producer/consumer.
 
 ## Build from source
 
