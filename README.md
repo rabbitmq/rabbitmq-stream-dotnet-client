@@ -13,6 +13,7 @@
 ---
 
 - [Overview](#overview)
+- [Update to v1.0.0-rc.5 to >v1.0.0-rc.6](#update-to-rc6)
 - [Installing via NuGet](#installing-via-nuget)
 - [Getting started](#getting-started)
     - [Main Concepts](#main-concepts)
@@ -43,6 +44,11 @@
 
 Dotnet client for [RabbitMQ Stream Queues](https://www.rabbitmq.com/stream.html)
 
+## Update to rc6
+We introduced a few breaking changes. 
+Read the [release notes](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.0.0-rc.6)
+to update the client.
+
 ## Installing via NuGet
 
 The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.Stream.Client/).
@@ -62,6 +68,7 @@ public static async Task Start()
         };
         // Connect to the broker and create the system object
         // the entry point for the client.
+        // Create it once and reuse it.
         var system = await StreamSystem.Create(config);
 
         const string stream = "my_first_stream";
@@ -168,6 +175,15 @@ You should use `Producer` and `Consumer` classes unless you need to handle the l
 ### Connect
 
 ```csharp
+
+`StreamSystem` is the entry point for the client. It is the connection to the broker.
+Just create it once and reuse it.
+
+
+`StreamSystem` is responsible to handle the `stream-locator` tcp connection. That is the main connection to lookup the resources as leader connection, query the metadata etc.. .
+
+```csharp
+
 var config = new StreamSystemConfig
 {
     UserName = "myuser",
