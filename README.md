@@ -25,17 +25,17 @@
     - [Manage Streams](#manage-streams)
     - [Producer](#producer)
       - [Publish Messages](#publish-messages)
-    - [Deduplication](#Deduplication)
     - [Consumer](#consumer)
       - [Offset Types](#offset-types)
       - [Track Offset](#track-offset)
       - [Single Active Consumer](#single-active-consumer)
-    - [Handle Close](#handle-close)
-    - [Handle Metadata Update](#handle-metadata-update)
     - [Heartbeat](#heartbeat)
-    - [Raw](#raw)
-        - [Raw Producer](#raw-producer)
-        - [Raw Consumer](#raw-consumer)
+    - [Raw Clients](#raw)
+      - [Raw Producer](#raw-producer)
+          - [Deduplication](#Deduplication)
+      - [Raw Consumer](#raw-consumer)
+      - [Handle Metadata Update](#handle-metadata-update)
+      - [Handle Close](#handle-close)
 - [Build from source](#build-from-source)
 - [Project Status](#project-status)
 - [Release Process](#release-process)
@@ -174,11 +174,8 @@ You should use `Producer` and `Consumer` classes unless you need to handle the l
 
 ### Connect
 
-```csharp
-
 `StreamSystem` is the entry point for the client. It is the connection to the broker.
 Just create it once and reuse it.
-
 
 `StreamSystem` is responsible to handle the `stream-locator` tcp connection. That is the main connection to lookup the resources as leader connection, query the metadata etc.. .
 
@@ -700,6 +697,7 @@ var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"))
 await producer.Send(publishingId, message);
 ```
 
+Note: at the moment is only available for the `RawProducer`
 
 ### Raw Consumer
 
