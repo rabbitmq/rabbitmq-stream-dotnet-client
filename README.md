@@ -1,3 +1,4 @@
+
 <h1 style="text-align:center;">RabbitMQ client for the stream protocol</h1>
 
 ---
@@ -12,8 +13,10 @@
 ---
 
 - [Overview](#overview)
+- [Update to v1.0.0-rc.5 to >v1.0.0-rc.6](#update-to-rc6)
 - [Installing via NuGet](#installing-via-nuget)
 - [Getting started](#getting-started)
+    - [Main Concepts](#main-concepts)
     - [Usage](#usage)
         - [Connect](#connect)
         - [Multi Host](#multi-host)
@@ -21,19 +24,18 @@
         - [Load Balancer](#load-balancer)
     - [Manage Streams](#manage-streams)
     - [Producer](#producer)
-    - [Publish Messages](#publish-messages)
-    - [Deduplication](#Deduplication)
-    - [Consume Messages](#consume-messages)
-        - [Offset Types](#offset-types)
-        - [Track Offset](#track-offset)
-        - [Single Active Consumer](#single-active-consumer)
-    - [Handle Close](#handle-close)
-    - [Handle Metadata Update](#handle-metadata-update)
+      - [Publish Messages](#publish-messages)
+    - [Consumer](#consumer)
+      - [Offset Types](#offset-types)
+      - [Track Offset](#track-offset)
+      - [Single Active Consumer](#single-active-consumer)
     - [Heartbeat](#heartbeat)
-    - [Reliable](#reliable)
-        - [Reliable Producer](#reliable-producer)
-        - [Reliable Consumer](#reliable-consumer)
-          - [Single Active Consumer](#single-active-consumer)
+    - [Raw Clients](#raw)
+      - [Raw Producer](#raw-producer)
+          - [Deduplication](#Deduplication)
+      - [Raw Consumer](#raw-consumer)
+      - [Handle Metadata Update](#handle-metadata-update)
+      - [Handle Close](#handle-close)
 - [Build from source](#build-from-source)
 - [Project Status](#project-status)
 - [Release Process](#release-process)
@@ -41,6 +43,11 @@
 ## Overview
 
 Dotnet client for [RabbitMQ Stream Queues](https://www.rabbitmq.com/stream.html)
+
+## Update to rc6
+We introduced a few breaking changes. 
+Read the [release notes](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.0.0-rc.6)
+to update the client.
 
 ## Installing via NuGet
 
@@ -51,79 +58,129 @@ The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.St
 A rapid getting started
 
 ```csharp
- var config = new StreamSystemConfig
-{
-    UserName = "guest",
-    Password = "guest",
-    VirtualHost = "/"
-};
-// Connect to the broker 
-var system = await StreamSystem.Create(config);
-
-const string stream = "my_first_stream";
-
-// Create the stream. It is important to put some retention policy 
-// in this case is 200000 bytes.
-await system.CreateStream(new StreamSpec(stream)
-{
-    MaxLengthBytes = 200000,
-});
-var producer = await system.CreateProducer(
-    new ProducerConfig
+public static async Task Start()
     {
-        Reference = Guid.NewGuid().ToString(),
-        Stream = stream,
-        // Here you can receive the messages confirmation
-        // it means the message is stored on the server
-        ConfirmHandler = conf =>
+        var config = new StreamSystemConfig
         {
-            Console.WriteLine($"message: {conf.PublishingId} - confirmed");        
-        }
-    });
+            UserName = "guest",
+            Password = "guest",
+            VirtualHost = "/"
+        };
+        // Connect to the broker and create the system object
+        // the entry point for the client.
+        // Create it once and reuse it.
+        var system = await StreamSystem.Create(config);
 
-// Publish the messages and set the publishingId that
-// should be sequential
-for (ulong i = 0; i < 100; i++)
-{
-    var message = new Message(Encoding.UTF8.GetBytes($"hello {i}"));
-    await producer.Send(i, message);
-}
+        const string stream = "my_first_stream";
+
+        // Create the stream. It is important to put some retention policy 
+        // in this case is 200000 bytes.
+        await system.CreateStream(new StreamSpec(stream)
+        {
+            MaxLengthBytes = 200000,
+        });
+
+        var producer = await Producer.Create(
+            new ProducerConfig(system, stream)
+            {
+                Reference = Guid.NewGuid().ToString(),
+
+
+                // Receive the confirmation of the messages sent
+                ConfirmationHandler = confirmation =>
+                {
+                    switch (confirmation.Status)
+                    {
+                        // ConfirmationStatus.Confirmed: The message was successfully sent
+                        case ConfirmationStatus.Confirmed:
+                            Console.WriteLine($"Message {confirmation.PublishingId} confirmed");
+                            break;
+                        // There is an error during the sending of the message
+                        case ConfirmationStatus.WaitForConfirmation:
+                        case ConfirmationStatus.ClientTimeoutError
+                            : // The client didn't receive the confirmation in time. 
+                        // but it doesn't mean that the message was not sent
+                        // maybe the broker needs more time to confirm the message
+                        // see TimeoutMessageAfter in the ProducerConfig
+                        case ConfirmationStatus.StreamNotAvailable:
+                        case ConfirmationStatus.InternalError:
+                        case ConfirmationStatus.AccessRefused:
+                        case ConfirmationStatus.PreconditionFailed:
+                        case ConfirmationStatus.PublisherDoesNotExist:
+                        case ConfirmationStatus.UndefinedError:
+                        default:
+                            Console.WriteLine(
+                                $"Message  {confirmation.PublishingId} not confirmed. Error {confirmation.Status}");
+                            break;
+                    }
+
+                    return Task.CompletedTask;
+                }
+            });
+
+        // Publish the messages
+        for (var i = 0; i < 100; i++)
+        {
+            var message = new Message(Encoding.UTF8.GetBytes($"hello {i}"));
+            await producer.Send(message);
+        }
 
 // not mandatory. Just to show the confirmation
-Thread.Sleep(TimeSpan.FromSeconds(1));
+        Thread.Sleep(TimeSpan.FromSeconds(1));
 
 // Create a consumer
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = Guid.NewGuid().ToString(),
-        Stream = stream,
-        // Consume the stream from the beginning 
-        // See also other OffsetSpec 
-        OffsetSpec = new OffsetTypeFirst(),
-        // Receive the messages
-        MessageHandler = async (consumer, ctx, message) =>
-        {
-            Console.WriteLine($"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())} - consumed");
-            await Task.CompletedTask;
-        }
-    });
-Console.WriteLine($"Press to stop");
-Console.ReadLine();
+        var consumer = await Consumer.Create(
+            new ConsumerConfig(system, stream)
+            {
+                Reference = "my_consumer",
+                // Consume the stream from the beginning 
+                // See also other OffsetSpec 
+                OffsetSpec = new OffsetTypeFirst(),
+                // Receive the messages
+                MessageHandler = async (sourceStream, consumer, ctx, message) =>
+                {
+                    Console.WriteLine(
+                        $"message: coming from {sourceStream} data: {Encoding.Default.GetString(message.Data.Contents.ToArray())} - consumed");
+                    await Task.CompletedTask;
+                }
+            });
+        Console.WriteLine($"Press to stop");
+        Console.ReadLine();
 
-await producer.Close();
-await consumer.Close();
-await system.DeleteStream(stream);
-await system.Close();
+        await producer.Close();
+        await consumer.Close();
+        await system.DeleteStream(stream);
+        await system.Close();
+    }
+
 ```
+### Main Concepts
 
+The client is based on the following concepts:
+
+| Class  | Description  | How to get  | Note | Documentation| 
+|---|---|---|-----------------|--------------|
+|  `Producer`    | Hight Level producer. | `Producer.Create(new ProducerConfig(system, stream))`  | -Handle `RawProducer` and  `RawSuperStreamProducer` <br> - Auto reconnect <br> - Auto publishing id <br> - Handle Metadata update <br> - Confirm Messages with errors (timeout..etc) | [Doc Producer](#producer) |
+|  `Consumer`    | Hight Level Consumer. | `Consumer.Create(new ConsumerConfig(system, stream))`  | -Handle `RawConsumer` and  `RawSuperStreamConsumer` <br> - Auto reconnect <br> - Handle Metadata update <br>                                                                         | [Doc Consumer](#consumer) |
+|  `RawProducer` | Low-Level producer   |  `system.CreateRawProducer(new RawProducerConfig("stream")` || [Doc Raw Producer](#raw-producer)                                                                                                                                                    |
+|  `RawSuperStreamProducer` | Low Level Super Stream Producer   |  `system.RawCreateSuperStreamProducer(new RawSuperStreamProducerConfig("superStream")` ||                                                                                                                                                                                      |
+|  `RawConsumer` | Low Level consumer   |  `system.CreateRawConsumer(newRawConsumerConfig("stream")` || [Doc Raw Consumer](#raw-consumer)                                                                                                                                                    |
+|  `RawSuperStreamConsumer` | Low Level Super Stream Consumer   |  `system.RawCreateSuperStreamConsumer(new RawSuperStreamConsumerConfig("superStream")` ||
+
+You should use `Producer` and `Consumer` classes unless you need to handle the low-level details.
 ## Usage
 
 ---
 
 ### Connect
 
+`StreamSystem` is the entry point for the client. It is the connection to the broker.
+Just create it once and reuse it.
+
+`StreamSystem` is responsible to handle the `stream-locator` tcp connection. That is the main connection to lookup the resources as leader connection, query the metadata etc.. .
+
 ```csharp
+
 var config = new StreamSystemConfig
 {
     UserName = "myuser",
@@ -131,6 +188,8 @@ var config = new StreamSystemConfig
     VirtualHost = "myhost",
     Endpoints = new List<EndPoint> {new IPEndPoint(IPAddress.Parse("<<brokerip>>"), 5552)},
 };
+
+var system = await StreamSystem.Create(config);
 ```
 
 ### Multi Host
@@ -148,6 +207,7 @@ var config = new StreamSystemConfig
         new IPEndPoint(IPAddress.Parse("<<brokerip3>>"), 5552)
     },
 };
+var system = await StreamSystem.Create(config);
 ```
 
 ### TLS
@@ -163,6 +223,7 @@ var config = new StreamSystemConfig
         Enabled = true
     },
 };
+var system = await StreamSystem.Create(config);
 ```
 
 ### TLS with client certificate
@@ -180,9 +241,12 @@ var config = new StreamSystemConfig
         CertPassphrase = "Password"
     },
 };
+var system = await StreamSystem.Create(config);
 ```
 
 ### Load Balancer
+
+See https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/#with-a-load-balancer for more information
 
 ```csharp
 var lbAddressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("<<loadBalancerIP>>"), 5552));
@@ -237,55 +301,116 @@ await system.CreateStream(new StreamSpec(stream)
 
 ### Producer
 
-A Producer instance is created from the `System`.
+A Producer instance is created from the `Producer`.
 
 ```csharp
-var producer = await system.CreateProducer(
-    new ProducerConfig
-    {
-        Stream = "my_stream",
-    });
+  var producer = await Producer.Create(  
+  new ProducerConfig(system, stream) {
+  
+  });
 ```
 
 Consider a Producer instance like a long-lived object, do not create one to send just one message.
 
 | Parameter               | Description                            | Default                        |
 |-------------------------|----------------------------------------|--------------------------------|
+| StreamSystem                  | the stream system where to connect              | No default, mandatory setting. | 
 | Stream                  | The stream to publish to.              | No default, mandatory setting. | 
 | Reference               | The logical name of the producer.      | null (no deduplication)        | 
 | ClientProvidedName      | Set the TCP Client Name                | `dotnet-stream-producer`       | 
-| ConfirmHandler          | Handler with confirmed messages        | It is an event                 |
-| ConnectionClosedHandler | Event when the client is disconnected  | It is an event                 | 
-| MaxInFlight             | Max Number of messages before send     | 1000                           | 
+| ConfirmationHandler          | Handler with confirmed messages        | It is an event                 |
+| TimeoutMessageAfter          | TimeoutMessageAfter is the time after which a message is considered as timed out        | TimeSpan.FromSeconds(3)                 |
 
 Producer with a reference name stores the sequence id on the server.
 It is possible to retrieve the id using `producer.GetLastPublishingId()`
 or more generic `system.QuerySequence("reference", "my_stream")`.
+
+
+`Producer` handles the following features automatically:
+
+- Provide incremental publishingId 
+- Auto-Reconnect in case of disconnection
+- Trace sent and received messages
+- Invalidate messages
+- [Handle the metadata Update](#handle-metadata-update)
+
+#### Provide publishingId automatically
+
+`Producer` retrieves the last publishingID given the producer name.
+
+Zero(0) is the default value in case there is no publishingId for given producer reference.
+
+#### Auto-Reconnect
+
+`Producer` restores the TCP connection in case the `Producer` is disconnected for some reason.
+During the reconnection it continues to store the messages in a local-list.
+The user will receive back the confirmed or un-confirmed messages.
+See [Reconnection Strategy](#reconnection-strategy)
+
+#### Trace sent and received messages
+
+`Producer` keeps in memory each sent message and removes it from the memory when the message is confirmed or
+times out.
+`ConfirmationHandler` receives the messages back with the status.
+`confirmation.Status` can have different values, but in general `ConfirmationStatus.Confirmed` means the messages
+is stored on the server. Other statuses mean that there was a problem with the message/messages under given publishing
+id.
+
+```csharp
+ConfirmationHandler = confirmation =>
+{                    
+    if (confirmation.Status == ConfirmationStatus.Confirmed)
+    {
+
+        // OK
+    }
+    else
+    {
+        // Some problem
+    }
+}
+```
+
+#### Currently defined confirmation statuses
+
+| Status                | Description                                                                                                  | Source |
+|-----------------------|--------------------------------------------------------------------------------------------------------------|--------|
+| Confirmed             | Message has been confirmed by the server and written to disk.                                                | Server |
+| ClientTimeoutError    | Client gave up waiting for the message (read more [here](#invalidate-messages)).                             | Client |
+| StreamNotAvailable    | Stream was deleted or otherwise become unavailable.                                                          | Server |
+| InternalError         |                                                                                                              | Server |
+| AccessRefused         | Provided credentials are invalid or you lack permissions for specific vhost/etc.                             | Server |
+| PreconditionFailed    | Catch-all for validation on server (eg. requested to create stream with different parameters but same name). | Server |
+| PublisherDoesNotExist |                                                                                                              | Server |
+| UndefinedError        | Catch-all for any new status that is not yet handled in the library.                                         | Server |
+
+#### Invalidate messages
+
+If the client doesn't receive a confirmation within configured timeout (3 seconds by default), Reliable Producer removes
+the message from the internal messages cache.
+The user will receive `ConfirmationStatus.ClientTimeoutError` in the `ConfirmationHandler`.
 
 ### Publish Messages
 
 #### Standard publish
 
 ```csharp
-    var publishingId = 0;
     var message = new Message(Encoding.UTF8.GetBytes("hello"));
-    await producer.Send(publishingId, message);
+    await producer.Send(message);
 ```
 
-`publishingId` must be incremented for each send.
-
-#### Standard Batch publish
+#### Batch publish
 
 Batch send is a synchronous operation.
 It allows to pre-aggregate messages and send them in a single synchronous call.
 
 ```csharp
-var messages = new List<(ulong, Message)>();
+var messages = new List<Message>();
 for (ulong i = 0; i < 30; i++)
 {
-    messages.Add((i, new Message(Encoding.UTF8.GetBytes($"batch {i}"))));
+    messages.Add(new Message(Encoding.UTF8.GetBytes($"batch {i}")));
 }
-await producer.BatchSend(messages);
+await producer.Send(messages);
 messages.Clear();
 ```
 
@@ -303,8 +428,7 @@ for (var i = 1; i <= 500; i++)
     var message = new Message(Encoding.UTF8.GetBytes($"SubBatchMessage_{i}"));
     subEntryMessages.Add(message);
 }
-var publishingId = 1; 
-await producer.Send(publishingId, subEntryMessages, CompressionType.Gzip);
+await producer.Send(subEntryMessages, CompressionType.Gzip);
 messages.Clear();
 ```
 
@@ -322,39 +446,36 @@ See the table:
 You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
 See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
 
-### Deduplication
-
-[See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
-Set a producer reference to enable the deduplication:
+### Publish SuperStream
+See: https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams for more details.
 
 ```csharp
-var producer = await system.CreateProducer(
-    new ProducerConfig
-    {
-        Reference = "my_producer",
-        Stream = "my_stream",
-    });
+ var producer = await Producer.Create(new ProducerConfig(system, "super_stream")
+        {
+            SuperStreamConfig = new SuperStreamConfig()
+            {
+                Routing = message1 => message1.Properties.MessageId.ToString()
+            }
+        }
+        );
 ```
 
-then:
+`SuperStreamConfig` is mandatory to enable the super stream feature.
+`Routing` is a function that extracts the routing key from the message. By default it uses a `HashRoutingMurmurStrategy` strategy.
 
-```csharp
-var publishingId = 0;
-var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
-await producer.Send(publishingId, message);
-```
+See `Tests.SuperStreamProducerTests.ValidateHashRoutingStrategy` for more examples.
 
-### Consume Messages
+
+### Consumer
 
 Define a consumer:
 
 ```csharp
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
+var consumer = await Consumer.Create(
+    new ConsumerConfig(system,stream)
     {
         Reference = "my_consumer",
-        Stream = stream,
-        MessageHandler = async (consumer, ctx, message) =>
+        MessageHandler = async (sourceStream, consumer, ctx, message) =>
         {
             Console.WriteLine(
                 $"message: {Encoding.Default.GetString(message.Data.Contents.ToArray())}");
@@ -363,24 +484,28 @@ var consumer = await system.CreateConsumer(
 });
 ```
 
+`Consumer` handle the following feature automatically:
+
+- Auto-Reconnect in case of disconnection
+- Auto restart consuming from the last offset
+- [Handle the metadata Update](#reliable-handle-metadata-update)
+
+#### Auto-Reconnect
+
+`Consumer` restores the TCP connection in case the Producer is disconnected for some reason.
+`Consumer` will restart consuming from the last offset stored.
+See [Reconnection Strategy](#reconnection-strategy)
+
+
 ### Offset Types
 
 There are five types of Offset and they can be set by the `ConsumerConfig.OffsetSpec` property that must be passed to
 the Consumer constructor, in the example we use `OffsetTypeFirst`:
 
 ```csharp
-var consumerOffsetTypeFirst = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = "my_consumer_offset_first",
-        Stream = stream,
-        OffsetSpec = new OffsetTypeFirst(),
-        MessageHandler = async (consumer, ctx, message) =>
-        {
- 
-            await Task.CompletedTask;
-        }
-    });
+...        
+ OffsetSpec = new OffsetTypeFirst(),
+ ...      
 ```
 
 The five types are:
@@ -425,13 +550,8 @@ var offsetTypeTimestamp = new OffsetTypeTimestamp(anHourAgo);
 The server can store the current delivered offset given a consumer with `StoreOffset` in this way:
 
 ```csharp
-var messagesConsumed = 0;
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
-    {
-        Reference = "my_consumer",
-        Stream = stream,
-        MessageHandler = async (consumer, ctx, message) =>
+....        
+         MessageHandler = async (sourceStream,consumer, ctx, message) =>
         {
             if (++messagesConsumed % 1000 == 0)
             {
@@ -445,11 +565,10 @@ It is possible to retrieve the offset with `QueryOffset`:
 
 ```csharp
 var trackedOffset = await system.QueryOffset("my_consumer", stream);
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
+...
+    new ConsumerConfig(system,stream)
     {
         Reference = "my_consumer",
-        Stream = stream,
         OffsetSpec = new OffsetTypeOffset(trackedOffset),    
 ```
 
@@ -463,12 +582,10 @@ Use the `ConsumerConfig#IsSingleActiveConsumer()` method to enable the feature:
 Enabling single active consumer
 
 ```csharp
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
+     new ConsumerConfig(system,stream)
     {
         Reference = "application-1", // Set the consumer name (mandatory to enable single active consumer)
         IsSingleActiveConsumer = true, // Enable single active consumer
-        Stream = "my-stream",
         OffsetSpec = new OffsetTypeFirst(),
     ...
     });
@@ -487,8 +604,7 @@ By default the Single Active Consumer start consuming form the `OffsetSpec` but 
 For example, if you want to start from the last tracked message can do it like this:
 
 ```csharp
-var consumer = await system.CreateConsumer(
-    new ConsumerConfig
+    new ConsumerConfig(system,stream)
     {
         Reference = "application-1",
         Stream = "my-stream",
@@ -498,12 +614,102 @@ var consumer = await system.CreateConsumer(
         {
             var trackedOffset = await system.QueryOffset(reference, stream);
             return new OffsetTypeOffset(trackedOffset);
-        }
+        };
+```
+
+### Reconnection Strategy
+
+By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
+You can customize the behaviour implementing the `IReconnectStrategy` interface:
+
+```csharp
+ValueTask<bool> WhenDisconnected(string connectionInfo);
+ValueTask WhenConnected(string connectionInfo);
+```
+
+If `WhenDisconnected` return is `true` Producer/Consumer will be reconnected else closed.
+`connectionInfo` add information about the connection.
+
+You can use it:
+
+```csharp
+var p = await Producer.Create(new ReliableProducerConfig(system, stream)
+{
+    ...
+        ReconnectStrategy = MyReconnectStrategy
+    ...
+});
+```
+
+### Handle metadata update
+
+If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate`
+event.
+Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the
+producer/consumer.
+
+
+### Heartbeat
+
+It is possible to configure the heartbeat using:
+
+```csharp
+ var config = new StreamSystemConfig()
+{
+     Heartbeat = TimeSpan.FromSeconds(30),
+}
+```
+
+- `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
+- `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
+
+Heartbeat value shouldn't be too low.
+
+### Raw 
+
+- Raw Producer
+- Raw Consumer
+
+
+### Raw Producer
+
+`RawProducer` is the low level producer provided `system` 
+
+### Deduplication
+
+[See here for more details](https://rabbitmq.github.io/rabbitmq-stream-java-client/snapshot/htmlsingle/#outbound-message-deduplication)
+Set a producer reference to enable the deduplication:
+
+```csharp
+var producer = await system.CreateRawProducer(
+    new ProducerConfig("my_stream")
+    {
+        Reference = "my_producer",
+        
     });
 ```
 
-Single Active Consumer is available for the standard `Consumer` and also for the `ReliableConsumer`.
-For `ReliableConsumer` just use `ReliableConsumerConfig#IsSingleActiveConsumer()` to enable it.
+then:
+
+```csharp
+var publishingId = 0;
+var message = new Message(Encoding.UTF8.GetBytes($"my deduplicate message {i}"));
+await producer.Send(publishingId, message);
+```
+
+Note: at the moment is only available for the `RawProducer`
+
+### Raw Consumer
+
+`RawConsumer` is the low level consumer provided `system` 
+
+```csharp
+  var rawConsumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
+                {..}
+            ); 
+```
+
 
 ### Handle Close
 
@@ -533,152 +739,6 @@ You can use `MetadataHandler` to handle it:
    },
  }
 ```
-
-### Heartbeat
-
-It is possible to configure the heartbeat using:
-
-```csharp
- var config = new StreamSystemConfig()
-{
-     Heartbeat = TimeSpan.FromSeconds(30),
-}
-```
-
-- `60` (`TimeSpan.FromSeconds(60)`) seconds is the default value
-- `0` (`TimeSpan.FromSeconds(0)`) will advise server to disable heartbeat
-
-Heartbeat value shouldn't be too low.
-
-### Reliable
-
-- Reliable Producer
-- Reliable Consumer
-
-See the directory [Examples/Reliable](./Examples/Reliable) for code examples.
-
-### Reliable Producer
-
-Reliable Producer is a smart layer built up of the standard `Producer`.
-
-The idea is to give the user ability to choose between the standard or reliable producer.
-
-The main features are:
-
-- Provide publishingID automatically
-- Auto-Reconnect in case of disconnection
-- Trace sent and received messages
-- Invalidate messages
-- [Handle the metadata Update](#reliable-handle-metadata-update)
-
-#### Provide publishingID automatically
-
-Reliable Producer retrieves the last publishingID given the producer name.
-
-Zero(0) is the default value in case there is no publishingID for given producer reference.
-
-#### Auto-Reconnect
-
-Reliable Producer restores the TCP connection in case the Producer is disconnected for some reason.
-During the reconnection it continues to store the messages in a local-list.
-The user will receive back the confirmed or un-confirmed messages.
-See [Reconnection Strategy](#reconnection-strategy)
-
-#### Trace sent and received messages
-
-Reliable Producer keeps in memory each sent message and removes it from the memory when the message is confirmed or
-times out.
-`ConfirmationHandler` receives the messages back with the status.
-`confirmation.Status` can have different values, but in general `ConfirmationStatus.Confirmed` means the messages
-is stored on the server. Other statuses mean that there was a problem with the message/messages under given publishing
-id.
-
-```csharp
-ConfirmationHandler = confirmation =>
-{                    
-    if (confirmation.Status == ConfirmationStatus.Confirmed)
-    {
-
-        // OK
-    }
-    else
-    {
-        // Some problem
-    }
-}
-```
-
-#### Currently defined confirmation statuses
-
-| Status                | Description                                                                                                  | Source |
-|-----------------------|--------------------------------------------------------------------------------------------------------------|--------|
-| Confirmed             | Message has been confirmed by the server and written to disk.                                                | Server |
-| ClientTimeoutError    | Client gave up waiting for the message (read more [here](#invalidate-messages)).                             | Client |
-| StreamNotAvailable    | Stream was deleted or otherwise become unavailable.                                                          | Server |
-| InternalError         |                                                                                                              | Server |
-| AccessRefused         | Provided credentials are invalid or you lack permissions for specific vhost/etc.                             | Server |
-| PreconditionFailed    | Catch-all for validation on server (eg. requested to create stream with different parameters but same name). | Server |
-| PublisherDoesNotExist |                                                                                                              | Server |
-| UndefinedError        | Catch-all for any new status that is not yet handled in the library.                                         | Server |
-
-#### Invalidate messages
-
-If the client doesn't receive a confirmation within configured timeout (3 seconds by default), Reliable Producer removes
-the message from the internal messages cache.
-The user will receive `ConfirmationStatus.ClientTimeoutError` in the `ConfirmationHandler`.
-
-#### Send API
-
-Reliable Producer implements two `send(..)`
-
-- `Send(Message message)` // standard
-- `Send(List<Message> messages, CompressionType compressionType)` //sub-batching with compression
-
-### Reliable Consumer
-
-Reliable Consumer is a smart layer built up of the standard `Consumer`. </b>   
-The idea is to leave the user decides what to use, the standard or reliable Consumer. </b>
-
-The main features are:
-
-- Auto-Reconnect in case of disconnection
-- Auto restart consuming from the last offset
-- [Handle the metadata Update](#reliable-handle-metadata-update)
-
-#### Auto-Reconnect
-
-Reliable Consumer restores the TCP connection in case the Producer is disconnected for some reason.
-Reliable Consumer will restart consuming from the last offset stored.
-See [Reconnection Strategy](#reconnection-strategy)
-
-### Reconnection Strategy
-
-By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
-You can customize the behaviour implementing the `IReconnectStrategy` interface:
-
-```csharp
-ValueTask<bool> WhenDisconnected(string connectionInfo);
-ValueTask WhenConnected(string connectionInfo);
-```
-
-If `WhenDisconnected` return is `true` Producer/Consumer will be reconnected else closed.
-`connectionInfo` add information about the connection.
-
-You can use it:
-
-```csharp
-var p = await ReliableProducer.CreateReliableProducer(new ReliableProducerConfig()
-{
-...
-ReconnectStrategy = MyReconnectStrategy
-```
-
-### Reliable handle metadata update
-
-If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate`
-event.
-Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the
-producer/consumer.
 
 ## Build from source
 
