@@ -58,6 +58,8 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
     public ValueTask WhenConnected(string connectionInfo)
     {
         Tentatives = 1;
+        LogEventSource.Log.LogInformation(
+            $"{connectionInfo} reconnected successfully.");
         return ValueTask.CompletedTask;
     }
 }
