@@ -68,22 +68,22 @@ namespace RabbitMQ.Stream.Client
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
     {
         private bool _disposed;
-        private readonly RawConsumerConfig config;
-        private byte subscriberId;
+        private readonly RawConsumerConfig _config;
+        private byte _subscriberId;
 
         private RawConsumer(Client client, RawConsumerConfig config)
         {
-            this.client = client;
-            this.config = config;
+            _client = client;
+            _config = config;
         }
 
         // if a user specify a custom offset 
-        // the client must filter messages
+        // the _client must filter messages
         // and dispatch only the messages starting from the 
         // user offset.
         private bool MaybeDispatch(ulong offset)
         {
-            return config.StoredOffsetSpec switch
+            return _config.StoredOffsetSpec switch
             {
                 OffsetTypeOffset offsetTypeOffset =>
                     !(offset < offsetTypeOffset.OffsetValue),
@@ -93,48 +93,48 @@ namespace RabbitMQ.Stream.Client
 
         public async Task StoreOffset(ulong offset)
         {
-            await client.StoreOffset(config.Reference, config.Stream, offset);
+            await _client.StoreOffset(_config.Reference, _config.Stream, offset);
         }
 
         public static async Task<IConsumer> Create(ClientParameters clientParameters,
             RawConsumerConfig config,
             StreamInfo metaStreamInfo)
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo);
-            var consumer = new RawConsumer((Client)client, config);
+            var _client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo);
+            var consumer = new RawConsumer((Client)_client, config);
             await consumer.Init();
             return consumer;
         }
 
         private async Task Init()
         {
-            config.Validate();
+            _config.Validate();
 
-            client.ConnectionClosed += async reason =>
+            _client.ConnectionClosed += async reason =>
             {
-                if (config.ConnectionClosedHandler != null)
+                if (_config.ConnectionClosedHandler != null)
                 {
-                    await config.ConnectionClosedHandler(reason);
+                    await _config.ConnectionClosedHandler(reason);
                 }
             };
-            if (config.MetadataHandler != null)
+            if (_config.MetadataHandler != null)
             {
-                client.Parameters.MetadataHandler += config.MetadataHandler;
+                _client.Parameters.MetadataHandler += _config.MetadataHandler;
             }
 
             var consumerProperties = new Dictionary<string, string>();
-            if (config.IsSingleActiveConsumer)
+            if (_config.IsSingleActiveConsumer)
             {
-                consumerProperties["name"] = config.Reference;
+                consumerProperties["name"] = _config.Reference;
                 consumerProperties["single-active-consumer"] = "true";
             }
 
             // this the default value for the consumer.
-            config.StoredOffsetSpec = config.OffsetSpec;
+            _config.StoredOffsetSpec = _config.OffsetSpec;
             const ushort InitialCredit = 2;
 
-            var (consumerId, response) = await client.Subscribe(
-                config,
+            var (consumerId, response) = await _client.Subscribe(
+                _config,
                 InitialCredit,
                 consumerProperties,
                 async deliver =>
@@ -149,7 +149,7 @@ namespace RabbitMQ.Stream.Client
                         try
                         {
                             var message = Message.From(messageEntry.Data);
-                            await config.MessageHandler(this,
+                            await _config.MessageHandler(this,
                                 new MessageContext(messageEntry.Offset,
                                     TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
                                 message);
@@ -161,25 +161,25 @@ namespace RabbitMQ.Stream.Client
                     }
 
                     // give one credit after each chunk
-                    await client.Credit(deliver.SubscriptionId, 1);
+                    await _client.Credit(deliver.SubscriptionId, 1);
                 }, async b =>
                 {
-                    if (config.ConsumerUpdateListener != null)
+                    if (_config.ConsumerUpdateListener != null)
                     {
                         // in this case the StoredOffsetSpec is overridden by the ConsumerUpdateListener
                         // since the user decided to override the default behavior
-                        config.StoredOffsetSpec = await config.ConsumerUpdateListener(
-                            config.Reference,
-                            config.Stream,
+                        _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
+                            _config.Reference,
+                            _config.Stream,
                             b);
                     }
 
-                    return config.StoredOffsetSpec;
+                    return _config.StoredOffsetSpec;
                 }
             );
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                subscriberId = consumerId;
+                _subscriberId = consumerId;
                 return;
             }
 
@@ -188,7 +188,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<ResponseCode> Close()
         {
-            if (client.IsClosed)
+            if (_client.IsClosed)
             {
                 return ResponseCode.Ok;
             }
@@ -196,7 +196,7 @@ namespace RabbitMQ.Stream.Client
             var result = ResponseCode.Ok;
             try
             {
-                var deleteConsumerResponseTask = client.Unsubscribe(subscriberId);
+                var deleteConsumerResponseTask = _client.Unsubscribe(_subscriberId);
                 // The  default timeout is usually 10 seconds 
                 // in this case we reduce the waiting time
                 // the consumer could be removed because of stream deleted 
@@ -209,11 +209,11 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error removing the consumer id: {subscriberId} from the server. {e}");
+                LogEventSource.Log.LogError($"Error removing the consumer id: {_subscriberId} from the server. {e}");
             }
 
-            var closed = client.MaybeClose($"client-close-subscriber: {subscriberId}");
-            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-subscriber: {subscriberId}");
+            var closed = _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
+            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _disposed = true;
             return result;
         }
@@ -234,7 +234,7 @@ namespace RabbitMQ.Stream.Client
             var closeConsumer = Close();
             closeConsumer.Wait(TimeSpan.FromSeconds(1));
             ClientExceptions.MaybeThrowException(closeConsumer.Result,
-                $"Error during remove producer. Subscriber: {subscriberId}");
+                $"Error during remove producer. Subscriber: {_subscriberId}");
         }
 
         public void Dispose()
@@ -245,7 +245,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error during disposing Consumer: {subscriberId}.", e);
+                LogEventSource.Log.LogError($"Error during disposing Consumer: {_subscriberId}.", e);
             }
 
             GC.SuppressFinalize(this);
