@@ -100,7 +100,7 @@ override RabbitMQ.Stream.Client.Reliable.Producer.Close() -> System.Threading.Ta
 override RabbitMQ.Stream.Client.Reliable.Producer.ToString() -> string
 RabbitMQ.Stream.Client.AbstractEntity
 RabbitMQ.Stream.Client.AbstractEntity.AbstractEntity() -> void
-RabbitMQ.Stream.Client.AbstractEntity.client -> RabbitMQ.Stream.Client.Client
+RabbitMQ.Stream.Client.AbstractEntity._client -> RabbitMQ.Stream.Client.Client
 RabbitMQ.Stream.Client.AddressResolver
 RabbitMQ.Stream.Client.AddressResolver.AddressResolver(System.Net.IPEndPoint endPoint) -> void
 RabbitMQ.Stream.Client.AddressResolver.Enabled.get -> bool
