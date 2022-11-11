@@ -15,7 +15,6 @@ namespace RabbitMQ.Stream.Client
         {
         }
 
-        
         public Message(Data data)
         {
             Data = data;
@@ -37,7 +36,7 @@ namespace RabbitMQ.Stream.Client
         // In this specific case it is not needed
         public Header MessageHeader { get; internal set; }
         public object AmqpValue { get; internal set; }
-        
+
         public ulong MessageOffset { get; internal set; }
 
         public int Size => Data.Size +
@@ -105,7 +104,7 @@ namespace RabbitMQ.Stream.Client
             Properties properties = null;
             object amqpValue = null;
             ApplicationProperties applicationProperties = null;
-            while (offset!= len)
+            while (offset != len)
             {
                 var dataCode = DescribedFormatCode.Read(ref reader);
                 switch (dataCode)
@@ -119,6 +118,7 @@ namespace RabbitMQ.Stream.Client
                         annotations = Annotations.Parse<Annotations>(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.MessageProperties:
+                        reader.Rewind(DescribedFormatCode.Size);
                         properties = Properties.Parse(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.ApplicationProperties:
@@ -127,6 +127,7 @@ namespace RabbitMQ.Stream.Client
                             ApplicationProperties.Parse<ApplicationProperties>(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.MessageHeader:
+                        reader.Rewind(DescribedFormatCode.Size);
                         header = Header.Parse(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.AmqpValue:

@@ -140,7 +140,7 @@ namespace RabbitMQ.Stream.Client
             value = (ushort)v;
             return 2;
         }
-        
+
         internal static int ReadUInt16(ReadOnlySequence<byte> seq, out ushort value)
         {
             if (seq.FirstSpan.Length >= 2)
@@ -156,7 +156,6 @@ namespace RabbitMQ.Stream.Client
 
             return 2;
         }
-
 
         internal static int ReadInt16(ref SequenceReader<byte> reader, out short value)
         {
@@ -202,7 +201,7 @@ namespace RabbitMQ.Stream.Client
 
             return 8;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int ReadByte(ref SequenceReader<byte> reader, out byte value)
         {
@@ -230,7 +229,6 @@ namespace RabbitMQ.Stream.Client
             return 4 + (int)len;
         }
 
-
         internal static int ReadBytesFromSequence(ReadOnlySequence<byte> seq, int len, out byte[] data)
         {
             data = seq.Slice(0, len).ToArray();
@@ -245,7 +243,6 @@ namespace RabbitMQ.Stream.Client
             data = tempSpan.ToArray();
             return len;
         }
-
 
         internal static int ReadInt64(ref SequenceReader<byte> reader, out long value)
         {

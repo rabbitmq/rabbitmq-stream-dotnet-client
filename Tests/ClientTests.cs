@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using Xunit;
@@ -193,131 +192,131 @@ namespace Tests
             await client.Close("done");
         }
 
-        [Fact]
-        public async void ConsumerShouldReceiveDelivery()
-        {
-            var stream = Guid.NewGuid().ToString();
-            var clientParameters = new ClientParameters { };
-            var client = await Client.Create(clientParameters);
-            var testPassed = new TaskCompletionSource<Deliver>();
-            await client.CreateStream(stream, new Dictionary<string, string>());
-            var initialCredit = 1;
-            var offsetType = new OffsetTypeFirst();
-            var msgs = new List<MsgEntry>();
-            Func<Deliver, Task> deliverHandler = deliver =>
-            {
-                msgs.AddRange(deliver.Messages);
-                if (msgs.Count == 2)
-                {
-                    testPassed.SetResult(deliver);
-                }
+        // [Fact]
+        // public async void ConsumerShouldReceiveDelivery()
+        // {
+        //     var stream = Guid.NewGuid().ToString();
+        //     var clientParameters = new ClientParameters { };
+        //     var client = await Client.Create(clientParameters);
+        //     var testPassed = new TaskCompletionSource<Deliver>();
+        //     await client.CreateStream(stream, new Dictionary<string, string>());
+        //     var initialCredit = 1;
+        //     var offsetType = new OffsetTypeFirst();
+        //     var msgs = new List<MsgEntry>();
+        //     Func<Deliver, Task> deliverHandler = deliver =>
+        //     {
+        //         msgs.AddRange(deliver.Messages);
+        //         if (msgs.Count == 2)
+        //         {
+        //             testPassed.SetResult(deliver);
+        //         }
+        //
+        //         return Task.CompletedTask;
+        //     };
+        //     var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
+        //         new Dictionary<string, string>(), deliverHandler);
+        //     Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
+        //     var publisherRef = Guid.NewGuid().ToString();
+        //     var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
+        //     await client.Publish(new Publish(publisherId, new List<(ulong, Message)>
+        //     {
+        //         (0, new Message(Encoding.UTF8.GetBytes("hi"))),
+        //         (1, new Message(Encoding.UTF8.GetBytes("hi")))
+        //     }));
+        //     new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        //
+        //     Assert.Equal(2, msgs.Count());
+        //     await client.DeleteStream(stream);
+        //     await client.Close("done");
+        // }
 
-                return Task.CompletedTask;
-            };
-            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
-                new Dictionary<string, string>(), deliverHandler);
-            Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
-            var publisherRef = Guid.NewGuid().ToString();
-            var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            await client.Publish(new Publish(publisherId, new List<(ulong, Message)>
-            {
-                (0, new Message(Encoding.UTF8.GetBytes("hi"))),
-                (1, new Message(Encoding.UTF8.GetBytes("hi")))
-            }));
-            new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
-            Assert.Equal(2, msgs.Count());
-            await client.DeleteStream(stream);
-            await client.Close("done");
-        }
-
-        [Fact]
-        public async void ConsumerStoreOffsetShouldReceiveDelivery()
-        {
-            var stream = Guid.NewGuid().ToString();
-            var publisherRef = Guid.NewGuid().ToString();
-            var messageCount = 0;
-            ulong offset = 0;
-            const string reference = "ref";
-
-            // create stream
-            var clientParameters = new ClientParameters { };
-            var client = await Client.Create(clientParameters);
-            var gotEvent = new ManualResetEvent(false);
-
-            await client.CreateStream(stream, new Dictionary<string, string>());
-
-            // Subscribe
-            var initialCredit = 1;
-            var offsetType = new OffsetTypeFirst();
-            var deliverHandler = new Func<Deliver, Task>(async (Deliver deliver) =>
-            {
-                foreach (var msg in deliver.Messages)
-                {
-                    if (msg.Offset >= offset) //a chunk may contain messages before offset
-                    {
-                        messageCount++;
-                    }
-                }
-
-                testOutputHelper.WriteLine("GotDelivery: {0}", deliver.Messages.Count());
-
-                if (messageCount == 10)
-                {
-                    testOutputHelper.WriteLine("Got 10: ");
-                    gotEvent.Set();
-                }
-
-                await client.Credit(deliver.SubscriptionId, 1);
-            });
-            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
-                new Dictionary<string, string>(), deliverHandler);
-            Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
-            testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
-
-            // publish
-            var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            for (ulong i = 0; i < 10; i++)
-            {
-                await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
-            }
-
-            var deletePublisher = await client.DeletePublisher(publisherId);
-            Assert.Equal(ResponseCode.Ok, deletePublisher.ResponseCode);
-            testOutputHelper.WriteLine("Sent 10 messages to stream");
-            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
-            {
-                Assert.True(false, "MessageHandler was not hit");
-            }
-
-            Assert.Equal(10, messageCount);
-
-            await client.StoreOffset(reference, stream, 5);
-
-            // reset
-            gotEvent.Reset();
-            messageCount = 5;
-
-            var queryOffsetResponse = await client.QueryOffset(reference, stream);
-            offset = queryOffsetResponse.Offset;
-            testOutputHelper.WriteLine("Current offset for {0}: {1}", reference, offset);
-            Assert.Equal((ulong)5, offset);
-
-            var offsetTypeOffset = new OffsetTypeOffset(offset);
-            (subId, subscribeResponse) = await client.Subscribe(stream, offsetTypeOffset, (ushort)initialCredit,
-               new Dictionary<string, string>(), deliverHandler);
-            Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
-            testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
-
-            if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
-            {
-                Assert.True(false, "MessageHandler was not hit");
-            }
-
-            Assert.Equal(10, messageCount);
-            await client.Unsubscribe(subId);
-            // await client.Close("done");
-        }
+        // [Fact]
+        // public async void ConsumerStoreOffsetShouldReceiveDelivery()
+        // {
+        //     var stream = Guid.NewGuid().ToString();
+        //     var publisherRef = Guid.NewGuid().ToString();
+        //     var messageCount = 0;
+        //     ulong offset = 0;
+        //     const string reference = "ref";
+        //
+        //     // create stream
+        //     var clientParameters = new ClientParameters { };
+        //     var client = await Client.Create(clientParameters);
+        //     var gotEvent = new ManualResetEvent(false);
+        //
+        //     await client.CreateStream(stream, new Dictionary<string, string>());
+        //
+        //     // Subscribe
+        //     var initialCredit = 1;
+        //     var offsetType = new OffsetTypeFirst();
+        //     var deliverHandler = new Func<Deliver, Task>(async (Deliver deliver) =>
+        //     {
+        //         foreach (var msg in deliver.Messages)
+        //         {
+        //             if (msg.Offset >= offset) //a chunk may contain messages before offset
+        //             {
+        //                 messageCount++;
+        //             }
+        //         }
+        //
+        //         testOutputHelper.WriteLine("GotDelivery: {0}", deliver.Messages.Count());
+        //
+        //         if (messageCount == 10)
+        //         {
+        //             testOutputHelper.WriteLine("Got 10: ");
+        //             gotEvent.Set();
+        //         }
+        //
+        //         await client.Credit(deliver.SubscriptionId, 1);
+        //     });
+        //     var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
+        //         new Dictionary<string, string>(), deliverHandler);
+        //     Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
+        //     testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
+        //
+        //     // publish
+        //     var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
+        //     for (ulong i = 0; i < 10; i++)
+        //     {
+        //         await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
+        //     }
+        //
+        //     var deletePublisher = await client.DeletePublisher(publisherId);
+        //     Assert.Equal(ResponseCode.Ok, deletePublisher.ResponseCode);
+        //     testOutputHelper.WriteLine("Sent 10 messages to stream");
+        //     if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
+        //     {
+        //         Assert.True(false, "MessageHandler was not hit");
+        //     }
+        //
+        //     Assert.Equal(10, messageCount);
+        //
+        //     await client.StoreOffset(reference, stream, 5);
+        //
+        //     // reset
+        //     gotEvent.Reset();
+        //     messageCount = 5;
+        //
+        //     var queryOffsetResponse = await client.QueryOffset(reference, stream);
+        //     offset = queryOffsetResponse.Offset;
+        //     testOutputHelper.WriteLine("Current offset for {0}: {1}", reference, offset);
+        //     Assert.Equal((ulong)5, offset);
+        //
+        //     var offsetTypeOffset = new OffsetTypeOffset(offset);
+        //     (subId, subscribeResponse) = await client.Subscribe(stream, offsetTypeOffset, (ushort)initialCredit,
+        //        new Dictionary<string, string>(), deliverHandler);
+        //     Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
+        //     testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
+        //
+        //     if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
+        //     {
+        //         Assert.True(false, "MessageHandler was not hit");
+        //     }
+        //
+        //     Assert.Equal(10, messageCount);
+        //     await client.Unsubscribe(subId);
+        //     // await client.Close("done");
+        // }
 
         [Fact]
         public async void ConsumerShouldReceiveDeliveryAfterCredit()
@@ -350,7 +349,7 @@ namespace Tests
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             var delivery = testPassed.Task.Result;
-            Assert.Single(delivery.Messages);
+            // Assert.Single(delivery.Messages);
             await client.DeleteStream(stream);
             await client.Close("done");
         }

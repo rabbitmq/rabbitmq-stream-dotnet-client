@@ -24,8 +24,8 @@ namespace RabbitMQ.Stream.Client.AMQP
         public static int Write(Span<byte> span, byte data)
         {
             var offset = WireFormatting.WriteByte(span, FormatCode.Described);
-            offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.SmallUlong);
-            offset += WireFormatting.WriteByte(span.Slice(offset), data);
+            offset += WireFormatting.WriteByte(span[offset..], FormatCode.SmallUlong);
+            offset += WireFormatting.WriteByte(span[offset..], data);
             return offset;
         }
 

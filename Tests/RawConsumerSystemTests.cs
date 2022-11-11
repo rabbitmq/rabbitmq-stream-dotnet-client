@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
@@ -275,13 +276,18 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
             var rawProducer = await system.CreateRawProducer(
                 new RawProducerConfig(stream) { Reference = "producer" });
+            var consumed = 0;
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
                     MessageHandler = async (consumer, ctx, message) =>
                     {
-                        testPassed.SetResult(message);
+                        if (Interlocked.Increment(ref consumed) == 3)
+                        {
+                            testPassed.SetResult(message);
+                        }
+
                         await Task.CompletedTask;
                     }
                 });
@@ -320,14 +326,15 @@ namespace Tests
                     ["keyuni3"] = "祝您有美好的一天，并享受客户", //  unicode string 
                     ["keylonguni"] = ChineseStringTest, //  unicode string 
                     ["key255"] = ByteString //  unicode string 
-                }
+                },
             };
-
-            await rawProducer.Send(1, message);
+            for (ulong i = 0; i < 3; i++)
+            {
+                await rawProducer.Send(i, message);
+            }
             //wait for sent message to be delivered
 
             new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
             Assert.Equal(ChineseStringTest, Encoding.UTF8.GetString(testPassed.Task.Result.Data.Contents.ToArray()));
             Assert.Equal("subject", testPassed.Task.Result.Properties.Subject);
             Assert.Equal("to", testPassed.Task.Result.Properties.To);
@@ -355,6 +362,7 @@ namespace Tests
             Assert.Equal("祝您有美好的一天，并享受客户", testPassed.Task.Result.ApplicationProperties["keyuni3"]);
             Assert.Equal(ChineseStringTest, testPassed.Task.Result.ApplicationProperties["keylonguni"]);
             Assert.Equal(ByteString, testPassed.Task.Result.ApplicationProperties["key255"]);
+
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey2"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey3"]);
 

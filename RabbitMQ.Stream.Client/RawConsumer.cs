@@ -118,6 +118,7 @@ namespace RabbitMQ.Stream.Client
                 try
                 {
                     var message = Message.From(ref reader, len);
+                    message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
                     {
                         _config.MessageHandler(this,
@@ -131,7 +132,6 @@ namespace RabbitMQ.Stream.Client
                 }
             }
 
-
             //         var data = chunk.Data;
             //         for (ulong i = 0; i < chunk.NumEntries; i++)
             //         {
@@ -139,7 +139,6 @@ namespace RabbitMQ.Stream.Client
             //             //TODO: assuming only simple entries for now
             //             var entry = new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
             //             offset += (int)len;
-
 
             // foreach (var message in chunk.Messages)
             // {
@@ -208,7 +207,7 @@ namespace RabbitMQ.Stream.Client
                     // }
 
                     // give one credit after each chunk
-                   
+
                 }, async b =>
                 {
                     if (_config.ConsumerUpdateListener != null)

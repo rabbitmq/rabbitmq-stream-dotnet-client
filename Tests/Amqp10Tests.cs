@@ -21,25 +21,25 @@ namespace Tests
             Assert.Throws<AmqpParseException>(() =>
             {
                 var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
-                AmqpWireFormatting.ReadAny(ref reader, out var value);
+                AmqpWireFormatting.ReadAny(ref reader, out _);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
                 var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
-                AmqpWireFormatting.ReadBinary(ref reader, out var value);
+                AmqpWireFormatting.ReadBinary(ref reader, out _);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
                 var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
-                AmqpWireFormatting.ReadInt64(ref reader, out var value);
+                AmqpWireFormatting.ReadInt64(ref reader, out _);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
                 var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
-                AmqpWireFormatting.ReadString(ref reader, out var value);
+                AmqpWireFormatting.ReadString(ref reader, out _);
             });
 
             Assert.Throws<AmqpParseException>(() =>
@@ -140,56 +140,56 @@ namespace Tests
         public void ValidateFormatCode()
         {
             const bool boolTrue = true;
-            var boolTrueBin = new byte[] {0x41};
+            var boolTrueBin = new byte[] { 0x41 };
             RunValidateFormatCode(boolTrue, boolTrueBin);
 
             const bool boolFalse = false;
-            var boolFalseBin = new byte[] {0x42};
+            var boolFalseBin = new byte[] { 0x42 };
             RunValidateFormatCode(boolFalse, boolFalseBin);
 
             const ulong ulong0Value = 0x00;
-            var ulong0ValueBin = new byte[] {0x44};
+            var ulong0ValueBin = new byte[] { 0x44 };
 
             const ulong ulongSmallValue = 0xf2;
-            var ulongSmallValueBin = new byte[] {0x53, 0xf2};
+            var ulongSmallValueBin = new byte[] { 0x53, 0xf2 };
 
             const ulong ulongValue = 0x12345678edcba098;
-            var ulongValueBin = new byte[] {0x80, 0x12, 0x34, 0x56, 0x78, 0xed, 0xcb, 0xa0, 0x98};
+            var ulongValueBin = new byte[] { 0x80, 0x12, 0x34, 0x56, 0x78, 0xed, 0xcb, 0xa0, 0x98 };
 
             RunValidateFormatCode(ulong0Value, ulong0ValueBin);
             RunValidateFormatCode(ulongSmallValue, ulongSmallValueBin);
             RunValidateFormatCode(ulongValue, ulongValueBin);
 
             const byte ubyteValue = 0x33;
-            var ubyteValueBin = new byte[] {0x50, 0x33};
+            var ubyteValueBin = new byte[] { 0x50, 0x33 };
 
             RunValidateFormatCode(ubyteValue, ubyteValueBin);
 
             const ushort ushortValue = 0x1234;
-            var ushortValueBin = new byte[] {0x60, 0x12, 0x34};
+            var ushortValueBin = new byte[] { 0x60, 0x12, 0x34 };
 
             RunValidateFormatCode(ushortValue, ushortValueBin);
 
             const uint uint0Value = 0x00;
-            var uint0ValueBin = new byte[] {0x43};
+            var uint0ValueBin = new byte[] { 0x43 };
 
             const uint uintSmallValue = 0xe1;
-            var uintSmallValueBin = new byte[] {0x52, 0xe1};
+            var uintSmallValueBin = new byte[] { 0x52, 0xe1 };
 
             const uint uintValue = 0xedcba098;
-            var uintValueBin = new byte[] {0x70, 0xed, 0xcb, 0xa0, 0x98};
+            var uintValueBin = new byte[] { 0x70, 0xed, 0xcb, 0xa0, 0x98 };
 
             RunValidateFormatCode(uint0Value, uint0ValueBin);
             RunValidateFormatCode(uintSmallValue, uintSmallValueBin);
             RunValidateFormatCode(uintValue, uintValueBin);
 
             const sbyte byteValue = -20;
-            var byteValueBin = new byte[] {0x51, 0xec};
+            var byteValueBin = new byte[] { 0x51, 0xec };
 
             RunValidateFormatCode(byteValue, byteValueBin);
 
             const short shortValue = 0x5678;
-            var shortValueBin = new byte[] {0x61, 0x56, 0x78};
+            var shortValueBin = new byte[] { 0x61, 0x56, 0x78 };
             RunValidateFormatCode(shortValue, shortValueBin);
 
             // int intSmallValue = -77;
@@ -198,31 +198,31 @@ namespace Tests
             // //TODO Need to write another kind of the test since the intSmallValue is cast to byte so = 0xb3
 
             const int intValue = 0x56789a00;
-            var intValueBin = new byte[] {0x71, 0x56, 0x78, 0x9a, 0x00};
+            var intValueBin = new byte[] { 0x71, 0x56, 0x78, 0x9a, 0x00 };
             RunValidateFormatCode(intValue, intValueBin);
 
             const long longValue64 = -111111111111; //FFFFFFE62142FE39
-            var longValueBin64 = new byte[] {0x81, 0xff, 0xff, 0xff, 0xe6, 0x21, 0x42, 0xfe, 0x39};
+            var longValueBin64 = new byte[] { 0x81, 0xff, 0xff, 0xff, 0xe6, 0x21, 0x42, 0xfe, 0x39 };
             RunValidateFormatCode(longValue64, longValueBin64);
 
             const long longValue8 = 127;
-            var longValueBin8 = new byte[] {0x55, 0x7F};
+            var longValueBin8 = new byte[] { 0x55, 0x7F };
             RunValidateFormatCode(longValue8, longValueBin8);
 
             const float floatValue = -88.88f;
-            var floatValueBin = new byte[] {0x72, 0xc2, 0xb1, 0xc2, 0x8f};
+            var floatValueBin = new byte[] { 0x72, 0xc2, 0xb1, 0xc2, 0x8f };
             RunValidateFormatCode(floatValue, floatValueBin);
 
             var dtValue = DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime();
-            var dtValueBin = new byte[] {0x83, 0x00, 0x00, 0x01, 0x1d, 0x59, 0x8d, 0x1e, 0xa0};
+            var dtValueBin = new byte[] { 0x83, 0x00, 0x00, 0x01, 0x1d, 0x59, 0x8d, 0x1e, 0xa0 };
             RunValidateFormatCode(dtValue, dtValueBin);
 
             const double doubleValue = 111111111111111.22222222222;
-            var doubleValueBin = new byte[] {0x82, 0x42, 0xd9, 0x43, 0x84, 0x93, 0xbc, 0x71, 0xce};
+            var doubleValueBin = new byte[] { 0x82, 0x42, 0xd9, 0x43, 0x84, 0x93, 0xbc, 0x71, 0xce };
             RunValidateFormatCode(doubleValue, doubleValueBin);
 
             const string str8Value = "amqp";
-            var str8Utf8ValueBin = new byte[] {0xa1, 0x04, 0x61, 0x6d, 0x71, 0x70};
+            var str8Utf8ValueBin = new byte[] { 0xa1, 0x04, 0x61, 0x6d, 0x71, 0x70 };
             RunValidateFormatCode(str8Value, str8Utf8ValueBin);
 
             var str32Value = "";
@@ -276,20 +276,25 @@ namespace Tests
         [Fact]
         public void Validate32Bytes8BytesLists()
         {
-            var value32Bin = new byte[] {0xD0, 0x0, 0x0, 0x0, 0xF, 0x0, 0x0, 0x1, 0xF};
-            AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value32Bin), out var len32);
+            var value32Bin = new byte[] { 0xD0, 0x0, 0x0, 0x0, 0xF, 0x0, 0x0, 0x1, 0xF };
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(value32Bin));
+            AmqpWireFormatting.ReadListHeader(ref reader, out var len32);
             Assert.Equal(271, len32);
 
-            var value8Bin = new byte[] {0xc0, 0xF, 0xF0};
-            AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value8Bin), out var len8);
+            var value8Bin = new byte[] { 0xc0, 0xF, 0xF0 };
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(value8Bin));
+            AmqpWireFormatting.ReadListHeader(ref reader, out var len8);
             Assert.Equal(240, len8);
 
-            var value0Bin = new byte[] {0x45};
-            AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value0Bin), out var len0);
+            var value0Bin = new byte[] { 0x45 };
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(value0Bin));
+            AmqpWireFormatting.ReadListHeader(ref reader, out var len0);
             Assert.Equal(0, len0);
 
-            var valueComposite8Bin = new byte[] {0x0, 0x53, 0x73, 0xc0, 0xF, 0xF0};
-            AmqpWireFormatting.ReadCompositeHeader(new ReadOnlySequence<byte>(valueComposite8Bin),
+            var valueComposite8Bin = new byte[] { 0x0, 0x53, 0x73, 0xc0, 0xF, 0xF0 };
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(valueComposite8Bin));
+
+            AmqpWireFormatting.ReadCompositeHeader(ref reader,
                 out var compositeLen32, out _);
             Assert.Equal(240, compositeLen32);
         }
@@ -304,7 +309,8 @@ namespace Tests
             // remove these tests at some point ?? 
             //  body len < 250 bytes
             var body250 = SystemUtils.GetFileContent("message_body_250");
-            var msg250 = Message.From(new ReadOnlySequence<byte>(body250));
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(body250));
+            var msg250 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msg250);
             Assert.True(msg250.Data.Size <= byte.MaxValue);
             Assert.Null(msg250.ApplicationProperties);
@@ -313,7 +319,8 @@ namespace Tests
             //  body len > 256 bytes important to read the int in different way 
             //  body len >= 700 bytes 
             var body700 = SystemUtils.GetFileContent("message_body_700");
-            var msg700 = Message.From(new ReadOnlySequence<byte>(body700));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(body700));
+            var msg700 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msg700);
             Assert.True(msg700.Data.Size > byte.MaxValue);
             Assert.Null(msg700.Properties);
@@ -321,7 +328,8 @@ namespace Tests
             //  body len >= 300 bytes 
             // also the ApplicationProperties are not null
             var prop300 = SystemUtils.GetFileContent("message_random_application_properties_300");
-            var msgProp300 = Message.From(new ReadOnlySequence<byte>(prop300));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(prop300));
+            var msgProp300 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgProp300);
             Assert.True(msgProp300.Data.Size > byte.MaxValue);
             Assert.NotNull(msgProp300.ApplicationProperties);
@@ -329,7 +337,8 @@ namespace Tests
             //  body len >= 500 bytes 
             // also the ApplicationProperties are not null
             var prop500 = SystemUtils.GetFileContent("message_random_application_properties_500");
-            var msgProp500 = Message.From(new ReadOnlySequence<byte>(prop500));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(prop500));
+            var msgProp500 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgProp500);
             Assert.NotNull(msgProp500.ApplicationProperties);
 
@@ -337,7 +346,8 @@ namespace Tests
             // ApplicationProperties are not null
             // Properties is not null
             var prop900 = SystemUtils.GetFileContent("message_random_application_properties_properties_900");
-            var msgProp900 = Message.From(new ReadOnlySequence<byte>(prop900));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(prop900));
+            var msgProp900 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgProp900);
             Assert.NotNull(msgProp900.ApplicationProperties);
             foreach (var (key, value) in msgProp900.ApplicationProperties)
@@ -360,7 +370,8 @@ namespace Tests
 
             // Test message to check if all the fields with "test" value
             var staticTest = SystemUtils.GetFileContent("static_test_message_compare");
-            var msgStaticTest = Message.From(new ReadOnlySequence<byte>(staticTest));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(staticTest));
+            var msgStaticTest = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgStaticTest);
             Assert.Equal("test", Encoding.Default.GetString(msgStaticTest.Data.Contents.ToArray()));
             Assert.Equal("test", msgStaticTest.Properties.Subject);
@@ -379,7 +390,8 @@ namespace Tests
             Assert.Equal((long)100_000, msgStaticTest.Annotations[(long)100_000]);
 
             var header = SystemUtils.GetFileContent("header_amqpvalue_message");
-            var msgHeader = Message.From(new ReadOnlySequence<byte>(header));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(header));
+            var msgHeader = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgHeader);
             Assert.NotNull(msgHeader.MessageHeader);
             Assert.NotNull(msgHeader.AmqpValue);
@@ -403,7 +415,8 @@ namespace Tests
                 "Ο Άλαν Μάθισον Τούρινγκ (23 Ιουνίου 1912 – 7 Ιουνίου 1954) ήταν Άγγλος μαθηματικός, επιστήμονας υπολογιστών, λογικός, κρυπαναλυτής, φιλόσοφος και θεωρητικός βιολόγος. Ο Τούρινγκ είχε μεγάλη επιρροή στην ανάπτυξη της θεωρητικής επιστήμης των υπολογιστών.";
 
             var staticTest = SystemUtils.GetFileContent("message_unicode_message");
-            var msgStaticTest = Message.From(new ReadOnlySequence<byte>(staticTest));
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(staticTest));
+            var msgStaticTest = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgStaticTest);
             Assert.Equal(ByteString, Encoding.Default.GetString(msgStaticTest.Data.Contents.ToArray()));
             Assert.Equal(ChineseStringTest, msgStaticTest.ApplicationProperties["from_go_ch_long"]);
@@ -430,7 +443,7 @@ namespace Tests
                 ["float_value"] = 1.0f,
                 ["date_value"] = dt
             };
-            var m = new Message(Encoding.Default.GetBytes("hello")) {ApplicationProperties = app};
+            var m = new Message(Encoding.Default.GetBytes("hello")) { ApplicationProperties = app };
             Assert.NotNull(m.ApplicationProperties);
 
             Assert.Equal(14, AmqpWireFormatting.GetAnySize("string_value"));

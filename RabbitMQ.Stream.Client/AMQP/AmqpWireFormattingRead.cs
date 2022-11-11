@@ -15,6 +15,10 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
+        internal static void PeekType(ref SequenceReader<byte> reader, out byte value)
+        {
+            reader.TryPeek(out value);
+        }
         internal static int ReadType(ref SequenceReader<byte> reader, out byte value)
         {
             var read = WireFormatting.ReadByte(ref reader, out value);
@@ -47,7 +51,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             switch (type)
             {
                 case FormatCode.Ushort:
-                    
+
                     offset += WireFormatting.ReadUInt16(ref reader, out value);
                     return offset;
             }
@@ -59,7 +63,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             // Just pick the type. Won't move the offset since it will be read 
             // again inside each read.
-            ReadType(ref reader, out var type);
+            PeekType(ref reader, out var type);
             int offset;
             switch (type)
             {
@@ -139,6 +143,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
                 case FormatCode.Null:
                     value = null;
+                    reader.Advance(1);
                     return 1;
             }
 
@@ -365,7 +370,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             var offset = ReadType(ref reader, out var type);
 
-            // compsites always start with 0x0
+            // composite always start with 0x0
             if (type != 0)
             {
                 // TODO WIRE
@@ -433,10 +438,11 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         internal static int TryReadNull(ref SequenceReader<byte> reader, out bool value)
         {
-            ReadType(ref reader, out var type);
+            PeekType(ref reader, out var type);
             if (reader.Remaining > 0 && type == FormatCode.Null)
             {
                 value = true;
+                reader.Advance(1);
                 return 1;
             }
 
