@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace RabbitMQ.Stream.Client
@@ -87,7 +88,7 @@ namespace RabbitMQ.Stream.Client
             return 2 + bytecount;
         }
 
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int ReadUInt32(ref SequenceReader<byte> reader, out uint value)
         {
             reader.TryReadBigEndian(out int v);
@@ -201,7 +202,8 @@ namespace RabbitMQ.Stream.Client
 
             return 8;
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int ReadByte(ref SequenceReader<byte> reader, out byte value)
         {
             reader.TryRead(out value);

@@ -188,24 +188,25 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ReadOnlySequence<byte> seq, out Chunk chunk)
         {
-            var offset = WireFormatting.ReadByte(seq, out var magicVersion);
-            offset += WireFormatting.ReadByte(seq.Slice(offset), out _);
-            offset += WireFormatting.ReadUInt16(seq.Slice(offset), out var numEntries);
-            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var numRecords);
-            offset += WireFormatting.ReadInt64(seq.Slice(offset), out var timestamp);
-            offset += WireFormatting.ReadUInt64(seq.Slice(offset), out var epoch);
-            offset += WireFormatting.ReadUInt64(seq.Slice(offset), out var chunkId);
-            offset += WireFormatting.ReadInt32(seq.Slice(offset), out var crc);
-            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out var dataLen);
-            offset += WireFormatting.ReadUInt32(seq.Slice(offset), out _);
+            var reader = new SequenceReader<byte>(seq);
+            var offset = WireFormatting.ReadByte(ref reader, out var magicVersion);
+            offset += WireFormatting.ReadByte(ref reader, out _);
+            offset += WireFormatting.ReadUInt16(ref reader, out var numEntries);
+            offset += WireFormatting.ReadUInt32(ref reader, out var numRecords);
+            offset += WireFormatting.ReadInt64(ref reader, out var timestamp);
+            offset += WireFormatting.ReadUInt64(ref reader, out var epoch);
+            offset += WireFormatting.ReadUInt64(ref reader, out var chunkId);
+            offset += WireFormatting.ReadInt32(ref reader, out var crc);
+            offset += WireFormatting.ReadUInt32(ref reader, out var dataLen);
+            offset += WireFormatting.ReadUInt32(ref reader, out _);
             offset += 4; // reserved
 
             // don't move the offset. It is a "peek" to determinate the entry type
             // (entryType & 0x80) == 0 is standard entry
             // (entryType & 0x80) != 0 is compress entry (used for subEntry)
-            WireFormatting.ReadByte(seq.Slice(offset), out var entryType);
+            WireFormatting.ReadByte(ref reader, out var entryType);
             var hasSubEntries = (entryType & 0x80) != 0;
-            var data = seq.Slice(offset, dataLen);
+            var data = reader.Sequence.Slice(offset, dataLen);
             offset += (int)dataLen;
             chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data,
                 hasSubEntries);

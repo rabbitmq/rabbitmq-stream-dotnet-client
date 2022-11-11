@@ -4,6 +4,7 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
@@ -36,14 +37,15 @@ namespace RabbitMQ.Stream.Client.AMQP
             }
             else
             {
-                offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin32); //binary marker
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)data.Length); //length
+                offset += WireFormatting.WriteByte(span[offset..], FormatCode.Vbin32); //binary marker
+                offset += WireFormatting.WriteUInt32(span[offset..], (uint)data.Length); //length
             }
 
-            offset += WireFormatting.Write(span.Slice(offset), data);
+            offset += WireFormatting.Write(span[offset..], data);
             return offset;
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Data Parse(ref SequenceReader<byte> reader, ref int byteRead)
         {
             var offset = AmqpWireFormatting.ReadType(ref reader, out var type);
@@ -54,11 +56,11 @@ namespace RabbitMQ.Stream.Client.AMQP
                     byteRead += offset + len8;
                     var data = reader.Sequence.Slice(reader.Position, len8);
                     reader.Advance(len8);
-                    //todo: check if this is correct
                     return new Data(data);
                 case FormatCode.Vbin32:
                     offset += WireFormatting.ReadUInt32(ref reader, out var len32);
                     byteRead += (int)(offset + len32);
+                    reader.Advance(len32);
                     return new Data(reader.Sequence.Slice(reader.Position, len32));
             }
 

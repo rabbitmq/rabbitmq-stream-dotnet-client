@@ -4,6 +4,7 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace RabbitMQ.Stream.Client.AMQP
@@ -11,6 +12,8 @@ namespace RabbitMQ.Stream.Client.AMQP
     public static partial class AmqpWireFormatting
     {
         private static readonly Encoding s_encoding = Encoding.UTF8;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
         internal static int ReadType(ref SequenceReader<byte> reader, out byte value)
         {

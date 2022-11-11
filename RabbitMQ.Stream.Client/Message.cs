@@ -4,7 +4,7 @@
 
 using System;
 using System.Buffers;
-
+using System.Runtime.CompilerServices;
 using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
@@ -15,9 +15,13 @@ namespace RabbitMQ.Stream.Client
         {
         }
 
+        
         public Message(Data data)
         {
             Data = data;
+        }
+        internal Message()
+        {
         }
 
         public Annotations Annotations { get; internal set; }
@@ -70,6 +74,8 @@ namespace RabbitMQ.Stream.Client
             Data.Write(data);
             return new ReadOnlySequence<byte>(data);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
         public static Message From(ref SequenceReader<byte> reader, uint len)
         {

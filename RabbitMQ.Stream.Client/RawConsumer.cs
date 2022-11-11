@@ -5,6 +5,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -107,23 +108,29 @@ namespace RabbitMQ.Stream.Client
             return consumer;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void DispatchMessages(Chunk chunk)
         {
             var reader = new SequenceReader<byte>(chunk.Data);
             for (ulong i = 0; i < chunk.NumEntries; i++)
             {
                 WireFormatting.ReadUInt32(ref reader, out var len);
-
-                var message = Message.From(ref reader, len);
-                if (MaybeDispatch(message.MessageOffset))
+                try
                 {
-                    _config.MessageHandler(this,
-                        new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)), message);
+                    var message = Message.From(ref reader, len);
+                    if (MaybeDispatch(message.MessageOffset))
+                    {
+                        _config.MessageHandler(this,
+                            new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
+                            message);
+                    }
+                }
+                catch (Exception e)
+                {
+                    LogEventSource.Log.LogError($"Error while processing chunk: {chunk.ChunkId} error: {e}");
                 }
             }
 
-            {
-            }
 
             //         var data = chunk.Data;
             //         for (ulong i = 0; i < chunk.NumEntries; i++)
@@ -168,7 +175,7 @@ namespace RabbitMQ.Stream.Client
 
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
-            const ushort InitialCredit = 2;
+            const ushort InitialCredit = 10;
 
             var (consumerId, response) = await _client.Subscribe(
                 _config,
@@ -176,6 +183,7 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
+                    await _client.Credit(deliver.SubscriptionId, 1);
                     DispatchMessages(deliver.Chunk);
 
                     // foreach (var messageEntry in deliver.Messages)
@@ -200,7 +208,7 @@ namespace RabbitMQ.Stream.Client
                     // }
 
                     // give one credit after each chunk
-                    await _client.Credit(deliver.SubscriptionId, 1);
+                   
                 }, async b =>
                 {
                     if (_config.ConsumerUpdateListener != null)

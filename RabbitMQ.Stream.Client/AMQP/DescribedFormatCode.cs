@@ -4,6 +4,7 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.CompilerServices;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
@@ -11,6 +12,7 @@ namespace RabbitMQ.Stream.Client.AMQP
     {
         public const int Size = 3;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte Read(ref SequenceReader<byte> reader)
         {
             reader.TryRead(out _);
