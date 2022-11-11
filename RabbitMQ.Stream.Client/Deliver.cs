@@ -15,65 +15,61 @@ namespace RabbitMQ.Stream.Client
     public readonly struct Deliver : ICommand
     {
         private readonly byte subscriptionId;
-        private readonly Chunk chunk;
         public const ushort Key = 8;
         public int SizeNeeded => throw new NotImplementedException();
 
         private Deliver(byte subscriptionId, Chunk chunk)
         {
             this.subscriptionId = subscriptionId;
-            this.chunk = chunk;
+            GetChunk = chunk;
         }
 
-        public IEnumerable<MsgEntry> Messages
-        {
-            get
-            {
-                var offset = 0;
-                if (chunk.HasSubEntries)
-                {
-                    var data = chunk.Data;
-                    var numRecords = chunk.NumRecords;
+        public Chunk GetChunk { get; }
 
-                    while (numRecords != 0)
-                    {
-                        offset += SubEntryChunk.Read(data.Slice(offset), out var subEntryChunk);
-                        var unCompressedData = CompressionHelper.UnCompress(
-                            subEntryChunk.CompressionType,
-                            subEntryChunk.Data,
-                            subEntryChunk.DataLen,
-                            subEntryChunk.UnCompressedDataSize);
-
-                        var offsetSub = 0;
-                        for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
-                        {
-                            offsetSub += WireFormatting.ReadUInt32(unCompressedData.Slice(offsetSub),
-                                out var len);
-                            var entry = new MsgEntry(chunk.ChunkId + z, chunk.Epoch,
-                                unCompressedData.Slice(offsetSub, len));
-                            offsetSub += (int)len;
-                            yield return entry;
-                        }
-
-                        numRecords -= subEntryChunk.NumRecordsInBatch;
-                    }
-                }
-                else
-                {
-                    var data = chunk.Data;
-                    for (ulong i = 0; i < chunk.NumEntries; i++)
-                    {
-                        offset += WireFormatting.ReadUInt32(data.Slice(offset), out var len);
-                        //TODO: assuming only simple entries for now
-                        var entry = new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
-                        offset += (int)len;
-                        yield return entry;
-                    }
-                }
-            }
-        }
-
-        public Chunk Chunk => chunk;
+        //     var offset = 0;
+        //     if (chunk.HasSubEntries)
+        //     {
+        //         var data = chunk.Data;
+        //         var numRecords = chunk.NumRecords;
+        //
+        //         while (numRecords != 0)
+        //         {
+        //             offset += SubEntryChunk.Read(data.Slice(offset), out var subEntryChunk);
+        //             var unCompressedData = CompressionHelper.UnCompress(
+        //                 subEntryChunk.CompressionType,
+        //                 subEntryChunk.Data,
+        //                 subEntryChunk.DataLen,
+        //                 subEntryChunk.UnCompressedDataSize);
+        //
+        //             var offsetSub = 0;
+        //             for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
+        //             {
+        //                 offsetSub += WireFormatting.ReadUInt32(unCompressedData.Slice(offsetSub),
+        //                     out var len);
+        //                 var entry = new MsgEntry(chunk.ChunkId + z, chunk.Epoch,
+        //                     unCompressedData.Slice(offsetSub, len));
+        //                 offsetSub += (int)len;
+        //             }
+        //
+        //             numRecords -= subEntryChunk.NumRecordsInBatch;
+        //             
+        //         }
+        //
+        //         return chunk;
+        //     }
+        //     else
+        //     {
+        //         var data = chunk.Data;
+        //         for (ulong i = 0; i < chunk.NumEntries; i++)
+        //         {
+        //             offset += WireFormatting.ReadUInt32(data.Slice(offset), out var len);
+        //             //TODO: assuming only simple entries for now
+        //             var entry = new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
+        //             offset += (int)len;
+        //         }
+        //     }
+        // }
+        public Chunk Chunk => GetChunk;
 
         public byte SubscriptionId => subscriptionId;
 

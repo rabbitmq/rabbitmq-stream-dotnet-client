@@ -23,70 +23,70 @@ namespace RabbitMQ.Stream.Client.AMQP
         public uint GroupSequence { get; set; }
         public string ReplyToGroupId { get; set; }
 
-        public static Properties Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
+        public static Properties Parse(ref SequenceReader<byte> reader, ref int byteRead)
         {
-            var offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out _);
+            var offset = AmqpWireFormatting.ReadCompositeHeader(ref reader, out var fields, out _);
             //TODO WIRE check the next
             var p = new Properties();
             for (var index = 0; index < fields; index++)
             {
-                offset += AmqpWireFormatting.TryReadNull(amqpData.Slice(offset), out var value);
+                offset += AmqpWireFormatting.TryReadNull(ref reader, out var value);
 
                 if (!value)
                 {
                     switch (index)
                     {
                         case 0:
-                            offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var messageId);
+                            offset += AmqpWireFormatting.ReadAny(ref reader, out var messageId);
                             p.MessageId = messageId;
                             break;
                         case 1:
-                            offset += AmqpWireFormatting.ReadBinary(amqpData.Slice(offset), out var userId);
+                            offset += AmqpWireFormatting.ReadBinary(ref reader, out var userId);
                             p.UserId = userId;
                             break;
                         case 2:
-                            offset += AmqpWireFormatting.ReadString(amqpData.Slice(offset), out var to);
+                            offset += AmqpWireFormatting.ReadString(ref reader, out var to);
                             p.To = to;
                             break;
                         case 3:
-                            offset += AmqpWireFormatting.ReadString(amqpData.Slice(offset), out var subject);
+                            offset += AmqpWireFormatting.ReadString(ref reader, out var subject);
                             p.Subject = subject;
                             break;
                         case 4:
-                            offset += AmqpWireFormatting.ReadString(amqpData.Slice(offset), out var replyTo);
+                            offset += AmqpWireFormatting.ReadString(ref reader, out var replyTo);
                             p.ReplyTo = replyTo;
                             break;
                         case 5:
-                            offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var correlationId);
+                            offset += AmqpWireFormatting.ReadAny(ref reader, out var correlationId);
                             p.CorrelationId = correlationId;
                             break;
                         case 6:
-                            offset += AmqpWireFormatting.ReadString(amqpData.Slice(offset), out var contentType);
+                            offset += AmqpWireFormatting.ReadString(ref reader, out var contentType);
                             p.ContentType = contentType;
                             break;
                         case 7:
-                            offset += AmqpWireFormatting.ReadString(amqpData.Slice(offset), out var contentEncoding);
+                            offset += AmqpWireFormatting.ReadString(ref reader, out var contentEncoding);
                             p.ContentEncoding = contentEncoding;
                             break;
                         case 8:
-                            offset += AmqpWireFormatting.ReadTimestamp(amqpData.Slice(offset),
+                            offset += AmqpWireFormatting.ReadTimestamp(ref reader,
                                 out var absoluteExpiryTime);
                             p.AbsoluteExpiryTime = absoluteExpiryTime;
                             break;
                         case 9:
-                            offset += AmqpWireFormatting.ReadTimestamp(amqpData.Slice(offset), out var creationTime);
+                            offset += AmqpWireFormatting.ReadTimestamp(ref reader, out var creationTime);
                             p.CreationTime = creationTime;
                             break;
                         case 10:
-                            offset += AmqpWireFormatting.ReadString(amqpData.Slice(offset), out var groupId);
+                            offset += AmqpWireFormatting.ReadString(ref reader, out var groupId);
                             p.GroupId = groupId;
                             break;
                         case 11:
-                            offset += AmqpWireFormatting.ReadUint32(amqpData.Slice(offset), out var groupSequence);
+                            offset += AmqpWireFormatting.ReadUint32(ref reader, out var groupSequence);
                             p.GroupSequence = groupSequence;
                             break;
                         case 12:
-                            offset += AmqpWireFormatting.ReadString(amqpData.Slice(offset), out var replyToGroupId);
+                            offset += AmqpWireFormatting.ReadString(ref reader, out var replyToGroupId);
                             p.ReplyToGroupId = replyToGroupId;
                             break;
                         default:

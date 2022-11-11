@@ -11,12 +11,12 @@ namespace RabbitMQ.Stream.Client.AMQP
     {
         public const int Size = 3;
 
-        public static byte Read(ReadOnlySequence<byte> amqpData)
+        public static byte Read(ref SequenceReader<byte> reader)
         {
-            var offset = WireFormatting.ReadByte(amqpData, out _);
-            offset += WireFormatting.ReadByte(amqpData.Slice(offset), out _);
-            WireFormatting.ReadByte(amqpData.Slice(offset), out var value);
-            return value;
+            reader.TryRead(out _);
+            reader.TryRead(out _);
+            reader.TryRead(out var formatCode);
+            return formatCode;
         }
 
         public static int Write(Span<byte> span, byte data)

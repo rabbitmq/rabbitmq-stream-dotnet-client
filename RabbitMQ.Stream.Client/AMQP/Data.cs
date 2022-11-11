@@ -44,19 +44,22 @@ namespace RabbitMQ.Stream.Client.AMQP
             return offset;
         }
 
-        public static Data Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
+        public static Data Parse(ref SequenceReader<byte> reader, ref int byteRead)
         {
-            var offset = AmqpWireFormatting.ReadType(amqpData, out var type);
+            var offset = AmqpWireFormatting.ReadType(ref reader, out var type);
             switch (type)
             {
                 case FormatCode.Vbin8:
-                    offset += WireFormatting.ReadByte(amqpData.Slice(offset), out var len8);
+                    offset += WireFormatting.ReadByte(ref reader, out var len8);
                     byteRead += offset + len8;
-                    return new Data(amqpData.Slice(offset, len8));
+                    var data = reader.Sequence.Slice(reader.Position, len8);
+                    reader.Advance(len8);
+                    //todo: check if this is correct
+                    return new Data(data);
                 case FormatCode.Vbin32:
-                    offset += WireFormatting.ReadUInt32(amqpData.Slice(offset), out var len32);
+                    offset += WireFormatting.ReadUInt32(ref reader, out var len32);
                     byteRead += (int)(offset + len32);
-                    return new Data(amqpData.Slice(offset, len32));
+                    return new Data(reader.Sequence.Slice(reader.Position, len32));
             }
 
             throw new AMQP.AmqpParseException($"Can't parse data is type {type} not defined");

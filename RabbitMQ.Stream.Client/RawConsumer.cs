@@ -3,6 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -106,6 +107,42 @@ namespace RabbitMQ.Stream.Client
             return consumer;
         }
 
+        private void DispatchMessages(Chunk chunk)
+        {
+            var reader = new SequenceReader<byte>(chunk.Data);
+            for (ulong i = 0; i < chunk.NumEntries; i++)
+            {
+                WireFormatting.ReadUInt32(ref reader, out var len);
+
+                var message = Message.From(ref reader, len);
+                if (MaybeDispatch(message.MessageOffset))
+                {
+                    _config.MessageHandler(this,
+                        new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)), message);
+                }
+            }
+
+            {
+            }
+
+            //         var data = chunk.Data;
+            //         for (ulong i = 0; i < chunk.NumEntries; i++)
+            //         {
+            //             offset += WireFormatting.ReadUInt32(data.Slice(offset), out var len);
+            //             //TODO: assuming only simple entries for now
+            //             var entry = new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
+            //             offset += (int)len;
+
+
+            // foreach (var message in chunk.Messages)
+            // {
+            //     if (MaybeDispatch(message.Offset))
+            //     {
+            //         _config.MessageHandler(this, new MessageContext(message.Offset, message.Timestamp), message);
+            //     }
+            // }
+        }
+
         private async Task Init()
         {
             _config.Validate();
@@ -139,26 +176,28 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
-                    foreach (var messageEntry in deliver.Messages)
-                    {
-                        if (!MaybeDispatch(messageEntry.Offset))
-                        {
-                            continue;
-                        }
+                    DispatchMessages(deliver.Chunk);
 
-                        try
-                        {
-                            var message = Message.From(messageEntry.Data);
-                            await _config.MessageHandler(this,
-                                new MessageContext(messageEntry.Offset,
-                                    TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
-                                message);
-                        }
-                        catch (Exception e)
-                        {
-                            LogEventSource.Log.LogError($"Error while processing message {messageEntry.Offset} {e}");
-                        }
-                    }
+                    // foreach (var messageEntry in deliver.Messages)
+                    // {
+                    //     if (!MaybeDispatch(messageEntry.Offset))
+                    //     {
+                    //         continue;
+                    //     }
+                    //
+                    //     try
+                    //     {
+                    //         var message = Message.From(messageEntry.Data);
+                    //         await _config.MessageHandler(this,
+                    //             new MessageContext(messageEntry.Offset,
+                    //                 TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
+                    //             message);
+                    //     }
+                    //     catch (Exception e)
+                    //     {
+                    //         LogEventSource.Log.LogError($"Error while processing message {messageEntry.Offset} {e}");
+                    //     }
+                    // }
 
                     // give one credit after each chunk
                     await _client.Credit(deliver.SubscriptionId, 1);
