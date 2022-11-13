@@ -480,7 +480,6 @@ RabbitMQ.Stream.Client.Message.Data.get -> RabbitMQ.Stream.Client.AMQP.Data
 RabbitMQ.Stream.Client.Message.Message(byte[] data) -> void
 RabbitMQ.Stream.Client.Message.Message(RabbitMQ.Stream.Client.AMQP.Data data) -> void
 RabbitMQ.Stream.Client.Message.MessageHeader.get -> RabbitMQ.Stream.Client.AMQP.Header
-RabbitMQ.Stream.Client.Message.MessageOffset.get -> ulong
 RabbitMQ.Stream.Client.Message.Properties.get -> RabbitMQ.Stream.Client.AMQP.Properties
 RabbitMQ.Stream.Client.Message.Properties.set -> void
 RabbitMQ.Stream.Client.Message.Serialize() -> System.Buffers.ReadOnlySequence<byte>
@@ -510,12 +509,6 @@ RabbitMQ.Stream.Client.MetaDataUpdate.MetaDataUpdate(string stream, RabbitMQ.Str
 RabbitMQ.Stream.Client.MetaDataUpdate.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.MetaDataUpdate.Stream.get -> string
 RabbitMQ.Stream.Client.MetaDataUpdate.Write(System.Span<byte> span) -> int
-RabbitMQ.Stream.Client.MsgEntry
-RabbitMQ.Stream.Client.MsgEntry.Data.get -> System.Buffers.ReadOnlySequence<byte>
-RabbitMQ.Stream.Client.MsgEntry.Epoch.get -> ulong
-RabbitMQ.Stream.Client.MsgEntry.MsgEntry() -> void
-RabbitMQ.Stream.Client.MsgEntry.MsgEntry(ulong offset, ulong epoch, System.Buffers.ReadOnlySequence<byte> data) -> void
-RabbitMQ.Stream.Client.MsgEntry.Offset.get -> ulong
 RabbitMQ.Stream.Client.NoneCompressionCodec
 RabbitMQ.Stream.Client.NoneCompressionCodec.Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) -> void
 RabbitMQ.Stream.Client.NoneCompressionCodec.CompressedSize.get -> int

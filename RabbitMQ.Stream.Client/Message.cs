@@ -19,6 +19,7 @@ namespace RabbitMQ.Stream.Client
         {
             Data = data;
         }
+
         internal Message()
         {
         }
@@ -37,7 +38,7 @@ namespace RabbitMQ.Stream.Client
         public Header MessageHeader { get; internal set; }
         public object AmqpValue { get; internal set; }
 
-        public ulong MessageOffset { get; internal set; }
+        internal ulong MessageOffset { get; set; }
 
         public int Size => Data.Size +
                            (Properties?.Size ?? 0) +
@@ -75,7 +76,6 @@ namespace RabbitMQ.Stream.Client
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-
         public static Message From(ref SequenceReader<byte> reader, uint len)
         {
             //                                                         Bare Message

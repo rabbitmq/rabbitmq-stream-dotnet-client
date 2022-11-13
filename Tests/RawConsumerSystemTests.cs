@@ -113,7 +113,7 @@ namespace Tests
                 });
 
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
+            SystemUtils.Wait();
             // // Here we use the standard client to check the offest
             // // since client.QueryOffset/2 is hidden in the System
             //
@@ -192,11 +192,31 @@ namespace Tests
         [Fact]
         public async void ProducerAndConsumerCompressShouldHaveTheSameMessages()
         {
+            const string UniCode = "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家";
+
             void PumpMessages(ICollection<Message> messages, string prefix)
             {
                 for (var i = 0; i < 5; i++)
                 {
-                    messages.Add(new Message(Encoding.UTF8.GetBytes($"{prefix}_{i}")));
+                    messages.Add(new Message(Encoding.UTF8.GetBytes($"{prefix}_{i}"))
+                    {
+                        ApplicationProperties = new ApplicationProperties()
+                        {
+                            ["key"] = $"{prefix}_{i}",
+                            ["uni"] = $"{UniCode}_{i}",
+                            ["float"] = 1_000_000.143,
+                            ["int"] = 1_000_000,
+                            ["long"] = 1_000_000_000_000,
+                            ["bool"] = true
+                        },
+                        Properties = new Properties()
+                        {
+                            Subject = null,
+                            ReplyTo = null,
+                            CorrelationId = null,
+                            ContentType = "XML",
+                        }
+                    });
                 }
             }
 
@@ -205,6 +225,16 @@ namespace Tests
                 for (var i = 0; i < 5; i++)
                 {
                     Assert.Equal(expected[i].Data.Contents.ToArray(), actual[i].Data.Contents.ToArray());
+                    Assert.Equal(expected[i].ApplicationProperties["key"], actual[i].ApplicationProperties["key"]);
+                    Assert.Equal(expected[i].ApplicationProperties["uni"], actual[i].ApplicationProperties["uni"]);
+                    Assert.Equal(expected[i].ApplicationProperties["float"], actual[i].ApplicationProperties["float"]);
+                    Assert.Equal(expected[i].ApplicationProperties["int"], actual[i].ApplicationProperties["int"]);
+                    Assert.Equal(expected[i].ApplicationProperties["long"], actual[i].ApplicationProperties["long"]);
+                    Assert.Equal(expected[i].ApplicationProperties["bool"], actual[i].ApplicationProperties["bool"]);
+                    Assert.Equal(expected[i].Properties.Subject, actual[i].Properties.Subject);
+                    Assert.Equal(expected[i].Properties.ReplyTo, actual[i].Properties.ReplyTo);
+                    Assert.Equal(expected[i].Properties.CorrelationId, actual[i].Properties.CorrelationId);
+                    Assert.Equal(expected[i].Properties.ContentType, actual[i].Properties.ContentType);
                 }
             }
 

@@ -149,20 +149,18 @@ namespace Tests
 
             const ulong ulong0Value = 0x00;
             var ulong0ValueBin = new byte[] { 0x44 };
+            RunValidateFormatCode(ulong0Value, ulong0ValueBin);
 
             const ulong ulongSmallValue = 0xf2;
             var ulongSmallValueBin = new byte[] { 0x53, 0xf2 };
+            RunValidateFormatCode(ulongSmallValue, ulongSmallValueBin);
 
             const ulong ulongValue = 0x12345678edcba098;
             var ulongValueBin = new byte[] { 0x80, 0x12, 0x34, 0x56, 0x78, 0xed, 0xcb, 0xa0, 0x98 };
-
-            RunValidateFormatCode(ulong0Value, ulong0ValueBin);
-            RunValidateFormatCode(ulongSmallValue, ulongSmallValueBin);
             RunValidateFormatCode(ulongValue, ulongValueBin);
 
             const byte ubyteValue = 0x33;
             var ubyteValueBin = new byte[] { 0x50, 0x33 };
-
             RunValidateFormatCode(ubyteValue, ubyteValueBin);
 
             const ushort ushortValue = 0x1234;
@@ -172,15 +170,14 @@ namespace Tests
 
             const uint uint0Value = 0x00;
             var uint0ValueBin = new byte[] { 0x43 };
+            RunValidateFormatCode(uint0Value, uint0ValueBin);
 
             const uint uintSmallValue = 0xe1;
             var uintSmallValueBin = new byte[] { 0x52, 0xe1 };
+            RunValidateFormatCode(uintSmallValue, uintSmallValueBin);
 
             const uint uintValue = 0xedcba098;
             var uintValueBin = new byte[] { 0x70, 0xed, 0xcb, 0xa0, 0x98 };
-
-            RunValidateFormatCode(uint0Value, uint0ValueBin);
-            RunValidateFormatCode(uintSmallValue, uintSmallValueBin);
             RunValidateFormatCode(uintValue, uintValueBin);
 
             const sbyte byteValue = -20;
@@ -426,6 +423,23 @@ namespace Tests
         }
 
         [Fact]
+        public void ValidateNilMessagesFromGo()
+        {
+            var nilAndTypes = SystemUtils.GetFileContent("nil_and_types");
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(nilAndTypes));
+            var msgNilAndTypes = Message.From(ref reader, (uint)reader.Length);
+            Assert.NotNull(msgNilAndTypes);
+            Assert.Equal(0, msgNilAndTypes.Data.Contents.Length);
+            Assert.Null(msgNilAndTypes.ApplicationProperties["null"]);
+            Assert.Equal(91_000_001_001, msgNilAndTypes.ApplicationProperties["long_value"]);
+            Assert.Equal((byte)216, msgNilAndTypes.ApplicationProperties["byte_value"]);
+            Assert.Equal(true, msgNilAndTypes.ApplicationProperties["bool_value"]);
+            Assert.Equal(1.1, msgNilAndTypes.ApplicationProperties["float"]);
+            Assert.Equal(1.1, msgNilAndTypes.ApplicationProperties["double"]);
+            Assert.Equal("", msgNilAndTypes.ApplicationProperties["empty"]);
+        }
+
+        [Fact]
         public void ValidateMapsType()
         {
             const double DoubleValue = 6665555.34566;
@@ -499,8 +513,7 @@ namespace Tests
         public void MapEntriesWithAnEmptyKeyShouldNotBeWrittenToTheWire()
         {
             // Given we have an annotation with a valid key
-            var annotation = new Annotations();
-            annotation.Add("valid key", "");
+            var annotation = new Annotations { { "valid key", "" } };
 
             var expectedMapSize = annotation.Size;
             var array = new byte[expectedMapSize];

@@ -109,15 +109,15 @@ namespace RabbitMQ.Stream.Client
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void DispatchMessages(Chunk chunk)
+        private void ParseChunk(Chunk chunk)
         {
-            var reader = new SequenceReader<byte>(chunk.Data);
-            for (ulong i = 0; i < chunk.NumEntries; i++)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            void DispatchMessage(ref SequenceReader<byte> sequenceReader, ulong i)
             {
-                WireFormatting.ReadUInt32(ref reader, out var len);
+                WireFormatting.ReadUInt32(ref sequenceReader, out var len);
                 try
                 {
-                    var message = Message.From(ref reader, len);
+                    var message = Message.From(ref sequenceReader, len);
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
                     {
@@ -128,25 +128,42 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
-                    LogEventSource.Log.LogError($"Error while processing chunk: {chunk.ChunkId} error: {e}");
+                    LogEventSource.Log.LogError(
+                        $"Error while processing chunk: {chunk.ChunkId} error: {e.Message}");
                 }
             }
 
-            //         var data = chunk.Data;
-            //         for (ulong i = 0; i < chunk.NumEntries; i++)
-            //         {
-            //             offset += WireFormatting.ReadUInt32(data.Slice(offset), out var len);
-            //             //TODO: assuming only simple entries for now
-            //             var entry = new MsgEntry(chunk.ChunkId + i, chunk.Epoch, data.Slice(offset, len));
-            //             offset += (int)len;
+            var reader = new SequenceReader<byte>(chunk.Data);
+            if (chunk.HasSubEntries)
+            {
+                // it means that it is a subentry batch 
+                var numRecords = chunk.NumRecords;
+                while (numRecords != 0)
+                {
+                    SubEntryChunk.Read(ref reader, out var subEntryChunk);
+                    var unCompressedData = CompressionHelper.UnCompress(
+                        subEntryChunk.CompressionType,
+                        subEntryChunk.Data,
+                        subEntryChunk.DataLen,
+                        subEntryChunk.UnCompressedDataSize);
+                    var readerUnCompressed = new SequenceReader<byte>(unCompressedData);
 
-            // foreach (var message in chunk.Messages)
-            // {
-            //     if (MaybeDispatch(message.Offset))
-            //     {
-            //         _config.MessageHandler(this, new MessageContext(message.Offset, message.Timestamp), message);
-            //     }
-            // }
+                    for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
+                    {
+                        DispatchMessage(ref readerUnCompressed, z);
+                    }
+
+                    numRecords -= subEntryChunk.NumRecordsInBatch;
+                }
+            }
+            else
+            {
+                // Standard chunk. 
+                for (ulong i = 0; i < chunk.NumEntries; i++)
+                {
+                    DispatchMessage(ref reader, i);
+                }
+            }
         }
 
         private async Task Init()
@@ -182,32 +199,13 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
+                    // receive the chunk from the deliver
+                    // before parse the chunk, we ask for more credits
+                    // in thi way we keep the network busy
                     await _client.Credit(deliver.SubscriptionId, 1);
-                    DispatchMessages(deliver.Chunk);
-
-                    // foreach (var messageEntry in deliver.Messages)
-                    // {
-                    //     if (!MaybeDispatch(messageEntry.Offset))
-                    //     {
-                    //         continue;
-                    //     }
-                    //
-                    //     try
-                    //     {
-                    //         var message = Message.From(messageEntry.Data);
-                    //         await _config.MessageHandler(this,
-                    //             new MessageContext(messageEntry.Offset,
-                    //                 TimeSpan.FromMilliseconds(deliver.Chunk.Timestamp)),
-                    //             message);
-                    //     }
-                    //     catch (Exception e)
-                    //     {
-                    //         LogEventSource.Log.LogError($"Error while processing message {messageEntry.Offset} {e}");
-                    //     }
-                    // }
-
-                    // give one credit after each chunk
-
+                    // parse the chunk, we have another function because the sequence reader
+                    // can't be used in async context
+                    ParseChunk(deliver.Chunk);
                 }, async b =>
                 {
                     if (_config.ConsumerUpdateListener != null)
