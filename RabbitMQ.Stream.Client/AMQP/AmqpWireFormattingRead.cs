@@ -182,7 +182,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case FormatCode.Sym32:
                 case FormatCode.Str32:
                     offset += WireFormatting.ReadInt32(ref reader, out var len);
-                    Span<byte> tempSpan32 = stackalloc byte[len];
+                    Span<byte> tempSpan32 = new byte[len];
                     reader.TryCopyTo(tempSpan32);
                     reader.Advance(len);
                     value = Encoding.UTF8.GetString(tempSpan32);
