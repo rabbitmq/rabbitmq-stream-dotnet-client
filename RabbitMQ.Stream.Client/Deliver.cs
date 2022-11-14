@@ -20,12 +20,10 @@ namespace RabbitMQ.Stream.Client
         private Deliver(byte subscriptionId, Chunk chunk)
         {
             this.subscriptionId = subscriptionId;
-            GetChunk = chunk;
+            Chunk = chunk;
         }
 
-        public Chunk GetChunk { get; }
-
-        public Chunk Chunk => GetChunk;
+        public Chunk Chunk { get; }
 
         public byte SubscriptionId => subscriptionId;
 

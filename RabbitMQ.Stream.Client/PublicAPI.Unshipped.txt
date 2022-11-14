@@ -354,7 +354,6 @@ RabbitMQ.Stream.Client.DeleteStreamException.DeleteStreamException(string s) -> 
 RabbitMQ.Stream.Client.Deliver
 RabbitMQ.Stream.Client.Deliver.Chunk.get -> RabbitMQ.Stream.Client.Chunk
 RabbitMQ.Stream.Client.Deliver.Deliver() -> void
-RabbitMQ.Stream.Client.Deliver.GetChunk.get -> RabbitMQ.Stream.Client.Chunk
 RabbitMQ.Stream.Client.Deliver.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.Deliver.SubscriptionId.get -> byte
 RabbitMQ.Stream.Client.Deliver.Write(System.Span<byte> span) -> int
