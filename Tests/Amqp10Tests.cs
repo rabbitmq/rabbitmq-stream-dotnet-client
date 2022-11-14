@@ -20,98 +20,117 @@ namespace Tests
             data[0] = 0x64; // not a valid header  
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadAny(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadAny(ref reader, out _);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadBinary(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadBinary(ref reader, out _);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadInt64(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadInt64(ref reader, out _);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadString(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadString(ref reader, out _);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadTimestamp(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadTimestamp(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadUInt64(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadUInt64(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadCompositeHeader(new ReadOnlySequence<byte>(data), out var value,
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadCompositeHeader(ref reader, out var value,
                     out var next);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadListHeader(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadMapHeader(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadMapHeader(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadUint32(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadUint32(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadUByte(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadUByte(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadUshort(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadUshort(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadUint32(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadUint32(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadInt32(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadInt32(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadFloat(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadFloat(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadDouble(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadDouble(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadSByte(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadSByte(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadBool(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadBool(ref reader, out var value);
             });
 
             Assert.Throws<AmqpParseException>(() =>
             {
-                AmqpWireFormatting.ReadInt16(new ReadOnlySequence<byte>(data), out var value);
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadInt16(ref reader, out var value);
             });
 
             System.Diagnostics.Trace.WriteLine(" test passed");
@@ -130,20 +149,18 @@ namespace Tests
 
             const ulong ulong0Value = 0x00;
             var ulong0ValueBin = new byte[] { 0x44 };
+            RunValidateFormatCode(ulong0Value, ulong0ValueBin);
 
             const ulong ulongSmallValue = 0xf2;
             var ulongSmallValueBin = new byte[] { 0x53, 0xf2 };
+            RunValidateFormatCode(ulongSmallValue, ulongSmallValueBin);
 
             const ulong ulongValue = 0x12345678edcba098;
             var ulongValueBin = new byte[] { 0x80, 0x12, 0x34, 0x56, 0x78, 0xed, 0xcb, 0xa0, 0x98 };
-
-            RunValidateFormatCode(ulong0Value, ulong0ValueBin);
-            RunValidateFormatCode(ulongSmallValue, ulongSmallValueBin);
             RunValidateFormatCode(ulongValue, ulongValueBin);
 
             const byte ubyteValue = 0x33;
             var ubyteValueBin = new byte[] { 0x50, 0x33 };
-
             RunValidateFormatCode(ubyteValue, ubyteValueBin);
 
             const ushort ushortValue = 0x1234;
@@ -153,15 +170,14 @@ namespace Tests
 
             const uint uint0Value = 0x00;
             var uint0ValueBin = new byte[] { 0x43 };
+            RunValidateFormatCode(uint0Value, uint0ValueBin);
 
             const uint uintSmallValue = 0xe1;
             var uintSmallValueBin = new byte[] { 0x52, 0xe1 };
+            RunValidateFormatCode(uintSmallValue, uintSmallValueBin);
 
             const uint uintValue = 0xedcba098;
             var uintValueBin = new byte[] { 0x70, 0xed, 0xcb, 0xa0, 0x98 };
-
-            RunValidateFormatCode(uint0Value, uint0ValueBin);
-            RunValidateFormatCode(uintSmallValue, uintSmallValueBin);
             RunValidateFormatCode(uintValue, uintValueBin);
 
             const sbyte byteValue = -20;
@@ -239,7 +255,8 @@ namespace Tests
             var arraySpan = new Span<byte>(array);
             AmqpWireFormatting.WriteAny(arraySpan, value);
             var arrayRead = new ReadOnlySequence<byte>(arraySpan.ToArray());
-            AmqpWireFormatting.ReadAny(arrayRead, out var decodeValue);
+            var reader = new SequenceReader<byte>(arrayRead);
+            AmqpWireFormatting.ReadAny(ref reader, out var decodeValue);
             if (typeof(T) == typeof(byte[]))
             {
                 var b1 = (byte[])(object)value;
@@ -257,19 +274,24 @@ namespace Tests
         public void Validate32Bytes8BytesLists()
         {
             var value32Bin = new byte[] { 0xD0, 0x0, 0x0, 0x0, 0xF, 0x0, 0x0, 0x1, 0xF };
-            AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value32Bin), out var len32);
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(value32Bin));
+            AmqpWireFormatting.ReadListHeader(ref reader, out var len32);
             Assert.Equal(271, len32);
 
             var value8Bin = new byte[] { 0xc0, 0xF, 0xF0 };
-            AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value8Bin), out var len8);
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(value8Bin));
+            AmqpWireFormatting.ReadListHeader(ref reader, out var len8);
             Assert.Equal(240, len8);
 
             var value0Bin = new byte[] { 0x45 };
-            AmqpWireFormatting.ReadListHeader(new ReadOnlySequence<byte>(value0Bin), out var len0);
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(value0Bin));
+            AmqpWireFormatting.ReadListHeader(ref reader, out var len0);
             Assert.Equal(0, len0);
 
             var valueComposite8Bin = new byte[] { 0x0, 0x53, 0x73, 0xc0, 0xF, 0xF0 };
-            AmqpWireFormatting.ReadCompositeHeader(new ReadOnlySequence<byte>(valueComposite8Bin),
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(valueComposite8Bin));
+
+            AmqpWireFormatting.ReadCompositeHeader(ref reader,
                 out var compositeLen32, out _);
             Assert.Equal(240, compositeLen32);
         }
@@ -284,7 +306,8 @@ namespace Tests
             // remove these tests at some point ?? 
             //  body len < 250 bytes
             var body250 = SystemUtils.GetFileContent("message_body_250");
-            var msg250 = Message.From(new ReadOnlySequence<byte>(body250));
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(body250));
+            var msg250 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msg250);
             Assert.True(msg250.Data.Size <= byte.MaxValue);
             Assert.Null(msg250.ApplicationProperties);
@@ -293,7 +316,8 @@ namespace Tests
             //  body len > 256 bytes important to read the int in different way 
             //  body len >= 700 bytes 
             var body700 = SystemUtils.GetFileContent("message_body_700");
-            var msg700 = Message.From(new ReadOnlySequence<byte>(body700));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(body700));
+            var msg700 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msg700);
             Assert.True(msg700.Data.Size > byte.MaxValue);
             Assert.Null(msg700.Properties);
@@ -301,7 +325,8 @@ namespace Tests
             //  body len >= 300 bytes 
             // also the ApplicationProperties are not null
             var prop300 = SystemUtils.GetFileContent("message_random_application_properties_300");
-            var msgProp300 = Message.From(new ReadOnlySequence<byte>(prop300));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(prop300));
+            var msgProp300 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgProp300);
             Assert.True(msgProp300.Data.Size > byte.MaxValue);
             Assert.NotNull(msgProp300.ApplicationProperties);
@@ -309,7 +334,8 @@ namespace Tests
             //  body len >= 500 bytes 
             // also the ApplicationProperties are not null
             var prop500 = SystemUtils.GetFileContent("message_random_application_properties_500");
-            var msgProp500 = Message.From(new ReadOnlySequence<byte>(prop500));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(prop500));
+            var msgProp500 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgProp500);
             Assert.NotNull(msgProp500.ApplicationProperties);
 
@@ -317,7 +343,8 @@ namespace Tests
             // ApplicationProperties are not null
             // Properties is not null
             var prop900 = SystemUtils.GetFileContent("message_random_application_properties_properties_900");
-            var msgProp900 = Message.From(new ReadOnlySequence<byte>(prop900));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(prop900));
+            var msgProp900 = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgProp900);
             Assert.NotNull(msgProp900.ApplicationProperties);
             foreach (var (key, value) in msgProp900.ApplicationProperties)
@@ -340,7 +367,8 @@ namespace Tests
 
             // Test message to check if all the fields with "test" value
             var staticTest = SystemUtils.GetFileContent("static_test_message_compare");
-            var msgStaticTest = Message.From(new ReadOnlySequence<byte>(staticTest));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(staticTest));
+            var msgStaticTest = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgStaticTest);
             Assert.Equal("test", Encoding.Default.GetString(msgStaticTest.Data.Contents.ToArray()));
             Assert.Equal("test", msgStaticTest.Properties.Subject);
@@ -359,7 +387,8 @@ namespace Tests
             Assert.Equal((long)100_000, msgStaticTest.Annotations[(long)100_000]);
 
             var header = SystemUtils.GetFileContent("header_amqpvalue_message");
-            var msgHeader = Message.From(new ReadOnlySequence<byte>(header));
+            reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(header));
+            var msgHeader = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgHeader);
             Assert.NotNull(msgHeader.MessageHeader);
             Assert.NotNull(msgHeader.AmqpValue);
@@ -374,21 +403,40 @@ namespace Tests
         [Fact]
         public void ValidateMessagesFromGoUnicode()
         {
+            const string ByteString =
+                "Alan  Mathison Turing  ( 23 June 1912 – 7 June 1954 ) was an English  mathematician, computer scientist, logician, cryptanalyst,  philosopher, and theoretical biologist. Turing  was   highly  influential in the development of theoretical computer science.";
+            const string ChineseStringTest =
+                "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父。 [10]";
 
-            const string ByteString = "Alan  Mathison Turing  ( 23 June 1912 – 7 June 1954 ) was an English  mathematician, computer scientist, logician, cryptanalyst,  philosopher, and theoretical biologist. Turing  was   highly  influential in the development of theoretical computer science.";
-            const string ChineseStringTest = "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父。 [10]";
-
-            const string GreekTest = "Ο Άλαν Μάθισον Τούρινγκ (23 Ιουνίου 1912 – 7 Ιουνίου 1954) ήταν Άγγλος μαθηματικός, επιστήμονας υπολογιστών, λογικός, κρυπαναλυτής, φιλόσοφος και θεωρητικός βιολόγος. Ο Τούρινγκ είχε μεγάλη επιρροή στην ανάπτυξη της θεωρητικής επιστήμης των υπολογιστών.";
+            const string GreekTest =
+                "Ο Άλαν Μάθισον Τούρινγκ (23 Ιουνίου 1912 – 7 Ιουνίου 1954) ήταν Άγγλος μαθηματικός, επιστήμονας υπολογιστών, λογικός, κρυπαναλυτής, φιλόσοφος και θεωρητικός βιολόγος. Ο Τούρινγκ είχε μεγάλη επιρροή στην ανάπτυξη της θεωρητικής επιστήμης των υπολογιστών.";
 
             var staticTest = SystemUtils.GetFileContent("message_unicode_message");
-            var msgStaticTest = Message.From(new ReadOnlySequence<byte>(staticTest));
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(staticTest));
+            var msgStaticTest = Message.From(ref reader, (uint)reader.Length);
             Assert.NotNull(msgStaticTest);
             Assert.Equal(ByteString, Encoding.Default.GetString(msgStaticTest.Data.Contents.ToArray()));
             Assert.Equal(ChineseStringTest, msgStaticTest.ApplicationProperties["from_go_ch_long"]);
             Assert.Equal(GreekTest, msgStaticTest.ApplicationProperties["from_go_greek"]);
             Assert.Equal("祝您有美好的一天，并享受客户", msgStaticTest.ApplicationProperties["from_go"]);
             Assert.Equal(ByteString, msgStaticTest.ApplicationProperties["from_go_byte"]);
+        }
 
+        [Fact]
+        public void ValidateNilMessagesFromGo()
+        {
+            var nilAndTypes = SystemUtils.GetFileContent("nil_and_types");
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(nilAndTypes));
+            var msgNilAndTypes = Message.From(ref reader, (uint)reader.Length);
+            Assert.NotNull(msgNilAndTypes);
+            Assert.Equal(0, msgNilAndTypes.Data.Contents.Length);
+            Assert.Null(msgNilAndTypes.ApplicationProperties["null"]);
+            Assert.Equal(91_000_001_001, msgNilAndTypes.ApplicationProperties["long_value"]);
+            Assert.Equal((byte)216, msgNilAndTypes.ApplicationProperties["byte_value"]);
+            Assert.Equal(true, msgNilAndTypes.ApplicationProperties["bool_value"]);
+            Assert.Equal(1.1, msgNilAndTypes.ApplicationProperties["float"]);
+            Assert.Equal(1.1, msgNilAndTypes.ApplicationProperties["double"]);
+            Assert.Equal("", msgNilAndTypes.ApplicationProperties["empty"]);
         }
 
         [Fact]
@@ -465,8 +513,7 @@ namespace Tests
         public void MapEntriesWithAnEmptyKeyShouldNotBeWrittenToTheWire()
         {
             // Given we have an annotation with a valid key
-            var annotation = new Annotations();
-            annotation.Add("valid key", "");
+            var annotation = new Annotations { { "valid key", "" } };
 
             var expectedMapSize = annotation.Size;
             var array = new byte[expectedMapSize];

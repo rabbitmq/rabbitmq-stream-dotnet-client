@@ -4,7 +4,7 @@
 
 using System;
 using System.Buffers;
-
+using System.Runtime.CompilerServices;
 using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
@@ -33,6 +33,8 @@ namespace RabbitMQ.Stream.Client
         // In this specific case it is not needed
         public Header MessageHeader { get; internal set; }
         public object AmqpValue { get; internal set; }
+
+        internal ulong MessageOffset { get; set; }
 
         public int Size => Data.Size +
                            (Properties?.Size ?? 0) +
@@ -69,7 +71,8 @@ namespace RabbitMQ.Stream.Client
             return new ReadOnlySequence<byte>(data);
         }
 
-        public static Message From(ReadOnlySequence<byte> amqpData)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Message From(ref SequenceReader<byte> reader, uint len)
         {
             //                                                         Bare Message
             //                                                             |
@@ -97,33 +100,35 @@ namespace RabbitMQ.Stream.Client
             Properties properties = null;
             object amqpValue = null;
             ApplicationProperties applicationProperties = null;
-            while (offset != amqpData.Length)
+            while (offset != len)
             {
-                var dataCode = DescribedFormatCode.Read(amqpData.Slice(offset));
+                var dataCode = DescribedFormatCode.Read(ref reader);
                 switch (dataCode)
                 {
                     case DescribedFormatCode.ApplicationData:
                         offset += DescribedFormatCode.Size;
-                        data = Data.Parse(amqpData.Slice(offset), ref offset);
+                        data = Data.Parse(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.MessageAnnotations:
                         offset += DescribedFormatCode.Size;
-                        annotations = Annotations.Parse<Annotations>(amqpData.Slice(offset), ref offset);
+                        annotations = Annotations.Parse<Annotations>(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.MessageProperties:
-                        properties = Properties.Parse(amqpData.Slice(offset), ref offset);
+                        reader.Rewind(DescribedFormatCode.Size);
+                        properties = Properties.Parse(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.ApplicationProperties:
                         offset += DescribedFormatCode.Size;
                         applicationProperties =
-                            ApplicationProperties.Parse<ApplicationProperties>(amqpData.Slice(offset), ref offset);
+                            ApplicationProperties.Parse<ApplicationProperties>(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.MessageHeader:
-                        header = Header.Parse(amqpData.Slice(offset), ref offset);
+                        reader.Rewind(DescribedFormatCode.Size);
+                        header = Header.Parse(ref reader, ref offset);
                         break;
                     case DescribedFormatCode.AmqpValue:
                         offset += DescribedFormatCode.Size;
-                        offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out amqpValue);
+                        offset += AmqpWireFormatting.ReadAny(ref reader, out amqpValue);
                         break;
                     default:
                         LogEventSource.Log.LogError($"dataCode: {dataCode} not handled. Please open an issue.");

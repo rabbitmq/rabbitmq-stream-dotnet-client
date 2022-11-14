@@ -5,9 +5,9 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
@@ -112,7 +112,7 @@ namespace Tests
                 });
 
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
+            SystemUtils.Wait();
             // // Here we use the standard client to check the offest
             // // since client.QueryOffset/2 is hidden in the System
             //
@@ -191,11 +191,31 @@ namespace Tests
         [Fact]
         public async void ProducerAndConsumerCompressShouldHaveTheSameMessages()
         {
+            const string UniCode = "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家";
+
             void PumpMessages(ICollection<Message> messages, string prefix)
             {
                 for (var i = 0; i < 5; i++)
                 {
-                    messages.Add(new Message(Encoding.UTF8.GetBytes($"{prefix}_{i}")));
+                    messages.Add(new Message(Encoding.UTF8.GetBytes($"{prefix}_{i}"))
+                    {
+                        ApplicationProperties = new ApplicationProperties()
+                        {
+                            ["key"] = $"{prefix}_{i}",
+                            ["uni"] = $"{UniCode}_{i}",
+                            ["float"] = 1_000_000.143,
+                            ["int"] = 1_000_000,
+                            ["long"] = 1_000_000_000_000,
+                            ["bool"] = true
+                        },
+                        Properties = new Properties()
+                        {
+                            Subject = null,
+                            ReplyTo = null,
+                            CorrelationId = null,
+                            ContentType = "XML",
+                        }
+                    });
                 }
             }
 
@@ -204,6 +224,16 @@ namespace Tests
                 for (var i = 0; i < 5; i++)
                 {
                     Assert.Equal(expected[i].Data.Contents.ToArray(), actual[i].Data.Contents.ToArray());
+                    Assert.Equal(expected[i].ApplicationProperties["key"], actual[i].ApplicationProperties["key"]);
+                    Assert.Equal(expected[i].ApplicationProperties["uni"], actual[i].ApplicationProperties["uni"]);
+                    Assert.Equal(expected[i].ApplicationProperties["float"], actual[i].ApplicationProperties["float"]);
+                    Assert.Equal(expected[i].ApplicationProperties["int"], actual[i].ApplicationProperties["int"]);
+                    Assert.Equal(expected[i].ApplicationProperties["long"], actual[i].ApplicationProperties["long"]);
+                    Assert.Equal(expected[i].ApplicationProperties["bool"], actual[i].ApplicationProperties["bool"]);
+                    Assert.Equal(expected[i].Properties.Subject, actual[i].Properties.Subject);
+                    Assert.Equal(expected[i].Properties.ReplyTo, actual[i].Properties.ReplyTo);
+                    Assert.Equal(expected[i].Properties.CorrelationId, actual[i].Properties.CorrelationId);
+                    Assert.Equal(expected[i].Properties.ContentType, actual[i].Properties.ContentType);
                 }
             }
 
@@ -275,13 +305,18 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
             var rawProducer = await system.CreateRawProducer(
                 new RawProducerConfig(stream) { Reference = "producer" });
+            var consumed = 0;
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
                     MessageHandler = async (consumer, ctx, message) =>
                     {
-                        testPassed.SetResult(message);
+                        if (Interlocked.Increment(ref consumed) == 3)
+                        {
+                            testPassed.SetResult(message);
+                        }
+
                         await Task.CompletedTask;
                     }
                 });
@@ -320,14 +355,15 @@ namespace Tests
                     ["keyuni3"] = "祝您有美好的一天，并享受客户", //  unicode string 
                     ["keylonguni"] = ChineseStringTest, //  unicode string 
                     ["key255"] = ByteString //  unicode string 
-                }
+                },
             };
-
-            await rawProducer.Send(1, message);
+            for (ulong i = 0; i < 3; i++)
+            {
+                await rawProducer.Send(i, message);
+            }
             //wait for sent message to be delivered
 
             new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
             Assert.Equal(ChineseStringTest, Encoding.UTF8.GetString(testPassed.Task.Result.Data.Contents.ToArray()));
             Assert.Equal("subject", testPassed.Task.Result.Properties.Subject);
             Assert.Equal("to", testPassed.Task.Result.Properties.To);
@@ -355,6 +391,7 @@ namespace Tests
             Assert.Equal("祝您有美好的一天，并享受客户", testPassed.Task.Result.ApplicationProperties["keyuni3"]);
             Assert.Equal(ChineseStringTest, testPassed.Task.Result.ApplicationProperties["keylonguni"]);
             Assert.Equal(ByteString, testPassed.Task.Result.ApplicationProperties["key255"]);
+
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey2"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey3"]);
 

@@ -354,7 +354,6 @@ RabbitMQ.Stream.Client.DeleteStreamException.DeleteStreamException(string s) -> 
 RabbitMQ.Stream.Client.Deliver
 RabbitMQ.Stream.Client.Deliver.Chunk.get -> RabbitMQ.Stream.Client.Chunk
 RabbitMQ.Stream.Client.Deliver.Deliver() -> void
-RabbitMQ.Stream.Client.Deliver.Messages.get -> System.Collections.Generic.IEnumerable<RabbitMQ.Stream.Client.MsgEntry>
 RabbitMQ.Stream.Client.Deliver.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.Deliver.SubscriptionId.get -> byte
 RabbitMQ.Stream.Client.Deliver.Write(System.Span<byte> span) -> int
@@ -509,12 +508,6 @@ RabbitMQ.Stream.Client.MetaDataUpdate.MetaDataUpdate(string stream, RabbitMQ.Str
 RabbitMQ.Stream.Client.MetaDataUpdate.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.MetaDataUpdate.Stream.get -> string
 RabbitMQ.Stream.Client.MetaDataUpdate.Write(System.Span<byte> span) -> int
-RabbitMQ.Stream.Client.MsgEntry
-RabbitMQ.Stream.Client.MsgEntry.Data.get -> System.Buffers.ReadOnlySequence<byte>
-RabbitMQ.Stream.Client.MsgEntry.Epoch.get -> ulong
-RabbitMQ.Stream.Client.MsgEntry.MsgEntry() -> void
-RabbitMQ.Stream.Client.MsgEntry.MsgEntry(ulong offset, ulong epoch, System.Buffers.ReadOnlySequence<byte> data) -> void
-RabbitMQ.Stream.Client.MsgEntry.Offset.get -> ulong
 RabbitMQ.Stream.Client.NoneCompressionCodec
 RabbitMQ.Stream.Client.NoneCompressionCodec.Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages) -> void
 RabbitMQ.Stream.Client.NoneCompressionCodec.CompressedSize.get -> int
@@ -993,12 +986,12 @@ readonly RabbitMQ.Stream.Client.Reliable.ReliableBase.SemaphoreSlim -> System.Th
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.GetAnySize(object value) -> int
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.GetSequenceSize(System.Buffers.ReadOnlySequence<byte> data) -> int
 static RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting.WriteAny(System.Span<byte> seq, object value) -> int
-static RabbitMQ.Stream.Client.AMQP.Data.Parse(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) -> RabbitMQ.Stream.Client.AMQP.Data
-static RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.Read(System.Buffers.ReadOnlySequence<byte> amqpData) -> byte
+static RabbitMQ.Stream.Client.AMQP.Data.Parse(ref System.Buffers.SequenceReader<byte> reader, ref int byteRead) -> RabbitMQ.Stream.Client.AMQP.Data
+static RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.Read(ref System.Buffers.SequenceReader<byte> reader) -> byte
 static RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.Write(System.Span<byte> span, byte data) -> int
-static RabbitMQ.Stream.Client.AMQP.Header.Parse(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) -> RabbitMQ.Stream.Client.AMQP.Header
-static RabbitMQ.Stream.Client.AMQP.Map<TKey>.Parse<T>(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) -> T
-static RabbitMQ.Stream.Client.AMQP.Properties.Parse(System.Buffers.ReadOnlySequence<byte> amqpData, ref int byteRead) -> RabbitMQ.Stream.Client.AMQP.Properties
+static RabbitMQ.Stream.Client.AMQP.Header.Parse(ref System.Buffers.SequenceReader<byte> reader, ref int byteRead) -> RabbitMQ.Stream.Client.AMQP.Header
+static RabbitMQ.Stream.Client.AMQP.Map<TKey>.Parse<T>(ref System.Buffers.SequenceReader<byte> reader, ref int byteRead) -> T
+static RabbitMQ.Stream.Client.AMQP.Properties.Parse(ref System.Buffers.SequenceReader<byte> reader, ref int byteRead) -> RabbitMQ.Stream.Client.AMQP.Properties
 static RabbitMQ.Stream.Client.Client.Create(RabbitMQ.Stream.Client.ClientParameters parameters) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Client>
 static RabbitMQ.Stream.Client.CompressionHelper.Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) -> RabbitMQ.Stream.Client.ICompressionCodec
 static RabbitMQ.Stream.Client.CompressionHelper.UnCompress(RabbitMQ.Stream.Client.CompressionType compressionType, System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) -> System.Buffers.ReadOnlySequence<byte>
@@ -1006,7 +999,7 @@ static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, Sy
 static RabbitMQ.Stream.Client.LeaderLocator.ClientLocal.get -> RabbitMQ.Stream.Client.LeaderLocator
 static RabbitMQ.Stream.Client.LeaderLocator.LeastLeaders.get -> RabbitMQ.Stream.Client.LeaderLocator
 static RabbitMQ.Stream.Client.LeaderLocator.Random.get -> RabbitMQ.Stream.Client.LeaderLocator
-static RabbitMQ.Stream.Client.Message.From(System.Buffers.ReadOnlySequence<byte> amqpData) -> RabbitMQ.Stream.Client.Message
+static RabbitMQ.Stream.Client.Message.From(ref System.Buffers.SequenceReader<byte> reader, uint len) -> RabbitMQ.Stream.Client.Message
 static RabbitMQ.Stream.Client.PooledTaskSource<T>.Rent() -> RabbitMQ.Stream.Client.ManualResetValueTaskSource<T>
 static RabbitMQ.Stream.Client.PooledTaskSource<T>.Return(RabbitMQ.Stream.Client.ManualResetValueTaskSource<T> task) -> void
 static RabbitMQ.Stream.Client.Publish.Version.get -> byte

@@ -12,15 +12,15 @@ namespace RabbitMQ.Stream.Client.AMQP
     {
         protected byte MapDataCode;
 
-        public static T Parse<T>(ReadOnlySequence<byte> amqpData, ref int byteRead) where T : Map<TKey>, new()
+        public static T Parse<T>(ref SequenceReader<byte> reader, ref int byteRead) where T : Map<TKey>, new()
         {
-            var offset = AmqpWireFormatting.ReadMapHeader(amqpData, out var count);
+            var offset = AmqpWireFormatting.ReadMapHeader(ref reader, out var count);
             var amqpMap = new T();
             var values = (count / 2);
             for (var i = 0; i < values; i++)
             {
-                offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var key);
-                offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var value);
+                offset += AmqpWireFormatting.ReadAny(ref reader, out var key);
+                offset += AmqpWireFormatting.ReadAny(ref reader, out var value);
                 if (!IsNullOrEmptyString(key)) // this should never occur because we never write null keys
                 {
                     amqpMap[(key as TKey)!] = value;
