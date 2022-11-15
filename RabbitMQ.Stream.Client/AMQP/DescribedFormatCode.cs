@@ -15,6 +15,9 @@ namespace RabbitMQ.Stream.Client.AMQP
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte Read(ref SequenceReader<byte> reader)
         {
+            // DescribedFormatCode in this case we need to read 
+            // only the last byte form the header to get the format code
+            // the first can be ignored but it is necessary to read them
             reader.TryRead(out _);
             reader.TryRead(out _);
             reader.TryRead(out var formatCode);

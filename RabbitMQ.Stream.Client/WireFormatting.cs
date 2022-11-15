@@ -19,62 +19,62 @@ namespace RabbitMQ.Stream.Client
         {
             return string.IsNullOrEmpty(@string) ? 2 : 2 + s_encoding.GetByteCount(@string);
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteByte(Span<byte> span, byte value)
         {
             span[0] = value;
             return 1;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteInt32(Span<byte> span, int value)
         {
             BinaryPrimitives.WriteInt32BigEndian(span, value);
             return 4;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteUInt16(Span<byte> p, ushort value)
         {
             BinaryPrimitives.WriteUInt16BigEndian(p, value);
             return 2;
         }
-
-        internal static int WriteInt16(Span<byte> p, short value)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int WriteInt16(Span<byte> span, short value)
         {
-            BinaryPrimitives.WriteInt16BigEndian(p, value);
+            BinaryPrimitives.WriteInt16BigEndian(span, value);
             return 2;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteUInt64(Span<byte> span, ulong value)
         {
             BinaryPrimitives.WriteUInt64BigEndian(span, value);
             return 8;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteInt64(Span<byte> span, long value)
         {
             BinaryPrimitives.WriteInt64BigEndian(span, value);
             return 8;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteUInt32(Span<byte> span, uint value)
         {
             BinaryPrimitives.WriteUInt32BigEndian(span, value);
             return 4;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int Write(Span<byte> span, ReadOnlySequence<byte> msg)
         {
             msg.CopyTo(span);
             return (int)msg.Length;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteBytes(Span<byte> span, ReadOnlySequence<byte> msg)
         {
             WriteUInt32(span, (uint)msg.Length);
             Write(span.Slice(4), msg);
             return 4 + (int)msg.Length;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteString(Span<byte> span, string s)
         {
             if (string.IsNullOrEmpty(s))

@@ -37,6 +37,7 @@ let main argv =
         let producerConfig = RawProducerConfig(streamName,
                                             Reference = null,
                                             MaxInFlight = 10000,
+                                            MessagesBufferSize = 10000,
                                             ConfirmHandler = fun c -> confirmed <- confirmed + 1)
         let! producer = system.CreateRawProducer producerConfig
         //make producer available to metrics async

@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -221,6 +222,7 @@ namespace RabbitMQ.Stream.Client
             return !_disposed && !_client.IsClosed;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async ValueTask Send(ulong publishingId, Message message)
         {
             await SemaphoreWait();
@@ -235,9 +237,11 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private async Task ProcessBuffer()
         {
             var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
+
             while (await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
             {
                 while (_messageBuffer.Reader.TryRead(out var msg))
