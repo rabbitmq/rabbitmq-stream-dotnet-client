@@ -46,20 +46,20 @@ namespace RabbitMQ.Stream.Client
             var offset = 0;
             if (Properties != null)
             {
-                offset += Properties.Write(span.Slice(offset));
+                offset += Properties.Write(span[offset..]);
             }
 
             if (ApplicationProperties != null)
             {
-                offset += ApplicationProperties.Write(span.Slice(offset));
+                offset += ApplicationProperties.Write(span[offset..]);
             }
 
             if (Annotations != null)
             {
-                offset += Annotations.Write(span.Slice(offset));
+                offset += Annotations.Write(span[offset..]);
             }
 
-            offset += Data.Write(span.Slice(offset));
+            offset += Data.Write(span[offset..]);
             return offset;
         }
 

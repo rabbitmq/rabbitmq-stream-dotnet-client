@@ -72,15 +72,15 @@ namespace RabbitMQ.Stream.Client.AMQP
         public int Write(Span<byte> span)
         {
             var offset = DescribedFormatCode.Write(span, MapDataCode);
-            offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Map32);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)MapSize()); // MapSize 
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)Count * 2); // pair values
+            offset += WireFormatting.WriteByte(span[offset..], FormatCode.Map32);
+            offset += WireFormatting.WriteUInt32(span[offset..], (uint)MapSize()); // MapSize 
+            offset += WireFormatting.WriteUInt32(span[offset..], (uint)Count * 2); // pair values
             foreach (var (key, value) in this)
             {
                 if (!IsNullOrEmptyString(key))
                 {
-                    offset += AmqpWireFormatting.WriteAny(span.Slice(offset), key);
-                    offset += AmqpWireFormatting.WriteAny(span.Slice(offset), value);
+                    offset += AmqpWireFormatting.WriteAny(span[offset..], key);
+                    offset += AmqpWireFormatting.WriteAny(span[offset..], value);
                 }
             }
 

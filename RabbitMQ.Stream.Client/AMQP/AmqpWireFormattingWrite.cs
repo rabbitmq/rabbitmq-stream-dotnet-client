@@ -41,16 +41,16 @@ namespace RabbitMQ.Stream.Client.AMQP
             // Str8
             if (len <= byte.MaxValue)
             {
-                offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Str8);
-                offset += WireFormatting.WriteByte(seq.Slice(offset), (byte)len);
-                offset += s_encoding.GetBytes(value, seq.Slice(offset));
+                offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Str8);
+                offset += WireFormatting.WriteByte(seq[offset..], (byte)len);
+                offset += s_encoding.GetBytes(value, seq[offset..]);
                 return offset;
             }
 
             // Str32
-            offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Str32);
-            offset += WireFormatting.WriteInt32(seq.Slice(offset), len);
-            offset += s_encoding.GetBytes(value, seq.Slice(offset));
+            offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Str32);
+            offset += WireFormatting.WriteInt32(seq[offset..], len);
+            offset += s_encoding.GetBytes(value, seq[offset..]);
             return offset;
         }
 
@@ -64,13 +64,13 @@ namespace RabbitMQ.Stream.Client.AMQP
             var offset = 0;
             if (value < 256)
             {
-                offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.SmallUlong);
-                offset += WireFormatting.WriteByte(seq.Slice(offset), (byte)value);
+                offset += WireFormatting.WriteByte(seq[offset..], FormatCode.SmallUlong);
+                offset += WireFormatting.WriteByte(seq[offset..], (byte)value);
                 return offset;
             }
 
-            offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Ulong);
-            offset += WireFormatting.WriteUInt64(seq.Slice(offset), value);
+            offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Ulong);
+            offset += WireFormatting.WriteUInt64(seq[offset..], value);
             return offset;
         }
 
@@ -83,13 +83,13 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case 0:
                     return WireFormatting.WriteByte(seq, FormatCode.Uint0);
                 case < 256:
-                    offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.SmallUint);
-                    offset += WireFormatting.WriteByte(seq.Slice(offset), (byte)value);
+                    offset += WireFormatting.WriteByte(seq[offset..], FormatCode.SmallUint);
+                    offset += WireFormatting.WriteByte(seq[offset..], (byte)value);
                     return offset;
             }
 
-            offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Uint);
-            offset += WireFormatting.WriteUInt32(seq.Slice(offset), value);
+            offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Uint);
+            offset += WireFormatting.WriteUInt32(seq[offset..], value);
             return offset;
         }
 
@@ -98,14 +98,14 @@ namespace RabbitMQ.Stream.Client.AMQP
             var offset = 0;
             if (value is < 128 and >= -128)
             {
-                offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Smallint);
-                offset += WireFormatting.WriteByte(seq.Slice(offset), (byte)value);
+                offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Smallint);
+                offset += WireFormatting.WriteByte(seq[offset..], (byte)value);
 
                 return offset;
             }
 
-            offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Int);
-            offset += WireFormatting.WriteInt32(seq.Slice(offset), value);
+            offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Int);
+            offset += WireFormatting.WriteInt32(seq[offset..], value);
             return offset;
         }
 
@@ -114,14 +114,14 @@ namespace RabbitMQ.Stream.Client.AMQP
             var offset = 0;
             if (value is < 128 and >= -128)
             {
-                offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Smalllong);
-                offset += WireFormatting.WriteByte(seq.Slice(offset), (byte)value);
+                offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Smalllong);
+                offset += WireFormatting.WriteByte(seq[offset..], (byte)value);
 
                 return offset;
             }
 
-            offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Long);
-            offset += WireFormatting.WriteInt64(seq.Slice(offset), value);
+            offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Long);
+            offset += WireFormatting.WriteInt64(seq[offset..], value);
             return offset;
         }
 
@@ -138,37 +138,37 @@ namespace RabbitMQ.Stream.Client.AMQP
             // List8
             if (len < 256)
             {
-                offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Vbin8);
-                offset += WireFormatting.WriteByte(seq.Slice(offset), (byte)len);
-                offset += WireFormatting.Write(seq.Slice(offset), new ReadOnlySequence<byte>(value));
+                offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Vbin8);
+                offset += WireFormatting.WriteByte(seq[offset..], (byte)len);
+                offset += WireFormatting.Write(seq[offset..], new ReadOnlySequence<byte>(value));
                 return offset;
             }
 
             // List32
-            offset += WireFormatting.WriteByte(seq.Slice(offset), FormatCode.Vbin32);
-            offset += WireFormatting.WriteUInt32(seq.Slice(offset), (uint)len);
-            offset += WireFormatting.Write(seq.Slice(offset), new ReadOnlySequence<byte>(value));
+            offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Vbin32);
+            offset += WireFormatting.WriteUInt32(seq[offset..], (uint)len);
+            offset += WireFormatting.Write(seq[offset..], new ReadOnlySequence<byte>(value));
             return offset;
         }
 
         private static int WriteUInt16(Span<byte> seq, ushort value)
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Ushort);
-            offset += WireFormatting.WriteUInt16(seq.Slice(offset), value);
+            offset += WireFormatting.WriteUInt16(seq[offset..], value);
             return offset;
         }
 
         private static int WriteByte(Span<byte> seq, byte value)
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Ubyte);
-            offset += WireFormatting.WriteByte(seq.Slice(offset), value);
+            offset += WireFormatting.WriteByte(seq[offset..], value);
             return offset;
         }
 
         private static int WriteSByte(Span<byte> seq, sbyte value)
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Byte);
-            offset += WireFormatting.WriteByte(seq.Slice(offset), (byte)value);
+            offset += WireFormatting.WriteByte(seq[offset..], (byte)value);
             return offset;
         }
 
@@ -176,7 +176,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Float);
             var intFloat = BitConverter.SingleToInt32Bits(value);
-            offset += WireFormatting.WriteInt32(seq.Slice(offset), intFloat);
+            offset += WireFormatting.WriteInt32(seq[offset..], intFloat);
             return offset;
         }
 
@@ -184,14 +184,14 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Double);
             var intFloat = BitConverter.DoubleToInt64Bits(value);
-            offset += WireFormatting.WriteInt64(seq.Slice(offset), intFloat);
+            offset += WireFormatting.WriteInt64(seq[offset..], intFloat);
             return offset;
         }
 
         private static int WriteIn16(Span<byte> seq, short value)
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Short);
-            offset += WireFormatting.WriteInt16(seq.Slice(offset), value);
+            offset += WireFormatting.WriteInt16(seq[offset..], value);
             return offset;
         }
 
@@ -204,7 +204,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             var offset = WireFormatting.WriteByte(seq, FormatCode.Timestamp);
             var unixTime = ((DateTimeOffset)value).ToUnixTimeMilliseconds();
-            offset += WireFormatting.WriteUInt64(seq.Slice(offset), (ulong)unixTime);
+            offset += WireFormatting.WriteUInt64(seq[offset..], (ulong)unixTime);
             return offset;
         }
 

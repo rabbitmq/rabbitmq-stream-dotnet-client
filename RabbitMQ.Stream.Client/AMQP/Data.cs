@@ -32,16 +32,16 @@ namespace RabbitMQ.Stream.Client.AMQP
             var offset = DescribedFormatCode.Write(span, DescribedFormatCode.ApplicationData);
             if (data.Length <= byte.MaxValue)
             {
-                offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin8); //binary marker
-                offset += WireFormatting.WriteByte(span.Slice(offset), (byte)data.Length); //length
+                offset += WireFormatting.WriteByte(span[offset..], FormatCode.Vbin8); //binary marker
+                offset += WireFormatting.WriteByte(span[offset..], (byte)data.Length); //length
             }
             else
             {
-                offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.Vbin32); //binary marker
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)data.Length); //length
+                offset += WireFormatting.WriteByte(span[offset..], FormatCode.Vbin32); //binary marker
+                offset += WireFormatting.WriteUInt32(span[offset..], (uint)data.Length); //length
             }
 
-            offset += WireFormatting.Write(span.Slice(offset), data);
+            offset += WireFormatting.Write(span[offset..], data);
             return offset;
         }
 
