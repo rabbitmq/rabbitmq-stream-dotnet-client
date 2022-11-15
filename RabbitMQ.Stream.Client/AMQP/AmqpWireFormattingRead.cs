@@ -177,16 +177,16 @@ namespace RabbitMQ.Stream.Client.AMQP
                     reader.TryCopyTo(tempSpan);
                     reader.Advance(lenC);
                     value = Encoding.UTF8.GetString(tempSpan);
-                    return offset + s_encoding.GetBytes(value).Length;
+                    return offset + s_encoding.GetByteCount(value);
 
                 case FormatCode.Sym32:
                 case FormatCode.Str32:
                     offset += WireFormatting.ReadInt32(ref reader, out var len);
-                    Span<byte> tempSpan32 = new byte[len];
+                    Span<byte> tempSpan32 = len <= 64 ? stackalloc byte[len] : new byte[len];
                     reader.TryCopyTo(tempSpan32);
                     reader.Advance(len);
                     value = Encoding.UTF8.GetString(tempSpan32);
-                    return offset + s_encoding.GetBytes(value).Length;
+                    return offset + s_encoding.GetByteCount(value);
             }
 
             throw new AMQP.AmqpParseException($"ReadString invalid type {type}");
