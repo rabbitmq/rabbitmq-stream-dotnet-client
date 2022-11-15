@@ -132,22 +132,22 @@ namespace RabbitMQ.Stream.Client.AMQP
         public int Write(Span<byte> span)
         {
             var offset = DescribedFormatCode.Write(span, DescribedFormatCode.MessageProperties);
-            offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.List32);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)PropertySize()); // PropertySize 
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), 13); // field numbers
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), MessageId);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), UserId);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), To);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), Subject);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), ReplyTo);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), CorrelationId);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), ContentType);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), ContentEncoding);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), AbsoluteExpiryTime);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), CreationTime);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), GroupId);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), GroupSequence);
-            offset += AmqpWireFormatting.WriteAny(span.Slice(offset), ReplyToGroupId);
+            offset += WireFormatting.WriteByte(span[offset..], FormatCode.List32);
+            offset += WireFormatting.WriteUInt32(span[offset..], (uint)PropertySize()); // PropertySize 
+            offset += WireFormatting.WriteUInt32(span[offset..], 13); // field numbers
+            offset += AmqpWireFormatting.WriteAny(span[offset..], MessageId);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], UserId);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], To);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], Subject);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], ReplyTo);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], CorrelationId);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], ContentType);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], ContentEncoding);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], AbsoluteExpiryTime);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], CreationTime);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], GroupId);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], GroupSequence);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], ReplyToGroupId);
             return offset;
         }
     }

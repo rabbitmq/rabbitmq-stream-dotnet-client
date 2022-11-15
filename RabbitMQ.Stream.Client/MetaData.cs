@@ -39,13 +39,13 @@ namespace RabbitMQ.Stream.Client
         {
             var command = (ICommand)this;
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), command.Version);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
+            offset += WireFormatting.WriteUInt16(span[offset..], command.Version);
+            offset += WireFormatting.WriteUInt32(span[offset..], correlationId);
             // map
-            offset += WireFormatting.WriteInt32(span.Slice(offset), streams.Count());
+            offset += WireFormatting.WriteInt32(span[offset..], streams.Count());
             foreach (var s in streams)
             {
-                offset += WireFormatting.WriteString(span.Slice(offset), s);
+                offset += WireFormatting.WriteString(span[offset..], s);
             }
 
             return offset;

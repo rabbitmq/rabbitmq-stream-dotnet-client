@@ -78,7 +78,7 @@ namespace RabbitMQ.Stream.Client
         public int Write(Span<byte> span)
         {
             var offset = WireFormatting.WriteUInt16(span, (ushort)OffsetType);
-            offset += WireFormatting.WriteUInt64(span.Slice(offset), OffsetValue);
+            offset += WireFormatting.WriteUInt64(span[offset..], OffsetValue);
             return offset;
         }
     }
@@ -99,7 +99,7 @@ namespace RabbitMQ.Stream.Client
         public int Write(Span<byte> span)
         {
             var offset = WireFormatting.WriteUInt16(span, (ushort)OffsetType);
-            offset += WireFormatting.WriteInt64(span.Slice(offset), timestamp);
+            offset += WireFormatting.WriteInt64(span[offset..], timestamp);
             return offset;
         }
     }
