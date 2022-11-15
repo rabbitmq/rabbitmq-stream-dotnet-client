@@ -36,7 +36,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 
         private static int WriteString(Span<byte> seq, string value)
         {
-            var len = s_encoding.GetBytes(value).Length;
+            var len = s_encoding.GetByteCount(value);
             var offset = 0;
             // Str8
             if (len <= byte.MaxValue)
