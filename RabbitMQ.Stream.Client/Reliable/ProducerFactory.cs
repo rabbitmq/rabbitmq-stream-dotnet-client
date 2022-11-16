@@ -31,29 +31,31 @@ public abstract class ProducerFactory : ReliableBase
 
     private async Task<IProducer> SuperStreamProducer()
     {
-        return await _producerConfig.StreamSystem.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(_producerConfig.Stream)
-        {
-            ClientProvidedName = _producerConfig.ClientProvidedName,
-            Reference = _producerConfig.Reference,
-            MaxInFlight = _producerConfig.MaxInFlight,
-            Routing = _producerConfig.SuperStreamConfig.Routing,
-            ConfirmHandler = confirmationHandler =>
+        return await _producerConfig.StreamSystem.CreateRawSuperStreamProducer(
+            new RawSuperStreamProducerConfig(_producerConfig.Stream)
             {
-                var (stream, confirmation) = confirmationHandler;
-                var confirmationStatus = confirmation.Code switch
+                ClientProvidedName = _producerConfig.ClientProvidedName,
+                Reference = _producerConfig.Reference,
+                MessagesBufferSize = _producerConfig.MessagesBufferSize,
+                MaxInFlight = _producerConfig.MaxInFlight,
+                Routing = _producerConfig.SuperStreamConfig.Routing,
+                ConfirmHandler = confirmationHandler =>
                 {
-                    ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
-                    ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
-                    ResponseCode.InternalError => ConfirmationStatus.InternalError,
-                    ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
-                    ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
-                    ResponseCode.Ok => ConfirmationStatus.Confirmed,
-                    _ => ConfirmationStatus.UndefinedError
-                };
-                _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
-                    stream);
-            }
-        });
+                    var (stream, confirmation) = confirmationHandler;
+                    var confirmationStatus = confirmation.Code switch
+                    {
+                        ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
+                        ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
+                        ResponseCode.InternalError => ConfirmationStatus.InternalError,
+                        ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
+                        ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
+                        ResponseCode.Ok => ConfirmationStatus.Confirmed,
+                        _ => ConfirmationStatus.UndefinedError
+                    };
+                    _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
+                        stream);
+                }
+            });
     }
 
     private async Task<IProducer> StandardProducer()

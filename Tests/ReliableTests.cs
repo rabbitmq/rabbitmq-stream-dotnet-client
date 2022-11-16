@@ -92,6 +92,7 @@ public class ReliableTests
         var producer = await Producer.Create(
             new ProducerConfig(system, stream)
             {
+                MessagesBufferSize = 150,
                 ConfirmationHandler = _ =>
                 {
                     if (Interlocked.Increment(ref count) ==
