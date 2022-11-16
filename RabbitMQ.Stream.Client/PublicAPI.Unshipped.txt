@@ -764,6 +764,8 @@ RabbitMQ.Stream.Client.Reliable.ProducerConfig.ConfirmationHandler.get -> System
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.ConfirmationHandler.init -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.MaxInFlight.get -> int
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.MaxInFlight.set -> void
+RabbitMQ.Stream.Client.Reliable.ProducerConfig.MessagesBufferSize.get -> int
+RabbitMQ.Stream.Client.Reliable.ProducerConfig.MessagesBufferSize.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.ProducerConfig(RabbitMQ.Stream.Client.StreamSystem streamSystem, string stream) -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.get -> string
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void

@@ -41,6 +41,14 @@ public record ProducerConfig : ReliableConfig
 
     public int MaxInFlight { get; set; } = 1000;
 
+    /// <summary>
+    /// Number of the messages sent for each frame-send.
+    /// High values can increase the throughput.
+    /// Low values can reduce the messages latency.
+    /// Default value is 100.
+    /// </summary>
+    public int MessagesBufferSize { get; set; } = 100;
+
     // SuperStream configuration enables the SuperStream feature
     public SuperStreamConfig SuperStreamConfig { get; set; } = null;
 
