@@ -10,10 +10,24 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
 {
+    /// <summary>
+    /// MessageContext contains message metadata information
+    /// 
+    /// </summary>
     public struct MessageContext
     {
+        /// <summary>
+        /// Message offset inside the log
+        /// each single message has its own offset
+        /// </summary>
         public ulong Offset { get; }
 
+        /// <summary>
+        /// The timestamp of the message chunk.
+        /// A chunk (usually) contains multiple messages
+        /// The timestamp is the same for all messages in the chunk.
+        /// A chunk is simply a batch of messages. 
+        /// </summary>
         public TimeSpan Timestamp { get; }
 
         public MessageContext(ulong offset, TimeSpan timestamp)
