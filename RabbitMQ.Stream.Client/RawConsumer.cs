@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -137,7 +138,7 @@ namespace RabbitMQ.Stream.Client
                     {
                         _config.MessageHandler(this,
                             new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                            message);
+                            message).WaitAsync(CancellationToken.None);
                     }
                 }
                 catch (Exception e)

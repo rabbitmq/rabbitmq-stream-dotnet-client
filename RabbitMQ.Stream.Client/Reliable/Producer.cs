@@ -226,6 +226,11 @@ public class Producer : ProducerFactory
         }
     }
 
+    public override string ToString()
+    {
+        return $"Producer reference: {_producerConfig.Reference}, stream: {_producerConfig.Stream} ";
+    }
+
     /// <summary>
     /// Send the messages in batch to the stream in synchronous mode.
     /// The aggregation is provided by the user.
@@ -269,10 +274,5 @@ public class Producer : ProducerFactory
         {
             SemaphoreSlim.Release();
         }
-    }
-
-    public override string ToString()
-    {
-        return $"Producer reference: {_producerConfig.Reference}, stream: {_producerConfig.Stream} ";
     }
 }
