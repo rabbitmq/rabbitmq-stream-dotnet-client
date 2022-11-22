@@ -138,7 +138,7 @@ namespace RabbitMQ.Stream.Client
                     {
                         _config.MessageHandler(this,
                             new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                            message).WaitAsync(CancellationToken.None);
+                            message).GetAwaiter().GetResult();
                     }
                 }
                 catch (Exception e)
