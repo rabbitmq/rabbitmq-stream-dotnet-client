@@ -37,7 +37,7 @@ public record ConsumerConfig : ReliableConfig
     // See also: https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams
     // Parameters:
     public bool IsSuperStream { get; set; }
-    
+
     // <summary>
     // The offset is the place in the stream where the consumer starts consuming from. The possible values for the offset parameter are the following:
     // - OffsetTypeFirst: starting from the first available offset. If the stream has not been truncated, this means the beginning of the stream (offset 0).
@@ -53,7 +53,7 @@ public record ConsumerConfig : ReliableConfig
     // The other instances will be idle.
     // </summary>
     public bool IsSingleActiveConsumer { get; set; } = false;
-    
+
     // <summary>
     // The broker notifies a consumer that becomes active before dispatching messages to it. 
     // With ConsumerUpdateListener the consumer can decide where to start consuming from.
