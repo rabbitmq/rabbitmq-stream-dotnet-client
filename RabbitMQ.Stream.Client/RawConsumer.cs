@@ -70,6 +70,12 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        // it is needed to be able to add the subscriptions arguments
+        // see consumerProperties["super-stream"] = SuperStream;
+        // in this way the consumer is notified is something happens in the super stream
+        // it is internal because it is used only internally
+        internal string SuperStream { get; set; }
+
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
 
         // stream name where the consumer will consume the messages.
@@ -201,6 +207,10 @@ namespace RabbitMQ.Stream.Client
             {
                 consumerProperties["name"] = _config.Reference;
                 consumerProperties["single-active-consumer"] = "true";
+                if (!string.IsNullOrEmpty(_config.SuperStream))
+                {
+                    consumerProperties["super-stream"] = _config.SuperStream;
+                }
             }
 
             // this the default value for the consumer.
