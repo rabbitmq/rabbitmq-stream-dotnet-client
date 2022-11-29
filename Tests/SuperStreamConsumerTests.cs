@@ -333,7 +333,7 @@ public class SuperStreamConsumerTests
         // these are two consumers that are not active and won't consume the messages
         for (var i = 0; i < 2; i++)
         {
-            var consumer = await NewReliableConsumer(reference, Guid.NewGuid().ToString(),
+            var consumer = await NewReliableConsumer($"{reference}_{i}", Guid.NewGuid().ToString(),
                 async (consumerRef, stream, arg3) =>
                     new OffsetTypeOffset(await system.QueryOffset(consumerRef, stream) + 1));
             consumers.Add(consumer);
