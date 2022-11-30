@@ -318,8 +318,6 @@ public class SuperStreamConsumerTests
                 ClientProvidedName = clientProvidedName,
                 IsSuperStream = true,
                 IsSingleActiveConsumer = true,
-                NotifyConsumerUpdate =
-                    false, // we don't want to notify the consumer update so the other consumers are blocked
                 ConsumerUpdateListener = consumerUpdateListener,
                 MessageHandler = async (stream, consumer1, context, message) =>
                 {

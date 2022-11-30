@@ -54,7 +54,6 @@ public record ConsumerConfig : ReliableConfig
     // </summary>
     public bool IsSingleActiveConsumer { get; set; } = false;
 
-    public bool NotifyConsumerUpdate { get; set; }
 
     // <summary>
     // The broker notifies a consumer that becomes active before dispatching messages to it. 
