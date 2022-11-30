@@ -47,7 +47,6 @@ public abstract class ConsumerFactory : ReliableBase
         {
             ClientProvidedName = _consumerConfig.ClientProvidedName,
             Reference = _consumerConfig.Reference,
-            NotifyConsumerUpdate = _consumerConfig.NotifyConsumerUpdate,
             ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
             IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
             OffsetSpec = offsetSpec,
@@ -106,7 +105,6 @@ public abstract class ConsumerFactory : ReliableBase
             SuperStream = _consumerConfig.Stream,
             ClientProvidedName = _consumerConfig.ClientProvidedName,
             Reference = _consumerConfig.Reference,
-            NotifyConsumerUpdate = _consumerConfig.NotifyConsumerUpdate,
             ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
             IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
             OffsetSpec = offsetSpecs,

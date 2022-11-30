@@ -150,8 +150,8 @@ public class SuperStreamConsumerTests
                     MessagesPerStream = new Dictionary<string, int>()
                     {
                         {SystemUtils.InvoicesStream0, 9},
-                        {SystemUtils.InvoicesStream1, 7},
-                        {SystemUtils.InvoicesStream2, 4}
+                        {SystemUtils.InvoicesStream1, 7 * 2},
+                        {SystemUtils.InvoicesStream2, 4 * 2}
                     },
                     Consumers = 3,
                     ClosedConsumers = 0,
@@ -174,21 +174,21 @@ public class SuperStreamConsumerTests
                 }
             };
 
-            yield return new object[]
-            {
-                new SaCConsumerExpected
-                {
-                    IsSingleActiveConsumer = true,
-                    MessagesPerStream = new Dictionary<string, int>()
-                    {
-                        {SystemUtils.InvoicesStream0, 9 * 2},
-                        {SystemUtils.InvoicesStream1, 7 * 2},
-                        {SystemUtils.InvoicesStream2, 4 * 2}
-                    },
-                    Consumers = 3,
-                    ClosedConsumers = 1,
-                }
-            };
+            // yield return new object[]
+            // {
+            //     new SaCConsumerExpected
+            //     {
+            //         IsSingleActiveConsumer = true,
+            //         MessagesPerStream = new Dictionary<string, int>()
+            //         {
+            //             {SystemUtils.InvoicesStream0, 9 * 2},
+            //             {SystemUtils.InvoicesStream1, 7 * 2},
+            //             {SystemUtils.InvoicesStream2, 4 * 2}
+            //         },
+            //         Consumers = 3,
+            //         ClosedConsumers = 1,
+            //     }
+            // };
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -206,7 +206,9 @@ public class SuperStreamConsumerTests
     [ClassData(typeof(SaCConsumerExpectedTestCases))]
     public async void SaCNumberOfMessagesConsumedShouldBeEqualsToPublished(SaCConsumerExpected saCConsumerExpected)
     {
+        _testOutputHelper.WriteLine("importing ..");
         SystemUtils.ResetSuperStreams();
+        _testOutputHelper.WriteLine("imported");
 
         var listConsumed = new ConcurrentBag<string>();
         const int NumberOfMessages = 20;
@@ -316,7 +318,8 @@ public class SuperStreamConsumerTests
                 ClientProvidedName = clientProvidedName,
                 IsSuperStream = true,
                 IsSingleActiveConsumer = true,
-                NotifyConsumerUpdate = false, // we don't want to notify the consumer update so the other consumers are blocked
+                NotifyConsumerUpdate =
+                    false, // we don't want to notify the consumer update so the other consumers are blocked
                 ConsumerUpdateListener = consumerUpdateListener,
                 MessageHandler = async (stream, consumer1, context, message) =>
                 {
@@ -331,12 +334,14 @@ public class SuperStreamConsumerTests
         var consumerSingle = await NewReliableConsumer(reference, clientProvidedName, null);
         consumers.Add(consumerSingle);
         SystemUtils.Wait(TimeSpan.FromSeconds(1));
-        // these are two consumers that are not active and won't consume the messages
+        // these are two consumers will start consume as soon as they start
         for (var i = 0; i < 2; i++)
         {
             var consumer = await NewReliableConsumer(reference, Guid.NewGuid().ToString(),
-                async (consumerRef, stream, arg3) =>
-                    new OffsetTypeOffset(await system.QueryOffset(consumerRef, stream) + 1));
+                (consumerRef, stream, arg3) =>
+                {
+                    return new Task<IOffsetType>(() => new OffsetTypeFirst());
+                });
             consumers.Add(consumer);
         }
 

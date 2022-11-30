@@ -415,8 +415,6 @@ RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.get -> System.Func
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.get -> bool
 RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.set -> void
-RabbitMQ.Stream.Client.IConsumerConfig.NotifyConsumerUpdate.get -> bool
-RabbitMQ.Stream.Client.IConsumerConfig.NotifyConsumerUpdate.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.Reference.get -> string
 RabbitMQ.Stream.Client.IConsumerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.INamedEntity
