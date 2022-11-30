@@ -207,7 +207,7 @@ namespace RabbitMQ.Stream.Client
             {
                 consumerProperties["name"] = _config.Reference;
                 consumerProperties["single-active-consumer"] = "true";
-                if (!string.IsNullOrEmpty(_config.SuperStream))
+                if (!string.IsNullOrEmpty(_config.SuperStream) && _config.NotifyConsumerUpdate)
                 {
                     consumerProperties["super-stream"] = _config.SuperStream;
                 }

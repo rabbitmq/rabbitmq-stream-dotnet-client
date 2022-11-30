@@ -415,6 +415,8 @@ RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.get -> System.Func
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.get -> bool
 RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.set -> void
+RabbitMQ.Stream.Client.IConsumerConfig.NotifyConsumerUpdate.get -> bool
+RabbitMQ.Stream.Client.IConsumerConfig.NotifyConsumerUpdate.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.Reference.get -> string
 RabbitMQ.Stream.Client.IConsumerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.INamedEntity
@@ -734,6 +736,8 @@ RabbitMQ.Stream.Client.Reliable.ConsumerConfig.IsSuperStream.get -> bool
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.IsSuperStream.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.MessageHandler.get -> System.Func<string, RabbitMQ.Stream.Client.RawConsumer, RabbitMQ.Stream.Client.MessageContext, RabbitMQ.Stream.Client.Message, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.MessageHandler.set -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.NotifyConsumerUpdate.get -> bool
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.NotifyConsumerUpdate.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.OffsetSpec.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Reference.get -> string

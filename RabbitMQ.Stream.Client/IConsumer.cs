@@ -36,6 +36,7 @@ public record IConsumerConfig : INamedEntity
     // return IOffsetType to indicate the offset to be used for the next consumption.
     // if the ConsumerUpdateListener==null the OffsetSpec will be used.
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
+    public bool NotifyConsumerUpdate { get; set; }
 
     public string Reference { get; set; }
 
