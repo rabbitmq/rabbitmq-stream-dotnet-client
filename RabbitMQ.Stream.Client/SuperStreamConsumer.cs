@@ -30,6 +30,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         return new RawConsumerConfig(stream)
         {
             Reference = _config.Reference,
+            SuperStream = _config.SuperStream,
             IsSingleActiveConsumer = _config.IsSingleActiveConsumer,
             ConsumerUpdateListener = _config.ConsumerUpdateListener,
             ConnectionClosedHandler = async (string s) =>

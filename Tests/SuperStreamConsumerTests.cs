@@ -128,7 +128,7 @@ public class SuperStreamConsumerTests
     }
 
     [Serializable]
-    public class SaCConsumerExpected
+    public class ConsumerExpected
     {
         public bool IsSingleActiveConsumer { get; set; }
         public Dictionary<string, int> MessagesPerStream { get; set; }
@@ -138,29 +138,29 @@ public class SuperStreamConsumerTests
         public int ClosedConsumers { get; set; }
     }
 
-    private class SaCConsumerExpectedTestCases : IEnumerable<object[]>
+    private class ConsumerExpectedTestCases : IEnumerable<object[]>
     {
         public IEnumerator<object[]> GetEnumerator()
         {
             yield return new object[]
             {
-                new SaCConsumerExpected
+                new ConsumerExpected
                 {
-                    IsSingleActiveConsumer = true,
+                    IsSingleActiveConsumer = false,
                     MessagesPerStream = new Dictionary<string, int>()
                     {
-                        {SystemUtils.InvoicesStream0, 9},
-                        {SystemUtils.InvoicesStream1, 7},
-                        {SystemUtils.InvoicesStream2, 4}
+                        {SystemUtils.InvoicesStream0, 9 * 2},
+                        {SystemUtils.InvoicesStream1, 7 * 2},
+                        {SystemUtils.InvoicesStream2, 4 * 2}
                     },
-                    Consumers = 3,
+                    Consumers = 2,
                     ClosedConsumers = 0,
                 }
             };
 
             yield return new object[]
             {
-                new SaCConsumerExpected
+                new ConsumerExpected
                 {
                     IsSingleActiveConsumer = false,
                     MessagesPerStream = new Dictionary<string, int>()
@@ -173,22 +173,6 @@ public class SuperStreamConsumerTests
                     ClosedConsumers = 0,
                 }
             };
-
-            yield return new object[]
-            {
-                new SaCConsumerExpected
-                {
-                    IsSingleActiveConsumer = true,
-                    MessagesPerStream = new Dictionary<string, int>()
-                    {
-                        {SystemUtils.InvoicesStream0, 9 * 2},
-                        {SystemUtils.InvoicesStream1, 7 * 2},
-                        {SystemUtils.InvoicesStream2, 4 * 2}
-                    },
-                    Consumers = 3,
-                    ClosedConsumers = 1,
-                }
-            };
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -198,13 +182,17 @@ public class SuperStreamConsumerTests
     }
 
     /// <summary>
-    /// We test the single active consumer functionality in different scenarios.
-    /// The class SaCConsumerExpectedTestCases contains the different scenarios and the expected results.
+    /// We test the consumer functionality in different scenarios.
+    /// The class ConsumerExpectedTestCases contains the different scenarios and the expected results.
+    /// each consumer should have at least the same number of messages expected for stream.
+    /// It could have more messages since the consumer restarts from the beginning of the stream.
+    /// but it is fine.
+    /// The problem is when the consumer has less messages than expected. ( check the Assert.True(..))
     /// </summary>
-    /// <param name="saCConsumerExpected"></param>
+    /// <param name="consumerExpected"></param>
     [Theory]
-    [ClassData(typeof(SaCConsumerExpectedTestCases))]
-    public async void SaCNumberOfMessagesConsumedShouldBeEqualsToPublished(SaCConsumerExpected saCConsumerExpected)
+    [ClassData(typeof(ConsumerExpectedTestCases))]
+    public async void MoreConsumersNumberOfMessagesConsumedShouldBeEqualsToPublished(ConsumerExpected consumerExpected)
     {
         SystemUtils.ResetSuperStreams();
 
@@ -222,7 +210,7 @@ public class SuperStreamConsumerTests
                 SuperStream = "invoices",
                 ClientProvidedName = clientProvidedName,
                 OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
-                IsSingleActiveConsumer = saCConsumerExpected.IsSingleActiveConsumer,
+                IsSingleActiveConsumer = consumerExpected.IsSingleActiveConsumer,
                 Reference = "super_stream_consumer_name",
                 MessageHandler = (stream, consumer1, context, message) =>
                 {
@@ -233,7 +221,7 @@ public class SuperStreamConsumerTests
             return iConsumer;
         }
 
-        for (var i = 0; i < saCConsumerExpected.Consumers; i++)
+        for (var i = 0; i < consumerExpected.Consumers; i++)
         {
             var consumer = await NewConsumer();
             consumers.Add($"consumer_{i}", consumer);
@@ -241,18 +229,19 @@ public class SuperStreamConsumerTests
 
         SystemUtils.Wait(TimeSpan.FromSeconds(3));
 
-        for (var i = 0; i < saCConsumerExpected.ClosedConsumers; i++)
+        for (var i = 0; i < consumerExpected.ClosedConsumers; i++)
         {
             await consumers[$"consumer_{i}"].Close();
         }
 
         SystemUtils.Wait(TimeSpan.FromSeconds(3));
-        Assert.Equal(saCConsumerExpected.MessagesPerStream[SystemUtils.InvoicesStream0],
-            listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
-        Assert.Equal(saCConsumerExpected.MessagesPerStream[SystemUtils.InvoicesStream1],
-            listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
-        Assert.Equal(saCConsumerExpected.MessagesPerStream[SystemUtils.InvoicesStream2],
-            listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
+
+        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream0] <=
+                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
+        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream1] <=
+                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
+        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream2] <=
+                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
 
         await system.Close();
     }
@@ -330,12 +319,14 @@ public class SuperStreamConsumerTests
         var consumerSingle = await NewReliableConsumer(reference, clientProvidedName, null);
         consumers.Add(consumerSingle);
         SystemUtils.Wait(TimeSpan.FromSeconds(1));
-        // these are two consumers that are not active and won't consume the messages
+        // these are two consumers will start consume as soon as they start
         for (var i = 0; i < 2; i++)
         {
             var consumer = await NewReliableConsumer(reference, Guid.NewGuid().ToString(),
-                async (consumerRef, stream, arg3) =>
-                    new OffsetTypeOffset(await system.QueryOffset(consumerRef, stream) + 1));
+                (consumerRef, stream, arg3) =>
+                {
+                    return new Task<IOffsetType>(() => new OffsetTypeFirst());
+                });
             consumers.Add(consumer);
         }
 
@@ -370,6 +361,62 @@ public class SuperStreamConsumerTests
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 0);
 
         await system.Close();
+    }
 
+    /// <summary>
+    /// Test when a super stream consumer with the same name joins the group
+    /// so we start with one consumer and then we start another consumer with the same name
+    /// the second consumer should receive the messages form one of the stream partitions
+    /// </summary>
+    [Fact]
+    public async void SaCAddNewConsumerShouldReceiveAllTheMessage()
+    {
+        SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
+        var listConsumed = new ConcurrentBag<string>();
+        const string Reference = "My-group-app";
+        var firstConsumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        {
+            OffsetSpec = new OffsetTypeFirst(),
+            IsSuperStream = true,
+            IsSingleActiveConsumer = true,
+            Reference = Reference,
+            MessageHandler = (stream, consumer1, context, message) =>
+            {
+                listConsumed.Add(stream);
+                return Task.CompletedTask;
+            }
+        });
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        // the first consumer consumes all the messages and have to be like the messages published
+        Assert.Equal(20, listConsumed.Count);
+        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        // the second consumer joins the group and consumes the messages only from one partition
+        var listSecondConsumed = new ConcurrentBag<string>();
+        var secondConsumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        {
+            OffsetSpec = new OffsetTypeFirst(),
+            IsSuperStream = true,
+            IsSingleActiveConsumer = true,
+            Reference = Reference,
+            MessageHandler = (stream, consumer1, context, message) =>
+            {
+                listSecondConsumed.Add(stream);
+                return Task.CompletedTask;
+            }
+        });
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        // When the second consumer joins the group it consumes only from one partition
+        // We don't know which partition will be consumed
+        // so the test is to check if there are at least 4 messages consumed
+        // that is the partition with less messages
+        Assert.True(listSecondConsumed.Count >= 4);
+
+        await firstConsumer.Close();
+        await secondConsumer.Close();
+        await system.Close();
     }
 }

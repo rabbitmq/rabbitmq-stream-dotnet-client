@@ -16,6 +16,7 @@ namespace RabbitMQ.Stream.Client.Reliable;
 public abstract class ConsumerFactory : ReliableBase
 {
     protected ConsumerConfig _consumerConfig;
+
     // this list contains the map between the stream and last consumed offset 
     // standard consumer is just one 
     // super stream consumer is one per stream-partition
