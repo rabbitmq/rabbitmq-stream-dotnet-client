@@ -173,22 +173,6 @@ public class SuperStreamConsumerTests
                     ClosedConsumers = 0,
                 }
             };
-
-            // yield return new object[]
-            // {
-            //     new SaCConsumerExpected
-            //     {
-            //         IsSingleActiveConsumer = true,
-            //         MessagesPerStream = new Dictionary<string, int>()
-            //         {
-            //             {SystemUtils.InvoicesStream0, 9 * 2},
-            //             {SystemUtils.InvoicesStream1, 7 * 2},
-            //             {SystemUtils.InvoicesStream2, 4 * 2}
-            //         },
-            //         Consumers = 3,
-            //         ClosedConsumers = 1,
-            //     }
-            // };
         }
 
         IEnumerator IEnumerable.GetEnumerator()
