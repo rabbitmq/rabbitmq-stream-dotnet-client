@@ -39,13 +39,13 @@ namespace RabbitMQ.Stream.Client
         {
             var command = (ICommand)this;
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span[offset..], command.Version);
-            offset += WireFormatting.WriteUInt32(span[offset..], correlationId);
+            offset += WireFormatting.WriteUInt16(span.Slice(offset), command.Version);
+            offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
             // map
-            offset += WireFormatting.WriteInt32(span[offset..], streams.Count());
+            offset += WireFormatting.WriteInt32(span.Slice(offset), streams.Count());
             foreach (var s in streams)
             {
-                offset += WireFormatting.WriteString(span[offset..], s);
+                offset += WireFormatting.WriteString(span.Slice(offset), s);
             }
 
             return offset;
@@ -117,10 +117,10 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
             //offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
             offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var numBrokers);
-            var brokers = new Dictionary<short, Broker>();
+            var brokers = new Dictionary<ushort, Broker>();
             for (var i = 0; i < numBrokers; i++)
             {
-                offset += WireFormatting.ReadInt16(frame.Slice(offset), out var brokerRef);
+                offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var brokerRef);
                 offset += WireFormatting.ReadString(frame.Slice(offset), out var host);
                 offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var port);
                 brokers.Add(brokerRef, new Broker(host, port));
@@ -132,19 +132,18 @@ namespace RabbitMQ.Stream.Client
             {
                 offset += WireFormatting.ReadString(frame.Slice(offset), out var stream);
                 offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var code);
-
-                offset += WireFormatting.ReadInt16(frame.Slice(offset), out var leaderRef);
+                offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var leaderRef);
                 offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var numReplicas);
-                var replicaRefs = new short[numReplicas];
+                var replicaRefs = new ushort[numReplicas];
                 for (var j = 0; j < numReplicas; j++)
                 {
-                    offset += WireFormatting.ReadInt16(frame.Slice(offset), out replicaRefs[j]);
+                    offset += WireFormatting.ReadUInt16(frame.Slice(offset), out replicaRefs[j]);
                 }
 
                 if (brokers.Count > 0)
                 {
                     var replicas = replicaRefs.Select(r => brokers[r]).ToList();
-                    var leader = brokers.ContainsKey(leaderRef) ? brokers[leaderRef] : default;
+                    var leader = brokers[leaderRef];
                     streamInfos.Add(stream, new StreamInfo(stream, (ResponseCode)code, leader, replicas));
                 }
                 else

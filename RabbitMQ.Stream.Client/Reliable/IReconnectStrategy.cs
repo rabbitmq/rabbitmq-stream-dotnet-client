@@ -3,11 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
-<<<<<<< HEAD
 using System.Threading;
-=======
-using System.Threading.Tasks;
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
 using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
@@ -23,13 +19,13 @@ public interface IReconnectStrategy
     /// </summary>
     /// <param name="connectionInfo">Additional connection info. Just for logging</param>
     /// <returns>if True the client will be reconnected else closed</returns>
-    ValueTask<bool> WhenDisconnected(string connectionInfo);
+    bool WhenDisconnected(string connectionInfo);
 
     /// <summary>
     /// It is raised when the TCP client is connected successfully 
     /// </summary>
     /// <param name="connectionInfo">Additional connection info. Just for logging</param>
-    ValueTask WhenConnected(string connectionInfo);
+    void WhenConnected(string connectionInfo);
 }
 
 /// <summary>
@@ -41,31 +37,13 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
 {
     private int Tentatives { get; set; } = 1;
     private readonly ILogger _logger;
-<<<<<<< HEAD
-
-    public BackOffReconnectStrategy(ILogger logger = null)
-    {
-        _logger = logger;
-    }
-=======
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
 
     public BackOffReconnectStrategy(ILogger logger = null)
     {
         _logger = logger;
     }
 
-    // reset the tentatives after a while 
-    // else the backoff will be too long
-    private void MaybeResetTentatives()
-    {
-        if (Tentatives > 1000)
-        {
-            Tentatives = 1;
-        }
-    }
-
-    public async ValueTask<bool> WhenDisconnected(string connectionInfo)
+    public bool WhenDisconnected(string connectionInfo)
     {
         Tentatives <<= 1;
         var sleepDuration = Tentatives * 100;
@@ -74,20 +52,12 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
             connectionInfo,
             sleepDuration
             );
-<<<<<<< HEAD
         Thread.Sleep(TimeSpan.FromMilliseconds(sleepDuration));
-=======
-        await Task.Delay(TimeSpan.FromMilliseconds(sleepDuration));
-        MaybeResetTentatives();
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
         return true;
     }
 
-    public ValueTask WhenConnected(string connectionInfo)
+    public void WhenConnected(string _)
     {
         Tentatives = 1;
-        LogEventSource.Log.LogInformation(
-            $"{connectionInfo} reconnected successfully.");
-        return ValueTask.CompletedTask;
     }
 }

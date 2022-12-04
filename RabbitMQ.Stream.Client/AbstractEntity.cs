@@ -6,6 +6,8 @@ namespace RabbitMQ.Stream.Client
 {
     public abstract class AbstractEntity
     {
-        protected Client _client;
+
+        protected Client client;
+
     }
 }

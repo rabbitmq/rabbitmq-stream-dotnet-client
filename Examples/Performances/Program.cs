@@ -1,3 +1,3 @@
 ﻿using Performances;
 
-BatchVsBatchSend.Start().Wait();
+new BatchVsBatchSend().Start().Wait();

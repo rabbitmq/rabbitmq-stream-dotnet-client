@@ -5,7 +5,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -17,61 +16,49 @@ namespace RabbitMQ.Stream.Client
     {
         public ulong PublishingId { get; set; }
         public ResponseCode Code { get; set; }
-        public string Stream { get; set; }
     }
 
-    public record RawProducerConfig : IProducerConfig
+    public record ProducerConfig : INamedEntity
     {
-        public string Stream { get; }
-        public Func<string, Task> ConnectionClosedHandler { get; set; }
+        public string Stream { get; set; }
+        public string Reference { get; set; }
+        public int MaxInFlight { get; set; } = 1000;
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
+
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
+
+        public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
-        public RawProducerConfig(string stream)
-        {
-            if (string.IsNullOrWhiteSpace(stream))
-            {
-                throw new ArgumentException("Stream cannot be null or whitespace.", nameof(stream));
-            }
+        public int BatchSize { get; set; } = 100;
 
-            Stream = stream;
-        }
+        /// <summary>
+        /// Number of the messages sent for each frame-send.
+        /// High values can increase the throughput.
+        /// Low values can reduce the messages latency.
+        /// Default value is 100.
+        /// </summary>
+        public int MessagesBufferSize { get; set; } = 100;
     }
 
-    public class RawProducer : AbstractEntity, IProducer, IDisposable
+    public class Producer : AbstractEntity, IDisposable
     {
         private bool _disposed;
-<<<<<<< HEAD:RabbitMQ.Stream.Client/Producer.cs
         private byte publisherId;
         private readonly ProducerConfig config;
         private readonly Channel<OutgoingMsg> messageBuffer;
         private readonly SemaphoreSlim semaphore;
-=======
-        private byte _publisherId;
-        private readonly RawProducerConfig _config;
-        private readonly Channel<OutgoingMsg> _messageBuffer;
-        private readonly SemaphoreSlim _semaphore;
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce:RabbitMQ.Stream.Client/RawProducer.cs
         private readonly ILogger _logger;
 
-        public int PendingCount => _config.MaxInFlight - _semaphore.CurrentCount;
+        public int PendingCount => config.MaxInFlight - semaphore.CurrentCount;
 
-<<<<<<< HEAD:RabbitMQ.Stream.Client/Producer.cs
         private Producer(Client client, ProducerConfig config, ILogger logger)
         {
             this.client = client;
             this.config = config;
             _logger = logger;
             messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
-=======
-        private RawProducer(Client client, RawProducerConfig config, ILogger logger)
-        {
-            _client = client;
-            _config = config;
-            _logger = logger;
-            _messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce:RabbitMQ.Stream.Client/RawProducer.cs
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
@@ -79,59 +66,54 @@ namespace RabbitMQ.Stream.Client
                 FullMode = BoundedChannelFullMode.Wait
             });
             Task.Run(ProcessBuffer);
-            _semaphore = new(config.MaxInFlight, config.MaxInFlight);
+            semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }
 
-        public int MessagesSent => _client.MessagesSent;
-        public int ConfirmFrames => _client.ConfirmFrames;
-        public int IncomingFrames => _client.IncomingFrames;
-        public int PublishCommandsSent => _client.PublishCommandsSent;
+        public int MessagesSent => client.MessagesSent;
+        public int ConfirmFrames => client.ConfirmFrames;
+        public int IncomingFrames => client.IncomingFrames;
+        public int PublishCommandsSent => client.PublishCommandsSent;
 
         private async Task Init()
         {
-            _client.ConnectionClosed += async reason =>
+            client.ConnectionClosed += async reason =>
             {
-                if (_config.ConnectionClosedHandler != null)
+                if (config.ConnectionClosedHandler != null)
                 {
-                    await _config.ConnectionClosedHandler(reason);
+                    await config.ConnectionClosedHandler(reason);
                 }
             };
 
-            if (_config.MetadataHandler != null)
+            if (config.MetadataHandler != null)
             {
-                _client.Parameters.MetadataHandler += _config.MetadataHandler;
+                client.Parameters.MetadataHandler += config.MetadataHandler;
             }
 
-            var (pubId, response) = await _client.DeclarePublisher(
-                _config.Reference,
-                _config.Stream,
+            var (pubId, response) = await client.DeclarePublisher(
+                config.Reference,
+                config.Stream,
                 publishingIds =>
                 {
                     foreach (var id in publishingIds.Span)
                     {
-                        _config.ConfirmHandler(new Confirmation
-                        {
-                            PublishingId = id,
-                            Code = ResponseCode.Ok,
-                            Stream = _config.Stream
-                        });
+                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = ResponseCode.Ok, });
                     }
 
-                    _semaphore.Release(publishingIds.Length);
+                    semaphore.Release(publishingIds.Length);
                 },
                 errors =>
                 {
                     foreach (var (id, code) in errors)
                     {
-                        _config.ConfirmHandler(new Confirmation { PublishingId = id, Code = code, });
+                        config.ConfirmHandler(new Confirmation { PublishingId = id, Code = code, });
                     }
 
-                    _semaphore.Release(errors.Length);
+                    semaphore.Release(errors.Length);
                 });
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                _publisherId = pubId;
+                publisherId = pubId;
                 return;
             }
 
@@ -152,7 +134,7 @@ namespace RabbitMQ.Stream.Client
             {
                 await SemaphoreWait();
                 var publishTask =
-                    _client.Publish(new SubEntryPublish(_publisherId, publishingId,
+                    client.Publish(new SubEntryPublish(publisherId, publishingId,
                         CompressionHelper.Compress(subEntryMessages, compressionType)));
                 if (!publishTask.IsCompletedSuccessfully)
                 {
@@ -161,7 +143,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async ValueTask Send(List<(ulong, Message)> messages)
+        public async ValueTask BatchSend(List<(ulong, Message)> messages)
         {
             PreValidateBatch(messages);
             await InternalBatchSend(messages);
@@ -174,7 +156,7 @@ namespace RabbitMQ.Stream.Client
                 await SemaphoreWait();
             }
 
-            if (messages.Count != 0 && !_client.IsClosed)
+            if (messages.Count != 0 && !client.IsClosed)
             {
                 await SendMessages(messages, false).ConfigureAwait(false);
             }
@@ -182,27 +164,27 @@ namespace RabbitMQ.Stream.Client
 
         internal void PreValidateBatch(List<(ulong, Message)> messages)
         {
-            if (messages.Count > _config.MaxInFlight)
+            if (messages.Count > config.MaxInFlight)
             {
                 throw new InvalidOperationException($"Too many messages in batch. " +
-                                                    $"Max allowed is {_config.MaxInFlight}");
+                                                    $"Max allowed is {config.MaxInFlight}");
             }
 
             var totalSize = messages.Sum(message => message.Item2.Size);
 
-            if (totalSize > _client.MaxFrameSize)
+            if (totalSize > client.MaxFrameSize)
             {
                 throw new InvalidOperationException($"Total size of messages in batch is too big. " +
-                                                    $"Max allowed is {_client.MaxFrameSize}");
+                                                    $"Max allowed is {client.MaxFrameSize}");
             }
         }
 
         private async Task SemaphoreWait()
         {
-            if (!await _semaphore.WaitAsync(0) && !_client.IsClosed)
+            if (!semaphore.Wait(0) && !client.IsClosed)
             {
                 // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
-                if (!await _semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
+                if (!await semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
                 {
                     _logger?.LogWarning("Semaphore Wait timeout during publishing");
                 }
@@ -211,7 +193,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
-            var publishTask = _client.Publish(new Publish(_publisherId, messages));
+            var publishTask = client.Publish(new Publish(publisherId, messages));
             if (!publishTask.IsCompletedSuccessfully)
             {
                 await publishTask.ConfigureAwait(false);
@@ -229,43 +211,35 @@ namespace RabbitMQ.Stream.Client
         /// <returns>The last sequence id stored by the producer.</returns>
         public async Task<ulong> GetLastPublishingId()
         {
-            var response = await _client.QueryPublisherSequence(_config.Reference, _config.Stream);
+            var response = await client.QueryPublisherSequence(config.Reference, config.Stream);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
-                $"GetLastPublishingId stream: {_config.Stream}, reference: {_config.Reference}");
+                $"GetLastPublishingId stream: {config.Stream}, reference: {config.Reference}");
             return response.Sequence;
         }
 
-        public bool IsOpen()
-        {
-            return !_disposed && !_client.IsClosed;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async ValueTask Send(ulong publishingId, Message message)
         {
             await SemaphoreWait();
 
-            var msg = new OutgoingMsg(_publisherId, publishingId, message);
+            var msg = new OutgoingMsg(publisherId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait
-            if (!_messageBuffer.Writer.TryWrite(msg))
+            if (!messageBuffer.Writer.TryWrite(msg))
             {
                 // Nope, channel is full and being processed, let's asynchronously wait until we can buffer the message
-                await _messageBuffer.Writer.WriteAsync(msg).ConfigureAwait(false);
+                await messageBuffer.Writer.WriteAsync(msg).ConfigureAwait(false);
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private async Task ProcessBuffer()
         {
-            var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
-
-            while (await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+            var messages = new List<(ulong, Message)>(config.MessagesBufferSize);
+            while (await messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
             {
-                while (_messageBuffer.Reader.TryRead(out var msg))
+                while (messageBuffer.Reader.TryRead(out var msg))
                 {
                     messages.Add((msg.PublishingId, msg.Data));
-                    if (messages.Count == _config.MessagesBufferSize)
+                    if (messages.Count == config.MessagesBufferSize)
                     {
                         await SendMessages(messages).ConfigureAwait(false);
                     }
@@ -278,22 +252,22 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<ResponseCode> Close()
+        public Task<ResponseCode> Close()
         {
-            if (_client.IsClosed)
+            if (client.IsClosed)
             {
-                return ResponseCode.Ok;
+                return Task.FromResult(ResponseCode.Ok);
             }
 
             var result = ResponseCode.Ok;
             try
             {
-                var deletePublisherResponseTask = _client.DeletePublisher(_publisherId);
+                var deletePublisherResponseTask = client.DeletePublisher(publisherId);
                 // The  default timeout is usually 10 seconds 
                 // in this case we reduce the waiting time
                 // the producer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                await deletePublisherResponseTask.WaitAsync(TimeSpan.FromSeconds(3));
+                deletePublisherResponseTask.Wait(TimeSpan.FromSeconds(3));
                 if (deletePublisherResponseTask.IsCompletedSuccessfully)
                 {
                     result = deletePublisherResponseTask.Result.ResponseCode;
@@ -301,19 +275,14 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-<<<<<<< HEAD:RabbitMQ.Stream.Client/Producer.cs
                 _logger?.LogError(e, "Error removing the producer id: {PublisherId} from the server", publisherId);
-=======
-                _logger?.LogError(e, "Error removing the producer id: {PublisherId} from the server", _publisherId);
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce:RabbitMQ.Stream.Client/RawProducer.cs
             }
 
-            var closed = _client.MaybeClose($"client-close-publisher: {_publisherId}");
-            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
-            return result;
+            var closed = client.MaybeClose($"client-close-publisher: {publisherId}");
+            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {publisherId}");
+            return Task.FromResult(result);
         }
 
-<<<<<<< HEAD:RabbitMQ.Stream.Client/Producer.cs
         public static async Task<Producer> Create(
             ClientParameters clientParameters,
             ProducerConfig config,
@@ -323,15 +292,6 @@ namespace RabbitMQ.Stream.Client
         {
             var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
             var producer = new Producer((Client)client, config, logger);
-=======
-        public static async Task<IProducer> Create(ClientParameters clientParameters,
-            RawProducerConfig config,
-            StreamInfo metaStreamInfo,
-            ILogger logger = null)
-        {
-            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new RawProducer((Client)client, config, logger);
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce:RabbitMQ.Stream.Client/RawProducer.cs
             await producer.Init();
             return producer;
         }
@@ -351,7 +311,7 @@ namespace RabbitMQ.Stream.Client
             var closeProducer = Close();
             closeProducer.Wait(TimeSpan.FromSeconds(1));
             ClientExceptions.MaybeThrowException(closeProducer.Result,
-                $"Error during remove producer. Producer: {_publisherId}");
+                $"Error during remove producer. Producer: {publisherId}");
             _disposed = true;
         }
 
@@ -363,11 +323,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-<<<<<<< HEAD:RabbitMQ.Stream.Client/Producer.cs
                 _logger?.LogError(e, "Error during disposing Consumer: {PublisherId}", publisherId);
-=======
-                _logger?.LogError(e, "Error during disposing Consumer: {PublisherId}", _publisherId);
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce:RabbitMQ.Stream.Client/RawProducer.cs
             }
 
             GC.SuppressFinalize(this);

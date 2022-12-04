@@ -9,21 +9,23 @@ namespace RabbitMQ.Stream.Client
 {
     public readonly struct QueryPublisherResponse : ICommand
     {
+        private readonly uint correlationId;
+        private readonly ResponseCode responseCode;
         private readonly ulong sequence;
         public const ushort Key = 5;
 
         public QueryPublisherResponse(uint correlationId, ResponseCode responseCode, ulong sequence)
         {
-            CorrelationId = correlationId;
-            ResponseCode = responseCode;
+            this.correlationId = correlationId;
+            this.responseCode = responseCode;
             this.sequence = sequence;
         }
 
         public int SizeNeeded => throw new NotImplementedException();
 
-        public uint CorrelationId { get; }
+        public uint CorrelationId => correlationId;
 
-        public ResponseCode ResponseCode { get; }
+        public ResponseCode ResponseCode => responseCode;
 
         public ulong Sequence => sequence;
 

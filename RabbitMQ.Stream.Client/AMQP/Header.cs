@@ -14,37 +14,37 @@ namespace RabbitMQ.Stream.Client.AMQP
         public bool FirstAcquirer { get; internal set; }
         public uint DeliveryCount { get; internal set; }
 
-        public static Header Parse(ref SequenceReader<byte> reader, ref int byteRead)
+        public static Header Parse(ReadOnlySequence<byte> amqpData, ref int byteRead)
         {
-            var offset = AmqpWireFormatting.ReadCompositeHeader(ref reader, out var fields, out _);
+            var offset = AmqpWireFormatting.ReadCompositeHeader(amqpData, out var fields, out _);
             //TODO WIRE check the next
             var h = new Header();
             for (var index = 0; index < fields; index++)
             {
-                offset += AmqpWireFormatting.TryReadNull(ref reader, out var value);
+                offset += AmqpWireFormatting.TryReadNull(amqpData.Slice(offset), out var value);
 
                 if (!value)
                 {
                     switch (index)
                     {
                         case 0:
-                            offset += AmqpWireFormatting.ReadAny(ref reader, out var durable);
+                            offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var durable);
                             h.Durable = (bool)durable;
                             break;
                         case 1:
-                            offset += AmqpWireFormatting.ReadUByte(ref reader, out var priority);
+                            offset += AmqpWireFormatting.ReadUByte(amqpData.Slice(offset), out var priority);
                             h.Priority = priority;
                             break;
                         case 2:
-                            offset += AmqpWireFormatting.ReadAny(ref reader, out var ttl);
+                            offset += AmqpWireFormatting.ReadAny(amqpData.Slice(offset), out var ttl);
                             h.Ttl = (uint)ttl;
                             break;
                         case 3:
-                            offset += AmqpWireFormatting.ReadBool(ref reader, out var firstAcquirer);
+                            offset += AmqpWireFormatting.ReadBool(amqpData.Slice(offset), out var firstAcquirer);
                             h.FirstAcquirer = firstAcquirer;
                             break;
                         case 4:
-                            offset += AmqpWireFormatting.ReadUint32(ref reader, out var deliveryCount);
+                            offset += AmqpWireFormatting.ReadUint32(amqpData.Slice(offset), out var deliveryCount);
                             h.DeliveryCount = deliveryCount;
                             break;
                     }

@@ -40,17 +40,17 @@ namespace RabbitMQ.Stream.Client
         public int Write(Span<byte> span)
         {
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span[offset..], Version);
-            offset += WireFormatting.WriteByte(span[offset..], publisherId);
+            offset += WireFormatting.WriteUInt16(span.Slice(offset), Version);
+            offset += WireFormatting.WriteByte(span.Slice(offset), publisherId);
             // this assumes we never write an empty publish frame
-            offset += WireFormatting.WriteInt32(span[offset..], MessageCount);
+            offset += WireFormatting.WriteInt32(span.Slice(offset), MessageCount);
             foreach (var (publishingId, msg) in messages)
             {
-                offset += WireFormatting.WriteUInt64(span[offset..], publishingId);
+                offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
                 // this only write "simple" messages, we assume msg is just the binary body
                 // not stream encoded data
-                offset += WireFormatting.WriteUInt32(span[offset..], (uint)msg.Size);
-                offset += msg.Write(span[offset..]);
+                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)msg.Size);
+                offset += msg.Write(span.Slice(offset));
             }
 
             return offset;

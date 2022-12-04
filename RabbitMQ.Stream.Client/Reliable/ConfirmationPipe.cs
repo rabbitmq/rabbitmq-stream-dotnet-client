@@ -56,8 +56,6 @@ public class MessagesConfirmation
     public List<Message> Messages { get; internal init; }
     public DateTime InsertDateTime { get; init; }
     public ConfirmationStatus Status { get; internal set; }
-
-    public string Stream { get; internal set; }
 }
 
 /// <summary>
@@ -67,7 +65,7 @@ public class MessagesConfirmation
 /// </summary>
 public class ConfirmationPipe
 {
-    private ActionBlock<(ConfirmationStatus, ulong, string)> _waitForConfirmationActionBlock;
+    private ActionBlock<Tuple<ConfirmationStatus, ulong>> _waitForConfirmationActionBlock;
     private readonly ConcurrentDictionary<ulong, MessagesConfirmation> _waitForConfirmation = new();
     private readonly Timer _invalidateTimer = new();
     private Func<MessagesConfirmation, Task> ConfirmHandler { get; }
@@ -84,10 +82,10 @@ public class ConfirmationPipe
 
     public void Start()
     {
-        _waitForConfirmationActionBlock = new ActionBlock<(ConfirmationStatus, ulong, string)>(
+        _waitForConfirmationActionBlock = new ActionBlock<Tuple<ConfirmationStatus, ulong>>(
             request =>
             {
-                var (confirmationStatus, publishingId, stream) = request;
+                var (confirmationStatus, publishingId) = request;
 
                 _waitForConfirmation.TryRemove(publishingId, out var message);
                 if (message == null)
@@ -96,7 +94,6 @@ public class ConfirmationPipe
                 }
 
                 message.Status = confirmationStatus;
-                message.Stream = stream;
                 ConfirmHandler?.Invoke(message);
             }, new ExecutionDataflowBlockOptions
             {
@@ -124,7 +121,7 @@ public class ConfirmationPipe
 
         foreach (var pair in timedOutMessages)
         {
-            await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null);
+            await RemoveUnConfirmedMessage(pair.Value.PublishingId, ConfirmationStatus.ClientTimeoutError);
         }
     }
 
@@ -139,8 +136,9 @@ public class ConfirmationPipe
             new MessagesConfirmation { Messages = messages, PublishingId = publishingId, InsertDateTime = DateTime.Now });
     }
 
-    public Task RemoveUnConfirmedMessage(ConfirmationStatus confirmationStatus, ulong publishingId, string stream)
+    public Task RemoveUnConfirmedMessage(ulong publishingId, ConfirmationStatus confirmationStatus)
     {
-        return _waitForConfirmationActionBlock.SendAsync((confirmationStatus, publishingId, stream));
+        return _waitForConfirmationActionBlock.SendAsync(
+            Tuple.Create(confirmationStatus, publishingId));
     }
 }

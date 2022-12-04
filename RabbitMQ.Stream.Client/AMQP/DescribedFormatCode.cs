@@ -4,7 +4,6 @@
 
 using System;
 using System.Buffers;
-using System.Runtime.CompilerServices;
 
 namespace RabbitMQ.Stream.Client.AMQP
 {
@@ -12,23 +11,19 @@ namespace RabbitMQ.Stream.Client.AMQP
     {
         public const int Size = 3;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte Read(ref SequenceReader<byte> reader)
+        public static byte Read(ReadOnlySequence<byte> amqpData)
         {
-            // DescribedFormatCode in this case we need to read 
-            // only the last byte form the header to get the format code
-            // the first can be ignored but it is necessary to read them
-            reader.TryRead(out _);
-            reader.TryRead(out _);
-            reader.TryRead(out var formatCode);
-            return formatCode;
+            var offset = WireFormatting.ReadByte(amqpData, out _);
+            offset += WireFormatting.ReadByte(amqpData.Slice(offset), out _);
+            WireFormatting.ReadByte(amqpData.Slice(offset), out var value);
+            return value;
         }
 
         public static int Write(Span<byte> span, byte data)
         {
             var offset = WireFormatting.WriteByte(span, FormatCode.Described);
-            offset += WireFormatting.WriteByte(span[offset..], FormatCode.SmallUlong);
-            offset += WireFormatting.WriteByte(span[offset..], data);
+            offset += WireFormatting.WriteByte(span.Slice(offset), FormatCode.SmallUlong);
+            offset += WireFormatting.WriteByte(span.Slice(offset), data);
             return offset;
         }
 

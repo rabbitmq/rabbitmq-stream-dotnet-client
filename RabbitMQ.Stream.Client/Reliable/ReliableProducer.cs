@@ -11,50 +11,19 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
-public record SuperStreamConfig()
-{
-    public bool Enabled { get; init; } = true;
-    public Func<Message, string> Routing { get; set; } = null;
-}
-
-public record ProducerConfig : ReliableConfig
+public record ReliableProducerConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
 
-    // <summary>
-    // Reference is mostly used for deduplication. In most of the cases reference is not needed.
-    // </summary>
+    public StreamSystem StreamSystem { get; set; }
+    public string Stream { get; set; }
     public string Reference { get; set; }
-
-    // <summary>
-    // Confirmation is used to confirm that the message has been received by the server.
-    // After the timeout TimeoutMessageAfter/0 the message is considered not confirmed.
-    // See MessagesConfirmation.ConfirmationStatus for more details.
-    // </summary>
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
-
-    // <summary>
-    // The client name used to identify the producer. 
-    // You can see this value on the Management UI or in the connection detail
-    // </summary>
-
-    public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
+    public string ClientProvidedName { get; set; } = "dotnet-stream-rproducer";
+    public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
 
     public int MaxInFlight { get; set; } = 1000;
 
-    /// <summary>
-    /// Number of the messages sent for each frame-send.
-    /// High values can increase the throughput.
-    /// Low values can reduce the messages latency.
-    /// Default value is 100.
-    /// </summary>
-    public int MessagesBufferSize { get; set; } = 100;
-
-    // SuperStream configuration enables the SuperStream feature
-    public SuperStreamConfig SuperStreamConfig { get; set; } = null;
-
-    // TimeoutMessageAfter is the time after which a message is considered as timed out
-    // If client does not receive a confirmation for a message after this time, the message is considered as timed out
     public TimeSpan TimeoutMessageAfter
     {
         get => _timeoutMessageAfter;
@@ -68,75 +37,87 @@ public record ProducerConfig : ReliableConfig
             _timeoutMessageAfter = value;
         }
     }
-
-    public ProducerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
-    {
-    }
 }
 
 /// <summary>
-/// Producer is a wrapper around the standard RawProducer/RawSuperStream Consumer.
+/// ReliableProducer is a wrapper around the standard Producer.
 /// Main features are:
 /// - Auto-reconnection if the connection is dropped
-/// - Trace sent and received messages. The event Producer:ConfirmationHandler/2
+/// - Trace sent and received messages. The event ReliableProducer:ConfirmationHandler/2
 ///   receives back messages sent with the status.
-/// - Handle the Metadata Update. In case the stream is deleted Producer closes Producer/Connection.
+/// - Handle the Metadata Update. In case the stream is deleted ReliableProducer closes Producer/Connection.
 ///   Reconnect the Producer if the stream still exists.
 /// - Set automatically the next PublisherID
 /// - Automatically retrieves the last sequence. By default is AutoPublishingId see IPublishingIdStrategy.
 /// </summary>
-public class Producer : ProducerFactory
+public class ReliableProducer : ReliableBase
 {
-    private IProducer _producer;
+    private Producer _producer;
     private ulong _publishingId;
+    private readonly ReliableProducerConfig _reliableProducerConfig;
+    private readonly ConfirmationPipe _confirmationPipe;
 
-<<<<<<< HEAD:RabbitMQ.Stream.Client/Reliable/ReliableProducer.cs
     private ReliableProducer(ReliableProducerConfig reliableProducerConfig, ILogger logger = null) : base(logger)
-=======
-    protected Producer(ILogger logger = null) : base(logger)
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce:RabbitMQ.Stream.Client/Reliable/Producer.cs
     {
+        _reliableProducerConfig = reliableProducerConfig;
+        _confirmationPipe = new ConfirmationPipe(
+            reliableProducerConfig.ConfirmationHandler,
+            reliableProducerConfig.TimeoutMessageAfter,
+            reliableProducerConfig.MaxInFlight);
     }
 
-<<<<<<< HEAD:RabbitMQ.Stream.Client/Reliable/ReliableProducer.cs
     public static async Task<ReliableProducer> CreateReliableProducer(ReliableProducerConfig reliableProducerConfig, ILogger logger = null)
     {
         var rProducer = new ReliableProducer(reliableProducerConfig, logger);
         await rProducer.Init();
-=======
-    private Producer(ProducerConfig producerConfig, ILogger logger = null) : base(logger)
-    {
-        _producerConfig = producerConfig;
-        _confirmationPipe = new ConfirmationPipe(
-            producerConfig.ConfirmationHandler,
-            producerConfig.TimeoutMessageAfter,
-            producerConfig.MaxInFlight);
-    }
-
-    // <summary>
-    // Create a new Producer
-    // </summary> 
-    public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger logger = null)
-    {
-        var rProducer = new Producer(producerConfig, logger);
-        await rProducer.Init(producerConfig.ReconnectStrategy);
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce:RabbitMQ.Stream.Client/Reliable/Producer.cs
         return rProducer;
     }
 
-    internal override async Task CreateNewEntity(bool boot)
+    protected override async Task GetNewReliable(bool boot)
     {
-        _producer = await CreateProducer();
+        await SemaphoreSlim.WaitAsync();
 
-        await _producerConfig.ReconnectStrategy.WhenConnected(ToString());
-
-        if (boot)
+        try
         {
-            // Init the publishing id
-            Interlocked.Exchange(ref _publishingId,
-                await _producer.GetLastPublishingId());
+            _producer = await _reliableProducerConfig.StreamSystem.CreateProducer(new ProducerConfig()
+            {
+                Stream = _reliableProducerConfig.Stream,
+                ClientProvidedName = _reliableProducerConfig.ClientProvidedName,
+                Reference = _reliableProducerConfig.Reference,
+                MaxInFlight = _reliableProducerConfig.MaxInFlight,
+                MetadataHandler = update =>
+                {
+                    HandleMetaDataMaybeReconnect(update.Stream,
+                        _reliableProducerConfig.StreamSystem).Wait();
+                },
+                ConnectionClosedHandler = async _ =>
+                {
+                    await TryToReconnect(_reliableProducerConfig.ReconnectStrategy);
+                },
+                ConfirmHandler = confirmation =>
+                {
+                    var confirmationStatus = confirmation.Code switch
+                    {
+                        ResponseCode.PublisherDoesNotExist => ConfirmationStatus.PublisherDoesNotExist,
+                        ResponseCode.AccessRefused => ConfirmationStatus.AccessRefused,
+                        ResponseCode.InternalError => ConfirmationStatus.InternalError,
+                        ResponseCode.PreconditionFailed => ConfirmationStatus.PreconditionFailed,
+                        ResponseCode.StreamNotAvailable => ConfirmationStatus.StreamNotAvailable,
+                        ResponseCode.Ok => ConfirmationStatus.Confirmed,
+                        _ => ConfirmationStatus.UndefinedError
+                    };
 
-<<<<<<< HEAD:RabbitMQ.Stream.Client/Reliable/ReliableProducer.cs
+                    _confirmationPipe.RemoveUnConfirmedMessage(confirmation.PublishingId,
+                        confirmationStatus);
+                }
+            });
+            _reliableProducerConfig.ReconnectStrategy.WhenConnected(ToString());
+            if (boot)
+            {
+                // Init the publishing id
+                Interlocked.Exchange(ref _publishingId,
+                    await _producer.GetLastPublishingId());
+
                 // confirmation Pipe can start only if the producer is ready
                 _confirmationPipe.Start();
             }
@@ -149,14 +130,10 @@ public class Producer : ProducerFactory
         finally
         {
             SemaphoreSlim.Release();
-=======
-            // confirmation Pipe can start only if the producer is ready
-            _confirmationPipe.Start();
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce:RabbitMQ.Stream.Client/Reliable/Producer.cs
         }
     }
 
-    protected override async Task CloseEntity()
+    protected override async Task CloseReliable()
     {
         await SemaphoreSlim.WaitAsync(10);
         try
@@ -177,7 +154,7 @@ public class Producer : ProducerFactory
         await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10));
         try
         {
-            _isOpen = false;
+            _needReconnect = false;
             _confirmationPipe.Stop();
             if (_producer != null)
             {
@@ -190,12 +167,6 @@ public class Producer : ProducerFactory
         }
     }
 
-    /// <summary>
-    /// Send a message to the stream.
-    /// The client aggregates the messages and sends them to the server in batches.
-    /// The publisherId is automatically set. 
-    /// </summary>
-    /// <param name="message">Standard Message</param>
     public async ValueTask Send(Message message)
     {
         Interlocked.Increment(ref _publishingId);
@@ -224,16 +195,6 @@ public class Producer : ProducerFactory
         }
     }
 
-    /// <summary>
-    /// Enable sub-batch feature.
-    /// It is needed when you need to sub aggregate the messages and compress them.
-    /// For example you can aggregate 100 log messages and compress to reduce the space.
-    /// One single publishingId can have multiple sub-batches messages.
-    /// See also: https://rabbitmq.github.io/rabbitmq-stream-java-client/stable/htmlsingle/#sub-entry-batching-and-compression
-    /// </summary>
-    /// <param name="messages">Messages to aggregate</param>
-    /// <param name="compressionType"> Type of compression. By default the client supports GZIP and none</param>
-    /// <returns></returns>
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
         Interlocked.Increment(ref _publishingId);
@@ -257,19 +218,7 @@ public class Producer : ProducerFactory
         }
     }
 
-    public override string ToString()
-    {
-        return $"Producer reference: {_producerConfig.Reference}, stream: {_producerConfig.Stream} ";
-    }
-
-    /// <summary>
-    /// Send the messages in batch to the stream in synchronous mode.
-    /// The aggregation is provided by the user.
-    /// The client will send the messages in the order they are provided.
-    /// </summary>
-    /// <param name="messages">Batch messages to send</param>
-    /// <returns></returns>
-    public async ValueTask Send(List<Message> messages)
+    public async ValueTask BatchSend(List<Message> messages)
     {
         var messagesToSend = new List<(ulong, Message)>();
         foreach (var message in messages)
@@ -278,6 +227,7 @@ public class Producer : ProducerFactory
             messagesToSend.Add((_publishingId, message));
         }
 
+        _producer.PreValidateBatch(messagesToSend);
         foreach (var msg in messagesToSend)
         {
             _confirmationPipe.AddUnConfirmedMessage(msg.Item1, msg.Item2);
@@ -293,7 +243,7 @@ public class Producer : ProducerFactory
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
             {
-                await _producer.Send(messagesToSend);
+                await _producer.InternalBatchSend(messagesToSend);
             }
         }
 
@@ -305,5 +255,10 @@ public class Producer : ProducerFactory
         {
             SemaphoreSlim.Release();
         }
+    }
+
+    public override string ToString()
+    {
+        return $"Producer reference: {_reliableProducerConfig.Reference}, stream: {_reliableProducerConfig.Stream} ";
     }
 }

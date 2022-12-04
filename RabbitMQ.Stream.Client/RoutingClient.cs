@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -13,11 +14,7 @@ namespace RabbitMQ.Stream.Client
 {
     public interface IRouting
     {
-<<<<<<< HEAD
         IClient CreateClient(ClientParameters clientParameters, ILogger logger = null);
-=======
-        Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null);
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
         bool ValidateDns { get; set; }
     }
 
@@ -25,17 +22,11 @@ namespace RabbitMQ.Stream.Client
     {
         public bool ValidateDns { get; set; } = true;
 
-<<<<<<< HEAD
         public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
             var taskClient = Client.Create(clientParameters, logger);
             taskClient.Wait(TimeSpan.FromSeconds(1));
             return taskClient.Result;
-=======
-        public async Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
-        {
-            return await Client.Create(clientParameters);
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
         }
     }
 
@@ -77,14 +68,14 @@ namespace RabbitMQ.Stream.Client
                 // In this case we just return the node (leader for producer, random for consumer)
                 // since there is not load balancer configuration
 
-                return await routing.CreateClient(clientParameters with { Endpoint = endPointNoLb });
+                return routing.CreateClient(clientParameters with { Endpoint = endPointNoLb });
             }
 
             // here it means that there is a AddressResolver configuration
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
             var endPoint = clientParameters.AddressResolver.EndPoint;
-            var client = await routing.CreateClient(clientParameters with { Endpoint = endPoint });
+            var client = routing.CreateClient(clientParameters with { Endpoint = endPoint });
 
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
             var advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
@@ -95,7 +86,7 @@ namespace RabbitMQ.Stream.Client
                 attemptNo++;
                 await client.Close("advertised_host or advertised_port doesn't match");
 
-                client = await routing.CreateClient(clientParameters with { Endpoint = endPoint });
+                client = routing.CreateClient(clientParameters with { Endpoint = endPoint });
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
                 advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
@@ -105,7 +96,7 @@ namespace RabbitMQ.Stream.Client
                         $"Could not find broker ({broker.Host}:{broker.Port}) after {maxAttempts} attempts");
                 }
 
-                await Task.Delay(TimeSpan.FromMilliseconds(200));
+                Thread.Sleep(TimeSpan.FromMilliseconds(200));
             }
 
             return client;
@@ -152,7 +143,8 @@ namespace RabbitMQ.Stream.Client
         {
             var brokers = new List<Broker>() { metaDataInfo.Leader };
             brokers.AddRange(metaDataInfo.Replicas);
-            brokers.Sort((_, _) => Random.Shared.Next(-1, 1));
+            var rnd = new Random();
+            brokers.Sort((_, _) => rnd.Next(-1, 1));
             var exceptions = new List<Exception>();
             foreach (var broker in brokers)
             {

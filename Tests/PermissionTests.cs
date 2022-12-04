@@ -6,7 +6,6 @@ using System;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
-using ConsumerConfig = RabbitMQ.Stream.Client.Reliable.ConsumerConfig;
 
 namespace Tests
 {
@@ -27,54 +26,53 @@ namespace Tests
             await Assert.ThrowsAsync<CreateProducerException>(
                 async () =>
                 {
-                    await system.CreateRawProducer(
-                        new RawProducerConfig(stream) { Reference = "producer" });
+                    await system.CreateProducer(
+                        new ProducerConfig { Reference = "producer", Stream = stream, });
                 }
             );
 
             await Assert.ThrowsAsync<CreateProducerException>(
                 async () =>
                 {
-                    await Producer.Create(
-                        new ProducerConfig(system, stream));
+                    await ReliableProducer.CreateReliableProducer(
+                        new ReliableProducerConfig() { Stream = stream, StreamSystem = system });
                 }
             );
 
-            Producer producer = null;
+            ReliableProducer reliableProducer = null;
             try
             {
-                producer = await Producer.Create(
-                    new ProducerConfig(system, stream));
+                reliableProducer = await ReliableProducer.CreateReliableProducer(
+                    new ReliableProducerConfig() { Stream = stream, StreamSystem = system });
             }
             catch (Exception)
             {
                 // we already tested the Exception (CreateProducerException)
             }
-
             // here the reliableProducer must be closed due of the CreateProducerException
-            Assert.False(producer != null && producer.IsOpen());
+            Assert.False(reliableProducer != null && reliableProducer.IsOpen());
 
             await Assert.ThrowsAsync<CreateConsumerException>(
                 async () =>
                 {
-                    await system.CreateRawConsumer(
-                        new RawConsumerConfig(stream) { Reference = "consumer" });
+                    await system.CreateConsumer(
+                        new ConsumerConfig() { Reference = "consumer", Stream = stream, });
                 }
             );
 
             await Assert.ThrowsAsync<CreateConsumerException>(
                 async () =>
                 {
-                    await Consumer.Create(
-                        new ConsumerConfig(system, stream));
+                    await ReliableConsumer.CreateReliableConsumer(
+                        new ReliableConsumerConfig() { Stream = stream, StreamSystem = system });
                 }
             );
 
-            Consumer consumer = null;
+            ReliableConsumer reliableConsumer = null;
             try
             {
-                consumer = await Consumer.Create(
-                    new ConsumerConfig(system, stream));
+                reliableConsumer = await ReliableConsumer.CreateReliableConsumer(
+                    new ReliableConsumerConfig() { Stream = stream, StreamSystem = system });
             }
             catch (Exception)
             {
@@ -82,7 +80,7 @@ namespace Tests
             }
 
             // here the reliableConsumer must be closed due of the CreateConsumerException
-            Assert.False(consumer != null && consumer.IsOpen());
+            Assert.False(reliableConsumer != null && reliableConsumer.IsOpen());
 
             await system.Close();
         }

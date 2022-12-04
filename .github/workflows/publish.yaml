@@ -1,10 +1,14 @@
 name: publish rabbitmq-stream-dotnet-client
 
 on:
-  release:
-    types:
-      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release
-      - published
+  create:
+    branches-ignore:
+      - '*'
+    tags:
+      - '*'
+  push:
+    tags:
+      - '*'
 
 jobs:
   call-build-test:

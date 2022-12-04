@@ -9,13 +9,15 @@ namespace RabbitMQ.Stream.Client
 {
     public static class Version
     {
+        private static readonly string _versionString;
+
         static Version()
         {
             var a = Assembly.GetAssembly(typeof(Version));
             var fvi = FileVersionInfo.GetVersionInfo(a.Location);
-            VersionString = fvi.ProductVersion;
+            _versionString = fvi.ProductVersion;
         }
 
-        public static string VersionString { get; }
+        public static string VersionString => _versionString;
     }
 }

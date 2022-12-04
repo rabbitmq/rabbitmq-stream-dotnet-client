@@ -3,7 +3,6 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -104,8 +103,7 @@ namespace Tests
             Action<(ulong, ResponseCode)[]> errored = (errors) => { testPassed.SetResult(true); };
             var publisherRef = Guid.NewGuid().ToString();
 
-            var (publisherId, result) =
-                await client.DeclarePublisher(publisherRef, "this-stream-does-not-exist", confirmed, errored);
+            var (publisherId, result) = await client.DeclarePublisher(publisherRef, "this-stream-does-not-exist", confirmed, errored);
             Assert.Equal(ResponseCode.StreamDoesNotExist, result.ResponseCode);
             await client.Close("done");
         }
@@ -167,8 +165,7 @@ namespace Tests
             };
             Action<(ulong, ResponseCode)[]> errored = (errors) => throw new Exception($"unexpected errors {errors}");
 
-            var (publisherId, declarePubResp) =
-                await client.DeclarePublisher("my-publisher", stream, confirmed, errored);
+            var (publisherId, declarePubResp) = await client.DeclarePublisher("my-publisher", stream, confirmed, errored);
             var queryPublisherResponse = await client.QueryPublisherSequence("my-publisher", stream);
             // Assert.Equal(9999, (int)queryPublisherResponse.Sequence);
             var from = queryPublisherResponse.Sequence + 1;
@@ -176,8 +173,7 @@ namespace Tests
 
             for (var i = from; i < to; i++)
             {
-                var msgData = new Message(Encoding.UTF8.GetBytes(
-                    "asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
+                var msgData = new Message(Encoding.UTF8.GetBytes("asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
                 await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, msgData) }));
                 if ((int)i - numConfirmed > 1000)
                 {
@@ -205,41 +201,32 @@ namespace Tests
             var client = await Client.Create(clientParameters);
             var testPassed = new TaskCompletionSource<Deliver>();
             await client.CreateStream(stream, new Dictionary<string, string>());
-            const int InitialCredit = 1;
+            var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
-            var messages = new List<Message>();
-
-            Task DeliverHandler(Deliver deliver)
+            var msgs = new List<MsgEntry>();
+            Func<Deliver, Task> deliverHandler = deliver =>
             {
-                var sequenceReader = new SequenceReader<byte>(deliver.Chunk.Data);
-
-                for (var i = 0; i < deliver.Chunk.NumEntries; i++)
+                msgs.AddRange(deliver.Messages);
+                if (msgs.Count == 2)
                 {
-                    WireFormatting.ReadUInt32(ref sequenceReader, out var len);
-                    var message = Message.From(ref sequenceReader, len);
-                    messages.Add(message);
-                    if (messages.Count == 2)
-                    {
-                        testPassed.SetResult(deliver);
-                    }
+                    testPassed.SetResult(deliver);
                 }
 
                 return Task.CompletedTask;
-            }
-
-            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)InitialCredit,
-                new Dictionary<string, string>(), DeliverHandler);
+            };
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
+                new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            await client.Publish(new Publish(publisherId,
-                new List<(ulong, Message)>
-                {
-                    (0, new Message(Encoding.UTF8.GetBytes("hi"))), (1, new Message(Encoding.UTF8.GetBytes("hi")))
-                }));
+            await client.Publish(new Publish(publisherId, new List<(ulong, Message)>
+            {
+                (0, new Message(Encoding.UTF8.GetBytes("hi"))),
+                (1, new Message(Encoding.UTF8.GetBytes("hi")))
+            }));
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            Assert.Equal(2, messages.Count());
+            Assert.Equal(2, msgs.Count());
             await client.DeleteStream(stream);
             await client.Close("done");
         }
@@ -263,30 +250,25 @@ namespace Tests
             // Subscribe
             var initialCredit = 1;
             var offsetType = new OffsetTypeFirst();
-            var deliverHandler = new Func<Deliver, Task>((Deliver deliver) =>
+            var deliverHandler = new Func<Deliver, Task>(async (Deliver deliver) =>
             {
-                var sequenceReader = new SequenceReader<byte>(deliver.Chunk.Data);
-                for (ulong i = 0; i < deliver.Chunk.NumEntries; i++)
+                foreach (var msg in deliver.Messages)
                 {
-                    WireFormatting.ReadUInt32(ref sequenceReader, out var len);
-                    var message = Message.From(ref sequenceReader, len);
-                    message.MessageOffset = deliver.Chunk.ChunkId + i;
-                    if (message.MessageOffset >= offset) //a chunk may contain messages before offset
+                    if (msg.Offset >= offset) //a chunk may contain messages before offset
                     {
-                        Interlocked.Increment(ref messageCount);
-                    }
-
-                    testOutputHelper.WriteLine("GotDelivery: {0}", messageCount);
-
-                    if (messageCount == 10)
-                    {
-                        testOutputHelper.WriteLine("Got 10: ");
-                        gotEvent.Set();
+                        messageCount++;
                     }
                 }
 
-                client.Credit(deliver.SubscriptionId, 1).AsTask();
-                return Task.CompletedTask;
+                testOutputHelper.WriteLine("GotDelivery: {0}", deliver.Messages.Count());
+
+                if (messageCount == 10)
+                {
+                    testOutputHelper.WriteLine("Got 10: ");
+                    gotEvent.Set();
+                }
+
+                await client.Credit(deliver.SubscriptionId, 1);
             });
             var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), deliverHandler);
@@ -297,8 +279,7 @@ namespace Tests
             var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             for (ulong i = 0; i < 10; i++)
             {
-                await client.Publish(new Publish(publisherId,
-                    new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
+                await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
             }
 
             var deletePublisher = await client.DeletePublisher(publisherId);
@@ -324,7 +305,7 @@ namespace Tests
 
             var offsetTypeOffset = new OffsetTypeOffset(offset);
             (subId, subscribeResponse) = await client.Subscribe(stream, offsetTypeOffset, (ushort)initialCredit,
-                new Dictionary<string, string>(), deliverHandler);
+               new Dictionary<string, string>(), deliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             testOutputHelper.WriteLine("Initiated new subscriber with id: {0}", subId);
 
@@ -346,7 +327,7 @@ namespace Tests
             var client = await Client.Create(clientParameters);
             var testPassed = new TaskCompletionSource<Deliver>();
             await client.CreateStream(stream, new Dictionary<string, string>());
-            const int InitialCredit = 0; //no initial credit
+            var initialCredit = 0; //no initial credit
             var offsetType = new OffsetTypeFirst();
 
             Task DeliverHandler(Deliver deliver)
@@ -355,13 +336,12 @@ namespace Tests
                 return Task.CompletedTask;
             }
 
-            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)InitialCredit,
+            var (subId, subscribeResponse) = await client.Subscribe(stream, offsetType, (ushort)initialCredit,
                 new Dictionary<string, string>(), DeliverHandler);
             Assert.Equal(ResponseCode.Ok, subscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            await client.Publish(new Publish(publisherId,
-                new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
+            await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
 
             //We have not credited yet
@@ -370,7 +350,7 @@ namespace Tests
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             var delivery = testPassed.Task.Result;
-            Assert.Equal(1, delivery.Chunk.NumEntries);
+            Assert.Single(delivery.Messages);
             await client.DeleteStream(stream);
             await client.Close("done");
         }
@@ -399,8 +379,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, unsubscribeResponse.ResponseCode);
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
-            await client.Publish(new Publish(publisherId,
-                new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
+            await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
             // 1s should be enough to catch this at least some of the time
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
             await client.DeleteStream(stream);
@@ -410,7 +389,10 @@ namespace Tests
         [Fact]
         public async void VirtualHostFailureAccess()
         {
-            var clientParameters = new ClientParameters { VirtualHost = "DOES_NOT_EXIST" };
+            var clientParameters = new ClientParameters
+            {
+                VirtualHost = "DOES_NOT_EXIST"
+            };
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
                 async () => { await Client.Create(clientParameters); }
             );

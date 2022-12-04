@@ -36,11 +36,7 @@ namespace Tests
 
         // Simulate a load-balancer access using random 
         // access to the advertisedHosts list
-<<<<<<< HEAD
         public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
-=======
-        public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
         {
             var rnd = new Random();
             var advId = rnd.Next(0, advertisedHosts.Count);
@@ -53,7 +49,7 @@ namespace Tests
                     ["advertised_port"] = "5552"
                 }
             };
-            return Task.FromResult<IClient>(fake);
+            return fake;
         }
 
         public bool ValidateDns { get; set; } = false;
@@ -61,11 +57,7 @@ namespace Tests
 
     public class MisconfiguredLoadBalancerRouting : IRouting
     {
-<<<<<<< HEAD
         public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
-=======
-        public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -75,8 +67,7 @@ namespace Tests
                     ["advertised_port"] = "5552"
                 }
             };
-
-            return Task.FromResult<IClient>(fake);
+            return fake;
         }
 
         public bool ValidateDns { get; set; } = false;
@@ -85,17 +76,13 @@ namespace Tests
     //advertised_host is is missed
     public class MissingFieldsRouting : IRouting
     {
-<<<<<<< HEAD
         public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
-=======
-        public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
         {
             var fake = new FakeClient(clientParameters)
             {
                 ConnectionProperties = new Dictionary<string, string>() { ["advertised_port"] = "5552" }
             };
-            return Task.FromResult<IClient>(fake);
+            return fake;
         }
 
         public bool ValidateDns { get; set; } = false;
@@ -103,11 +90,7 @@ namespace Tests
 
     public class ReplicaRouting : IRouting
     {
-<<<<<<< HEAD
         public IClient CreateClient(ClientParameters clientParameters, ILogger logger = null)
-=======
-        public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
->>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -117,7 +100,7 @@ namespace Tests
                     ["advertised_host"] = "leader"
                 }
             };
-            return Task.FromResult<IClient>(fake);
+            return fake;
         }
 
         public bool ValidateDns { get; set; } = false;

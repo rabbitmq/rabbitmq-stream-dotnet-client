@@ -35,14 +35,6 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public class LeaderNotFoundException : ProtocolException
-    {
-        public LeaderNotFoundException(string s)
-            : base(s)
-        {
-        }
-    }
-
     public class GenericProtocolException : ProtocolException
     {
         public GenericProtocolException(ResponseCode responseCode, string s)

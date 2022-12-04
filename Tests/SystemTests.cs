@@ -97,19 +97,6 @@ namespace Tests
         }
 
         [Fact]
-        public async void Create_Stream_With_Max_Length_Maximum_Value()
-        {
-            var stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig();
-            var system = await StreamSystem.Create(config);
-            var spec = new StreamSpec(stream) { MaxLengthBytes = ulong.MaxValue };
-            await system.CreateStream(spec);
-            Assert.Equal(ulong.MaxValue.ToString(), spec.Args["max-length-bytes"]);
-            await system.DeleteStream(stream);
-            await system.Close();
-        }
-
-        [Fact]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
             var config = new StreamSystemConfig { VirtualHost = "DOES_NOT_EXIST" };
@@ -168,38 +155,30 @@ namespace Tests
         [Fact]
         public async void ValidateQueryOffset()
         {
-            // here we just validate the Query for Offset, Sequence 
-            // and Partitions
+            // here we just validate the Query for Offset and Sequence
             // if the reference is == "" return must be 0
             // stream name is mandatory
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<ArgumentException>(
+            await Assert.ThrowsAsync<QueryException>(
                 async () =>
                 {
                     await system.QueryOffset(string.Empty, "stream_we_don_t_care");
                 }
             );
 
-            await Assert.ThrowsAsync<ArgumentException>(
+            await Assert.ThrowsAsync<QueryException>(
                 async () =>
                 {
                     await system.QueryOffset("reference_we_don_care", string.Empty);
                 }
             );
 
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () =>
-                {
-                    await system.QueryOffset(string.Empty, string.Empty);
-                }
-            );
-
             await Assert.ThrowsAsync<QueryException>(
                 async () =>
                 {
-                    await system.QueryPartition("stream_does_not_exist");
+                    await system.QueryOffset(string.Empty, string.Empty);
                 }
             );
             await system.Close();
@@ -214,21 +193,21 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<ArgumentException>(
+            await Assert.ThrowsAsync<QueryException>(
                 async () =>
                 {
                     await system.QuerySequence(string.Empty, "stream_we_don_t_care");
                 }
             );
 
-            await Assert.ThrowsAsync<ArgumentException>(
+            await Assert.ThrowsAsync<QueryException>(
                 async () =>
                 {
                     await system.QuerySequence("reference_we_don_care", string.Empty);
                 }
             );
 
-            await Assert.ThrowsAsync<ArgumentException>(
+            await Assert.ThrowsAsync<QueryException>(
                 async () =>
                 {
                     await system.QuerySequence(string.Empty, string.Empty);
@@ -250,10 +229,14 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer =
-                await system.CreateRawProducer(new RawProducerConfig(stream) { ClientProvidedName = clientProvidedName });
+                await system.CreateProducer(new ProducerConfig
+                {
+                    Stream = stream,
+                    ClientProvidedName = clientProvidedName
+                });
             SystemUtils.Wait();
-            var consumer = await system.CreateRawConsumer(
-                new RawConsumerConfig(stream) { ClientProvidedName = clientProvidedName });
+            var consumer = await system.CreateConsumer(
+                new ConsumerConfig { Stream = stream, ClientProvidedName = clientProvidedName });
             SystemUtils.Wait();
 
             // Here we have to wait the management stats refresh time before killing the connections.
@@ -282,24 +265,11 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             await system.CreateStream(new StreamSpec(stream));
             var producer =
-                await system.CreateRawProducer(new RawProducerConfig(stream));
+                await system.CreateProducer(new ProducerConfig { Stream = stream });
             SystemUtils.Wait();
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);
             await system.Close();
-        }
-
-        [Fact]
-        public async void NumberOfPartitionsShouldBeAsDefinition()
-        {
-            SystemUtils.ResetSuperStreams();
-            var system = await StreamSystem.Create(new StreamSystemConfig());
-            var partitions = await system.QueryPartition(SystemUtils.InvoicesExchange);
-            Assert.True(partitions.Length == 3);
-            Assert.Contains(SystemUtils.InvoicesStream0, partitions);
-            Assert.Contains(SystemUtils.InvoicesStream1, partitions);
-            Assert.Contains(SystemUtils.InvoicesStream2, partitions);
-            Assert.DoesNotContain(SystemUtils.InvoicesExchange, partitions);
         }
     }
 }
