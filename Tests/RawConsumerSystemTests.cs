@@ -7,6 +7,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
@@ -25,20 +26,19 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateConsumer()
+        public async void CreateRawConsumer()
         {
             var testPassed = new TaskCompletionSource<Data>();
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream });
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream) { Reference = "producer" });
+            var consumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    Stream = stream,
                     MessageHandler = async (consumer, ctx, message) =>
                     {
                         testPassed.SetResult(message.Data);
@@ -47,13 +47,13 @@ namespace Tests
                 });
             var msgData = new Data("apple".AsReadonlySequence());
             var message = new Message(msgData);
-            await producer.Send(1, message);
+            await rawProducer.Send(1, message);
             //wait for sent message to be delivered
 
             new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
-            producer.Dispose();
+            rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
@@ -66,11 +66,10 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var consumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    Stream = stream,
                     MessageHandler = async (consumer, ctx, message) => { await Task.CompletedTask; }
                 });
 
@@ -92,11 +91,10 @@ namespace Tests
             const int numberOfMessages = 10;
             await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
             var count = 0;
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var consumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer_offset",
-                    Stream = stream,
                     OffsetSpec = new OffsetTypeFirst(),
                     MessageHandler = async (consumer, ctx, message) =>
                     {
@@ -114,7 +112,7 @@ namespace Tests
                 });
 
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
+            SystemUtils.Wait();
             // // Here we use the standard client to check the offest
             // // since client.QueryOffset/2 is hidden in the System
             //
@@ -136,11 +134,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var testPassed = new TaskCompletionSource<bool>();
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var consumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    Stream = stream,
                     MessageHandler = async (consumer, ctx, message) => { await Task.CompletedTask; },
                     ConnectionClosedHandler = async s =>
                     {
@@ -165,13 +162,12 @@ namespace Tests
             var config = new StreamSystemConfig() { AddressResolver = addressResolver, };
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream });
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream) { Reference = "producer" });
+            var consumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    Stream = stream,
                     MessageHandler = async (consumer, ctx, message) =>
                     {
                         testPassed.SetResult(message.Data);
@@ -180,13 +176,13 @@ namespace Tests
                 });
             var msgData = new Data("apple".AsReadonlySequence());
             var message = new Message(msgData);
-            await producer.Send(1, message);
+            await rawProducer.Send(1, message);
             //wait for sent message to be delivered
 
             new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
-            producer.Dispose();
+            rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
@@ -195,11 +191,31 @@ namespace Tests
         [Fact]
         public async void ProducerAndConsumerCompressShouldHaveTheSameMessages()
         {
+            const string UniCode = "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家";
+
             void PumpMessages(ICollection<Message> messages, string prefix)
             {
                 for (var i = 0; i < 5; i++)
                 {
-                    messages.Add(new Message(Encoding.UTF8.GetBytes($"{prefix}_{i}")));
+                    messages.Add(new Message(Encoding.UTF8.GetBytes($"{prefix}_{i}"))
+                    {
+                        ApplicationProperties = new ApplicationProperties()
+                        {
+                            ["key"] = $"{prefix}_{i}",
+                            ["uni"] = $"{UniCode}_{i}",
+                            ["float"] = 1_000_000.143,
+                            ["int"] = 1_000_000,
+                            ["long"] = 1_000_000_000_000,
+                            ["bool"] = true
+                        },
+                        Properties = new Properties()
+                        {
+                            Subject = null,
+                            ReplyTo = null,
+                            CorrelationId = null,
+                            ContentType = "XML",
+                        }
+                    });
                 }
             }
 
@@ -208,6 +224,16 @@ namespace Tests
                 for (var i = 0; i < 5; i++)
                 {
                     Assert.Equal(expected[i].Data.Contents.ToArray(), actual[i].Data.Contents.ToArray());
+                    Assert.Equal(expected[i].ApplicationProperties["key"], actual[i].ApplicationProperties["key"]);
+                    Assert.Equal(expected[i].ApplicationProperties["uni"], actual[i].ApplicationProperties["uni"]);
+                    Assert.Equal(expected[i].ApplicationProperties["float"], actual[i].ApplicationProperties["float"]);
+                    Assert.Equal(expected[i].ApplicationProperties["int"], actual[i].ApplicationProperties["int"]);
+                    Assert.Equal(expected[i].ApplicationProperties["long"], actual[i].ApplicationProperties["long"]);
+                    Assert.Equal(expected[i].ApplicationProperties["bool"], actual[i].ApplicationProperties["bool"]);
+                    Assert.Equal(expected[i].Properties.Subject, actual[i].Properties.Subject);
+                    Assert.Equal(expected[i].Properties.ReplyTo, actual[i].Properties.ReplyTo);
+                    Assert.Equal(expected[i].Properties.CorrelationId, actual[i].Properties.CorrelationId);
+                    Assert.Equal(expected[i].Properties.ContentType, actual[i].Properties.ContentType);
                 }
             }
 
@@ -218,11 +244,10 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
 
             var receivedMessages = new List<Message>();
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var consumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    Stream = stream,
                     MessageHandler = async (consumer, ctx, message) =>
                     {
                         receivedMessages.Add(message);
@@ -235,16 +260,16 @@ namespace Tests
                     }
                 });
 
-            var producer = await system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream });
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream) { Reference = "producer" });
 
             var messagesNone = new List<Message>();
             PumpMessages(messagesNone, "None");
-            await producer.Send(1, messagesNone, CompressionType.None);
+            await rawProducer.Send(1, messagesNone, CompressionType.None);
 
             var messagesGzip = new List<Message>();
             PumpMessages(messagesGzip, "Gzip");
-            await producer.Send(2, messagesGzip, CompressionType.Gzip);
+            await rawProducer.Send(2, messagesGzip, CompressionType.Gzip);
 
             new Utils<List<Message>>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
@@ -254,7 +279,7 @@ namespace Tests
             AssertMessages(messagesGzip, testPassed.Task.Result.FindAll(s =>
                 Encoding.Default.GetString(s.Data.Contents.ToArray()).Contains("Gzip_")));
 
-            producer.Dispose();
+            rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
@@ -263,26 +288,39 @@ namespace Tests
         [Fact]
         public async void ConsumerValidationAmqpAttributes()
         {
+            // To test large unicode string
+            // The Alan Mathison Turing story from wikipedia
+            // google translate form English to Chinese ( I don't know chinese )
+            const string ChineseStringTest =
+                "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父。 [10]";
+
+            // 255 string length
+            const string ByteString =
+                "Alan  Mathison Turing  ( 23 June 1912 – 7 June 1954 ) was an English  mathematician, computer scientist, logician, cryptanalyst,  philosopher, and theoretical biologist. Turing  was   highly  influential in the development of theoretical computer science.";
+
             var testPassed = new TaskCompletionSource<Message>();
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream });
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream) { Reference = "producer" });
+            var consumed = 0;
+            var rawConsumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    Stream = stream,
                     MessageHandler = async (consumer, ctx, message) =>
                     {
-                        testPassed.SetResult(message);
+                        if (Interlocked.Increment(ref consumed) == 3)
+                        {
+                            testPassed.SetResult(message);
+                        }
+
                         await Task.CompletedTask;
                     }
                 });
-            var msgData = new Data("apple".AsReadonlySequence());
-            var message = new Message(msgData)
+            var message = new Message(Encoding.UTF8.GetBytes(ChineseStringTest))
             {
                 Properties = new Properties()
                 {
@@ -300,21 +338,33 @@ namespace Tests
                     UserId = new byte[] { 0x0, 0xF },
                     ReplyToGroupId = "replyToGroupId"
                 },
-                Annotations = new Annotations { ["akey1"] = "value1", [1] = 1, [1_000_000] = 1_000_000, },
+                Annotations = new Annotations
+                {
+                    ["akey1"] = "value1",
+                    [1] = 1,
+                    [1_000_000] = 1_000_000,
+                    ["akey2"] = "value2",
+                },
                 ApplicationProperties = new ApplicationProperties()
                 {
                     ["apkey1"] = "value1",
                     ["apkey2"] = "", //  returns  0x40(Null)  when string is empty or null
                     ["apkey3"] = null, //  returns  0x40(Null)  when string is empty or null 
-                }
+                    ["keyuni"] = "07-10-2022 午後11:1", //  unicode string,
+                    ["keyuni2"] = "良い一日を過ごし、クライアントを楽しんでください", //  unicode string 
+                    ["keyuni3"] = "祝您有美好的一天，并享受客户", //  unicode string 
+                    ["keylonguni"] = ChineseStringTest, //  unicode string 
+                    ["key255"] = ByteString //  unicode string 
+                },
             };
-
-            await producer.Send(1, message);
+            for (ulong i = 0; i < 3; i++)
+            {
+                await rawProducer.Send(i, message);
+            }
             //wait for sent message to be delivered
 
             new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-
-            Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Data.Contents.ToArray());
+            Assert.Equal(ChineseStringTest, Encoding.UTF8.GetString(testPassed.Task.Result.Data.Contents.ToArray()));
             Assert.Equal("subject", testPassed.Task.Result.Properties.Subject);
             Assert.Equal("to", testPassed.Task.Result.Properties.To);
             Assert.Equal("contentEncoding", testPassed.Task.Result.Properties.ContentEncoding);
@@ -336,11 +386,17 @@ namespace Tests
             Assert.Equal(1_000_000, testPassed.Task.Result.Annotations[1_000_000]);
 
             Assert.Equal("value1", testPassed.Task.Result.ApplicationProperties["apkey1"]);
+            Assert.Equal("07-10-2022 午後11:1", testPassed.Task.Result.ApplicationProperties["keyuni"]);
+            Assert.Equal("良い一日を過ごし、クライアントを楽しんでください", testPassed.Task.Result.ApplicationProperties["keyuni2"]);
+            Assert.Equal("祝您有美好的一天，并享受客户", testPassed.Task.Result.ApplicationProperties["keyuni3"]);
+            Assert.Equal(ChineseStringTest, testPassed.Task.Result.ApplicationProperties["keylonguni"]);
+            Assert.Equal(ByteString, testPassed.Task.Result.ApplicationProperties["key255"]);
+
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey2"]);
             Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey3"]);
 
-            producer.Dispose();
-            consumer.Dispose();
+            rawProducer.Dispose();
+            rawConsumer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -356,11 +412,10 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var rawConsumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    Stream = stream,
                     MessageHandler = async (consumer, ctx, message) =>
                     {
                         testPassed.SetResult(message);
@@ -385,7 +440,7 @@ namespace Tests
             Assert.Equal("json", testPassed.Task.Result.Properties.ContentType);
             Assert.Equal("2", testPassed.Task.Result.Properties.MessageId);
 
-            consumer.Dispose();
+            rawConsumer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -403,11 +458,10 @@ namespace Tests
             await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
             var count = 0;
             const string reference = "consumer_offset";
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var rawConsumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = reference,
-                    Stream = stream,
                     OffsetSpec = new OffsetTypeOffset(),
                     MessageHandler = async (consumer, ctx, message) =>
                     {
@@ -444,7 +498,7 @@ namespace Tests
             await Assert.ThrowsAsync<OffsetNotFoundException>(() =>
                 system.QueryOffset("reference_does_not_exist", stream));
 
-            await consumer.Close();
+            await rawConsumer.Close();
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -474,11 +528,10 @@ namespace Tests
             await SystemUtils.PublishMessages(system, stream, NumberOfMessages, testOutputHelper);
             const string Reference = "consumer_offset";
 
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig
+            var rawConsumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = Reference,
-                    Stream = stream,
                     OffsetSpec = new OffsetTypeOffset(),
                     MessageHandler = async (consumer, ctx, _) =>
                     {
@@ -502,11 +555,10 @@ namespace Tests
             // the offset received must be the same from the last stored
             Assert.Equal(offset, storedOffset.Task.Result);
             var messagesConsumed = new TaskCompletionSource<ulong>();
-            var consumerWithOffset = await system.CreateConsumer(
-                new ConsumerConfig
+            var rawConsumerWithOffset = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = Reference,
-                    Stream = stream,
                     OffsetSpec = new OffsetTypeOffset(offset),
                     MessageHandler = async (_, ctx, _) =>
                     {
@@ -526,8 +578,8 @@ namespace Tests
             // just a double check 
             Assert.Equal(storedOffset.Task.Result, messagesConsumed.Task.Result);
 
-            await consumerWithOffset.Close();
-            await consumer.Close();
+            await rawConsumerWithOffset.Close();
+            await rawConsumer.Close();
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -545,11 +597,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var testPassed = new TaskCompletionSource<bool>();
-            var consumer = await system.CreateConsumer(
-                new ConsumerConfig()
+            var rawConsumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    Stream = stream,
                     MetadataHandler = update =>
                     {
                         if (update.Stream == stream)
@@ -561,7 +612,7 @@ namespace Tests
             SystemUtils.Wait();
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            await consumer.Close();
+            await rawConsumer.Close();
             await system.Close();
         }
     }

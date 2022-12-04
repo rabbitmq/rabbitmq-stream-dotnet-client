@@ -3,6 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -59,6 +60,11 @@ namespace Tests
 
     public static class SystemUtils
     {
+        public const string InvoicesExchange = "invoices";
+        public const string InvoicesStream0 = "invoices-0";
+        public const string InvoicesStream1 = "invoices-1";
+        public const string InvoicesStream2 = "invoices-2";
+
         // Waits for 10 seconds total by default
         public static void WaitUntil(Func<bool> func, ushort retries = 40)
         {
@@ -101,10 +107,7 @@ namespace Tests
             string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig
-            {
-                ClientProvidedName = clientProviderNameLocator
-            };
+            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();
@@ -119,17 +122,17 @@ namespace Tests
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             string producerName, ITestOutputHelper testOutputHelper)
         {
+            testOutputHelper.WriteLine("Publishing messages...");
+
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
-            var producer = await system.CreateProducer(
-                new ProducerConfig
+            var producer = await system.CreateRawProducer(
+                new RawProducerConfig(stream)
                 {
                     Reference = producerName,
-                    Stream = stream,
                     ConfirmHandler = _ =>
                     {
                         count++;
-                        testOutputHelper.WriteLine($"Published and Confirmed: {count} messages");
                         if (count != numberOfMessages)
                         {
                             return;
@@ -147,7 +150,62 @@ namespace Tests
             }
 
             testPassed.Task.Wait(TimeSpan.FromSeconds(10));
-            Assert.Equal(producer.MessagesSent, numberOfMessages);
+            Assert.Equal(numberOfMessages, testPassed.Task.Result);
+            Assert.True(producer.ConfirmFrames >= 1);
+            Assert.True(producer.IncomingFrames >= 1);
+            Assert.True(producer.PublishCommandsSent >= 1);
+            producer.Dispose();
+        }
+
+        public static async Task<ConcurrentDictionary<string, IOffsetType>> OffsetsForSuperStreamConsumer(
+            StreamSystem system, string stream,
+            IOffsetType offsetType)
+        {
+            var partitions = await system.QueryPartition(stream);
+            var offsetSpecs = new ConcurrentDictionary<string, IOffsetType>();
+            foreach (var partition in partitions)
+            {
+                offsetSpecs.TryAdd(partition, offsetType);
+            }
+
+            return offsetSpecs;
+        }
+
+        public static async Task PublishMessagesSuperStream(StreamSystem system, string stream, int numberOfMessages,
+            string producerName, ITestOutputHelper testOutputHelper)
+        {
+            testOutputHelper.WriteLine("Publishing super stream messages...");
+
+            var testPassed = new TaskCompletionSource<int>();
+            var count = 0;
+            var producer = await system.CreateRawSuperStreamProducer(
+                new RawSuperStreamProducerConfig(stream)
+                {
+                    Reference = producerName,
+                    Routing = message1 => message1.Properties.MessageId.ToString(),
+                    ConfirmHandler = _ =>
+                    {
+                        count++;
+                        if (count != numberOfMessages)
+                        {
+                            return;
+                        }
+
+                        testPassed.SetResult(count);
+                    }
+                });
+
+            for (var i = 0; i < numberOfMessages; i++)
+            {
+                var message = new Message(Encoding.Default.GetBytes("hello"))
+                {
+                    Properties = new Properties() { MessageId = $"hello{i}" }
+                };
+                await producer.Send(Convert.ToUInt64(i), message);
+            }
+
+            testPassed.Task.Wait(TimeSpan.FromSeconds(10));
+            Assert.Equal(numberOfMessages, testPassed.Task.Result);
             Assert.True(producer.ConfirmFrames >= 1);
             Assert.True(producer.IncomingFrames >= 1);
             Assert.True(producer.PublishCommandsSent >= 1);
@@ -160,6 +218,29 @@ namespace Tests
             public Dictionary<string, string> client_properties { get; set; }
         }
 
+        public static async Task<int> ConnectionsCountByName(string connectionName)
+        {
+            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var client = new HttpClient(handler);
+
+            var result = await client.GetAsync("http://localhost:15672/api/connections");
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
+            }
+
+            var obj = await JsonSerializer.DeserializeAsync(await result.Content.ReadAsStreamAsync(),
+                typeof(IEnumerable<Connection>));
+            return obj switch
+            {
+                null => 0,
+                IEnumerable<Connection> connections => connections.Sum(connection =>
+                    connection.client_properties["connection_name"] == connectionName ? 1 : 0),
+                _ => 0
+            };
+        }
+
         public static async Task<bool> IsConnectionOpen(string connectionName)
         {
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
@@ -169,7 +250,8 @@ namespace Tests
             var result = await client.GetAsync("http://localhost:15672/api/connections");
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException(string.Format("HTTP GET failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
             }
 
             var obj = JsonSerializer.Deserialize(result.Content.ReadAsStream(), typeof(IEnumerable<Connection>));
@@ -187,9 +269,8 @@ namespace Tests
             using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
             using var client = new HttpClient(handler);
 
-            var uri = new Uri("http://localhost:15672/api/connections");
             var result = await client.GetAsync("http://localhost:15672/api/connections");
-            if (!result.IsSuccessStatusCode)
+            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
             {
                 throw new XunitException($"HTTP GET failed: {result.StatusCode} {result.ReasonPhrase}");
             }
@@ -220,10 +301,11 @@ namespace Tests
                  * https://stackoverflow.com/a/4550600
                  */
                 var s = Uri.EscapeDataString(conn.name);
-                var r = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
-                if (!r.IsSuccessStatusCode)
+                var deleteResult = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
+                if (!deleteResult.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
                 {
-                    throw new XunitException($"HTTP DELETE failed: {result.StatusCode} {result.ReasonPhrase}");
+                    throw new XunitException(
+                        $"HTTP DELETE failed: {deleteResult.StatusCode} {deleteResult.ReasonPhrase}");
                 }
 
                 killed += 1;
@@ -232,17 +314,68 @@ namespace Tests
             return killed;
         }
 
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            return new HttpClient(handler);
+        }
+
+        public static int HttpGetQMsgCount(string queue)
+        {
+            var task = CreateHttpClient().GetAsync($"http://localhost:15672/api/queues/%2F/{queue}");
+            task.Wait(TimeSpan.FromSeconds(10));
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode)
+            {
+                throw new XunitException($"HTTP GET failed: {result.StatusCode} {result.ReasonPhrase}");
+            }
+
+            var responseBody = result.Content.ReadAsStringAsync();
+            responseBody.Wait(TimeSpan.FromSeconds(10));
+            var json = responseBody.Result;
+            var obj = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            if (obj == null)
+            {
+                return 0;
+            }
+
+            return obj.ContainsKey("messages_ready") ? Convert.ToInt32(obj["messages_ready"].ToString()) : 0;
+        }
+
         public static void HttpPost(string jsonBody, string api)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
-            using var client = new HttpClient(handler);
             HttpContent content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-            var task = client.PostAsync($"http://localhost:15672/api/{api}", content);
+            var task = CreateHttpClient().PostAsync($"http://localhost:15672/api/{api}", content);
             task.Wait();
             var result = task.Result;
             if (!result.IsSuccessStatusCode)
             {
-                throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode, result.ReasonPhrase));
+                throw new XunitException(string.Format("HTTP POST failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
+            }
+        }
+
+        public static void HttpDeleteQueue(string queue)
+        {
+            var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/queues/%2F/{queue}");
+            task.Wait();
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
+            {
+                throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
+            }
+        }
+
+        private static void HttpDeleteExchange(string exchange)
+        {
+            var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/exchanges/%2F/{exchange}");
+            task.Wait();
+            var result = task.Result;
+            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
+            {
+                throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode,
+                    result.ReasonPhrase));
             }
         }
 
@@ -251,15 +384,27 @@ namespace Tests
             var codeBaseUrl = new Uri(Assembly.GetExecutingAssembly().Location);
             var codeBasePath = Uri.UnescapeDataString(codeBaseUrl.AbsolutePath);
             var dirPath = Path.GetDirectoryName(codeBasePath);
-            if (dirPath != null)
+            if (dirPath == null)
             {
-                var filename = Path.Combine(dirPath, "Resources", fileName);
-                var fileTask = File.ReadAllBytesAsync(filename);
-                fileTask.Wait(TimeSpan.FromSeconds(1));
-                return fileTask.Result;
+                return null;
             }
 
-            return null;
+            var filename = Path.Combine(dirPath, "Resources", fileName);
+            var fileTask = File.ReadAllBytesAsync(filename);
+            fileTask.Wait(TimeSpan.FromSeconds(1));
+            return fileTask.Result;
+        }
+
+        public static void ResetSuperStreams()
+        {
+            HttpDeleteExchange("invoices");
+            HttpDeleteQueue("invoices-0");
+            HttpDeleteQueue("invoices-1");
+            HttpDeleteQueue("invoices-2");
+            Wait();
+            HttpPost(
+                Encoding.Default.GetString(
+                    GetFileContent("definition_test.json")), "definitions");
         }
     }
 }

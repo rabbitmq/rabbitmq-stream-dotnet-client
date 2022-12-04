@@ -5,6 +5,11 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+<<<<<<< HEAD
+=======
+using System.Linq;
+using System.Runtime.CompilerServices;
+>>>>>>> 6f56b56a93478b1a97d7f73b622808e4aabebfce
 using System.Text;
 
 namespace RabbitMQ.Stream.Client
@@ -17,60 +22,62 @@ namespace RabbitMQ.Stream.Client
         {
             return string.IsNullOrEmpty(@string) ? 2 : 2 + s_encoding.GetByteCount(@string);
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteByte(Span<byte> span, byte value)
         {
             span[0] = value;
             return 1;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteInt32(Span<byte> span, int value)
         {
             BinaryPrimitives.WriteInt32BigEndian(span, value);
             return 4;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteUInt16(Span<byte> p, ushort value)
         {
             BinaryPrimitives.WriteUInt16BigEndian(p, value);
             return 2;
         }
-
-        internal static int WriteInt16(Span<byte> p, short value)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int WriteInt16(Span<byte> span, short value)
         {
-            BinaryPrimitives.WriteInt16BigEndian(p, value);
+            BinaryPrimitives.WriteInt16BigEndian(span, value);
             return 2;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteUInt64(Span<byte> span, ulong value)
         {
             BinaryPrimitives.WriteUInt64BigEndian(span, value);
             return 8;
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteInt64(Span<byte> span, long value)
         {
             BinaryPrimitives.WriteInt64BigEndian(span, value);
             return 8;
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteUInt32(Span<byte> span, uint value)
         {
             BinaryPrimitives.WriteUInt32BigEndian(span, value);
             return 4;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int Write(Span<byte> span, ReadOnlySequence<byte> msg)
         {
             msg.CopyTo(span);
             return (int)msg.Length;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteBytes(Span<byte> span, ReadOnlySequence<byte> msg)
         {
             WriteUInt32(span, (uint)msg.Length);
             Write(span.Slice(4), msg);
             return 4 + (int)msg.Length;
         }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteString(Span<byte> span, string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -82,6 +89,14 @@ namespace RabbitMQ.Stream.Client
             var bytecount = s_encoding.GetBytes(s, span.Slice(2));
             WriteUInt16(span, (ushort)bytecount);
             return 2 + bytecount;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int ReadUInt32(ref SequenceReader<byte> reader, out uint value)
+        {
+            reader.TryReadBigEndian(out int v);
+            value = (uint)v;
+            return 4;
         }
 
         internal static int ReadUInt32(ReadOnlySequence<byte> seq, out uint value)
@@ -99,6 +114,13 @@ namespace RabbitMQ.Stream.Client
 
             return 4;
         }
+
+        internal static int ReadInt32(ref SequenceReader<byte> reader, out int value)
+        {
+            reader.TryReadBigEndian(out value);
+            return 4;
+        }
+
         internal static int ReadInt32(ReadOnlySequence<byte> seq, out int value)
         {
             if (seq.FirstSpan.Length >= 4)
@@ -114,6 +136,14 @@ namespace RabbitMQ.Stream.Client
 
             return 4;
         }
+
+        internal static int ReadUInt16(ref SequenceReader<byte> reader, out ushort value)
+        {
+            reader.TryReadBigEndian(out short v);
+            value = (ushort)v;
+            return 2;
+        }
+
         internal static int ReadUInt16(ReadOnlySequence<byte> seq, out ushort value)
         {
             if (seq.FirstSpan.Length >= 2)
@@ -127,6 +157,12 @@ namespace RabbitMQ.Stream.Client
                 value = BinaryPrimitives.ReadUInt16BigEndian(tempSpan);
             }
 
+            return 2;
+        }
+
+        internal static int ReadInt16(ref SequenceReader<byte> reader, out short value)
+        {
+            reader.TryReadBigEndian(out value);
             return 2;
         }
 
@@ -146,6 +182,13 @@ namespace RabbitMQ.Stream.Client
             return 2;
         }
 
+        internal static int ReadUInt64(ref SequenceReader<byte> reader, out ulong value)
+        {
+            reader.TryReadBigEndian(out long l);
+            value = (ulong)l;
+            return 8;
+        }
+
         internal static int ReadUInt64(ReadOnlySequence<byte> seq, out ulong value)
         {
             if (seq.FirstSpan.Length >= 8)
@@ -160,6 +203,13 @@ namespace RabbitMQ.Stream.Client
             }
 
             return 8;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int ReadByte(ref SequenceReader<byte> reader, out byte value)
+        {
+            reader.TryRead(out value);
+            return 1;
         }
 
         internal static int ReadByte(ReadOnlySequence<byte> seq, out byte b)
@@ -182,10 +232,25 @@ namespace RabbitMQ.Stream.Client
             return 4 + (int)len;
         }
 
-        internal static int ReadBytes(ReadOnlySequence<byte> seq, int len, out byte[] data)
+        internal static int ReadBytesFromSequence(ReadOnlySequence<byte> seq, int len, out byte[] data)
         {
             data = seq.Slice(0, len).ToArray();
             return len;
+        }
+
+        internal static int ReadBytes(ref SequenceReader<byte> reader, int len, out byte[] data)
+        {
+            Span<byte> tempSpan = stackalloc byte[len];
+            reader.TryCopyTo(tempSpan);
+            reader.Advance(len);
+            data = tempSpan.ToArray();
+            return len;
+        }
+
+        internal static int ReadInt64(ref SequenceReader<byte> reader, out long value)
+        {
+            reader.TryReadBigEndian(out value);
+            return 8;
         }
 
         internal static int ReadInt64(ReadOnlySequence<byte> seq, out long value)

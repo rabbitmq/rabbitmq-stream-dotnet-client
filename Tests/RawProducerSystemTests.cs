@@ -3,6 +3,8 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
+using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -24,18 +26,17 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateProducer()
+        public async void CreateRawProducer()
         {
             var testPassed = new TaskCompletionSource<bool>();
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(
-                new ProducerConfig
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream)
                 {
                     Reference = "producer",
-                    Stream = stream,
                     ConfirmHandler = conf =>
                     {
                         testOutputHelper.WriteLine($"CreateProducer Confirm Handler #{conf.Code}");
@@ -45,12 +46,13 @@ namespace Tests
 
             var readonlySequence = "apple".AsReadonlySequence();
             var message = new Message(new Data(readonlySequence));
-            await producer.Send(1, message);
+            await rawProducer.Send(1, message);
 
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Assert.True(testPassed.Task.Result);
-            producer.Dispose();
+            rawProducer.Dispose();
+            Assert.False(rawProducer.IsOpen());
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -62,8 +64,8 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream, }));
+            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateRawProducer(
+                new RawProducerConfig(stream) { Reference = "producer" }));
 
             await system.Close();
         }
@@ -75,12 +77,12 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream, });
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream) { Reference = "producer" });
 
-            Assert.Equal(ResponseCode.Ok, await producer.Close());
-            Assert.Equal(ResponseCode.Ok, await producer.Close());
-            producer.Dispose();
+            Assert.Equal(ResponseCode.Ok, await rawProducer.Close());
+            Assert.Equal(ResponseCode.Ok, await rawProducer.Close());
+            rawProducer.Dispose();
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -91,11 +93,11 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = "", }));
+            await Assert.ThrowsAsync<ArgumentException>(() => system.CreateRawProducer(
+                new RawProducerConfig("") { Reference = "producer" }));
 
-            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = "TEST", MessagesBufferSize = -1, }));
+            await Assert.ThrowsAsync<CreateProducerException>(() => system.CreateRawProducer(
+                new RawProducerConfig("TEST") { Reference = "producer", MessagesBufferSize = -1, }));
 
             await system.Close();
         }
@@ -108,11 +110,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var testPassed = new TaskCompletionSource<bool>();
-            var producer = await system.CreateProducer(
-                new ProducerConfig
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream)
                 {
                     Reference = "producer",
-                    Stream = stream,
                     ConnectionClosedHandler = async s =>
                     {
                         testOutputHelper.WriteLine("NotifyProducerClose true");
@@ -121,7 +122,7 @@ namespace Tests
                     }
                 });
 
-            Assert.Equal(ResponseCode.Ok, await producer.Close());
+            Assert.Equal(ResponseCode.Ok, await rawProducer.Close());
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await system.DeleteStream(stream);
             await system.Close();
@@ -141,13 +142,13 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var producer = await system.CreateProducer(
-                new ProducerConfig { Reference = "producer", Stream = stream, });
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream) { Reference = "producer" });
 
             await Assert.ThrowsAsync<OutOfBoundsException>(() =>
-                producer.Send(1, messages, CompressionType.Gzip).AsTask());
+                rawProducer.Send(1, messages, CompressionType.Gzip).AsTask());
 
-            Assert.Equal(ResponseCode.Ok, await producer.Close());
+            Assert.Equal(ResponseCode.Ok, await rawProducer.Close());
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -176,11 +177,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             ulong count = 0;
-            var producer = await system.CreateProducer(
-                new ProducerConfig
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream)
                 {
                     Reference = Guid.NewGuid().ToString(),
-                    Stream = stream,
                     ConfirmHandler = conf =>
                     {
                         if (conf.Code != ResponseCode.Ok)
@@ -197,18 +197,18 @@ namespace Tests
                 });
 
             ulong pid = 0;
-            await producer.Send(++pid, messages, CompressionType.None);
+            await rawProducer.Send(++pid, messages, CompressionType.None);
 
             foreach (var message in messages)
             {
-                await producer.Send(++pid, message);
+                await rawProducer.Send(++pid, message);
             }
 
-            await producer.Send(++pid, messages, CompressionType.Gzip);
+            await rawProducer.Send(++pid, messages, CompressionType.Gzip);
             SystemUtils.Wait();
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             Assert.Equal((ulong)52, count);
-            Assert.Equal(ResponseCode.Ok, await producer.Close());
+            Assert.Equal(ResponseCode.Ok, await rawProducer.Close());
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -226,11 +226,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var testPassed = new TaskCompletionSource<bool>();
-            var producer = await system.CreateProducer(
-                new ProducerConfig
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream)
                 {
                     Reference = "producer",
-                    Stream = stream,
                     MetadataHandler = update =>
                     {
                         if (update.Stream == stream)
@@ -242,7 +241,7 @@ namespace Tests
             SystemUtils.Wait();
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            await producer.Close();
+            await rawProducer.Close();
             await system.Close();
         }
 
@@ -266,12 +265,8 @@ namespace Tests
             // sequence start from zero
             Assert.True(resAfter == (NumberOfMessages - 1));
 
-            var producer = await system.CreateProducer(new ProducerConfig()
-            {
-                Stream = stream,
-                Reference = ProducerName
-            });
-            Assert.True(await producer.GetLastPublishingId() == (NumberOfMessages - 1));
+            var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream) { Reference = ProducerName });
+            Assert.True(await rawProducer.GetLastPublishingId() == (NumberOfMessages - 1));
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -282,10 +277,9 @@ namespace Tests
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             // validate that the messages batch size is not greater than the MaxInFlight
 
-            var producer = await system.CreateProducer(new ProducerConfig
+            var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream)
             {
                 Reference = "producer",
-                Stream = stream,
                 MaxInFlight = 100, // in this case the batch send can't be greater than 100
             });
             var messages = new List<(ulong, Message)>();
@@ -295,13 +289,13 @@ namespace Tests
                 messages.Add(((ulong)i, new Message(Encoding.UTF8.GetBytes($"data_{i}"))));
             }
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => producer.BatchSend(messages).AsTask());
+            await Assert.ThrowsAsync<InvalidOperationException>(() => rawProducer.Send(messages).AsTask());
             messages.Clear();
 
             // MaxFrameSize by default is 1048576
             // we can't send messages greater than 1048576 bytes
             messages.Add((1, new Message(new byte[1048576 * 2]))); // 2MB >  MaxFrameSize so it must raise an exception
-            await Assert.ThrowsAsync<InvalidOperationException>(() => producer.BatchSend(messages).AsTask());
+            await Assert.ThrowsAsync<InvalidOperationException>(() => rawProducer.Send(messages).AsTask());
             await system.DeleteStream(stream);
             await system.Close();
         }
@@ -315,11 +309,10 @@ namespace Tests
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             var testPassed = new TaskCompletionSource<bool>();
             const int NumberOfMessages = 100;
-            var producer = await system.CreateProducer(new
-                ProducerConfig
+            var rawProducer = await system.CreateRawProducer(new
+                RawProducerConfig(stream)
             {
                 Reference = "producer",
-                Stream = stream,
                 ConfirmHandler = confirmation =>
                 {
                     if (confirmation.PublishingId == NumberOfMessages)
@@ -335,9 +328,89 @@ namespace Tests
                 messages.Add(((ulong)i, new Message(Encoding.UTF8.GetBytes($"data_{i}"))));
             }
 
-            await producer.BatchSend(messages);
+            await rawProducer.Send(messages);
             messages.Clear();
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        private class EventLengthTestCases : IEnumerable<object[]>
+        {
+            private readonly Random _random = new(3895);
+
+            public IEnumerator<object[]> GetEnumerator()
+            {
+                yield return new object[] { GetRandomBytes(254) };
+                yield return new object[] { GetRandomBytes(255) };
+                yield return new object[] { GetRandomBytes(256) };
+                // just to test an event greater than 256 bytes
+                yield return new object[] { GetRandomBytes(654) };
+            }
+
+            private ReadOnlySequence<byte> GetRandomBytes(ulong length)
+            {
+                var arr = new byte[length];
+                _random.NextBytes(arr);
+                return new ReadOnlySequence<byte>(arr);
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+        }
+
+        [Theory]
+        [ClassData(typeof(EventLengthTestCases))]
+        public async Task ProducerSendsArrays255Bytes(ReadOnlySequence<byte> @event)
+        {
+            // Test the data around 255 bytes
+            // https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/issues/160
+            // We test if the data is correctly sent and received
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var testPassed = new TaskCompletionSource<bool>();
+            var rawProducer = await system.CreateRawProducer(new
+                RawProducerConfig(stream)
+            {
+                Reference = "producer",
+                ConfirmHandler = _ =>
+                {
+                    testPassed.SetResult(true);
+                }
+            }
+            );
+
+            const ulong PublishingId = 0;
+            var msg = new Message(new Data(@event))
+            {
+                ApplicationProperties = new ApplicationProperties { { "myArray", @event.First.ToArray() } }
+            };
+
+            await rawProducer.Send(PublishingId, msg);
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+
+            var testMessageConsumer = new TaskCompletionSource<Message>();
+
+            var consumer = await system.CreateRawConsumer(new RawConsumerConfig(stream)
+            {
+                // Consume the stream from the Offset
+                OffsetSpec = new OffsetTypeOffset(),
+                // Receive the messages
+                MessageHandler = (_, _, message) =>
+                {
+                    testMessageConsumer.SetResult(message);
+                    return Task.CompletedTask;
+                }
+            });
+
+            new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testMessageConsumer);
+            // at this point the data length _must_ be the same
+            Assert.Equal(@event.Length, testMessageConsumer.Task.Result.Data.Contents.Length);
+
+            Assert.Equal(@event.Length,
+                ((byte[])testMessageConsumer.Task.Result.ApplicationProperties["myArray"]).Length);
+            await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();
         }

@@ -8,17 +8,17 @@ jobs:
     name: build/test on windows-latest
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-dotnet@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-dotnet@v2
         with:
           dotnet-version: 6.0.x
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           # Note: the cache path is relative to the workspace directory
           # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#using-the-cache-action
           path: ~/installers
-          key: ${{ runner.os }}-v1-${{ hashFiles('tools/versions.json') }}
-      - uses: actions/cache@v2
+          key: ${{ runner.os }}-v1-${{ hashFiles('.ci/versions.json') }}
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.nuget/packages
@@ -27,7 +27,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-v2-nuget-
       - name: Install and start RabbitMQ
-        run: ./tools/install.ps1
+        run: ./.ci/install.ps1
       - name: Restore
         run: dotnet restore --verbosity=normal
       - name: Build
@@ -51,11 +51,11 @@ jobs:
             - 1883:1883
             - 61613:61613
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-dotnet@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-dotnet@v2
         with:
           dotnet-version: 6.0.x
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.nuget/packages

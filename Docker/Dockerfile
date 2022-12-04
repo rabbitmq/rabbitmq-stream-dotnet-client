@@ -9,10 +9,12 @@ RUN wget https://packages.microsoft.com/config/ubuntu/21.04/packages-microsoft-p
 RUN dpkg -i packages-microsoft-prod.deb
 RUN rm packages-microsoft-prod.deb
 
-RUN apt-get update && \
-   apt-get install -y apt-transport-https && \
-   apt-get update && \
-   apt-get install -y git && \
-   apt-get install -y dotnet-sdk-6.0
+
+RUN printf 'Package: *net*\nPin: origin packages.microsoft.com\nPin-Priority: 1001' >> /etc/apt/preferences
+
+RUN apt-get update 
+RUN apt install dotnet6 -y
+RUN apt install git -y
+
 
 RUN apt-get install make -y

@@ -27,6 +27,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <Title>RabbitMQ Stream Client Library for .NET</Title>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CI)' == 'true'">
