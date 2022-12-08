@@ -8,13 +8,13 @@ namespace RabbitMQ.Stream.Client
 {
     public class AddressResolver
     {
-        public AddressResolver(IPEndPoint endPoint)
+        public AddressResolver(EndPoint endPoint)
         {
             EndPoint = endPoint;
             Enabled = true;
         }
 
-        public IPEndPoint EndPoint { get; set; }
+        public EndPoint EndPoint { get; set; }
         public bool Enabled { get; set; }
     }
 }
