@@ -39,7 +39,7 @@ public abstract class ReliableBase
     protected bool _isOpen;
     protected bool _inReconnection;
 
-    protected abstract ILogger Logger { get; }
+    protected abstract ILogger BaseLogger { get; }
 
     internal async Task Init(IReconnectStrategy reconnectStrategy)
     {
@@ -108,11 +108,11 @@ public abstract class ReliableBase
             switch (await reconnectStrategy.WhenDisconnected(ToString()) && _isOpen)
             {
                 case true:
-                    Logger.LogInformation("{Identity} is disconnected. Client will try reconnect", ToString());
+                    BaseLogger.LogInformation("{Identity} is disconnected. Client will try reconnect", ToString());
                     await Init(false, reconnectStrategy);
                     break;
                 case false:
-                    Logger.LogInformation("{Identity} is asked to be closed", ToString());
+                    BaseLogger.LogInformation("{Identity} is asked to be closed", ToString());
                     await Close();
                     break;
             }
@@ -141,7 +141,7 @@ public abstract class ReliableBase
         await Task.Delay(500);
         if (await system.StreamExists(stream))
         {
-            Logger.LogInformation("Meta data update stream: {StreamIdentifier}. The stream still exist. Client: {Identity}",
+            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
                 stream,
                 ToString()
             );
@@ -154,7 +154,7 @@ public abstract class ReliableBase
         {
             // In this case the stream doesn't exist anymore
             // the ReliableProducer is just closed.
-            Logger.LogInformation("Meta data update stream: {StreamIdentifier}. {Identity} will be closed.",
+            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. {Identity} will be closed.",
                 stream,
                 ToString()
             );
@@ -184,11 +184,16 @@ public abstract class ReliableBase
 
     private void LogException(Exception exception)
     {
-        // Take care to have exactly the same amount of parameters in the template
-        var templateToUse = IsAKnownException(exception)
-            ? "{Identity} trying to reconnect due to exception"
-            : "{Identity} received an exception during initialization";
-        Logger.LogError(exception, templateToUse, ToString());
+        const string KnownExceptionTemplate = "{Identity} trying to reconnect due to exception";
+        const string UnknownExceptionTemplate = "{Identity} received an exception during initialization";
+        if (IsAKnownException(exception))
+        {
+            BaseLogger.LogError(exception, KnownExceptionTemplate, ToString());
+        }
+        else
+        {
+            BaseLogger.LogError(exception, UnknownExceptionTemplate, ToString());
+        }
     }
 
     // <summary>

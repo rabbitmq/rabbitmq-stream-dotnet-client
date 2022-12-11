@@ -80,7 +80,7 @@ public class Consumer : ConsumerFactory
     private IConsumer _consumer;
     private readonly ILogger<Consumer> _backingLogger;
 
-    protected override ILogger Logger => _backingLogger;
+    protected override ILogger BaseLogger => _backingLogger;
 
     internal Consumer(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {

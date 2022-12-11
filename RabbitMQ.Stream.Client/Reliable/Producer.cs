@@ -92,7 +92,7 @@ public class Producer : ProducerFactory
     private ulong _publishingId;
     private readonly ILogger<Producer> _backingLogger;
 
-    protected override ILogger Logger => _backingLogger;
+    protected override ILogger BaseLogger => _backingLogger;
 
     private Producer(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
@@ -102,22 +102,15 @@ public class Producer : ProducerFactory
             producerConfig.TimeoutMessageAfter,
             producerConfig.MaxInFlight
         );
-        if (logger == null)
-        {
-            _backingLogger = (ILogger<Producer>)NullLogger.Instance;
-        }
-        else
-        {
-            _backingLogger = logger;
-        }
+        _backingLogger = logger ?? NullLogger<Producer>.Instance;
     }
 
     // <summary>
     // Create a new Producer
     // </summary> 
-    public static async Task<Producer> Create(ProducerConfig producerConfig)
+    public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
-        var rProducer = new Producer(producerConfig);
+        var rProducer = new Producer(producerConfig, logger);
         await rProducer.Init(producerConfig.ReconnectStrategy);
         return rProducer;
     }
@@ -199,7 +192,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            Logger.LogError(e, "Error sending message");
+            BaseLogger.LogError(e, "Error sending message");
         }
         finally
         {
@@ -232,7 +225,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            Logger.LogError(e, "Error sending messages");
+            BaseLogger.LogError(e, "Error sending messages");
         }
         finally
         {
@@ -282,7 +275,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            Logger.LogError(e, "Error sending batch of messages");
+            BaseLogger.LogError(e, "Error sending batch of messages");
         }
         finally
         {
