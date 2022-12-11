@@ -18,7 +18,7 @@ public class UsabilityTests
     public async Task LetsSee()
     {
         var factory = new NullLoggerFactory();
-        
+
         var producerLogger = factory.CreateLogger<Producer>();
         var consumerLogger = factory.CreateLogger<Consumer>();
         var rawProducerLogger = factory.CreateLogger<RawProducer>();
@@ -33,20 +33,40 @@ public class UsabilityTests
         var clientParameters = new ClientParameters();
         var rawProducerConfig = new RawProducerConfig("");
         var rawConsumerConfig = new RawConsumerConfig("");
-        
-        var rawProducer = await RawProducer.Create(clientParameters, rawProducerConfig, new StreamInfo(), rawProducerLogger);
-        var rawConsumer = await RawConsumer.Create(clientParameters, rawConsumerConfig, new StreamInfo(), rawConsumerLogger);
-        
+
+        var rawProducer = await RawProducer.Create(
+            clientParameters,
+            rawProducerConfig,
+            new StreamInfo(),
+            rawProducerLogger
+        );
+        var rawConsumer = await RawConsumer.Create(
+            clientParameters,
+            rawConsumerConfig,
+            new StreamInfo(),
+            rawConsumerLogger
+        );
+
         // Creating normal consumer/producer
         var producerConfig = new ProducerConfig(streamSystem, "");
         var consumerConfig = new ConsumerConfig(streamSystem, "");
         var producer = await Producer.Create(producerConfig, producerLogger);
         var consumer = await Consumer.Create(consumerConfig, consumerLogger);
-        
+
         // Creating super consumer/producer
         var superConsumerConfig = new SuperStreamConsumerConfig();
         var superProducerConfig = new RawSuperStreamProducerConfig("");
-        var superStreamConsumer = SuperStreamConsumer.Create(superConsumerConfig, new Dictionary<string, StreamInfo>(), clientParameters, superStreamConsumerLogger);
-        var superStreamProducer = RawSuperStreamProducer.Create(superProducerConfig, new Dictionary<string, StreamInfo>(), clientParameters, rawSuperStreamProducerLogger);
+        var superStreamConsumer = SuperStreamConsumer.Create(
+            superConsumerConfig,
+            new Dictionary<string, StreamInfo>(),
+            clientParameters,
+            superStreamConsumerLogger
+        );
+        var superStreamProducer = RawSuperStreamProducer.Create(
+            superProducerConfig,
+            new Dictionary<string, StreamInfo>(),
+            clientParameters,
+            rawSuperStreamProducerLogger
+        );
     }
 }

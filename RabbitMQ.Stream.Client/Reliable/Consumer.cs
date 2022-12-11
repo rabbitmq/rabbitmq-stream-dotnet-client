@@ -90,7 +90,7 @@ public class Consumer : ConsumerFactory
 
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
-        var rConsumer = new Consumer(consumerConfig);
+        var rConsumer = new Consumer(consumerConfig, logger);
         await rConsumer.Init(consumerConfig.ReconnectStrategy);
         return rConsumer;
     }
