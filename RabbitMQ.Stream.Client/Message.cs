@@ -131,6 +131,7 @@ namespace RabbitMQ.Stream.Client
                         offset += AmqpWireFormatting.ReadAny(ref reader, out amqpValue);
                         break;
                     default:
+                        // TODO: maybe remove and leave only the exception, so logging can be done on a component that has a logger instance?
                         LogEventSource.Log.LogError($"dataCode: {dataCode} not handled. Please open an issue.");
                         throw new ArgumentOutOfRangeException($"dataCode: {dataCode} not handled");
                 }

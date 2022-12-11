@@ -7,6 +7,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client;
 
@@ -22,6 +24,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     //  Contains the info about the streams (one per partition)
     private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
+    private readonly ILogger<SuperStreamConsumer> _logger;
 
     // We need to copy the config from the super consumer to the standard consumer
 
@@ -41,8 +44,11 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                 // The stream will be removed from the list when the consumer is closed
                 if (_consumers.ContainsKey(stream))
                 {
-                    LogEventSource.Log.LogInformation(
-                        $"Super Stream Consumer. Consumer {_config.Reference} is disconnected from {stream}. Client will try reconnect");
+                    _logger.LogInformation(
+                        "Consumer {ConsumerReference} is disconnected from {StreamIdentifier}. Client will try reconnect",
+                        _config.Reference,
+                        stream
+                    );
                     _consumers.TryRemove(stream, out _);
                     await GetConsumer(stream);
                 }
@@ -86,8 +92,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                     // The stream doesn't exist anymore
                     // but this condition should be avoided since the hash routing 
                     // can be compromised
-                    LogEventSource.Log.LogWarning(
-                        $"SuperStream Consumer. Stream {update.Stream} is not available anymore");
+                    _logger.LogWarning("SuperStream Consumer. Stream {StreamIdentifier} is not available anymore", update.Stream);
                 }
                 else
                 {
@@ -97,8 +102,11 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                         // s0 the topology is changed and the consumer is disconnected
                         // this is why in this case we need to query the QueryMetadata again
                         // most of the time this code is not executed
-                        LogEventSource.Log.LogInformation(
-                            $"Super Stream Consumer. Consumer: {_config.Reference}. Metadata update for stream {update.Stream}. Client will try reconnect");
+                        _logger.LogInformation(
+                            "Consumer: {ConsumerReference}. Metadata update for stream {StreamIdentifier}. Client will try reconnect",
+                            _config.Reference,
+                            update.Stream
+                        );
                         var x = await _config.Client.QueryMetadata(new[] { update.Stream });
                         x.StreamInfos.TryGetValue(update.Stream, out var streamInfo);
                         _streamInfos.Add(update.Stream, streamInfo);
@@ -115,8 +123,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         var c = await RawConsumer.Create(
             _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream]);
-        LogEventSource.Log.LogInformation(
-            $"SuperStream Consumer. Consumer {_config.Reference} created for Stream {stream}");
+        _logger.LogInformation("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference, stream);
         return c;
     }
 
@@ -131,12 +138,17 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         return _consumers[stream];
     }
 
-    private SuperStreamConsumer(SuperStreamConsumerConfig config,
-        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
+    private SuperStreamConsumer(
+        SuperStreamConsumerConfig config,
+        IDictionary<string, StreamInfo> streamInfos,
+        ClientParameters clientParameters,
+        ILogger<SuperStreamConsumer> logger = null
+    )
     {
         _config = config;
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
+        _logger = logger ?? NullLogger<SuperStreamConsumer>.Instance;
 
         StartConsumers().Wait(CancellationToken.None);
     }

@@ -9,6 +9,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Stream.Client.Hash;
 
 namespace RabbitMQ.Stream.Client;
@@ -39,6 +41,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // Streams contains the configuration for each stream but not the connection
     private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
+    private readonly ILogger<RawSuperStreamProducer> _logger;
 
     // We need to copy the config from the super producer to the standard producer
     private RawProducerConfig FromStreamConfig(string stream)
@@ -79,7 +82,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
                     // The stream doesn't exist anymore
                     // but this condition should be avoided since the hash routing 
                     // can be compromised
-                    LogEventSource.Log.LogWarning($"SuperStream Producer. Stream {update.Stream} is not available anymore");
+                    _logger.LogWarning("Stream {StreamIdentifier} is not available anymore", update.Stream);
                     _streamInfos.Remove(update.Stream);
                 }
 
@@ -95,9 +98,8 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var p = await RawProducer.Create(_clientParameters,
-            FromStreamConfig(stream), _streamInfos[stream]);
-        LogEventSource.Log.LogInformation($"SuperStream Producer. Producer {_config.Reference} created for Stream {stream}");
+        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream]);
+        _logger.LogInformation("Producer {ProducerReference} created for Stream {StreamIdentifier}", _config.Reference, stream);
         return p;
     }
 
@@ -125,13 +127,18 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         return await GetProducer(routes[0]);
     }
 
-    private RawSuperStreamProducer(RawSuperStreamProducerConfig config,
-        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
+    private RawSuperStreamProducer(
+        RawSuperStreamProducerConfig config,
+        IDictionary<string, StreamInfo> streamInfos,
+        ClientParameters clientParameters,
+        ILogger<RawSuperStreamProducer> logger = null
+        )
     {
         _config = config;
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
         _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.Routing);
+        _logger = logger ?? NullLogger<RawSuperStreamProducer>.Instance;
     }
 
     public async ValueTask Send(ulong publishingId, Message message)

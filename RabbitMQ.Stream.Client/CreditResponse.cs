@@ -47,6 +47,7 @@ namespace RabbitMQ.Stream.Client
              * the same time as the deliverhandler is working
              */
 
+            // TODO: not sure if this class needs a logger - maybe this needs to have a return type and something above it should do logging?
             LogEventSource.Log.LogWarning(
                 $"Received notification for subscription id: {SubscriptionId} " +
                 $"code: {ResponseCode}");

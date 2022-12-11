@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -88,14 +90,26 @@ public class Producer : ProducerFactory
 {
     private IProducer _producer;
     private ulong _publishingId;
+    private readonly ILogger<Producer> _backingLogger;
 
-    private Producer(ProducerConfig producerConfig)
+    protected override ILogger Logger => _backingLogger;
+
+    private Producer(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
         _producerConfig = producerConfig;
         _confirmationPipe = new ConfirmationPipe(
             producerConfig.ConfirmationHandler,
             producerConfig.TimeoutMessageAfter,
-            producerConfig.MaxInFlight);
+            producerConfig.MaxInFlight
+        );
+        if (logger == null)
+        {
+            _backingLogger = (ILogger<Producer>)NullLogger.Instance;
+        }
+        else
+        {
+            _backingLogger = logger;
+        }
     }
 
     // <summary>
@@ -185,7 +199,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error sending message: ", e);
+            Logger.LogError(e, "Error sending message");
         }
         finally
         {
@@ -218,7 +232,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("Error sending messages: ", e);
+            Logger.LogError(e, "Error sending messages");
         }
         finally
         {
@@ -268,7 +282,7 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            LogEventSource.Log.LogError("BatchSend error sending message: ", e);
+            Logger.LogError(e, "Error sending batch of messages");
         }
         finally
         {

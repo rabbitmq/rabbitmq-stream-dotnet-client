@@ -14,6 +14,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -137,6 +139,19 @@ namespace RabbitMQ.Stream.Client
         //public int IncomingChannelCount => this.incoming.Reader.Count;
         private static readonly object Obj = new();
 
+        private readonly ILogger<Client> _logger;
+
+        private Client(ClientParameters parameters, ILogger<Client> logger = null)
+        {
+            Parameters = parameters;
+            _heartBeatHandler = new HeartBeatHandler(
+                SendHeartBeat,
+                Close,
+                (int)parameters.Heartbeat.TotalSeconds);
+            IsClosed = false;
+            _logger = logger ?? NullLogger<Client>.Instance;
+        }
+
         private byte GetNextSubscriptionId()
         {
             byte result;
@@ -163,16 +178,6 @@ namespace RabbitMQ.Stream.Client
             private set => isClosed = value;
         }
 
-        private Client(ClientParameters parameters)
-        {
-            Parameters = parameters;
-            _heartBeatHandler = new HeartBeatHandler(
-                SendHeartBeat,
-                Close,
-                (int)parameters.Heartbeat.TotalSeconds);
-            IsClosed = false;
-        }
-
         private void StartHeartBeat()
         {
             _heartBeatHandler.Start();
@@ -190,9 +195,9 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public static async Task<Client> Create(ClientParameters parameters)
+        public static async Task<Client> Create(ClientParameters parameters, ILogger<Client> logger = null)
         {
-            var client = new Client(parameters);
+            var client = new Client(parameters, logger);
 
             client.connection = await Connection.Create(parameters.Endpoint,
                 client.HandleIncoming, client.HandleClosed, parameters.Ssl);
@@ -203,6 +208,7 @@ namespace RabbitMQ.Stream.Client
                     new PeerPropertiesRequest(corr, parameters.Properties));
             foreach (var (k, v) in peerPropertiesResponse.Properties)
             {
+                // TODO: rewrite this method into ClientFactory so we can use a logger instead
                 Debug.WriteLine($"server Props {k} {v}");
             }
 
@@ -212,6 +218,7 @@ namespace RabbitMQ.Stream.Client
                     corr => new SaslHandshakeRequest(corr));
             foreach (var m in saslHandshakeResponse.Mechanisms)
             {
+                // TODO: rewrite this method into ClientFactory so we can use a logger instead
                 Debug.WriteLine($"sasl mechanism: {m}");
             }
 
@@ -219,6 +226,7 @@ namespace RabbitMQ.Stream.Client
             var authResponse =
                 await client.Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
                     new SaslAuthenticateRequest(corr, "PLAIN", saslData));
+            // TODO: rewrite this method into ClientFactory so we can use a logger instead
             Debug.WriteLine($"auth: {authResponse.ResponseCode} {authResponse.Data}");
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
@@ -232,9 +240,11 @@ namespace RabbitMQ.Stream.Client
                 new OpenRequest(corr, parameters.VirtualHost));
             ClientExceptions.MaybeThrowException(open.ResponseCode, parameters.VirtualHost);
 
+            // TODO: rewrite this method into ClientFactory so we can use a logger instead
             Debug.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
             foreach (var (k, v) in open.ConnectionProperties)
             {
+                // TODO: rewrite this method into ClientFactory so we can use a logger instead
                 Debug.WriteLine($"open prop: {k} {v}");
             }
 
@@ -571,7 +581,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"An error occurred while calling {nameof(connection.Dispose)}.", e);
+                _logger.LogError(e, "An error occurred while calling {CalledFunction}.", nameof(connection.Dispose));
             }
 
             return result;

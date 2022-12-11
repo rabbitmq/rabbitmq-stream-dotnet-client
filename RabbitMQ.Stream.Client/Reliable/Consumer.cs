@@ -3,8 +3,9 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -77,13 +78,17 @@ public record ConsumerConfig : ReliableConfig
 public class Consumer : ConsumerFactory
 {
     private IConsumer _consumer;
+    private readonly ILogger<Consumer> _backingLogger;
 
-    internal Consumer(ConsumerConfig consumerConfig)
+    protected override ILogger Logger => _backingLogger;
+
+    internal Consumer(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
+        _backingLogger = logger ?? NullLogger<Consumer>.Instance;
         _consumerConfig = consumerConfig;
     }
 
-    public static async Task<Consumer> Create(ConsumerConfig consumerConfig)
+    public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
         var rConsumer = new Consumer(consumerConfig);
         await rConsumer.Init(consumerConfig.ReconnectStrategy);
@@ -121,7 +126,6 @@ public class Consumer : ConsumerFactory
 
     public override string ToString()
     {
-        return $"Consumer reference: {_consumerConfig.Reference},  " +
-               $"stream: {_consumerConfig.Stream} ";
+        return $"Consumer reference: {_consumerConfig.Reference}, stream: {_consumerConfig.Stream} ";
     }
 }
