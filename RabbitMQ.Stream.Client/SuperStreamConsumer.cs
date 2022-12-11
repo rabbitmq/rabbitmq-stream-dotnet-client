@@ -43,7 +43,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     {
         return new SuperStreamConsumer(superStreamConsumerConfig, streamInfos, clientParameters, logger);
     }
-    
+
     private SuperStreamConsumer(
         SuperStreamConsumerConfig config,
         IDictionary<string, StreamInfo> streamInfos,
@@ -58,7 +58,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
         StartConsumers().Wait(CancellationToken.None);
     }
-    
+
     // We need to copy the config from the super consumer to the standard consumer
 
     private RawConsumerConfig FromStreamConfig(string stream)

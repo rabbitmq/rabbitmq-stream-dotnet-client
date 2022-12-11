@@ -51,7 +51,7 @@ namespace RabbitMQ.Stream.Client
         private readonly ILogger<RawProducer> _logger;
 
         public int PendingCount => _config.MaxInFlight - _semaphore.CurrentCount;
-        
+
         public static async Task<IProducer> Create(
             ClientParameters clientParameters,
             RawProducerConfig config,

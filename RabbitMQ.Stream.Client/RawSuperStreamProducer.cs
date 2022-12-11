@@ -42,7 +42,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
     private readonly ILogger<RawSuperStreamProducer> _logger;
-    
+
     public static IProducer Create(
         RawSuperStreamProducerConfig rawSuperStreamProducerConfig,
         IDictionary<string, StreamInfo> streamInfos,
@@ -52,7 +52,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     {
         return new RawSuperStreamProducer(rawSuperStreamProducerConfig, streamInfos, clientParameters, logger);
     }
-    
+
     private RawSuperStreamProducer(
         RawSuperStreamProducerConfig config,
         IDictionary<string, StreamInfo> streamInfos,
