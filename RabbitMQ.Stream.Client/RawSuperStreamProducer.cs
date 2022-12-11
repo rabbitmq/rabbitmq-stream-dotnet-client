@@ -42,6 +42,30 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
     private readonly ILogger<RawSuperStreamProducer> _logger;
+    
+    public static IProducer Create(
+        RawSuperStreamProducerConfig rawSuperStreamProducerConfig,
+        IDictionary<string, StreamInfo> streamInfos,
+        ClientParameters clientParameters,
+        ILogger<RawSuperStreamProducer> logger = null
+    )
+    {
+        return new RawSuperStreamProducer(rawSuperStreamProducerConfig, streamInfos, clientParameters, logger);
+    }
+    
+    private RawSuperStreamProducer(
+        RawSuperStreamProducerConfig config,
+        IDictionary<string, StreamInfo> streamInfos,
+        ClientParameters clientParameters,
+        ILogger<RawSuperStreamProducer> logger = null
+    )
+    {
+        _config = config;
+        _streamInfos = streamInfos;
+        _clientParameters = clientParameters;
+        _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.Routing);
+        _logger = logger ?? NullLogger<RawSuperStreamProducer>.Instance;
+    }
 
     // We need to copy the config from the super producer to the standard producer
     private RawProducerConfig FromStreamConfig(string stream)
@@ -125,20 +149,6 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
             _streamInfos.Keys.ToList());
         return await GetProducer(routes[0]);
-    }
-
-    private RawSuperStreamProducer(
-        RawSuperStreamProducerConfig config,
-        IDictionary<string, StreamInfo> streamInfos,
-        ClientParameters clientParameters,
-        ILogger<RawSuperStreamProducer> logger = null
-        )
-    {
-        _config = config;
-        _streamInfos = streamInfos;
-        _clientParameters = clientParameters;
-        _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.Routing);
-        _logger = logger ?? NullLogger<RawSuperStreamProducer>.Instance;
     }
 
     public async ValueTask Send(ulong publishingId, Message message)
@@ -249,12 +259,6 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     public int IncomingFrames => _producers.Sum(x => x.Value.IncomingFrames);
     public int PublishCommandsSent => _producers.Sum(x => x.Value.PublishCommandsSent);
     public int PendingCount => _producers.Sum(x => x.Value.PendingCount);
-
-    public static IProducer Create(RawSuperStreamProducerConfig rawSuperStreamProducerConfig,
-        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
-    {
-        return new RawSuperStreamProducer(rawSuperStreamProducerConfig, streamInfos, clientParameters);
-    }
 }
 
 public record RawSuperStreamProducerConfig : IProducerConfig

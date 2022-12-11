@@ -26,6 +26,39 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     private readonly ClientParameters _clientParameters;
     private readonly ILogger<SuperStreamConsumer> _logger;
 
+    /// <summary>
+    /// Create a new super stream consumer
+    /// </summary>
+    /// <param name="superStreamConsumerConfig"></param>
+    /// <param name="streamInfos"></param>
+    /// <param name="clientParameters"></param>
+    /// <param name="logger"></param>
+    /// <returns></returns>
+    public static IConsumer Create(
+        SuperStreamConsumerConfig superStreamConsumerConfig,
+        IDictionary<string, StreamInfo> streamInfos,
+        ClientParameters clientParameters,
+        ILogger<SuperStreamConsumer> logger = null
+    )
+    {
+        return new SuperStreamConsumer(superStreamConsumerConfig, streamInfos, clientParameters, logger);
+    }
+    
+    private SuperStreamConsumer(
+        SuperStreamConsumerConfig config,
+        IDictionary<string, StreamInfo> streamInfos,
+        ClientParameters clientParameters,
+        ILogger<SuperStreamConsumer> logger = null
+    )
+    {
+        _config = config;
+        _streamInfos = streamInfos;
+        _clientParameters = clientParameters;
+        _logger = logger ?? NullLogger<SuperStreamConsumer>.Instance;
+
+        StartConsumers().Wait(CancellationToken.None);
+    }
+    
     // We need to copy the config from the super consumer to the standard consumer
 
     private RawConsumerConfig FromStreamConfig(string stream)
@@ -138,40 +171,12 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         return _consumers[stream];
     }
 
-    private SuperStreamConsumer(
-        SuperStreamConsumerConfig config,
-        IDictionary<string, StreamInfo> streamInfos,
-        ClientParameters clientParameters,
-        ILogger<SuperStreamConsumer> logger = null
-    )
-    {
-        _config = config;
-        _streamInfos = streamInfos;
-        _clientParameters = clientParameters;
-        _logger = logger ?? NullLogger<SuperStreamConsumer>.Instance;
-
-        StartConsumers().Wait(CancellationToken.None);
-    }
-
     private async Task StartConsumers()
     {
         foreach (var stream in _streamInfos.Keys)
         {
             await GetConsumer(stream);
         }
-    }
-
-    /// <summary>
-    /// Create a new super stream consumer
-    /// </summary>
-    /// <param name="superStreamConsumerConfig"></param>
-    /// <param name="streamInfos"></param>
-    /// <param name="clientParameters"></param>
-    /// <returns></returns>
-    public static IConsumer Create(SuperStreamConsumerConfig superStreamConsumerConfig,
-        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
-    {
-        return new SuperStreamConsumer(superStreamConsumerConfig, streamInfos, clientParameters);
     }
 
     /// <summary>

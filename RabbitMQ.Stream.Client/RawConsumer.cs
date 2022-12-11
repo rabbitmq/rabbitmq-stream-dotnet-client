@@ -122,12 +122,15 @@ namespace RabbitMQ.Stream.Client
             await _client.StoreOffset(_config.Reference, _config.Stream, offset);
         }
 
-        public static async Task<IConsumer> Create(ClientParameters clientParameters,
+        public static async Task<IConsumer> Create(
+            ClientParameters clientParameters,
             RawConsumerConfig config,
-            StreamInfo metaStreamInfo)
+            StreamInfo metaStreamInfo,
+            ILogger<RawConsumer> logger = null
+        )
         {
             var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo);
-            var consumer = new RawConsumer((Client)client, config);
+            var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init();
             return consumer;
         }

@@ -51,6 +51,19 @@ namespace RabbitMQ.Stream.Client
         private readonly ILogger<RawProducer> _logger;
 
         public int PendingCount => _config.MaxInFlight - _semaphore.CurrentCount;
+        
+        public static async Task<IProducer> Create(
+            ClientParameters clientParameters,
+            RawProducerConfig config,
+            StreamInfo metaStreamInfo,
+            ILogger<RawProducer> logger = null
+        )
+        {
+            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
+            var producer = new RawProducer((Client)client, config, logger);
+            await producer.Init();
+            return producer;
+        }
 
         private RawProducer(Client client, RawProducerConfig config, ILogger<RawProducer> logger = null)
         {
@@ -63,14 +76,7 @@ namespace RabbitMQ.Stream.Client
                 SingleWriter = false,
                 FullMode = BoundedChannelFullMode.Wait
             });
-            if (logger == null)
-            {
-                _logger = (ILogger<RawProducer>)NullLogger.Instance;
-            }
-            else
-            {
-                _logger = logger;
-            }
+            _logger = logger ?? NullLogger<RawProducer>.Instance;
             Task.Run(ProcessBuffer);
             _semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }
@@ -300,16 +306,6 @@ namespace RabbitMQ.Stream.Client
             var closed = _client.MaybeClose($"client-close-publisher: {_publisherId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
             return result;
-        }
-
-        public static async Task<IProducer> Create(ClientParameters clientParameters,
-            RawProducerConfig config,
-            StreamInfo metaStreamInfo)
-        {
-            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new RawProducer((Client)client, config);
-            await producer.Init();
-            return producer;
         }
 
         private void Dispose(bool disposing)
