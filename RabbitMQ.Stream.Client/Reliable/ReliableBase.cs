@@ -12,7 +12,7 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 public record ReliableConfig
 {
-    public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
+    public IReconnectStrategy ReconnectStrategy { get; set; }
     public StreamSystem StreamSystem { get; }
     public string Stream { get; }
 

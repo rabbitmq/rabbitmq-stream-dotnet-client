@@ -90,6 +90,7 @@ public class Consumer : ConsumerFactory
 
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
+        consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rConsumer = new Consumer(consumerConfig, logger);
         await rConsumer.Init(consumerConfig.ReconnectStrategy);
         return rConsumer;

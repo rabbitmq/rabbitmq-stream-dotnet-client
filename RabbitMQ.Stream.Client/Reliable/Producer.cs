@@ -110,6 +110,7 @@ public class Producer : ProducerFactory
     // </summary> 
     public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
+        producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
         await rProducer.Init(producerConfig.ReconnectStrategy);
         return rProducer;

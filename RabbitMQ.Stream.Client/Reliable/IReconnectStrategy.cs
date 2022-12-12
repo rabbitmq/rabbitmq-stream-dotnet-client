@@ -37,11 +37,11 @@ public interface IReconnectStrategy
 internal class BackOffReconnectStrategy : IReconnectStrategy
 {
     private int Tentatives { get; set; } = 1;
-    private readonly ILogger<BackOffReconnectStrategy> _logger;
+    private readonly ILogger _logger;
 
-    public BackOffReconnectStrategy(ILogger<BackOffReconnectStrategy> logger = null)
+    public BackOffReconnectStrategy(ILogger logger = null)
     {
-        _logger = logger ?? NullLogger<BackOffReconnectStrategy>.Instance;
+        _logger = logger ?? NullLogger.Instance;
     }
 
     // reset the tentatives after a while 
