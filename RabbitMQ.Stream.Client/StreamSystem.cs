@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -32,16 +34,18 @@ namespace RabbitMQ.Stream.Client
     {
         private readonly ClientParameters _clientParameters;
         private Client _client;
+        private readonly ILogger<StreamSystem> _logger;
 
-        private StreamSystem(ClientParameters clientParameters, Client client)
+        private StreamSystem(ClientParameters clientParameters, Client client, ILogger<StreamSystem> logger = null)
         {
             _clientParameters = clientParameters;
             _client = client;
+            _logger = logger ?? NullLogger<StreamSystem>.Instance;
         }
 
         public bool IsClosed => _client.IsClosed;
 
-        public static async Task<StreamSystem> Create(StreamSystemConfig config)
+        public static async Task<StreamSystem> Create(StreamSystemConfig config, ILogger<StreamSystem> logger = null)
         {
             var clientParams = new ClientParameters
             {
@@ -62,7 +66,7 @@ namespace RabbitMQ.Stream.Client
                     var client = await Client.Create(clientParams with { Endpoint = endPoint });
                     if (!client.IsClosed)
                     {
-                        return new StreamSystem(clientParams, client);
+                        return new StreamSystem(clientParams, client, logger);
                     }
                 }
                 catch (Exception e)
@@ -72,7 +76,8 @@ namespace RabbitMQ.Stream.Client
                         throw;
                     }
 
-                    //TODO log? 
+                    // hopefully all implementations of endpoint have a nice ToString()
+                    logger?.LogError(e, "Error connecting to {TargetEndpoint}. Trying next endpoint", endPoint);
                 }
             }
 
@@ -81,6 +86,8 @@ namespace RabbitMQ.Stream.Client
 
         public async Task Close()
         {
+            // TODO: Added this as an example, otherwise CI will complain that _logger is unused. Maybe remove?
+            _logger.LogInformation("StreamSystem close invoked");
             await _client.Close("system close");
         }
 
@@ -124,21 +131,19 @@ namespace RabbitMQ.Stream.Client
             RawSuperStreamProducerConfig rawSuperStreamProducerConfig)
         {
             await MayBeReconnectLocator();
-            if (rawSuperStreamProducerConfig.SuperStream == "")
+            if (string.IsNullOrWhiteSpace(rawSuperStreamProducerConfig.SuperStream))
             {
-                throw new CreateProducerException($"Super Stream name can't be empty");
+                throw new CreateProducerException("Super Stream name can't be empty");
             }
 
             if (rawSuperStreamProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
             {
-                throw new CreateProducerException(
-                    $"Batch Size must be bigger than 0");
+                throw new CreateProducerException("Batch Size must be bigger than 0");
             }
 
             if (rawSuperStreamProducerConfig.Routing == null)
             {
-                throw new CreateProducerException(
-                    $"Routing Key Extractor must be provided");
+                throw new CreateProducerException("Routing Key Extractor must be provided");
             }
 
             rawSuperStreamProducerConfig.Client = _client;
@@ -176,9 +181,9 @@ namespace RabbitMQ.Stream.Client
         public async Task<IConsumer> CreateSuperStreamConsumer(SuperStreamConsumerConfig superStreamConsumerConfig)
         {
             await MayBeReconnectLocator();
-            if (superStreamConsumerConfig.SuperStream == "")
+            if (string.IsNullOrWhiteSpace(superStreamConsumerConfig.SuperStream))
             {
-                throw new CreateProducerException($"Super Stream name can't be empty");
+                throw new CreateProducerException("Super Stream name can't be empty");
             }
 
             superStreamConsumerConfig.Client = _client;
@@ -205,8 +210,7 @@ namespace RabbitMQ.Stream.Client
         {
             if (rawProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
             {
-                throw new CreateProducerException(
-                    $"Batch Size must be bigger than 0");
+                throw new CreateProducerException("Batch Size must be bigger than 0");
             }
 
             await MayBeReconnectLocator();

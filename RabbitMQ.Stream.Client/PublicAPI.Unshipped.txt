@@ -1016,7 +1016,7 @@ static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupRandomConnection(RabbitMQ.S
 static RabbitMQ.Stream.Client.StreamCompressionCodecs.GetCompressionCodec(RabbitMQ.Stream.Client.CompressionType compressionType) -> RabbitMQ.Stream.Client.ICompressionCodec
 static RabbitMQ.Stream.Client.StreamCompressionCodecs.RegisterCodec<T>(RabbitMQ.Stream.Client.CompressionType compressionType) -> void
 static RabbitMQ.Stream.Client.StreamCompressionCodecs.UnRegisterCodec(RabbitMQ.Stream.Client.CompressionType compressionType) -> void
-static RabbitMQ.Stream.Client.StreamSystem.Create(RabbitMQ.Stream.Client.StreamSystemConfig config) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamSystem>
+static RabbitMQ.Stream.Client.StreamSystem.Create(RabbitMQ.Stream.Client.StreamSystemConfig config, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.StreamSystem> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamSystem>
 static RabbitMQ.Stream.Client.SubEntryPublish.Version.get -> byte
 static RabbitMQ.Stream.Client.SuperStreamConsumer.Create(RabbitMQ.Stream.Client.SuperStreamConsumerConfig superStreamConsumerConfig, System.Collections.Generic.IDictionary<string, RabbitMQ.Stream.Client.StreamInfo> streamInfos, RabbitMQ.Stream.Client.ClientParameters clientParameters, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.SuperStreamConsumer> logger = null) -> RabbitMQ.Stream.Client.IConsumer
 static RabbitMQ.Stream.Client.Version.VersionString.get -> string

@@ -22,9 +22,10 @@ public record ReliableConfig
         {
             throw new ArgumentException("Stream cannot be null or whitespace.", nameof(stream));
         }
+        ArgumentNullException.ThrowIfNull(streamSystem);
 
         Stream = stream;
-        StreamSystem = streamSystem ?? throw new ArgumentNullException(nameof(streamSystem));
+        StreamSystem = streamSystem;
     }
 }
 
