@@ -48,7 +48,7 @@ namespace RabbitMQ.Stream.Client
         private readonly RawProducerConfig _config;
         private readonly Channel<OutgoingMsg> _messageBuffer;
         private readonly SemaphoreSlim _semaphore;
-        private readonly ILogger<RawProducer> _logger;
+        private readonly ILogger _logger;
 
         public int PendingCount => _config.MaxInFlight - _semaphore.CurrentCount;
 
@@ -56,16 +56,17 @@ namespace RabbitMQ.Stream.Client
             ClientParameters clientParameters,
             RawProducerConfig config,
             StreamInfo metaStreamInfo,
-            ILogger<RawProducer> logger = null
+            ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
+            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger);
+
             var producer = new RawProducer((Client)client, config, logger);
             await producer.Init();
             return producer;
         }
 
-        private RawProducer(Client client, RawProducerConfig config, ILogger<RawProducer> logger = null)
+        private RawProducer(Client client, RawProducerConfig config, ILogger logger = null)
         {
             _client = client;
             _config = config;
@@ -76,7 +77,7 @@ namespace RabbitMQ.Stream.Client
                 SingleWriter = false,
                 FullMode = BoundedChannelFullMode.Wait
             });
-            _logger = logger ?? NullLogger<RawProducer>.Instance;
+            _logger = logger ?? NullLogger.Instance;
             Task.Run(ProcessBuffer);
             _semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }

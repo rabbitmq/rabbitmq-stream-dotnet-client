@@ -40,7 +40,7 @@ namespace RabbitMQ.Stream.Client
             return offset;
         }
 
-        internal void HandleUnRoutableCredit(ILogger<Client> logger)
+        internal void HandleUnRoutableCredit(ILogger logger)
         {
             /* the server sends a credit-response only in case of 
              * problem, e.g. crediting an unknown subscription

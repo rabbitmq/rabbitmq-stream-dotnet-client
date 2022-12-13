@@ -55,7 +55,7 @@ public abstract class ProducerFactory : ReliableBase
                     _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
                         stream);
                 }
-            });
+            }, BaseLogger);
     }
 
     private async Task<IProducer> StandardProducer()
@@ -93,6 +93,6 @@ public abstract class ProducerFactory : ReliableBase
                 _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
                     confirmation.Stream);
             }
-        });
+        }, BaseLogger);
     }
 }

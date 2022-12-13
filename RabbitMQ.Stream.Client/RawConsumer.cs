@@ -94,13 +94,13 @@ namespace RabbitMQ.Stream.Client
         private bool _disposed;
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
-        private readonly ILogger<RawConsumer> _logger;
+        private readonly ILogger _logger;
 
-        private RawConsumer(Client client, RawConsumerConfig config, ILogger<RawConsumer> logger = null)
+        private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
             _client = client;
             _config = config;
-            _logger = logger ?? NullLogger<RawConsumer>.Instance;
+            _logger = logger ?? NullLogger.Instance;
         }
 
         // if a user specify a custom offset 
@@ -126,10 +126,10 @@ namespace RabbitMQ.Stream.Client
             ClientParameters clientParameters,
             RawConsumerConfig config,
             StreamInfo metaStreamInfo,
-            ILogger<RawConsumer> logger = null
+            ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo);
+            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init();
             return consumer;

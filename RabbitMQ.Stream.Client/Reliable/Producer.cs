@@ -113,7 +113,9 @@ public class Producer : ProducerFactory
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
         await rProducer.Init(producerConfig.ReconnectStrategy);
-        logger?.LogDebug("Producer created for {Stream}", producerConfig.Stream);
+        logger?.LogDebug("Producer: {Reference} created for Stream: {Stream}",
+            producerConfig.Reference, producerConfig.Stream);
+
         return rProducer;
     }
 

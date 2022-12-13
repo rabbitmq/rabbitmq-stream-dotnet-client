@@ -156,7 +156,7 @@ public abstract class ReliableBase
         {
             // In this case the stream doesn't exist anymore
             // the ReliableProducer is just closed.
-            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. {Identity} will be closed.",
+            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. {Identity} will be closed",
                 stream,
                 ToString()
             );

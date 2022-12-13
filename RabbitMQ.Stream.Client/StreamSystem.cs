@@ -63,7 +63,7 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with { Endpoint = endPoint });
+                    var client = await Client.Create(clientParams with { Endpoint = endPoint }, logger);
                     if (!client.IsClosed)
                     {
                         logger?.LogDebug("Client connected to {@EndPoint}", endPoint);
@@ -130,7 +130,7 @@ namespace RabbitMQ.Stream.Client
         }
 
         public async Task<IProducer> CreateRawSuperStreamProducer(
-            RawSuperStreamProducerConfig rawSuperStreamProducerConfig, ILogger<RawSuperStreamProducer> logger = null)
+            RawSuperStreamProducerConfig rawSuperStreamProducerConfig, ILogger logger = null)
         {
             await MayBeReconnectLocator();
             if (string.IsNullOrWhiteSpace(rawSuperStreamProducerConfig.SuperStream))
@@ -167,7 +167,8 @@ namespace RabbitMQ.Stream.Client
                 streamInfos,
                 _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName },
                 logger);
-            logger?.LogDebug("RawSuperStream Producer created for {SuperStream}",
+            _logger?.LogDebug("Raw Producer {ProducerReference} created for SuperStream: {StreamIdentifier}",
+                rawSuperStreamProducerConfig.Reference,
                 rawSuperStreamProducerConfig.SuperStream);
             return r;
         }
@@ -185,7 +186,7 @@ namespace RabbitMQ.Stream.Client
         }
 
         public async Task<IConsumer> CreateSuperStreamConsumer(SuperStreamConsumerConfig superStreamConsumerConfig,
-            ILogger<SuperStreamConsumer> logger = null)
+            ILogger logger = null)
         {
             await MayBeReconnectLocator();
             if (string.IsNullOrWhiteSpace(superStreamConsumerConfig.SuperStream))
@@ -212,12 +213,14 @@ namespace RabbitMQ.Stream.Client
                 streamInfos,
                 _clientParameters with { ClientProvidedName = superStreamConsumerConfig.ClientProvidedName },
                 logger);
-            _logger?.LogDebug("SuperStream Consumer created for {SuperStream}", superStreamConsumerConfig.SuperStream);
+            _logger?.LogDebug("Consumer {Reference} created for SuperStream {SuperStream}",
+                superStreamConsumerConfig.Reference, superStreamConsumerConfig.SuperStream);
+
             return s;
         }
 
         public async Task<IProducer> CreateRawProducer(RawProducerConfig rawProducerConfig,
-            ILogger<RawProducer> logger = null)
+            ILogger logger = null)
         {
             if (rawProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
             {
@@ -242,7 +245,9 @@ namespace RabbitMQ.Stream.Client
                 var p = await RawProducer.Create(
                     _clientParameters with { ClientProvidedName = rawProducerConfig.ClientProvidedName },
                     rawProducerConfig, metaStreamInfo, logger);
-                logger?.LogDebug("Created raw producer for stream {Stream}", rawProducerConfig.Stream);
+                _logger?.LogDebug("Raw Producer: {Reference} created for Stream: {Stream}",
+                    rawProducerConfig.Reference, rawProducerConfig.Stream);
+
                 return p;
             }
             finally
@@ -322,7 +327,7 @@ namespace RabbitMQ.Stream.Client
         }
 
         public async Task<IConsumer> CreateRawConsumer(RawConsumerConfig rawConsumerConfig,
-            ILogger<RawConsumer> logger = null)
+            ILogger logger = null)
         {
             await MayBeReconnectLocator();
             var meta = await _client.QueryMetadata(new[] { rawConsumerConfig.Stream });
@@ -340,7 +345,9 @@ namespace RabbitMQ.Stream.Client
                 var s = _clientParameters with { ClientProvidedName = rawConsumerConfig.ClientProvidedName };
                 var c = await RawConsumer.Create(s,
                     rawConsumerConfig, metaStreamInfo, logger);
-                logger?.LogDebug("Created raw consumer for stream {Stream}", rawConsumerConfig.Stream);
+                _logger?.LogDebug("Raw Consumer: {Reference} created for Stream: {Stream}",
+                    rawConsumerConfig.Reference, rawConsumerConfig.Stream);
+
                 return c;
             }
             finally

@@ -41,13 +41,13 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // Streams contains the configuration for each stream but not the connection
     private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
-    private readonly ILogger<RawSuperStreamProducer> _logger;
+    private readonly ILogger _logger;
 
     public static IProducer Create(
         RawSuperStreamProducerConfig rawSuperStreamProducerConfig,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
-        ILogger<RawSuperStreamProducer> logger = null
+        ILogger logger = null
     )
     {
         return new RawSuperStreamProducer(rawSuperStreamProducerConfig, streamInfos, clientParameters, logger);
@@ -57,7 +57,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         RawSuperStreamProducerConfig config,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
-        ILogger<RawSuperStreamProducer> logger = null
+        ILogger logger = null
     )
     {
         _config = config;
@@ -122,8 +122,9 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream]);
-        _logger.LogInformation("Producer {ProducerReference} created for Stream {StreamIdentifier}", _config.Reference, stream);
+        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream], _logger);
+        _logger?.LogDebug("Producer {ProducerReference} created for Stream {StreamIdentifier}", _config.Reference,
+            stream);
         return p;
     }
 

@@ -93,7 +93,9 @@ public class Consumer : ConsumerFactory
         consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rConsumer = new Consumer(consumerConfig, logger);
         await rConsumer.Init(consumerConfig.ReconnectStrategy);
-        logger?.LogDebug("Consumer created for stream {Stream}", consumerConfig.Stream);
+        logger?.LogDebug("Consumer: {Reference} created for Stream: {Stream}",
+            consumerConfig.Reference, consumerConfig.Stream);
+
         return rConsumer;
     }
 

@@ -24,7 +24,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     //  Contains the info about the streams (one per partition)
     private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
-    private readonly ILogger<SuperStreamConsumer> _logger;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Create a new super stream consumer
@@ -38,7 +38,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         SuperStreamConsumerConfig superStreamConsumerConfig,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
-        ILogger<SuperStreamConsumer> logger = null
+        ILogger logger = null
     )
     {
         return new SuperStreamConsumer(superStreamConsumerConfig, streamInfos, clientParameters, logger);
@@ -48,13 +48,13 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         SuperStreamConsumerConfig config,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
-        ILogger<SuperStreamConsumer> logger = null
+        ILogger logger = null
     )
     {
         _config = config;
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
-        _logger = logger ?? NullLogger<SuperStreamConsumer>.Instance;
+        _logger = logger ?? NullLogger.Instance;
 
         StartConsumers().Wait(CancellationToken.None);
     }
@@ -156,7 +156,7 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     {
         var c = await RawConsumer.Create(
             _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
-            FromStreamConfig(stream), _streamInfos[stream]);
+            FromStreamConfig(stream), _streamInfos[stream], _logger);
         _logger?.LogDebug("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference,
             stream);
         return c;
