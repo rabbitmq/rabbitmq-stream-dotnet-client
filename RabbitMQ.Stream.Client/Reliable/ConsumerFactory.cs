@@ -100,9 +100,8 @@ public abstract class ConsumerFactory : ReliableBase
             }
         }
 
-        return await _consumerConfig.StreamSystem.CreateSuperStreamConsumer(new SuperStreamConsumerConfig()
+        return await _consumerConfig.StreamSystem.CreateSuperStreamConsumer(new SuperStreamConsumerConfig(_consumerConfig.Stream)
         {
-            SuperStream = _consumerConfig.Stream,
             ClientProvidedName = _consumerConfig.ClientProvidedName,
             Reference = _consumerConfig.Reference,
             ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,

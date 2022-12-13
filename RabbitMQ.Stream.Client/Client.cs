@@ -208,8 +208,7 @@ namespace RabbitMQ.Stream.Client
                     new PeerPropertiesRequest(corr, parameters.Properties));
             foreach (var (k, v) in peerPropertiesResponse.Properties)
             {
-                // TODO: rewrite this method into ClientFactory so we can use a logger instead
-                Debug.WriteLine($"server Props {k} {v}");
+                logger?.LogDebug("Server properties: {K} - {V}", k, v);
             }
 
             //auth
@@ -218,8 +217,7 @@ namespace RabbitMQ.Stream.Client
                     corr => new SaslHandshakeRequest(corr));
             foreach (var m in saslHandshakeResponse.Mechanisms)
             {
-                // TODO: rewrite this method into ClientFactory so we can use a logger instead
-                Debug.WriteLine($"sasl mechanism: {m}");
+                logger?.LogDebug("Sasl mechanism: {M}", m);
             }
 
             var saslData = Encoding.UTF8.GetBytes($"\0{parameters.UserName}\0{parameters.Password}");
@@ -241,11 +239,10 @@ namespace RabbitMQ.Stream.Client
             ClientExceptions.MaybeThrowException(open.ResponseCode, parameters.VirtualHost);
 
             // TODO: rewrite this method into ClientFactory so we can use a logger instead
-            Debug.WriteLine($"open: {open.ResponseCode} {open.ConnectionProperties.Count}");
+            logger?.LogDebug("Open: Response code: {R} Properties Count {C}", open.ResponseCode, open.ConnectionProperties.Count);
             foreach (var (k, v) in open.ConnectionProperties)
             {
-                // TODO: rewrite this method into ClientFactory so we can use a logger instead
-                Debug.WriteLine($"open prop: {k} {v}");
+                logger?.LogDebug("ConnectionProperties: {K} - {V}", k, v);
             }
 
             client.ConnectionProperties = open.ConnectionProperties;
@@ -439,7 +436,7 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case CreditResponse.Key:
                     CreditResponse.Read(frame, out var creditResponse);
-                    creditResponse.HandleUnRoutableCredit();
+                    creditResponse.HandleUnRoutableCredit(_logger);
                     break;
                 default:
                     HandleCorrelatedCommand(tag, ref frame);

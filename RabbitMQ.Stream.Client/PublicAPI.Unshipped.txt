@@ -64,7 +64,6 @@ const RabbitMQ.Stream.Client.DeleteResponse.Key = 14 -> ushort
 const RabbitMQ.Stream.Client.Deliver.Key = 8 -> ushort
 const RabbitMQ.Stream.Client.Hash.Murmur3.C1 = 3432918353 -> uint
 const RabbitMQ.Stream.Client.Hash.Murmur3.C2 = 461845907 -> uint
-const RabbitMQ.Stream.Client.Keywords.Log = (System.Diagnostics.Tracing.EventKeywords)1 -> System.Diagnostics.Tracing.EventKeywords
 const RabbitMQ.Stream.Client.MetaDataQuery.Key = 15 -> ushort
 const RabbitMQ.Stream.Client.MetaDataResponse.Key = 15 -> ushort
 const RabbitMQ.Stream.Client.MetaDataUpdate.Key = 16 -> ushort
@@ -94,7 +93,6 @@ override RabbitMQ.Stream.Client.Hash.Murmur3.HashFinal() -> byte[]
 override RabbitMQ.Stream.Client.Hash.Murmur3.HashSize.get -> int
 override RabbitMQ.Stream.Client.Hash.Murmur3.Initialize() -> void
 override RabbitMQ.Stream.Client.LeaderLocator.ToString() -> string
-override RabbitMQ.Stream.Client.LogEventListener.Dispose() -> void
 override RabbitMQ.Stream.Client.Reliable.Consumer.Close() -> System.Threading.Tasks.Task
 override RabbitMQ.Stream.Client.Reliable.Consumer.ToString() -> string
 override RabbitMQ.Stream.Client.Reliable.Producer.Close() -> System.Threading.Tasks.Task
@@ -456,13 +454,10 @@ RabbitMQ.Stream.Client.IRouting.ValidateDns.set -> void
 RabbitMQ.Stream.Client.IRoutingConfiguration
 RabbitMQ.Stream.Client.IRoutingStrategy
 RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Collections.Generic.List<string>
-RabbitMQ.Stream.Client.Keywords
 RabbitMQ.Stream.Client.LeaderLocator
 RabbitMQ.Stream.Client.LeaderLocator.LeaderLocator() -> void
 RabbitMQ.Stream.Client.LeaderNotFoundException
 RabbitMQ.Stream.Client.LeaderNotFoundException.LeaderNotFoundException(string s) -> void
-RabbitMQ.Stream.Client.LogEventListener
-RabbitMQ.Stream.Client.LogEventListener.LogEventListener() -> void
 RabbitMQ.Stream.Client.ManualResetValueTaskSource<T>
 RabbitMQ.Stream.Client.ManualResetValueTaskSource<T>.ManualResetValueTaskSource() -> void
 RabbitMQ.Stream.Client.ManualResetValueTaskSource<T>.Reset() -> void
@@ -900,11 +895,11 @@ RabbitMQ.Stream.Client.StreamSpec.Name.init -> void
 RabbitMQ.Stream.Client.StreamSpec.StreamSpec(string Name) -> void
 RabbitMQ.Stream.Client.StreamSystem
 RabbitMQ.Stream.Client.StreamSystem.Close() -> System.Threading.Tasks.Task
-RabbitMQ.Stream.Client.StreamSystem.CreateRawConsumer(RabbitMQ.Stream.Client.RawConsumerConfig rawConsumerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
-RabbitMQ.Stream.Client.StreamSystem.CreateRawProducer(RabbitMQ.Stream.Client.RawProducerConfig rawProducerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
-RabbitMQ.Stream.Client.StreamSystem.CreateRawSuperStreamProducer(RabbitMQ.Stream.Client.RawSuperStreamProducerConfig rawSuperStreamProducerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
+RabbitMQ.Stream.Client.StreamSystem.CreateRawConsumer(RabbitMQ.Stream.Client.RawConsumerConfig rawConsumerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.RawConsumer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
+RabbitMQ.Stream.Client.StreamSystem.CreateRawProducer(RabbitMQ.Stream.Client.RawProducerConfig rawProducerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.RawProducer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
+RabbitMQ.Stream.Client.StreamSystem.CreateRawSuperStreamProducer(RabbitMQ.Stream.Client.RawSuperStreamProducerConfig rawSuperStreamProducerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.RawSuperStreamProducer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
 RabbitMQ.Stream.Client.StreamSystem.CreateStream(RabbitMQ.Stream.Client.StreamSpec spec) -> System.Threading.Tasks.Task
-RabbitMQ.Stream.Client.StreamSystem.CreateSuperStreamConsumer(RabbitMQ.Stream.Client.SuperStreamConsumerConfig superStreamConsumerConfig) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
+RabbitMQ.Stream.Client.StreamSystem.CreateSuperStreamConsumer(RabbitMQ.Stream.Client.SuperStreamConsumerConfig superStreamConsumerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.SuperStreamConsumer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
 RabbitMQ.Stream.Client.StreamSystem.DeleteStream(string stream) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystem.IsClosed.get -> bool
 RabbitMQ.Stream.Client.StreamSystem.QueryOffset(string reference, string stream) -> System.Threading.Tasks.Task<ulong>
@@ -956,7 +951,7 @@ RabbitMQ.Stream.Client.SuperStreamConsumerConfig.MessageHandler.set -> void
 RabbitMQ.Stream.Client.SuperStreamConsumerConfig.OffsetSpec.get -> System.Collections.Concurrent.ConcurrentDictionary<string, RabbitMQ.Stream.Client.IOffsetType>
 RabbitMQ.Stream.Client.SuperStreamConsumerConfig.OffsetSpec.set -> void
 RabbitMQ.Stream.Client.SuperStreamConsumerConfig.SuperStream.get -> string
-RabbitMQ.Stream.Client.SuperStreamConsumerConfig.SuperStream.set -> void
+RabbitMQ.Stream.Client.SuperStreamConsumerConfig.SuperStreamConsumerConfig(string superStream) -> void
 RabbitMQ.Stream.Client.TuneRequest
 RabbitMQ.Stream.Client.TuneRequest.FrameMax.get -> uint
 RabbitMQ.Stream.Client.TuneRequest.Heartbeat.get -> uint

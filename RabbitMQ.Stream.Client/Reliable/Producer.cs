@@ -90,9 +90,9 @@ public class Producer : ProducerFactory
 {
     private IProducer _producer;
     private ulong _publishingId;
-    private readonly ILogger<Producer> _backingLogger;
+    private readonly ILogger<Producer> _logger;
 
-    protected override ILogger BaseLogger => _backingLogger;
+    protected override ILogger BaseLogger => _logger;
 
     private Producer(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
@@ -102,7 +102,7 @@ public class Producer : ProducerFactory
             producerConfig.TimeoutMessageAfter,
             producerConfig.MaxInFlight
         );
-        _backingLogger = logger ?? NullLogger<Producer>.Instance;
+        _logger = logger ?? NullLogger<Producer>.Instance;
     }
 
     // <summary>
@@ -113,6 +113,7 @@ public class Producer : ProducerFactory
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
         await rProducer.Init(producerConfig.ReconnectStrategy);
+        logger?.LogDebug("Producer created for {Stream}", producerConfig.Stream);
         return rProducer;
     }
 
@@ -159,6 +160,7 @@ public class Producer : ProducerFactory
             if (_producer != null)
             {
                 await _producer.Close();
+                _logger?.LogDebug("Producer closed for {Stream}", _producerConfig.Stream);
             }
         }
         finally

@@ -283,12 +283,13 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error removing the consumer id: {SubscriberId} from the server.", _subscriberId);
+                _logger.LogError(e, "Error removing the consumer id: {SubscriberId} from the server", _subscriberId);
             }
 
             var closed = _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _disposed = true;
+            _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
             return result;
         }
 

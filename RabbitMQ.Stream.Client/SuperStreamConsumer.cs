@@ -125,7 +125,8 @@ public class SuperStreamConsumer : IConsumer, IDisposable
                     // The stream doesn't exist anymore
                     // but this condition should be avoided since the hash routing 
                     // can be compromised
-                    _logger.LogWarning("SuperStream Consumer. Stream {StreamIdentifier} is not available anymore", update.Stream);
+                    _logger.LogWarning("SuperStream Consumer. Stream {StreamIdentifier} is not available anymore",
+                        update.Stream);
                 }
                 else
                 {
@@ -156,7 +157,8 @@ public class SuperStreamConsumer : IConsumer, IDisposable
         var c = await RawConsumer.Create(
             _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream]);
-        _logger.LogInformation("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference, stream);
+        _logger?.LogDebug("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference,
+            stream);
         return c;
     }
 
@@ -217,6 +219,16 @@ public class SuperStreamConsumer : IConsumer, IDisposable
 
 public record SuperStreamConsumerConfig : IConsumerConfig
 {
+    public SuperStreamConsumerConfig(string superStream)
+    {
+        if (string.IsNullOrWhiteSpace(superStream))
+        {
+            throw new ArgumentException("SuperStream name cannot be null or empty", nameof(superStream));
+        }
+
+        SuperStream = superStream;
+    }
+
     /// <summary>
     /// the offset spec for each stream
     /// the user can specify the offset for each stream
@@ -229,7 +241,7 @@ public record SuperStreamConsumerConfig : IConsumerConfig
     /// </summary>
     public Func<string, RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
-    public string SuperStream { get; set; }
+    public string SuperStream { get; }
 
     internal Client Client { get; set; }
 }

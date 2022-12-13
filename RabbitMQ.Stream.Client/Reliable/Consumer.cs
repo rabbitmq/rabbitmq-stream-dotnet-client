@@ -78,13 +78,13 @@ public record ConsumerConfig : ReliableConfig
 public class Consumer : ConsumerFactory
 {
     private IConsumer _consumer;
-    private readonly ILogger<Consumer> _backingLogger;
+    private readonly ILogger<Consumer> _logger;
 
-    protected override ILogger BaseLogger => _backingLogger;
+    protected override ILogger BaseLogger => _logger;
 
     internal Consumer(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
-        _backingLogger = logger ?? NullLogger<Consumer>.Instance;
+        _logger = logger ?? NullLogger<Consumer>.Instance;
         _consumerConfig = consumerConfig;
     }
 
@@ -93,6 +93,7 @@ public class Consumer : ConsumerFactory
         consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rConsumer = new Consumer(consumerConfig, logger);
         await rConsumer.Init(consumerConfig.ReconnectStrategy);
+        logger?.LogDebug("Consumer created for stream {Stream}", consumerConfig.Stream);
         return rConsumer;
     }
 
@@ -123,6 +124,7 @@ public class Consumer : ConsumerFactory
     {
         _isOpen = false;
         await CloseEntity();
+        _logger?.LogDebug("Consumer closed for stream {Stream}", _consumerConfig.Stream);
     }
 
     public override string ToString()

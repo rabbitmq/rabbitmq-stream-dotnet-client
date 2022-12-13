@@ -220,6 +220,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         }
 
         Dispose();
+        _logger?.LogDebug("Super stream Producer {ProducerReference} closed", _config.Reference);
         return Task.FromResult(ResponseCode.Ok);
     }
 

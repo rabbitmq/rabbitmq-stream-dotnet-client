@@ -300,11 +300,12 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error removing the producer id: {PublisherId} from the server.", _publisherId);
+                _logger.LogError(e, "Error removing the producer id: {PublisherId} from the server", _publisherId);
             }
 
             var closed = _client.MaybeClose($"client-close-publisher: {_publisherId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
+            _logger?.LogDebug("Publisher {PublisherId} closed", _publisherId);
             return result;
         }
 
