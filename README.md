@@ -448,7 +448,9 @@ You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
 See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
 
 ### Publish SuperStream
-See: https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams for more details.
+See [the blog post](https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams) for more details. </br>
+[The documentation](https://www.rabbitmq.com/streams.html#super-streams) explains how to create a super stream. <br>
+Once you created the super stream you can use it:
 
 ```csharp
  var producer = await Producer.Create(new ProducerConfig(system, "super_stream")
@@ -461,7 +463,7 @@ See: https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super
         );
 ```
 
-`SuperStreamConfig` is mandatory to enable the super stream feature.
+`SuperStreamConfig` is mandatory to enable the super stream feature. </br>
 `Routing` is a function that extracts the routing key from the message. By default it uses a `HashRoutingMurmurStrategy` strategy.
 
 See `Tests.SuperStreamProducerTests.ValidateHashRoutingStrategy` for more examples.
