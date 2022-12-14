@@ -40,12 +40,12 @@ public class UsabilityTests
 
         SystemUtils.ResetSuperStreams();
         var rawSuperProducerLogger = factory.CreateLogger<RawSuperStreamProducer>();
-        var rawSuperConsumerLogger = factory.CreateLogger<SuperStreamConsumer>();
+        var rawSuperConsumerLogger = factory.CreateLogger<RawSuperStreamConsumer>();
         var rawSuperProducer = await system.CreateRawSuperStreamProducer(
             new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange) { Routing = message => "1" },
             rawSuperProducerLogger);
         var rawSuperConsumer =
-            await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig(SystemUtils.InvoicesExchange),
+            await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange),
                 rawSuperConsumerLogger);
 
         await producer.Close();
