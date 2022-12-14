@@ -782,8 +782,6 @@ For example:
 ```
 Default log value should be `LogLevel.Information`.
 
-```csharp
-
 ## Build from source
 
 Build:
