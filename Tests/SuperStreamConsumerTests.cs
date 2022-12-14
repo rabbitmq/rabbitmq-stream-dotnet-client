@@ -32,7 +32,7 @@ public class SuperStreamConsumerTests
         SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var connectionName = Guid.NewGuid().ToString();
-        var consumer = await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
+        var consumer = await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
         {
             ClientProvidedName = connectionName,
             OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst())
@@ -58,7 +58,7 @@ public class SuperStreamConsumerTests
         await SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
         var clientProvidedName = Guid.NewGuid().ToString();
 
-        var consumer = await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
+        var consumer = await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
         {
             ClientProvidedName = clientProvidedName,
             OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
@@ -93,7 +93,7 @@ public class SuperStreamConsumerTests
         // This is to test the metadata update functionality
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientProvidedName = Guid.NewGuid().ToString();
-        var consumer = await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
+        var consumer = await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
         {
             ClientProvidedName = clientProvidedName,
         });
@@ -121,7 +121,7 @@ public class SuperStreamConsumerTests
 
         await Assert.ThrowsAsync<AggregateException>(() =>
             system.CreateSuperStreamConsumer(
-                new SuperStreamConsumerConfig(SystemUtils.InvoicesExchange) { IsSingleActiveConsumer = true, }));
+                new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange) { IsSingleActiveConsumer = true, }));
     }
 
     [Serializable]
@@ -202,7 +202,7 @@ public class SuperStreamConsumerTests
 
         async Task<IConsumer> NewConsumer()
         {
-            var iConsumer = await system.CreateSuperStreamConsumer(new SuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
+            var iConsumer = await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
             {
                 ClientProvidedName = clientProvidedName,
                 OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),

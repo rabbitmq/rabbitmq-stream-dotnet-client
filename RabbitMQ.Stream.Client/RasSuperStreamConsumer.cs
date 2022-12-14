@@ -12,14 +12,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client;
 
-public class SuperStreamConsumer : IConsumer, IDisposable
+public class RawSuperStreamConsumer : IConsumer, IDisposable
 {
     // ConcurrentDictionary because the consumer can be closed from another thread
     // The send operations will check if the producer exists and if not it will be created
     private readonly ConcurrentDictionary<string, IConsumer> _consumers = new();
     private bool _disposed;
 
-    private readonly SuperStreamConsumerConfig _config;
+    private readonly RawSuperStreamConsumerConfig _config;
 
     //  Contains the info about the streams (one per partition)
     private readonly IDictionary<string, StreamInfo> _streamInfos;
@@ -29,23 +29,23 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     /// <summary>
     /// Create a new super stream consumer
     /// </summary>
-    /// <param name="superStreamConsumerConfig"></param>
+    /// <param name="rawSuperStreamConsumerConfig"></param>
     /// <param name="streamInfos"></param>
     /// <param name="clientParameters"></param>
     /// <param name="logger"></param>
     /// <returns></returns>
     public static IConsumer Create(
-        SuperStreamConsumerConfig superStreamConsumerConfig,
+        RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
         ILogger logger = null
     )
     {
-        return new SuperStreamConsumer(superStreamConsumerConfig, streamInfos, clientParameters, logger);
+        return new RawSuperStreamConsumer(rawSuperStreamConsumerConfig, streamInfos, clientParameters, logger);
     }
 
-    private SuperStreamConsumer(
-        SuperStreamConsumerConfig config,
+    private RawSuperStreamConsumer(
+        RawSuperStreamConsumerConfig config,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
         ILogger logger = null
@@ -217,9 +217,9 @@ public class SuperStreamConsumer : IConsumer, IDisposable
     }
 }
 
-public record SuperStreamConsumerConfig : IConsumerConfig
+public record RawSuperStreamConsumerConfig : IConsumerConfig
 {
-    public SuperStreamConsumerConfig(string superStream)
+    public RawSuperStreamConsumerConfig(string superStream)
     {
         if (string.IsNullOrWhiteSpace(superStream))
         {

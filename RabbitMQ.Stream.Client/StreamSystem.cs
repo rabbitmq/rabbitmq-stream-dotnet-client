@@ -185,18 +185,18 @@ namespace RabbitMQ.Stream.Client
             return partitions.Streams;
         }
 
-        public async Task<IConsumer> CreateSuperStreamConsumer(SuperStreamConsumerConfig superStreamConsumerConfig,
+        public async Task<IConsumer> CreateSuperStreamConsumer(RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig,
             ILogger logger = null)
         {
             await MayBeReconnectLocator();
-            if (string.IsNullOrWhiteSpace(superStreamConsumerConfig.SuperStream))
+            if (string.IsNullOrWhiteSpace(rawSuperStreamConsumerConfig.SuperStream))
             {
                 throw new CreateProducerException("Super Stream name can't be empty");
             }
 
-            superStreamConsumerConfig.Client = _client;
+            rawSuperStreamConsumerConfig.Client = _client;
 
-            var partitions = await _client.QueryPartition(superStreamConsumerConfig.SuperStream);
+            var partitions = await _client.QueryPartition(rawSuperStreamConsumerConfig.SuperStream);
             if (partitions.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateConsumerException($"consumer could not be created code: {partitions.ResponseCode}");
@@ -209,12 +209,12 @@ namespace RabbitMQ.Stream.Client
                 streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
             }
 
-            var s = SuperStreamConsumer.Create(superStreamConsumerConfig,
+            var s = RawSuperStreamConsumer.Create(rawSuperStreamConsumerConfig,
                 streamInfos,
-                _clientParameters with { ClientProvidedName = superStreamConsumerConfig.ClientProvidedName },
+                _clientParameters with { ClientProvidedName = rawSuperStreamConsumerConfig.ClientProvidedName },
                 logger);
             _logger?.LogDebug("Consumer: {Reference} created for SuperStream: {SuperStream}",
-                superStreamConsumerConfig.Reference, superStreamConsumerConfig.SuperStream);
+                rawSuperStreamConsumerConfig.Reference, rawSuperStreamConsumerConfig.SuperStream);
 
             return s;
         }
