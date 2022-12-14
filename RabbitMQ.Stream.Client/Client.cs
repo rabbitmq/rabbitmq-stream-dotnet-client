@@ -205,7 +205,7 @@ namespace RabbitMQ.Stream.Client
             var peerPropertiesResponse =
                 await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                     new PeerPropertiesRequest(corr, parameters.Properties));
-            logger?.LogDebug("Server properties: {Properties}", parameters.Properties);
+            logger?.LogDebug("Server properties: {@Properties}", parameters.Properties);
 
             //auth
             var saslHandshakeResponse =

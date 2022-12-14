@@ -167,7 +167,7 @@ namespace RabbitMQ.Stream.Client
                 streamInfos,
                 _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName },
                 logger);
-            _logger?.LogDebug("Raw Producer {ProducerReference} created for SuperStream: {StreamIdentifier}",
+            _logger?.LogDebug("Raw Producer: {ProducerReference} created for SuperStream: {SuperStream}",
                 rawSuperStreamProducerConfig.Reference,
                 rawSuperStreamProducerConfig.SuperStream);
             return r;
@@ -213,7 +213,7 @@ namespace RabbitMQ.Stream.Client
                 streamInfos,
                 _clientParameters with { ClientProvidedName = superStreamConsumerConfig.ClientProvidedName },
                 logger);
-            _logger?.LogDebug("Consumer {Reference} created for SuperStream {SuperStream}",
+            _logger?.LogDebug("Consumer: {Reference} created for SuperStream: {SuperStream}",
                 superStreamConsumerConfig.Reference, superStreamConsumerConfig.SuperStream);
 
             return s;
