@@ -750,19 +750,11 @@ The `ILogger` is set in the constructor of the class and it is not mandatory.
 
 For example:
 ```csharp
- var serviceCollection = new ServiceCollection();
-        serviceCollection.AddLogging(builder => builder
-            .AddSimpleConsole(options =>
-            {
-                options.IncludeScopes = true;
-                options.SingleLine = true;
-                options.TimestampFormat = "[HH:mm:ss] ";
-                options.ColorBehavior = LoggerColorBehavior.Default;
-            })
-            .AddFilter(level => level >= LogLevel.Debug)
-        );
-        var loggerFactory = serviceCollection.BuildServiceProvider()
-            .GetService<ILoggerFactory>();
+        var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.AddSimpleConsole();
+            builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
+        });
                
         var producerLogger = loggerFactory.CreateLogger<Producer>();
         var consumerLogger = loggerFactory.CreateLogger<Consumer>();
