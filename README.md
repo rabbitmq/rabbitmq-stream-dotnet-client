@@ -36,6 +36,7 @@
       - [Raw Consumer](#raw-consumer)
       - [Handle Metadata Update](#handle-metadata-update)
       - [Handle Close](#handle-close)
+    - [Client Logging](#client-logging)
 - [Build from source](#build-from-source)
 - [Project Status](#project-status)
 - [Release Process](#release-process)
@@ -739,6 +740,49 @@ You can use `MetadataHandler` to handle it:
    },
  }
 ```
+
+## Client Logging
+
+The client uses [Microsoft.Extensions.Logging](https://www.nuget.org/packages/Microsoft.Extensions.Logging.Abstractions/) to log events.
+Each class has a `ILogger` property that can be used to configure the logging.
+
+The `ILogger` is set in the constructor of the class and it is not mandatory.
+
+For example:
+```csharp
+ var serviceCollection = new ServiceCollection();
+        serviceCollection.AddLogging(builder => builder
+            .AddSimpleConsole(options =>
+            {
+                options.IncludeScopes = true;
+                options.SingleLine = true;
+                options.TimestampFormat = "[HH:mm:ss] ";
+                options.ColorBehavior = LoggerColorBehavior.Default;
+            })
+            .AddFilter(level => level >= LogLevel.Debug)
+        );
+        var loggerFactory = serviceCollection.BuildServiceProvider()
+            .GetService<ILoggerFactory>();
+               
+        var producerLogger = loggerFactory.CreateLogger<Producer>();
+        var consumerLogger = loggerFactory.CreateLogger<Consumer>();
+        var streamLogger = loggerFactory.CreateLogger<StreamSystem>();
+        ....
+        var system = await StreamSystem.Create(config, 
+        streamLogger // logger (optional));
+        
+        var producer = await Producer.Create(
+                new ProducerConfig(system, stream),
+                producerLogger // logger (optional));
+
+          var consumer = await Consumer.Create(
+                new ConsumerConfig(system, stream),
+                consumerLogger // logger (optional));
+          ...
+```
+Default log value should be `LogLevel.Information`.
+
+```csharp
 
 ## Build from source
 
