@@ -4,6 +4,8 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -35,6 +37,13 @@ public interface IReconnectStrategy
 internal class BackOffReconnectStrategy : IReconnectStrategy
 {
     private int Tentatives { get; set; } = 1;
+    private readonly ILogger _logger;
+
+    public BackOffReconnectStrategy(ILogger logger = null)
+    {
+        _logger = logger ?? NullLogger.Instance;
+    }
+
     // reset the tentatives after a while 
     // else the backoff will be too long
     private void MaybeResetTentatives()
@@ -48,8 +57,12 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
     public async ValueTask<bool> WhenDisconnected(string connectionInfo)
     {
         Tentatives <<= 1;
-        LogEventSource.Log.LogInformation(
-            $"{connectionInfo} disconnected, check if reconnection needed in {Tentatives * 100} ms.");
+        // TODO: maybe rename ConnectionInfo to ConnectionIdentifier?
+        _logger.LogInformation(
+            "{ConnectionInfo} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms.",
+            connectionInfo,
+            Tentatives * 100
+        );
         await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100));
         MaybeResetTentatives();
         return true;
@@ -58,8 +71,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
     public ValueTask WhenConnected(string connectionInfo)
     {
         Tentatives = 1;
-        LogEventSource.Log.LogInformation(
-            $"{connectionInfo} reconnected successfully.");
+        _logger.LogInformation("{ConnectionInfo} reconnected successfully.", connectionInfo);
         return ValueTask.CompletedTask;
     }
 }

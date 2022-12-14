@@ -9,6 +9,8 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -46,10 +48,25 @@ namespace RabbitMQ.Stream.Client
         private readonly RawProducerConfig _config;
         private readonly Channel<OutgoingMsg> _messageBuffer;
         private readonly SemaphoreSlim _semaphore;
+        private readonly ILogger _logger;
 
         public int PendingCount => _config.MaxInFlight - _semaphore.CurrentCount;
 
-        private RawProducer(Client client, RawProducerConfig config)
+        public static async Task<IProducer> Create(
+            ClientParameters clientParameters,
+            RawProducerConfig config,
+            StreamInfo metaStreamInfo,
+            ILogger logger = null
+        )
+        {
+            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger);
+
+            var producer = new RawProducer((Client)client, config, logger);
+            await producer.Init();
+            return producer;
+        }
+
+        private RawProducer(Client client, RawProducerConfig config, ILogger logger = null)
         {
             _client = client;
             _config = config;
@@ -60,6 +77,7 @@ namespace RabbitMQ.Stream.Client
                 SingleWriter = false,
                 FullMode = BoundedChannelFullMode.Wait
             });
+            _logger = logger ?? NullLogger.Instance;
             Task.Run(ProcessBuffer);
             _semaphore = new(config.MaxInFlight, config.MaxInFlight);
         }
@@ -186,7 +204,7 @@ namespace RabbitMQ.Stream.Client
                 // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
                 if (!await _semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
                 {
-                    LogEventSource.Log.LogWarning("Semaphore Wait timeout during publishing.");
+                    _logger.LogWarning("Semaphore Wait timeout during publishing.");
                 }
             }
         }
@@ -283,22 +301,13 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error removing the producer id: {_publisherId} from the server. {e}");
+                _logger.LogError(e, "Error removing the producer id: {PublisherId} from the server", _publisherId);
             }
 
             var closed = _client.MaybeClose($"client-close-publisher: {_publisherId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
+            _logger?.LogDebug("Publisher {PublisherId} closed", _publisherId);
             return result;
-        }
-
-        public static async Task<IProducer> Create(ClientParameters clientParameters,
-            RawProducerConfig config,
-            StreamInfo metaStreamInfo)
-        {
-            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo);
-            var producer = new RawProducer((Client)client, config);
-            await producer.Init();
-            return producer;
         }
 
         private void Dispose(bool disposing)
@@ -328,7 +337,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error during disposing Consumer: {_publisherId}.", e);
+                _logger.LogError(e, "Error during disposing Consumer: {PublisherId}.", _publisherId);
             }
 
             GC.SuppressFinalize(this);

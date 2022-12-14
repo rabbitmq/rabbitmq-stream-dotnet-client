@@ -74,7 +74,7 @@ public abstract class ConsumerFactory : ReliableBase
                         message);
                 }
             },
-        });
+        }, BaseLogger);
     }
 
     private async Task<IConsumer> SuperConsumer(bool boot)
@@ -100,24 +100,24 @@ public abstract class ConsumerFactory : ReliableBase
             }
         }
 
-        return await _consumerConfig.StreamSystem.CreateSuperStreamConsumer(new SuperStreamConsumerConfig()
-        {
-            SuperStream = _consumerConfig.Stream,
-            ClientProvidedName = _consumerConfig.ClientProvidedName,
-            Reference = _consumerConfig.Reference,
-            ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
-            IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
-            OffsetSpec = offsetSpecs,
-            MessageHandler = async (stream, consumer, ctx, message) =>
+        return await _consumerConfig.StreamSystem.CreateSuperStreamConsumer(
+            new SuperStreamConsumerConfig(_consumerConfig.Stream)
             {
-                _consumedFirstTime = true;
-                _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
-                if (_consumerConfig.MessageHandler != null)
+                ClientProvidedName = _consumerConfig.ClientProvidedName,
+                Reference = _consumerConfig.Reference,
+                ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
+                IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
+                OffsetSpec = offsetSpecs,
+                MessageHandler = async (stream, consumer, ctx, message) =>
                 {
-                    await _consumerConfig.MessageHandler(stream, consumer, ctx,
-                        message);
-                }
-            },
-        });
+                    _consumedFirstTime = true;
+                    _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+                    if (_consumerConfig.MessageHandler != null)
+                    {
+                        await _consumerConfig.MessageHandler(stream, consumer, ctx,
+                            message);
+                    }
+                },
+            }, BaseLogger);
     }
 }

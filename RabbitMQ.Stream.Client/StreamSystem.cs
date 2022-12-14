@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -32,16 +34,18 @@ namespace RabbitMQ.Stream.Client
     {
         private readonly ClientParameters _clientParameters;
         private Client _client;
+        private readonly ILogger<StreamSystem> _logger;
 
-        private StreamSystem(ClientParameters clientParameters, Client client)
+        private StreamSystem(ClientParameters clientParameters, Client client, ILogger<StreamSystem> logger = null)
         {
             _clientParameters = clientParameters;
             _client = client;
+            _logger = logger ?? NullLogger<StreamSystem>.Instance;
         }
 
         public bool IsClosed => _client.IsClosed;
 
-        public static async Task<StreamSystem> Create(StreamSystemConfig config)
+        public static async Task<StreamSystem> Create(StreamSystemConfig config, ILogger<StreamSystem> logger = null)
         {
             var clientParams = new ClientParameters
             {
@@ -59,20 +63,23 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with { Endpoint = endPoint });
+                    var client = await Client.Create(clientParams with { Endpoint = endPoint }, logger);
                     if (!client.IsClosed)
                     {
-                        return new StreamSystem(clientParams, client);
+                        logger?.LogDebug("Client connected to {@EndPoint}", endPoint);
+                        return new StreamSystem(clientParams, client, logger);
                     }
                 }
                 catch (Exception e)
                 {
                     if (e is ProtocolException or SslException)
                     {
+                        logger?.LogError(e, "ProtocolException or SslException to {@EndPoint}", endPoint);
                         throw;
                     }
 
-                    //TODO log? 
+                    // hopefully all implementations of endpoint have a nice ToString()
+                    logger?.LogError(e, "Error connecting to {@TargetEndpoint}. Trying next endpoint", endPoint);
                 }
             }
 
@@ -82,6 +89,7 @@ namespace RabbitMQ.Stream.Client
         public async Task Close()
         {
             await _client.Close("system close");
+            _logger?.LogDebug("Client Closed");
         }
 
         private readonly SemaphoreSlim _semClientProvidedName = new(1);
@@ -102,6 +110,7 @@ namespace RabbitMQ.Stream.Client
                             ClientProvidedName = _clientParameters.ClientProvidedName,
                             Endpoint = _clientParameters.Endpoints[advId]
                         });
+                        _logger?.LogDebug("Locator reconnected to {@EndPoint}", _clientParameters.Endpoints[advId]);
                     }
                 }
             }
@@ -121,24 +130,22 @@ namespace RabbitMQ.Stream.Client
         }
 
         public async Task<IProducer> CreateRawSuperStreamProducer(
-            RawSuperStreamProducerConfig rawSuperStreamProducerConfig)
+            RawSuperStreamProducerConfig rawSuperStreamProducerConfig, ILogger logger = null)
         {
             await MayBeReconnectLocator();
-            if (rawSuperStreamProducerConfig.SuperStream == "")
+            if (string.IsNullOrWhiteSpace(rawSuperStreamProducerConfig.SuperStream))
             {
-                throw new CreateProducerException($"Super Stream name can't be empty");
+                throw new CreateProducerException("Super Stream name can't be empty");
             }
 
             if (rawSuperStreamProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
             {
-                throw new CreateProducerException(
-                    $"Batch Size must be bigger than 0");
+                throw new CreateProducerException("Batch Size must be bigger than 0");
             }
 
             if (rawSuperStreamProducerConfig.Routing == null)
             {
-                throw new CreateProducerException(
-                    $"Routing Key Extractor must be provided");
+                throw new CreateProducerException("Routing Key Extractor must be provided");
             }
 
             rawSuperStreamProducerConfig.Client = _client;
@@ -156,9 +163,14 @@ namespace RabbitMQ.Stream.Client
                 streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
             }
 
-            return RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
+            var r = RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
                 streamInfos,
-                _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName });
+                _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName },
+                logger);
+            _logger?.LogDebug("Raw Producer: {ProducerReference} created for SuperStream: {SuperStream}",
+                rawSuperStreamProducerConfig.Reference,
+                rawSuperStreamProducerConfig.SuperStream);
+            return r;
         }
 
         public async Task<string[]> QueryPartition(string superStream)
@@ -173,12 +185,13 @@ namespace RabbitMQ.Stream.Client
             return partitions.Streams;
         }
 
-        public async Task<IConsumer> CreateSuperStreamConsumer(SuperStreamConsumerConfig superStreamConsumerConfig)
+        public async Task<IConsumer> CreateSuperStreamConsumer(SuperStreamConsumerConfig superStreamConsumerConfig,
+            ILogger logger = null)
         {
             await MayBeReconnectLocator();
-            if (superStreamConsumerConfig.SuperStream == "")
+            if (string.IsNullOrWhiteSpace(superStreamConsumerConfig.SuperStream))
             {
-                throw new CreateProducerException($"Super Stream name can't be empty");
+                throw new CreateProducerException("Super Stream name can't be empty");
             }
 
             superStreamConsumerConfig.Client = _client;
@@ -196,17 +209,22 @@ namespace RabbitMQ.Stream.Client
                 streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
             }
 
-            return SuperStreamConsumer.Create(superStreamConsumerConfig,
+            var s = SuperStreamConsumer.Create(superStreamConsumerConfig,
                 streamInfos,
-                _clientParameters with { ClientProvidedName = superStreamConsumerConfig.ClientProvidedName });
+                _clientParameters with { ClientProvidedName = superStreamConsumerConfig.ClientProvidedName },
+                logger);
+            _logger?.LogDebug("Consumer: {Reference} created for SuperStream: {SuperStream}",
+                superStreamConsumerConfig.Reference, superStreamConsumerConfig.SuperStream);
+
+            return s;
         }
 
-        public async Task<IProducer> CreateRawProducer(RawProducerConfig rawProducerConfig)
+        public async Task<IProducer> CreateRawProducer(RawProducerConfig rawProducerConfig,
+            ILogger logger = null)
         {
             if (rawProducerConfig.MessagesBufferSize < Consts.MinBatchSize)
             {
-                throw new CreateProducerException(
-                    $"Batch Size must be bigger than 0");
+                throw new CreateProducerException("Batch Size must be bigger than 0");
             }
 
             await MayBeReconnectLocator();
@@ -224,9 +242,13 @@ namespace RabbitMQ.Stream.Client
             {
                 await _semClientProvidedName.WaitAsync();
 
-                return await RawProducer.Create(
+                var p = await RawProducer.Create(
                     _clientParameters with { ClientProvidedName = rawProducerConfig.ClientProvidedName },
-                    rawProducerConfig, metaStreamInfo);
+                    rawProducerConfig, metaStreamInfo, logger);
+                _logger?.LogDebug("Raw Producer: {Reference} created for Stream: {Stream}",
+                    rawProducerConfig.Reference, rawProducerConfig.Stream);
+
+                return p;
             }
             finally
             {
@@ -304,7 +326,8 @@ namespace RabbitMQ.Stream.Client
             throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
         }
 
-        public async Task<IConsumer> CreateRawConsumer(RawConsumerConfig rawConsumerConfig)
+        public async Task<IConsumer> CreateRawConsumer(RawConsumerConfig rawConsumerConfig,
+            ILogger logger = null)
         {
             await MayBeReconnectLocator();
             var meta = await _client.QueryMetadata(new[] { rawConsumerConfig.Stream });
@@ -320,8 +343,12 @@ namespace RabbitMQ.Stream.Client
             {
                 await _semClientProvidedName.WaitAsync();
                 var s = _clientParameters with { ClientProvidedName = rawConsumerConfig.ClientProvidedName };
-                return await RawConsumer.Create(s,
-                    rawConsumerConfig, metaStreamInfo);
+                var c = await RawConsumer.Create(s,
+                    rawConsumerConfig, metaStreamInfo, logger);
+                _logger?.LogDebug("Raw Consumer: {Reference} created for Stream: {Stream}",
+                    rawConsumerConfig.Reference, rawConsumerConfig.Stream);
+
+                return c;
             }
             finally
             {

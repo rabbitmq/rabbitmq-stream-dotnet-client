@@ -7,6 +7,8 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -92,11 +94,13 @@ namespace RabbitMQ.Stream.Client
         private bool _disposed;
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
+        private readonly ILogger _logger;
 
-        private RawConsumer(Client client, RawConsumerConfig config)
+        private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
             _client = client;
             _config = config;
+            _logger = logger ?? NullLogger.Instance;
         }
 
         // if a user specify a custom offset 
@@ -118,12 +122,15 @@ namespace RabbitMQ.Stream.Client
             await _client.StoreOffset(_config.Reference, _config.Stream, offset);
         }
 
-        public static async Task<IConsumer> Create(ClientParameters clientParameters,
+        public static async Task<IConsumer> Create(
+            ClientParameters clientParameters,
             RawConsumerConfig config,
-            StreamInfo metaStreamInfo)
+            StreamInfo metaStreamInfo,
+            ILogger logger = null
+        )
         {
-            var _client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo);
-            var consumer = new RawConsumer((Client)_client, config);
+            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger);
+            var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init();
             return consumer;
         }
@@ -148,8 +155,7 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
-                    LogEventSource.Log.LogError(
-                        $"Error while processing chunk: {chunk.ChunkId} error: {e.Message}");
+                    _logger.LogError(e, "Error while processing chunk: {ChunkId}", chunk.ChunkId);
                 }
             }
 
@@ -277,12 +283,13 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error removing the consumer id: {_subscriberId} from the server. {e}");
+                _logger.LogError(e, "Error removing the consumer id: {SubscriberId} from the server", _subscriberId);
             }
 
             var closed = _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _disposed = true;
+            _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
             return result;
         }
 
@@ -313,7 +320,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                LogEventSource.Log.LogError($"Error during disposing Consumer: {_subscriberId}.", e);
+                _logger.LogError(e, "Error during disposing of consumer: {SubscriberId}.", _subscriberId);
             }
 
             GC.SuppressFinalize(this);

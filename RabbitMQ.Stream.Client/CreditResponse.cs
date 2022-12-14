@@ -4,6 +4,7 @@
 
 using System;
 using System.Buffers;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -39,7 +40,7 @@ namespace RabbitMQ.Stream.Client
             return offset;
         }
 
-        internal void HandleUnRoutableCredit()
+        internal void HandleUnRoutableCredit(ILogger logger)
         {
             /* the server sends a credit-response only in case of 
              * problem, e.g. crediting an unknown subscription
@@ -47,9 +48,9 @@ namespace RabbitMQ.Stream.Client
              * the same time as the deliverhandler is working
              */
 
-            LogEventSource.Log.LogWarning(
-                $"Received notification for subscription id: {SubscriptionId} " +
-                $"code: {ResponseCode}");
+            logger?.LogWarning(
+                "Received credit response for unknown subscription {SubscriptionId}, ResponseCode {ResponseCode}",
+                SubscriptionId, ResponseCode);
         }
     }
 }

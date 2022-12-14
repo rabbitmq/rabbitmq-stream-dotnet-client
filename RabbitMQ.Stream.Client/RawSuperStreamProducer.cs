@@ -9,6 +9,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Stream.Client.Hash;
 
 namespace RabbitMQ.Stream.Client;
@@ -39,6 +41,31 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // Streams contains the configuration for each stream but not the connection
     private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
+    private readonly ILogger _logger;
+
+    public static IProducer Create(
+        RawSuperStreamProducerConfig rawSuperStreamProducerConfig,
+        IDictionary<string, StreamInfo> streamInfos,
+        ClientParameters clientParameters,
+        ILogger logger = null
+    )
+    {
+        return new RawSuperStreamProducer(rawSuperStreamProducerConfig, streamInfos, clientParameters, logger);
+    }
+
+    private RawSuperStreamProducer(
+        RawSuperStreamProducerConfig config,
+        IDictionary<string, StreamInfo> streamInfos,
+        ClientParameters clientParameters,
+        ILogger logger = null
+    )
+    {
+        _config = config;
+        _streamInfos = streamInfos;
+        _clientParameters = clientParameters;
+        _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.Routing);
+        _logger = logger ?? NullLogger<RawSuperStreamProducer>.Instance;
+    }
 
     // We need to copy the config from the super producer to the standard producer
     private RawProducerConfig FromStreamConfig(string stream)
@@ -79,7 +106,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
                     // The stream doesn't exist anymore
                     // but this condition should be avoided since the hash routing 
                     // can be compromised
-                    LogEventSource.Log.LogWarning($"SuperStream Producer. Stream {update.Stream} is not available anymore");
+                    _logger.LogWarning("Stream {StreamIdentifier} is not available anymore", update.Stream);
                     _streamInfos.Remove(update.Stream);
                 }
 
@@ -95,9 +122,9 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var p = await RawProducer.Create(_clientParameters,
-            FromStreamConfig(stream), _streamInfos[stream]);
-        LogEventSource.Log.LogInformation($"SuperStream Producer. Producer {_config.Reference} created for Stream {stream}");
+        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream], _logger);
+        _logger?.LogDebug("Producer {ProducerReference} created for Stream {StreamIdentifier}", _config.Reference,
+            stream);
         return p;
     }
 
@@ -123,15 +150,6 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
             _streamInfos.Keys.ToList());
         return await GetProducer(routes[0]);
-    }
-
-    private RawSuperStreamProducer(RawSuperStreamProducerConfig config,
-        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
-    {
-        _config = config;
-        _streamInfos = streamInfos;
-        _clientParameters = clientParameters;
-        _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.Routing);
     }
 
     public async ValueTask Send(ulong publishingId, Message message)
@@ -203,6 +221,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         }
 
         Dispose();
+        _logger?.LogDebug("Super stream Producer {ProducerReference} closed", _config.Reference);
         return Task.FromResult(ResponseCode.Ok);
     }
 
@@ -242,12 +261,6 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     public int IncomingFrames => _producers.Sum(x => x.Value.IncomingFrames);
     public int PublishCommandsSent => _producers.Sum(x => x.Value.PublishCommandsSent);
     public int PendingCount => _producers.Sum(x => x.Value.PendingCount);
-
-    public static IProducer Create(RawSuperStreamProducerConfig rawSuperStreamProducerConfig,
-        IDictionary<string, StreamInfo> streamInfos, ClientParameters clientParameters)
-    {
-        return new RawSuperStreamProducer(rawSuperStreamProducerConfig, streamInfos, clientParameters);
-    }
 }
 
 public record RawSuperStreamProducerConfig : IProducerConfig

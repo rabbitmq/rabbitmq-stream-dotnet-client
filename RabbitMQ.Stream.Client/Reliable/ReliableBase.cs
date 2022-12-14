@@ -6,12 +6,13 @@ using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
 public record ReliableConfig
 {
-    public IReconnectStrategy ReconnectStrategy { get; set; } = new BackOffReconnectStrategy();
+    public IReconnectStrategy ReconnectStrategy { get; set; }
     public StreamSystem StreamSystem { get; }
     public string Stream { get; }
 
@@ -22,8 +23,10 @@ public record ReliableConfig
             throw new ArgumentException("Stream cannot be null or whitespace.", nameof(stream));
         }
 
+        ArgumentNullException.ThrowIfNull(streamSystem);
+
         Stream = stream;
-        StreamSystem = streamSystem ?? throw new ArgumentNullException(nameof(streamSystem));
+        StreamSystem = streamSystem;
     }
 }
 
@@ -37,6 +40,8 @@ public abstract class ReliableBase
 
     protected bool _isOpen;
     protected bool _inReconnection;
+
+    protected abstract ILogger BaseLogger { get; }
 
     internal async Task Init(IReconnectStrategy reconnectStrategy)
     {
@@ -105,13 +110,11 @@ public abstract class ReliableBase
             switch (await reconnectStrategy.WhenDisconnected(ToString()) && _isOpen)
             {
                 case true:
-                    LogEventSource.Log.LogInformation(
-                        $"{ToString()} is disconnected. Client will try reconnect");
+                    BaseLogger.LogInformation("{Identity} is disconnected. Client will try reconnect", ToString());
                     await Init(false, reconnectStrategy);
                     break;
                 case false:
-                    LogEventSource.Log.LogInformation(
-                        $"{ToString()} is asked to be closed");
+                    BaseLogger.LogInformation("{Identity} is asked to be closed", ToString());
                     await Close();
                     break;
             }
@@ -140,9 +143,10 @@ public abstract class ReliableBase
         await Task.Delay(500);
         if (await system.StreamExists(stream))
         {
-            LogEventSource.Log.LogInformation(
-                $"Meta data update stream: {stream}. The stream still exist." +
-                $" Client: {ToString()}");
+            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
+                stream,
+                ToString()
+            );
             // Here we just close the producer connection
             // the func TryToReconnect/0 will be called. 
 
@@ -152,9 +156,10 @@ public abstract class ReliableBase
         {
             // In this case the stream doesn't exist anymore
             // the ReliableProducer is just closed.
-            LogEventSource.Log.LogInformation(
-                $"Meta data update stream: {stream} " +
-                $"{ToString()} will be closed.");
+            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. {Identity} will be closed",
+                stream,
+                ToString()
+            );
             await Close();
         }
     }
@@ -181,9 +186,16 @@ public abstract class ReliableBase
 
     private void LogException(Exception exception)
     {
-        LogEventSource.Log.LogError(IsAKnownException(exception)
-            ? $"Trying to reconnect {ToString()} due of: {exception.Message}"
-            : $"Error during initialization {ToString()} due of: {exception.Message}");
+        const string KnownExceptionTemplate = "{Identity} trying to reconnect due to exception";
+        const string UnknownExceptionTemplate = "{Identity} received an exception during initialization";
+        if (IsAKnownException(exception))
+        {
+            BaseLogger.LogError(exception, KnownExceptionTemplate, ToString());
+        }
+        else
+        {
+            BaseLogger.LogError(exception, UnknownExceptionTemplate, ToString());
+        }
     }
 
     // <summary>

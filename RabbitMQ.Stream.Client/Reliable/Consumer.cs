@@ -3,8 +3,9 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -77,16 +78,24 @@ public record ConsumerConfig : ReliableConfig
 public class Consumer : ConsumerFactory
 {
     private IConsumer _consumer;
+    private readonly ILogger<Consumer> _logger;
 
-    internal Consumer(ConsumerConfig consumerConfig)
+    protected override ILogger BaseLogger => _logger;
+
+    internal Consumer(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
+        _logger = logger ?? NullLogger<Consumer>.Instance;
         _consumerConfig = consumerConfig;
     }
 
-    public static async Task<Consumer> Create(ConsumerConfig consumerConfig)
+    public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
-        var rConsumer = new Consumer(consumerConfig);
+        consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
+        var rConsumer = new Consumer(consumerConfig, logger);
         await rConsumer.Init(consumerConfig.ReconnectStrategy);
+        logger?.LogDebug("Consumer: {Reference} created for Stream: {Stream}",
+            consumerConfig.Reference, consumerConfig.Stream);
+
         return rConsumer;
     }
 
@@ -117,11 +126,11 @@ public class Consumer : ConsumerFactory
     {
         _isOpen = false;
         await CloseEntity();
+        _logger?.LogDebug("Consumer closed for stream {Stream}", _consumerConfig.Stream);
     }
 
     public override string ToString()
     {
-        return $"Consumer reference: {_consumerConfig.Reference},  " +
-               $"stream: {_consumerConfig.Stream} ";
+        return $"Consumer reference: {_consumerConfig.Reference}, stream: {_consumerConfig.Stream} ";
     }
 }

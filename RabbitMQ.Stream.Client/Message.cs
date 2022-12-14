@@ -131,7 +131,6 @@ namespace RabbitMQ.Stream.Client
                         offset += AmqpWireFormatting.ReadAny(ref reader, out amqpValue);
                         break;
                     default:
-                        LogEventSource.Log.LogError($"dataCode: {dataCode} not handled. Please open an issue.");
                         throw new ArgumentOutOfRangeException($"dataCode: {dataCode} not handled");
                 }
             }
