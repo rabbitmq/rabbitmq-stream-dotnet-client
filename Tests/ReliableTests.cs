@@ -423,9 +423,9 @@ public class ReliableTests
             _testOutputHelper = testOutputHelper;
         }
 
-        ValueTask<bool> IReconnectStrategy.WhenDisconnected(string info)
+        ValueTask<bool> IReconnectStrategy.WhenDisconnected(string connectionIdentifier)
         {
-            _testOutputHelper.WriteLine($"MyReconnection WhenDisconnected {info}");
+            _testOutputHelper.WriteLine($"MyReconnection WhenDisconnected {connectionIdentifier}");
             return ValueTask.FromResult(false);
         }
 

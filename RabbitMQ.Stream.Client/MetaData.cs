@@ -20,20 +20,7 @@ namespace RabbitMQ.Stream.Client
             this.streams = streams.ToList();
         }
 
-        public int SizeNeeded
-        {
-            get
-            {
-                var size = 12;
-                foreach (var s in streams)
-                {
-                    // TODO: unnecessary conversion work here to work out the correct size of the frame
-                    size += WireFormatting.StringSize(s); //
-                }
-
-                return size;
-            }
-        }
+        public int SizeNeeded => 12 + streams.Sum(WireFormatting.StringSize);
 
         public int Write(Span<byte> span)
         {
