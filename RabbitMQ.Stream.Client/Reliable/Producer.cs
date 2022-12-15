@@ -197,7 +197,10 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            BaseLogger.LogError(e, "Error sending message");
+            _logger?.LogError(e, "Error sending message. " +
+                                 "Most likely the message is not sent to the stream: {Stream}." +
+                                 "Message wont' receive confirmation so you will receive a timeout error",
+                _producerConfig.Stream);
         }
         finally
         {
@@ -230,7 +233,10 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            BaseLogger.LogError(e, "Error sending messages");
+            _logger?.LogError(e, "Error sending sub-batch messages. " +
+                                 "Most likely the messages are not sent to the stream: {Stream}." +
+                                 " Messages wont' receive confirmation so you will receive a timeout error",
+                _producerConfig.Stream);
         }
         finally
         {
@@ -280,7 +286,10 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            BaseLogger.LogError(e, "Error sending batch of messages");
+            _logger?.LogError(e, "Error sending messages. " +
+                                 "Most likely the messages are not sent to the stream: {Stream}." +
+                                 " Messages wont' receive confirmation so you will receive a timeout error",
+                _producerConfig.Stream);
         }
         finally
         {
