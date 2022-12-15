@@ -29,6 +29,7 @@
       - [Offset Types](#offset-types)
       - [Track Offset](#track-offset)
       - [Single Active Consumer](#single-active-consumer)
+    - [Super Stream](#super-stream)
     - [Heartbeat](#heartbeat)
     - [Raw Clients](#raw)
       - [Raw Producer](#raw-producer)
@@ -447,26 +448,6 @@ See the table:
 You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
 See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
 
-### Publish SuperStream
-See [the blog post](https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams) for more details. </br>
-[The documentation](https://www.rabbitmq.com/streams.html#super-streams) explains how to create a super stream. <br>
-Once you created the super stream you can use it:
-
-```csharp
- var producer = await Producer.Create(new ProducerConfig(system, "super_stream")
-        {
-            SuperStreamConfig = new SuperStreamConfig()
-            {
-                Routing = message1 => message1.Properties.MessageId.ToString()
-            }
-        }
-        );
-```
-
-`SuperStreamConfig` is mandatory to enable the super stream feature. </br>
-`Routing` is a function that extracts the routing key from the message. By default it uses a `HashRoutingMurmurStrategy` strategy.
-
-See `Tests.SuperStreamProducerTests.ValidateHashRoutingStrategy` for more examples.
 
 
 ### Consumer
@@ -578,6 +559,10 @@ var trackedOffset = await system.QueryOffset("my_consumer", stream);
 Note: if you try to store an offset that doesn't exist yet for the consumer's reference on the stream you get will get
 an `OffsetNotFoundException` exception.
 
+### Super Stream
+
+See [The Documentation and the example](./Examples/SuperStream) with super stream and single active consumer.
+
 ### Single Active Consumer
 
 Use the `ConsumerConfig#IsSingleActiveConsumer()` method to enable the feature:
@@ -619,6 +604,8 @@ For example, if you want to start from the last tracked message can do it like t
             return new OffsetTypeOffset(trackedOffset);
         };
 ```
+
+
 
 ### Reconnection Strategy
 
