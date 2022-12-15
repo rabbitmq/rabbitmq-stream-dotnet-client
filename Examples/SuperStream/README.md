@@ -1,9 +1,8 @@
 Super stream example
 ---
 
-See the [documentation](https://www.rabbitmq.com/streams.html#super-streams) for more details.
-Also The [blog post](https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams)
-
+[Super Streams Documenation](https://www.rabbitmq.com/streams.html#super-streams) for more details.
+[Super Streams blog post](https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams)
 
 
 First step is to create the super stream:

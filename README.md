@@ -561,9 +561,7 @@ an `OffsetNotFoundException` exception.
 
 ### Super Stream
 
-See [the blog post](https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams) for more details. </br>
-[The documentation](https://www.rabbitmq.com/streams.html#super-streams) explains how to create a super stream. <br>
-See full [Example](./Examples/SuperStream) with super stream and single active consumer.
+See [The Documentation and the example](./Examples/SuperStream) with super stream and single active consumer.
 
 ### Single Active Consumer
 
