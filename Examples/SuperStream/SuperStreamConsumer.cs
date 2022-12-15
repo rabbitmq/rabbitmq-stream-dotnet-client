@@ -19,8 +19,8 @@ public static class SuperStreamConsumer
         Console.WriteLine("Super Stream Consumer connected to RabbitMQ. ConsumerName {0}", consumerName);
         var consumer = await Consumer.Create(new ConsumerConfig(system, Costants.StreamName)
         {
-            IsSuperStream = true,
-            IsSingleActiveConsumer = true,
+            IsSuperStream = true, // Mandatory for enabling the super stream
+            IsSingleActiveConsumer = true, // mandatory for enabling the Single Active Consumer
             // this is mandatory for super stream single active consumer
             // must have the same ReferenceName for all the consumers
             Reference = "MyApp",
