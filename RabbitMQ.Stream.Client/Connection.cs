@@ -47,7 +47,8 @@ namespace RabbitMQ.Stream.Client
             var stream = MaybeTcpUpgrade(networkStream, sslOption);
             writer = PipeWriter.Create(stream);
             reader = PipeReader.Create(stream);
-            // TODO LRB this task needs to be shut down
+            // ProcessIncomingFrames is dropped as soon as the connection is closed
+            // no need to stop it manually when the connection is closed
             Task.Run(ProcessIncomingFrames);
         }
 

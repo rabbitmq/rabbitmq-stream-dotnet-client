@@ -17,7 +17,6 @@ namespace RabbitMQ.Stream.Client.AMQP
         public static Header Parse(ref SequenceReader<byte> reader, ref int byteRead)
         {
             var offset = AmqpWireFormatting.ReadCompositeHeader(ref reader, out var fields, out _);
-            //TODO WIRE check the next
             var h = new Header();
             for (var index = 0; index < fields; index++)
             {
