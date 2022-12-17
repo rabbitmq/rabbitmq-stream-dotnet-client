@@ -106,7 +106,7 @@ public class Producer : ProducerFactory
     }
 
     // <summary>
-    // Create a new Producer
+    // Create a new Producer.
     // </summary> 
     public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
@@ -177,6 +177,8 @@ public class Producer : ProducerFactory
     /// The publisherId is automatically set. 
     /// </summary>
     /// <param name="message">Standard Message</param>
+    /// The method does not raise any exception during the send.
+    /// In case of error the message is considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(Message message)
     {
         Interlocked.Increment(ref _publishingId);
@@ -197,7 +199,10 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            BaseLogger.LogError(e, "Error sending message");
+            _logger?.LogError(e, "Error sending message. " +
+                                 "Most likely the message is not sent to the stream: {Stream}." +
+                                 "Message wont' receive confirmation so you will receive a timeout error",
+                _producerConfig.Stream);
         }
         finally
         {
@@ -215,6 +220,8 @@ public class Producer : ProducerFactory
     /// <param name="messages">Messages to aggregate</param>
     /// <param name="compressionType"> Type of compression. By default the client supports GZIP and none</param>
     /// <returns></returns>
+    /// The method does not raise any exception during the send.
+    /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
         Interlocked.Increment(ref _publishingId);
@@ -230,7 +237,10 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            BaseLogger.LogError(e, "Error sending messages");
+            _logger?.LogError(e, "Error sending sub-batch messages. " +
+                                 "Most likely the messages are not sent to the stream: {Stream}." +
+                                 " Messages wont' receive confirmation so you will receive a timeout error",
+                _producerConfig.Stream);
         }
         finally
         {
@@ -250,6 +260,8 @@ public class Producer : ProducerFactory
     /// </summary>
     /// <param name="messages">Batch messages to send</param>
     /// <returns></returns>
+    /// The method does not raise any exception during the send.
+    /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(List<Message> messages)
     {
         var messagesToSend = new List<(ulong, Message)>();
@@ -280,7 +292,10 @@ public class Producer : ProducerFactory
 
         catch (Exception e)
         {
-            BaseLogger.LogError(e, "Error sending batch of messages");
+            _logger?.LogError(e, "Error sending messages. " +
+                                 "Most likely the messages are not sent to the stream: {Stream}." +
+                                 "Messages wont' receive confirmation so you will receive a timeout error",
+                _producerConfig.Stream);
         }
         finally
         {

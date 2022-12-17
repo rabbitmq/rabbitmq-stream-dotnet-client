@@ -310,8 +310,6 @@ namespace RabbitMQ.Stream.Client.AMQP
 
             offset += WireFormatting.ReadBytes(ref reader, length, out value);
             return offset;
-
-            //TODO Wire implement the size/len verification
         }
 
         internal static int ReadMapHeader(ref SequenceReader<byte> reader, out uint count)

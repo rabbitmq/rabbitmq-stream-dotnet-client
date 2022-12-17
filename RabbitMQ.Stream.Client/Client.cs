@@ -551,7 +551,6 @@ namespace RabbitMQ.Stream.Client
                 return new CloseResponse(0, ResponseCode.Ok);
             }
 
-            // TODO LRB timeout
             var result =
                 await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
                     TimeSpan.FromSeconds(30));

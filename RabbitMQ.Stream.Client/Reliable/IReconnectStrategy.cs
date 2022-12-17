@@ -18,9 +18,9 @@ public interface IReconnectStrategy
     /// WhenDisconnected is raised when the TPC client
     /// is disconnected for some reason. 
     /// </summary>
-    /// <param name="connectionInfo">Additional connection info. Just for logging</param>
+    /// <param name="connectionIdentifier">Additional connection info. Just for logging</param>
     /// <returns>if True the client will be reconnected else closed</returns>
-    ValueTask<bool> WhenDisconnected(string connectionInfo);
+    ValueTask<bool> WhenDisconnected(string connectionIdentifier);
 
     /// <summary>
     /// It is raised when the TCP client is connected successfully 
@@ -54,13 +54,12 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
         }
     }
 
-    public async ValueTask<bool> WhenDisconnected(string connectionInfo)
+    public async ValueTask<bool> WhenDisconnected(string connectionIdentifier)
     {
         Tentatives <<= 1;
-        // TODO: maybe rename ConnectionInfo to ConnectionIdentifier?
         _logger.LogInformation(
-            "{ConnectionInfo} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms.",
-            connectionInfo,
+            "{ConnectionIdentifier} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms",
+            connectionIdentifier,
             Tentatives * 100
         );
         await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100));
@@ -68,10 +67,10 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
         return true;
     }
 
-    public ValueTask WhenConnected(string connectionInfo)
+    public ValueTask WhenConnected(string connectionIdentifier)
     {
         Tentatives = 1;
-        _logger.LogInformation("{ConnectionInfo} reconnected successfully.", connectionInfo);
+        _logger.LogInformation("{ConnectionIdentifier} reconnected successfully", connectionIdentifier);
         return ValueTask.CompletedTask;
     }
 }

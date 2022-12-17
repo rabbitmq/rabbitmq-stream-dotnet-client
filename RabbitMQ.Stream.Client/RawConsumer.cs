@@ -153,6 +153,12 @@ namespace RabbitMQ.Stream.Client
                             message).GetAwaiter().GetResult();
                     }
                 }
+                catch (ArgumentOutOfRangeException e)
+                {
+                    _logger.LogError(e, "Unexpected error while parsing message. Message will be skipped. " +
+                                        "Please report this issue to the RabbitMQ team on GitHub {Repo}",
+                        Consts.RabbitMQClientRepo);
+                }
                 catch (Exception e)
                 {
                     _logger.LogError(e, "Error while processing chunk: {ChunkId}", chunk.ChunkId);

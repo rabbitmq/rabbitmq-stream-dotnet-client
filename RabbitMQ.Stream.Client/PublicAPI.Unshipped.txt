@@ -751,7 +751,7 @@ RabbitMQ.Stream.Client.Reliable.ConsumerFactory.CreateConsumer(bool boot) -> Sys
 RabbitMQ.Stream.Client.Reliable.ConsumerFactory._consumerConfig -> RabbitMQ.Stream.Client.Reliable.ConsumerConfig
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenConnected(string connectionInfo) -> System.Threading.Tasks.ValueTask
-RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenDisconnected(string connectionInfo) -> System.Threading.Tasks.ValueTask<bool>
+RabbitMQ.Stream.Client.Reliable.IReconnectStrategy.WhenDisconnected(string connectionIdentifier) -> System.Threading.Tasks.ValueTask<bool>
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.InsertDateTime.get -> System.DateTime
 RabbitMQ.Stream.Client.Reliable.MessagesConfirmation.InsertDateTime.init -> void

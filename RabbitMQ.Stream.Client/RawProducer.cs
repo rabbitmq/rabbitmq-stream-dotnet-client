@@ -258,23 +258,29 @@ namespace RabbitMQ.Stream.Client
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private async Task ProcessBuffer()
         {
-            var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
-
-            while (await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+            try
             {
-                while (_messageBuffer.Reader.TryRead(out var msg))
+                var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
+                while (await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
                 {
-                    messages.Add((msg.PublishingId, msg.Data));
-                    if (messages.Count == _config.MessagesBufferSize)
+                    while (_messageBuffer.Reader.TryRead(out var msg))
+                    {
+                        messages.Add((msg.PublishingId, msg.Data));
+                        if (messages.Count == _config.MessagesBufferSize)
+                        {
+                            await SendMessages(messages).ConfigureAwait(false);
+                        }
+                    }
+
+                    if (messages.Count > 0)
                     {
                         await SendMessages(messages).ConfigureAwait(false);
                     }
                 }
-
-                if (messages.Count > 0)
-                {
-                    await SendMessages(messages).ConfigureAwait(false);
-                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "error while Process Buffer");
             }
         }
 

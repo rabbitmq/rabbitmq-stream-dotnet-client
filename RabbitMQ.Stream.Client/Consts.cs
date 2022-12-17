@@ -8,5 +8,6 @@ namespace RabbitMQ.Stream.Client
     {
         internal const int MaxBatchSize = 10000;
         internal const int MinBatchSize = 1;
+        internal const string RabbitMQClientRepo = "https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/issues";
     }
 }
