@@ -32,11 +32,13 @@ public class SuperStreamConsumerTests
         SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var connectionName = Guid.NewGuid().ToString();
-        var consumer = await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
-        {
-            ClientProvidedName = connectionName,
-            OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst())
-        });
+        var consumer = await system.CreateSuperStreamConsumer(
+            new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
+            {
+                ClientProvidedName = connectionName,
+                OffsetSpec =
+                    await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst())
+            });
 
         Assert.NotNull(consumer);
         SystemUtils.Wait();
@@ -52,28 +54,30 @@ public class SuperStreamConsumerTests
 
         var testPassed = new TaskCompletionSource<int>();
         var listConsumed = new ConcurrentBag<string>();
+
         var consumedMessages = 0;
         const int NumberOfMessages = 20;
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
         var clientProvidedName = Guid.NewGuid().ToString();
 
-        var consumer = await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
-        {
-            ClientProvidedName = clientProvidedName,
-            OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
-            MessageHandler = (stream, consumer1, context, message) =>
+        var consumer = await system.CreateSuperStreamConsumer(
+            new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
             {
-                listConsumed.Add(stream);
-                Interlocked.Increment(ref consumedMessages);
-                if (consumedMessages == NumberOfMessages)
+                ClientProvidedName = clientProvidedName,
+                OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
+                MessageHandler = (stream, consumer1, context, message) =>
                 {
-                    testPassed.SetResult(NumberOfMessages);
-                }
+                    listConsumed.Add(stream);
+                    Interlocked.Increment(ref consumedMessages);
+                    if (consumedMessages == NumberOfMessages)
+                    {
+                        testPassed.SetResult(NumberOfMessages);
+                    }
 
-                return Task.CompletedTask;
-            }
-        });
+                    return Task.CompletedTask;
+                }
+            });
 
         Assert.NotNull(consumer);
         SystemUtils.Wait();
@@ -93,10 +97,8 @@ public class SuperStreamConsumerTests
         // This is to test the metadata update functionality
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientProvidedName = Guid.NewGuid().ToString();
-        var consumer = await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
-        {
-            ClientProvidedName = clientProvidedName,
-        });
+        var consumer = await system.CreateSuperStreamConsumer(
+            new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange) { ClientProvidedName = clientProvidedName, });
 
         Assert.NotNull(consumer);
         SystemUtils.Wait();
@@ -202,18 +204,20 @@ public class SuperStreamConsumerTests
 
         async Task<IConsumer> NewConsumer()
         {
-            var iConsumer = await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
-            {
-                ClientProvidedName = clientProvidedName,
-                OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
-                IsSingleActiveConsumer = consumerExpected.IsSingleActiveConsumer,
-                Reference = "super_stream_consumer_name",
-                MessageHandler = (stream, consumer1, context, message) =>
+            var iConsumer = await system.CreateSuperStreamConsumer(
+                new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
                 {
-                    listConsumed.Add(stream);
-                    return Task.CompletedTask;
-                }
-            });
+                    ClientProvidedName = clientProvidedName,
+                    OffsetSpec =
+                        await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
+                    IsSingleActiveConsumer = consumerExpected.IsSingleActiveConsumer,
+                    Reference = "super_stream_consumer_name",
+                    MessageHandler = (stream, consumer1, context, message) =>
+                    {
+                        listConsumed.Add(stream);
+                        return Task.CompletedTask;
+                    }
+                });
             return iConsumer;
         }
 
@@ -249,6 +253,7 @@ public class SuperStreamConsumerTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
         var listConsumed = new ConcurrentBag<string>();
+        var testPassed = new TaskCompletionSource<bool>();
         var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
         {
             OffsetSpec = new OffsetTypeFirst(),
@@ -256,11 +261,17 @@ public class SuperStreamConsumerTests
             MessageHandler = (stream, consumer1, context, message) =>
             {
                 listConsumed.Add(stream);
+                if (listConsumed.Count == 20)
+                {
+                    testPassed.SetResult(true);
+                }
+
                 return Task.CompletedTask;
             }
         });
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        Assert.True(testPassed.Task.Result);
         Assert.Equal(9,
             listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
         Assert.Equal(7,
@@ -289,6 +300,7 @@ public class SuperStreamConsumerTests
         var listConsumed = new ConcurrentBag<string>();
         var reference = Guid.NewGuid().ToString();
         var consumers = new List<Consumer>();
+        var consumerMessageReceived = new TaskCompletionSource<bool>();
 
         async Task<Consumer> NewReliableConsumer(string refConsumer, string clientProvidedName,
             Func<string, string, bool, Task<IOffsetType>> consumerUpdateListener
@@ -305,7 +317,12 @@ public class SuperStreamConsumerTests
                 MessageHandler = async (stream, consumer1, context, message) =>
                 {
                     await consumer1.StoreOffset(context.Offset);
+
                     listConsumed.Add(stream);
+                    if (listConsumed.Count == 20)
+                    {
+                        consumerMessageReceived.SetResult(true);
+                    }
                 }
             });
         }
@@ -319,14 +336,11 @@ public class SuperStreamConsumerTests
         for (var i = 0; i < 2; i++)
         {
             var consumer = await NewReliableConsumer(reference, Guid.NewGuid().ToString(),
-                (consumerRef, stream, arg3) =>
-                {
-                    return new Task<IOffsetType>(() => new OffsetTypeFirst());
-                });
+                (consumerRef, stream, arg3) => { return new Task<IOffsetType>(() => new OffsetTypeFirst()); });
             consumers.Add(consumer);
         }
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(consumerMessageReceived);
         // The sum og the messages must be 20 as the publisher published 20 messages
         Assert.Equal(9,
             listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
@@ -371,6 +385,7 @@ public class SuperStreamConsumerTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
         var listConsumed = new ConcurrentBag<string>();
+        var firstConsumerMessageReceived = new TaskCompletionSource<bool>();
         const string Reference = "My-group-app";
         var firstConsumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
         {
@@ -381,16 +396,24 @@ public class SuperStreamConsumerTests
             MessageHandler = (stream, consumer1, context, message) =>
             {
                 listConsumed.Add(stream);
+                if (listConsumed.Count == 20)
+                {
+                    firstConsumerMessageReceived.SetResult(true);
+                }
+
                 return Task.CompletedTask;
             }
         });
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(firstConsumerMessageReceived);
+        Assert.True(firstConsumerMessageReceived.Task.Result);
         // the first consumer consumes all the messages and have to be like the messages published
         Assert.Equal(20, listConsumed.Count);
         SystemUtils.Wait(TimeSpan.FromSeconds(1));
         // the second consumer joins the group and consumes the messages only from one partition
         var listSecondConsumed = new ConcurrentBag<string>();
+        var secondConsumerMessageReceived = new TaskCompletionSource<bool>();
+
         var secondConsumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
         {
             OffsetSpec = new OffsetTypeFirst(),
@@ -400,15 +423,21 @@ public class SuperStreamConsumerTests
             MessageHandler = (stream, consumer1, context, message) =>
             {
                 listSecondConsumed.Add(stream);
+                // When the second consumer joins the group it consumes only from one partition
+                // We don't know which partition will be consumed
+                // so the test is to check if there are at least 4 messages consumed
+                // that is the partition with less messages
+                if (listSecondConsumed.Count >= 4)
+                {
+                    secondConsumerMessageReceived.SetResult(true);
+                }
+
                 return Task.CompletedTask;
             }
         });
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(1));
-        // When the second consumer joins the group it consumes only from one partition
-        // We don't know which partition will be consumed
-        // so the test is to check if there are at least 4 messages consumed
-        // that is the partition with less messages
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(secondConsumerMessageReceived);
+        Assert.True(secondConsumerMessageReceived.Task.Result);
         Assert.True(listSecondConsumed.Count >= 4);
 
         await firstConsumer.Close();
