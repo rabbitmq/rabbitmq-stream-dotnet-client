@@ -13,7 +13,6 @@
 ---
 
 - [Overview](#overview)
-- [Update to v1.0.0-rc.5 to >v1.0.0-rc.6](#update-to-rc6)
 - [Installing via NuGet](#installing-via-nuget)
 - [Getting started](#getting-started)
     - [Main Concepts](#main-concepts)
@@ -39,25 +38,17 @@
       - [Handle Close](#handle-close)
     - [Client Logging](#client-logging)
 - [Build from source](#build-from-source)
-- [Project Status](#project-status)
 - [Release Process](#release-process)
 
 ## Overview
 
 Dotnet client for [RabbitMQ Stream Queues](https://www.rabbitmq.com/stream.html)
 
-## Update to rc6
-We introduced a few breaking changes. 
-Read the [release notes](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.0.0-rc.6)
-to update the client.
-
 ## Installing via NuGet
 
 The client is [distributed via NuGet](https://www.nuget.org/packages/RabbitMQ.Stream.Client/).
 
 ## Getting started
-
-A rapid getting started
 
 ```csharp
 public static async Task Start()
@@ -320,8 +311,8 @@ Consider a Producer instance like a long-lived object, do not create one to send
 | Stream                  | The stream to publish to.              | No default, mandatory setting. | 
 | Reference               | The logical name of the producer.      | null (no deduplication)        | 
 | ClientProvidedName      | Set the TCP Client Name                | `dotnet-stream-producer`       | 
-| ConfirmationHandler          | Handler with confirmed messages        | It is an event                 |
-| TimeoutMessageAfter          | TimeoutMessageAfter is the time after which a message is considered as timed out        | TimeSpan.FromSeconds(3)                 |
+| ConfirmationHandler     | Handler with confirmed messages        | It is an event                 |
+| TimeoutMessageAfter     | TimeoutMessageAfter is the time after which a message is considered as timed out        | TimeSpan.FromSeconds(3)                 |
 
 Producer with a reference name stores the sequence id on the server.
 It is possible to retrieve the id using `producer.GetLastPublishingId()`
@@ -448,8 +439,6 @@ See the table:
 You can add missing codecs with `StreamCompressionCodecs.RegisterCodec` api.
 See [Examples/CompressCodecs](./Examples/CompressCodecs) for `Lz4`,`Snappy` and `Zstd` implementations.
 
-
-
 ### Consumer
 
 Define a consumer:
@@ -479,7 +468,6 @@ var consumer = await Consumer.Create(
 `Consumer` restores the TCP connection in case the Producer is disconnected for some reason.
 `Consumer` will restart consuming from the last offset stored.
 See [Reconnection Strategy](#reconnection-strategy)
-
 
 ### Offset Types
 
@@ -535,7 +523,7 @@ The server can store the current delivered offset given a consumer with `StoreOf
 
 ```csharp
 ....        
-         MessageHandler = async (sourceStream,consumer, ctx, message) =>
+        MessageHandler = async (sourceStream,consumer, ctx, message) =>
         {
             if (++messagesConsumed % 1000 == 0)
             {
@@ -570,13 +558,13 @@ Use the `ConsumerConfig#IsSingleActiveConsumer()` method to enable the feature:
 Enabling single active consumer
 
 ```csharp
-     new ConsumerConfig(system,stream)
-    {
-        Reference = "application-1", // Set the consumer name (mandatory to enable single active consumer)
-        IsSingleActiveConsumer = true, // Enable single active consumer
-        OffsetSpec = new OffsetTypeFirst(),
-    ...
-    });
+new ConsumerConfig(system,stream)
+{
+    Reference = "application-1", // Set the consumer name (mandatory to enable single active consumer)
+    IsSingleActiveConsumer = true, // Enable single active consumer
+    OffsetSpec = new OffsetTypeFirst(),
+...
+});
 ```
 
 With the configuration above, the consumer will take part in the `application-1` group on the `my-stream` stream.
@@ -605,8 +593,6 @@ For example, if you want to start from the last tracked message can do it like t
         };
 ```
 
-
-
 ### Reconnection Strategy
 
 By default Reliable Producer/Consumer uses an `BackOffReconnectStrategy` to reconnect the client.
@@ -633,11 +619,11 @@ var p = await Producer.Create(new ReliableProducerConfig(system, stream)
 
 ### Handle metadata update
 
-If the streams changes the topology (ex:Stream deleted or add/remove follower), the client receives an `MetadataUpdate`
-event.
-Reliable Producer detects the event and tries to reconnect the producer if the stream still exist else closes the
-producer/consumer.
+If the streams changes the topology (ex:Stream deleted or add/remove follower),
+the client receives an `MetadataUpdate` event.
 
+Reliable Producer detects the event and tries to reconnect the producer if the
+stream still exist else closes the producer/consumer.
 
 ### Heartbeat
 
@@ -659,7 +645,6 @@ Heartbeat value shouldn't be too low.
 
 - Raw Producer
 - Raw Consumer
-
 
 ### Raw Producer
 
@@ -699,7 +684,6 @@ Note: at the moment is only available for the `RawProducer`
                 {..}
             ); 
 ```
-
 
 ### Handle Close
 
@@ -782,10 +766,6 @@ Run test in docker:
 ```shell
 make run-test-in-docker
 ```
-
-## Project Status
-
-The client is work in progress. The API(s) could change prior to version `1.0.0`
 
 ## Release Process
 
