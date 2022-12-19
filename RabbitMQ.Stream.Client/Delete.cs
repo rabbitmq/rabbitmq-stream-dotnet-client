@@ -7,7 +7,7 @@ using System.Buffers;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct DeleteRequest : ICommand
+    internal readonly struct DeleteRequest : ICommand
     {
         private readonly uint correlationId;
         private readonly string stream;

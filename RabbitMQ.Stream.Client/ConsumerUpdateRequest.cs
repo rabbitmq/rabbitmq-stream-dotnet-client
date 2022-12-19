@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client;
 
-public readonly struct ConsumerUpdateRequest : ICommand
+internal readonly struct ConsumerUpdateRequest : ICommand
 {
     private const ushort Key = 0x801a;
     private readonly uint _correlationId;

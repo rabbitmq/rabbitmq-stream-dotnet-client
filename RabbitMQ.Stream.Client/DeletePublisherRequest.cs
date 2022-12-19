@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct DeletePublisherRequest : ICommand
+    internal readonly struct DeletePublisherRequest : ICommand
     {
         private readonly uint correlationId;
         private readonly byte publisherId;

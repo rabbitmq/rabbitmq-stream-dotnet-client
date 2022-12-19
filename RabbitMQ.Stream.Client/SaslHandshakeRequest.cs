@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct SaslHandshakeRequest : ICommand
+    internal readonly struct SaslHandshakeRequest : ICommand
     {
         private readonly uint correlationId;
         public const ushort Key = 18;

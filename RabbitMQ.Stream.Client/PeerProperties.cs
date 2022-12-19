@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct PeerPropertiesRequest : ICommand
+    internal readonly struct PeerPropertiesRequest : ICommand
     {
         public const ushort Key = 17;
         private readonly uint correlationId;

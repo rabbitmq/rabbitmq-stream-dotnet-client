@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct TuneRequest : ICommand
+    internal readonly struct TuneRequest : ICommand
     {
         public const ushort Key = 20;
         private readonly uint frameMax;

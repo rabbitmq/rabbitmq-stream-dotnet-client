@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct OpenRequest : ICommand
+    internal readonly struct OpenRequest : ICommand
     {
         private readonly uint correlationId;
         private readonly string vhost;

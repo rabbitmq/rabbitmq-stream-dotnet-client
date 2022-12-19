@@ -17,7 +17,7 @@ namespace RabbitMQ.Stream.Client
         bool ValidateDns { get; set; }
     }
 
-    public class Routing : IRouting
+    internal class Routing : IRouting
     {
         public bool ValidateDns { get; set; } = true;
 

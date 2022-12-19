@@ -14,7 +14,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         public bool FirstAcquirer { get; internal set; }
         public uint DeliveryCount { get; internal set; }
 
-        public static Header Parse(ref SequenceReader<byte> reader, ref int byteRead)
+        internal static Header Parse(ref SequenceReader<byte> reader, ref int byteRead)
         {
             var offset = AmqpWireFormatting.ReadCompositeHeader(ref reader, out var fields, out _);
             var h = new Header();

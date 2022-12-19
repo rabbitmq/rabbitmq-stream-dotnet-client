@@ -11,7 +11,7 @@ namespace RabbitMQ.Stream.Client.AMQP
 {
     public static partial class AmqpWireFormatting
     {
-        public static int WriteAny(Span<byte> seq, object value)
+        internal static int WriteAny(Span<byte> seq, object value)
         {
             return value switch
             {
@@ -211,7 +211,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
         // determinate the type size
-        public static int GetSequenceSize(ReadOnlySequence<byte> data)
+        internal static int GetSequenceSize(ReadOnlySequence<byte> data)
         {
             if (data.Length <= byte.MaxValue)
             {
@@ -322,7 +322,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                    + 2; //value
         }
 
-        public static int GetAnySize(object value)
+        internal static int GetAnySize(object value)
         {
             return value switch
             {

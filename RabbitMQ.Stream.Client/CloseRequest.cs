@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct CloseRequest : ICommand
+    internal readonly struct CloseRequest : ICommand
     {
         private readonly uint correlationId;
         private readonly string reason;

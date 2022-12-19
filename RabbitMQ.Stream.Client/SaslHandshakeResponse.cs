@@ -9,13 +9,13 @@ using System.Linq;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct SaslHandshakeResponse : ICommand
+    internal readonly struct SaslHandshakeResponse : ICommand
     {
         private readonly uint correlationId;
         private readonly IList<string> mechanisms;
         public const ushort Key = 18;
 
-        public SaslHandshakeResponse(uint correlationId, IEnumerable<string> mechanisms)
+        private SaslHandshakeResponse(uint correlationId, IEnumerable<string> mechanisms)
         {
             this.correlationId = correlationId;
             this.mechanisms = mechanisms.ToList();

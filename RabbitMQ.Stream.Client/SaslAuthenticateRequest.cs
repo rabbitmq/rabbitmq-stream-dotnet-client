@@ -7,7 +7,7 @@ using System.Buffers;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct SaslAuthenticateRequest : ICommand
+    internal readonly struct SaslAuthenticateRequest : ICommand
     {
         private readonly uint correlationId;
         private readonly string mechanism;
