@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct SubEntryPublish : ICommand
+    internal readonly struct SubEntryPublish : ICommand
     {
         private const ushort Key = 2;
         public static byte Version => 1;

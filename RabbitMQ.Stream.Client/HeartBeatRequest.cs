@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client;
 
-public readonly struct HeartBeatRequest : ICommand
+internal readonly struct HeartBeatRequest : ICommand
 {
     private const ushort Key = 23;
 

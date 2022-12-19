@@ -14,8 +14,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         private static readonly Encoding s_encoding = Encoding.UTF8;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-
-        internal static void PeekType(ref SequenceReader<byte> reader, out byte value)
+        private static void PeekType(ref SequenceReader<byte> reader, out byte value)
         {
             reader.TryPeek(out value);
         }

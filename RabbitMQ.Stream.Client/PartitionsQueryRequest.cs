@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client;
 
-public struct PartitionsQueryRequest : ICommand
+internal struct PartitionsQueryRequest : ICommand
 {
     private const ushort key = 0x0019;
     private readonly uint _correlationId;

@@ -13,7 +13,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         public const int Size = 3;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte Read(ref SequenceReader<byte> reader)
+        internal static byte Read(ref SequenceReader<byte> reader)
         {
             // DescribedFormatCode in this case we need to read 
             // only the last byte form the header to get the format code

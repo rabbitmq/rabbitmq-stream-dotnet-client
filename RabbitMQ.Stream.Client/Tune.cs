@@ -7,7 +7,7 @@ using System.Buffers;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct TuneResponse : ICommand
+    internal readonly struct TuneResponse : ICommand
     {
         public const ushort Key = 20;
         private readonly uint frameMax;

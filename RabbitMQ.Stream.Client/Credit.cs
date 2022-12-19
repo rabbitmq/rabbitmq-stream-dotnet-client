@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct CreditRequest : ICommand
+    internal readonly struct CreditRequest : ICommand
     {
         private readonly byte subscriptionId;
         private readonly ushort credit;

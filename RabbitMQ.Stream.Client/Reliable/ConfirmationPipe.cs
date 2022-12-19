@@ -74,7 +74,7 @@ public class ConfirmationPipe
     private readonly TimeSpan _messageTimeout;
     private readonly int _maxInFlightMessages;
 
-    public ConfirmationPipe(Func<MessagesConfirmation, Task> confirmHandler,
+    internal ConfirmationPipe(Func<MessagesConfirmation, Task> confirmHandler,
         TimeSpan messageTimeout, int maxInFlightMessages)
     {
         ConfirmHandler = confirmHandler;
@@ -82,7 +82,7 @@ public class ConfirmationPipe
         _maxInFlightMessages = maxInFlightMessages;
     }
 
-    public void Start()
+    internal void Start()
     {
         _waitForConfirmationActionBlock = new ActionBlock<(ConfirmationStatus, ulong, string)>(
             request =>
@@ -111,7 +111,7 @@ public class ConfirmationPipe
         _invalidateTimer.Enabled = true;
     }
 
-    public void Stop()
+    internal void Stop()
     {
         _invalidateTimer.Enabled = false;
         _waitForConfirmationActionBlock.Complete();
@@ -128,18 +128,18 @@ public class ConfirmationPipe
         }
     }
 
-    public void AddUnConfirmedMessage(ulong publishingId, Message message)
+    internal void AddUnConfirmedMessage(ulong publishingId, Message message)
     {
         AddUnConfirmedMessage(publishingId, new List<Message> { message });
     }
 
-    public void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
+    internal void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
     {
         _waitForConfirmation.TryAdd(publishingId,
             new MessagesConfirmation { Messages = messages, PublishingId = publishingId, InsertDateTime = DateTime.Now });
     }
 
-    public Task RemoveUnConfirmedMessage(ConfirmationStatus confirmationStatus, ulong publishingId, string stream)
+    internal Task RemoveUnConfirmedMessage(ConfirmationStatus confirmationStatus, ulong publishingId, string stream)
     {
         return _waitForConfirmationActionBlock.SendAsync((confirmationStatus, publishingId, stream));
     }

@@ -65,7 +65,7 @@ namespace RabbitMQ.Stream.Client
         public AddressResolver AddressResolver { get; set; } = null;
     }
 
-    public readonly struct OutgoingMsg : ICommand
+    internal readonly struct OutgoingMsg : ICommand
     {
         private readonly byte publisherId;
         private readonly ulong publishingId;
@@ -627,7 +627,7 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public static class PooledTaskSource<T>
+    internal static class PooledTaskSource<T>
     {
         private static readonly ConcurrentStack<ManualResetValueTaskSource<T>> stack =
             new ConcurrentStack<ManualResetValueTaskSource<T>>();
@@ -651,7 +651,7 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public sealed class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource
+    internal sealed class ManualResetValueTaskSource<T> : IValueTaskSource<T>, IValueTaskSource
     {
         private ManualResetValueTaskSourceCore<T> _logic; // mutable struct; do not make this readonly
 

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct CreateRequest : ICommand
+    internal readonly struct CreateRequest : ICommand
     {
         private readonly uint correlationId;
         private readonly string stream;

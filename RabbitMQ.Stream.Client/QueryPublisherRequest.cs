@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct QueryPublisherRequest : ICommand
+    internal readonly struct QueryPublisherRequest : ICommand
     {
         private readonly uint correlationId;
         private readonly string publisherRef;

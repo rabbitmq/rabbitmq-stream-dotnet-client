@@ -23,7 +23,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         public uint GroupSequence { get; set; }
         public string ReplyToGroupId { get; set; }
 
-        public static Properties Parse(ref SequenceReader<byte> reader, ref int byteRead)
+        internal static Properties Parse(ref SequenceReader<byte> reader, ref int byteRead)
         {
             var offset = AmqpWireFormatting.ReadCompositeHeader(ref reader, out var fields, out _);
             //TODO WIRE check the next

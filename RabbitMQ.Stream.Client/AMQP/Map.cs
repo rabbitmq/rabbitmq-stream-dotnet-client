@@ -12,7 +12,7 @@ namespace RabbitMQ.Stream.Client.AMQP
     {
         protected byte MapDataCode;
 
-        public static T Parse<T>(ref SequenceReader<byte> reader, ref int byteRead) where T : Map<TKey>, new()
+        internal static T Parse<T>(ref SequenceReader<byte> reader, ref int byteRead) where T : Map<TKey>, new()
         {
             var offset = AmqpWireFormatting.ReadMapHeader(ref reader, out var count);
             var amqpMap = new T();

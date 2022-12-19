@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct OpenResponse : ICommand
+    internal readonly struct OpenResponse : ICommand
     {
         private readonly uint correlationId;
         private readonly ResponseCode responseCode;

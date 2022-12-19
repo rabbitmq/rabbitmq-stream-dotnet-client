@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public readonly struct UnsubscribeRequest : ICommand
+    internal readonly struct UnsubscribeRequest : ICommand
     {
         private readonly uint correlationId;
         private readonly byte subscriptionId;

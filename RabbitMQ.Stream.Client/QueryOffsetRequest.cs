@@ -6,7 +6,7 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct QueryOffsetRequest : ICommand
+    internal readonly struct QueryOffsetRequest : ICommand
     {
         public const ushort Key = 11;
         private readonly string stream;

@@ -6,14 +6,14 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct StoreOffsetRequest : ICommand
+    internal readonly struct StoreOffsetRequest : ICommand
     {
         public const ushort Key = 10;
         private readonly string stream;
         private readonly string reference;
         private readonly ulong offsetValue;
 
-        public StoreOffsetRequest(string stream, string reference, ulong offsetValue)
+        internal StoreOffsetRequest(string stream, string reference, ulong offsetValue)
         {
             this.stream = stream;
             this.reference = reference;
