@@ -151,9 +151,9 @@ namespace Tests
 
             testPassed.Task.Wait(TimeSpan.FromSeconds(10));
             Assert.Equal(numberOfMessages, testPassed.Task.Result);
-            Assert.True(producer.ConfirmFrames >= 1);
-            Assert.True(producer.IncomingFrames >= 1);
-            Assert.True(producer.PublishCommandsSent >= 1);
+            WaitUntil(() => producer.ConfirmFrames >= 1);
+            WaitUntil(() => producer.IncomingFrames >= 1);
+            WaitUntil(() => producer.PublishCommandsSent >= 1);
             producer.Dispose();
         }
 

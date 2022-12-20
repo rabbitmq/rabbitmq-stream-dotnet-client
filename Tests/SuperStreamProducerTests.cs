@@ -175,7 +175,7 @@ public class SuperStreamProducerTests
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         SystemUtils.Wait();
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
@@ -248,7 +248,7 @@ public class SuperStreamProducerTests
                 // We just decide to close the connections
             }
 
-            // Here the connection _must_ be recreated  and the message sent
+            // Here the connection _must_ be recreated  and the send the message 
             await streamProducer.Send(i, message);
         }
 
@@ -448,7 +448,7 @@ public class SuperStreamProducerTests
         // according to the routing strategy hello{i} that must be the correct routing
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9 * 3);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4 * 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4 * 3);
         await system.Close();
     }
 
@@ -497,7 +497,7 @@ public class SuperStreamProducerTests
         // Deduplication in action
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         await system.Close();
     }
 

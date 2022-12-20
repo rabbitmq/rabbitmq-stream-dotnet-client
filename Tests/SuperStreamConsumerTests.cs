@@ -58,14 +58,14 @@ public class SuperStreamConsumerTests
         var consumedMessages = 0;
         const int NumberOfMessages = 20;
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        await SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
+        await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, NumberOfMessages, "", _testOutputHelper);
         var clientProvidedName = Guid.NewGuid().ToString();
 
         var consumer = await system.CreateSuperStreamConsumer(
             new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
             {
                 ClientProvidedName = clientProvidedName,
-                OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
+                OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange, new OffsetTypeFirst()),
                 MessageHandler = (stream, consumer1, context, message) =>
                 {
                     listConsumed.Add(stream);
