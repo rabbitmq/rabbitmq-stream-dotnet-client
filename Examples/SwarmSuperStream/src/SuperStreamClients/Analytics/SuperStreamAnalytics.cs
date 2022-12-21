@@ -40,7 +40,11 @@ public partial class SuperStreamAnalytics
     {
         var messageSummary = GetCustomerMessageSummary(cancellationToken);
         var hostSummary = GetHostSummary(cancellationToken);
-        return new MessageSummary(hostSummary, messageSummary);
+        return new MessageSummary(
+            hostSummary.Sum(x=>x.ActiveCustomerCount),
+            hostSummary.Where(x=>x.Active).Count(),
+            hostSummary, 
+            messageSummary);
     }
 
     public IEnumerable<HostSummaries> GetHostSummary(
