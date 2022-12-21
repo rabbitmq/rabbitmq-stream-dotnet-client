@@ -22,4 +22,6 @@ public class RabbitMqStreamOptions
     public bool Producer {get;set;} = true;
     public bool Analytics {get;set;} = true;
     public string AnalyticsApi{get;set;}="http://localhost:5070";
+
+    public TimeSpan AnalyticsRefreshTime {get;set;} = TimeSpan.FromSeconds(5);
 }

@@ -41,9 +41,9 @@ public partial class SuperStreamAnalytics
         var messageSummary = GetCustomerMessageSummary(cancellationToken);
         var hostSummary = GetHostSummary(cancellationToken);
         return new MessageSummary(
-            hostSummary.Sum(x=>x.ActiveCustomerCount),
-            hostSummary.Where(x=>x.Active).Count(),
-            hostSummary, 
+            hostSummary.Sum(x => x.ActiveCustomerCount),
+            hostSummary.Where(x => x.Active).Count(),
+            hostSummary,
             messageSummary);
     }
 
@@ -61,18 +61,18 @@ public partial class SuperStreamAnalytics
             var lastHost = customerMessages.Value.Hosts.Last();
             if (!hostCount.ContainsKey(lastHost.Key))
                 hostCount.Add(lastHost.Key, 0);
-            
+
             hostCount[lastHost.Key]++;
 
             foreach (var host in customerMessages.Value.Hosts)
             {
                 if (!hostHistoricCount.ContainsKey(host.Key))
                     hostHistoricCount.Add(host.Key, 0);
-                
-                 hostHistoricCount[host.Key]++;
+
+                hostHistoricCount[host.Key]++;
             }
         }
-        
+
         var hostSummaries = new List<HostSummaries>();
 
         foreach (var hostCountSummary in hostHistoricCount)
@@ -86,9 +86,9 @@ public partial class SuperStreamAnalytics
                 hostCountSummary.Value));
         }
 
-        foreach( var ordered in hostSummaries
-            .OrderByDescending(x=>x.ActiveCustomerCount)
-            .ThenBy(x=>x.HostName))
+        foreach (var ordered in hostSummaries
+            .OrderByDescending(x => x.ActiveCustomerCount)
+            .ThenBy(x => x.HostName))
         {
             yield return ordered;
         }
@@ -98,7 +98,7 @@ public partial class SuperStreamAnalytics
         CancellationToken cancellationToken)
     {
 
-        foreach (var customerMessages in receivedMessages.OrderBy(x=>x.Key))
+        foreach (var customerMessages in receivedMessages.OrderBy(x => x.Key))
         {
             var customerHostSummary = new List<CustomerHostSummary>();
 
@@ -123,7 +123,7 @@ public partial class SuperStreamAnalytics
             var customerSummary = new CustomerSummary(
                 customerMessages.Key,
                 customerHostSummary.Count,
-                customerHostSummary.Sum(x=>x.NumberOfMessages),
+                customerHostSummary.Sum(x => x.NumberOfMessages),
                 customerHostSummary.Last().LastMessageNumber,
                 customerHostSummary.Last().LastMessage,
                 customerHostSummary
@@ -156,7 +156,7 @@ public partial class SuperStreamAnalytics
             customerAnalytics.Sources.Add(message.SourceStream);
     }
 
-    public override string ToString()
+    public string GenerateSummaryInfo(CancellationToken cancellationToken)
     {
         var options = _options.Value;
         var maxMessagesToShow = options.MaxMessagesToShowInAnalytics;
@@ -166,12 +166,18 @@ public partial class SuperStreamAnalytics
 
         foreach (var customer in orderedCustomers)
         {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
             sb.Append("Customer: ");
             sb.AppendLine(customer.Key.ToString());
 
             sb.Append("Sources: ");
             foreach (var source in customer.Value.Sources)
             {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
                 sb.Append(source);
                 sb.Append(", ");
             }
@@ -179,6 +185,9 @@ public partial class SuperStreamAnalytics
 
             foreach (var host in customer.Value.Hosts)
             {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
                 var hostMesages = host.Value.Messages;
                 sb.Append("Host (First message received at ");
                 sb.Append(host.Value.TimeSeen.ToLongTimeString());
@@ -193,6 +202,9 @@ public partial class SuperStreamAnalytics
 
                 foreach (var message in hostMesages.TakeLast(maxMessagesToShow))
                 {
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
                     infoFound = true;
                     sb.Append(message.CustomerMessage.MessageNumber);
                     sb.Append("(");
@@ -202,7 +214,6 @@ public partial class SuperStreamAnalytics
 
                 sb.AppendLine();
             }
-
 
             sb.AppendLine();
         }
