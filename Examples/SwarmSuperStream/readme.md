@@ -20,6 +20,21 @@ Each consumer writes the messages it receives to a single analytics API service 
 
 The log output of the analytics service shows for each customer, what hosts have handled its messages, and the last 10 messages handled by the host.
 
+## Quick Start
+
+If a swarm is not already started
+
+```
+docker swarm init
+```
+
+Build docker files and deploy to local swarm
+
+```
+sudo chmod +x ./run.sh
+./run.sh
+```
+
 ## Example Output 1
 
 This is running with 30 stream partitions, 10 customers, and 2 consumers. No changes to the number of consumers was made during the run.
