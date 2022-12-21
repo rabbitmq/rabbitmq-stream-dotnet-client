@@ -10,7 +10,7 @@ Each consumer writes the messages it receives to a single analytics API service 
 
 The log output of the analytics service shows for each customer, what hosts have handled its messages, and the last 10 messages handled by the host.
 
-## Example Output
+## Example Output 1
 
 This is running with 30 stream partitions, 10 customers, and 2 consumers. No changes to the number of consumers was made during the run.
 
@@ -73,6 +73,224 @@ The 10 most recent messages are shown for each customer.
 |  Messages (190): ...1660(14:08:04), 1669(14:08:09), 1674(14:08:12), 1717(14:08:36), 1732(14:08:44), 1752(14:08:53), 1758(14:08:56), 1761(14:08:59), 1798(14:09:18), 1807(14:09:23),
 -   |
 -   |
+```
+
+## Example Output 2
+
+This example shows the number of consumers scaling up and down, and customer  being distributed across available hosts.
+
+
+### Configuration exert from docker-compose.yml
+
+```
+ ...
+ consumer:
+    deploy:
+      replicas: 3
+ ...
+
+ ...
+  producer:
+    environment:
+      - SwarmSuperStreams__NumberOfCustomers=3
+...
+```
+
+### This starts with 3 customers and 3 consumers.
+
+Each customer is being handled by a different host:
+- Customer 0: started on dd18795549d9
+- Customer 1: started on 6de260a677fd
+- Customer 2: started on 0f7159c723f7
+
+```
+
+|
+| info: SuperStreamClients.Analytics.AnalyticsBackgroundWorker[0]
+|       Customer: 0
+|       Sources: SwarmSuperStream-5,
+|       Host (First message received at 14:19:23): dd18795549d9
+|       Messages (3): 4(14:19:23), 5(14:19:24), 7(14:19:25),
+|
+|       Customer: 1
+|       Sources: SwarmSuperStream-8,
+|       Host (First message received at 14:19:21): 6de260a677fd
+|       Messages (1): 0(14:19:20),
+|
+|       Customer: 2
+|       Sources: SwarmSuperStream-13,
+|       Host (First message received at 14:19:21): 0f7159c723f7
+|       Messages (4): 1(14:19:21), 2(14:19:22), 3(14:19:23), 6(14:19:24),
+|
+```
+
+### And then 0 consumers
+
+```
+docker service scale superstack_consumer=0
+```
+
+One customer did move to a new host, before they were all terminated.
+- Customer 0: was last on dd18795549d9
+- Customer 1: moved from 6de260a677fd to dd18795549d9 as 6de260a677fd was shutdown
+- Customer 2: was last on 0f7159c723f7
+
+```
+
+| info: SuperStreamClients.Analytics.AnalyticsBackgroundWorker[0]
+|       Customer: 0
+|       Sources: SwarmSuperStream-5,
+|       Host (First message received at 14:19:23): dd18795549d9
+|       Messages (10): 4(14:19:23), 5(14:19:24), 7(14:19:25), 8(14:19:25), 11(14:19:27), 12(14:19:28), 13(14:19:29), 21(14:19:32), 34(14:19:40), 36(14:19:41),
+|
+|       Customer: 1
+|       Sources: SwarmSuperStream-8,
+|       Host (First message received at 14:19:21): 6de260a677fd
+|       Messages (1): 0(14:19:20),
+|       Host (First message received at 14:19:27): dd18795549d9
+|       Messages (15): ...19(14:19:31), 20(14:19:32), 23(14:19:34), 25(14:19:34), 26(14:19:35), 28(14:19:36), 30(14:19:37), 31(14:19:38), 38(14:19:42), 41(14:19:43),
+|
+|       Customer: 2
+|       Sources: SwarmSuperStream-13,
+|       Host (First message received at 14:19:21): 0f7159c723f7
+|       Messages (16): ...22(14:19:33), 24(14:19:34), 27(14:19:36), 29(14:19:37), 32(14:19:38), 33(14:19:39), 35(14:19:40), 37(14:19:41), 39(14:19:42), 40(14:19:43),
+|
+```
+
+### It is then scaled to 1 consumer
+
+```
+docker service scale superstack_consumer=1
+```
+
+Each customer is being handled by the same host:
+- Customer 0:  moved from dd18795549d9 to the new single consumer of 0ad39aca1229
+- Customer 1:  moved from dd18795549d9 to the new single consumer of 0ad39aca1229
+- Customer 2:  moved from 0f7159c723f7 to the new single consumer of 0ad39aca1229
+
+```
+qj3h4k@CB-004164621257    | info: SuperStreamClients.Analytics.AnalyticsBackgroundWorker[0]
+|       Customer: 0
+|       Sources: SwarmSuperStream-5,
+|       Host (First message received at 14:19:23): dd18795549d9
+|       Messages (10): 4(14:19:23), 5(14:19:24), 7(14:19:25), 8(14:19:25), 11(14:19:27), 12(14:19:28), 13(14:19:29), 21(14:19:32), 34(14:19:40), 36(14:19:41),
+|       Host (First message received at 14:20:29): 0ad39aca1229
+|       Messages (2): 125(14:20:29), 130(14:20:32),
+|
+|       Customer: 1
+|       Sources: SwarmSuperStream-8,
+|       Host (First message received at 14:19:21): 6de260a677fd
+|       Messages (1): 0(14:19:20),
+|       Host (First message received at 14:19:27): dd18795549d9
+|       Messages (15): ...19(14:19:31), 20(14:19:32), 23(14:19:34), 25(14:19:34), 26(14:19:35), 28(14:19:36), 30(14:19:37), 31(14:19:38), 38(14:19:42), 41(14:19:43),
+|       Host (First message received at 14:20:27): 0ad39aca1229
+|       Messages (4): 120(14:20:27), 122(14:20:28), 126(14:20:30), 131(14:20:33),
+|
+|       Customer: 2
+|       Sources: SwarmSuperStream-13,
+|       Host (First message received at 14:19:21): 0f7159c723f7
+|       Messages (16): ...22(14:19:33), 24(14:19:34), 27(14:19:36), 29(14:19:37), 32(14:19:38), 33(14:19:39), 35(14:19:40), 37(14:19:41), 39(14:19:42), 40(14:19:43),
+|       Host (First message received at 14:20:26): 0ad39aca1229
+|       Messages (7): 119(14:20:26), 121(14:20:27), 123(14:20:28), 124(14:20:29), 127(14:20:31), 128(14:20:31), 129(14:20:31),
+|
+```
+
+
+
+### And then back to 3 consumers
+
+```
+docker service scale superstack_consumer=3
+```
+
+Each customer is being handled by a different host:
+- Customer 0:  moved from 0ad39aca1229 to the new consumer 262a01fec68f
+- Customer 1:  moved from 0ad39aca1229 to same consumer that 0 is on 262a01fec68f
+- Customer 2:  moved from 0ad39aca1229 to the new consumer 2d2337d09fdb
+
+Note - Unsure why customer 0 and 1 stayed on the same host, as there were 3 consumer hosts running at this point.
+```
+
+| info: SuperStreamClients.Analytics.AnalyticsBackgroundWorker[0]
+|       Customer: 0
+|       Sources: SwarmSuperStream-5,
+|       Host (First message received at 14:19:23): dd18795549d9
+|       Messages (10): 4(14:19:23), 5(14:19:24), 7(14:19:25), 8(14:19:25), 11(14:19:27), 12(14:19:28), 13(14:19:29), 21(14:19:32), 34(14:19:40), 36(14:19:41),
+|       Host (First message received at 14:20:29): 0ad39aca1229
+|       Messages (16): ...146(14:20:42), 153(14:20:47), 154(14:20:48), 155(14:20:48), 156(14:20:49), 157(14:20:50), 158(14:20:51), 159(14:20:51), 163(14:20:52), 164(14:20:53),
+|       Host (First message received at 14:20:56): 262a01fec68f
+|       Messages (30): ...226(14:21:25), 234(14:21:29), 237(14:21:31), 239(14:21:32), 242(14:21:33), 245(14:21:34), 248(14:21:36), 250(14:21:37), 253(14:21:38), 254(14:21:39),
+|
+|       Customer: 1
+|       Sources: SwarmSuperStream-8,
+|       Host (First message received at 14:19:21): 6de260a677fd
+|       Messages (1): 0(14:19:20),
+|       Host (First message received at 14:19:27): dd18795549d9
+|       Messages (15): ...19(14:19:31), 20(14:19:32), 23(14:19:34), 25(14:19:34), 26(14:19:35), 28(14:19:36), 30(14:19:37), 31(14:19:38), 38(14:19:42), 41(14:19:43),
+|       Host (First message received at 14:20:27): 0ad39aca1229
+|       Messages (19): ...141(14:20:39), 145(14:20:41), 147(14:20:42), 148(14:20:43), 149(14:20:44), 151(14:20:46), 160(14:20:51), 162(14:20:52), 165(14:20:53), 166(14:20:54),
+|       Host (First message received at 14:20:56): 262a01fec68f
+|       Messages (34): ...244(14:21:35), 246(14:21:35), 247(14:21:36), 249(14:21:36), 252(14:21:37), 255(14:21:39), 257(14:21:40), 259(14:21:42), 260(14:21:43), 263(14:21:45),
+|
+|       Customer: 2
+|       Sources: SwarmSuperStream-13,
+|       Host (First message received at 14:19:21): 0f7159c723f7
+|       Messages (16): ...22(14:19:33), 24(14:19:34), 27(14:19:36), 29(14:19:37), 32(14:19:38), 33(14:19:39), 35(14:19:40), 37(14:19:41), 39(14:19:42), 40(14:19:43),
+|       Host (First message received at 14:20:26): 0ad39aca1229
+|       Messages (15): ...128(14:20:31), 129(14:20:31), 136(14:20:36), 142(14:20:40), 144(14:20:41), 150(14:20:45), 152(14:20:46), 161(14:20:52), 167(14:20:54), 168(14:20:55),
+|       Host (First message received at 14:20:58): 2d2337d09fdb
+|       Messages (32): ...233(14:21:29), 235(14:21:30), 238(14:21:31), 240(14:21:32), 251(14:21:37), 256(14:21:40), 258(14:21:41), 261(14:21:44), 262(14:21:45), 264(14:21:46),
+|
+|
+```
+
+### Scaled to 4 available consumers
+
+```
+docker service scale superstack_consumer=4
+```
+
+Each customer is now being handled by a different consumer host:
+- Customer 0:  moved from 262a01fec68f to the new consumer 2d2337d09fdb
+- Customer 1:  stayed on host 262a01fec68f
+- Customer 2:  stayed on host 2d2337d09fdb
+
+Note - This now caused the rebalance and customer 0 and 1 were put on different consumer hosts.
+
+```
+
+| info: SuperStreamClients.Analytics.AnalyticsBackgroundWorker[0]
+|       Customer: 0
+|       Sources: SwarmSuperStream-5,
+|       Host (First message received at 14:19:23): dd18795549d9
+|       Messages (10): 4(14:19:23), 5(14:19:24), 7(14:19:25), 8(14:19:25), 11(14:19:27), 12(14:19:28), 13(14:19:29), 21(14:19:32), 34(14:19:40), 36(14:19:41),
+|       Host (First message received at 14:20:29): 0ad39aca1229
+|       Messages (16): ...146(14:20:42), 153(14:20:47), 154(14:20:48), 155(14:20:48), 156(14:20:49), 157(14:20:50), 158(14:20:51), 159(14:20:51), 163(14:20:52), 164(14:20:53),
+|       Host (First message received at 14:20:56): 262a01fec68f
+|       Messages (342): ...1188(14:30:21), 1193(14:30:23), 1199(14:30:27), 1200(14:30:28), 1203(14:30:30), 1204(14:30:30), 1207(14:30:32), 1213(14:30:36), 1214(14:30:36), 1218(14:30:38),
+|       Host (First message received at 14:30:42): 2d2337d09fdb
+|       Messages (14): ...1229(14:30:45), 1233(14:30:47), 1234(14:30:48), 1235(14:30:49), 1239(14:30:50), 1241(14:30:51), 1244(14:30:51), 1254(14:30:58), 1259(14:31:01), 1277(14:31:10),
+|
+|       Customer: 1
+|       Sources: SwarmSuperStream-8,
+|       Host (First message received at 14:19:21): 6de260a677fd
+|       Messages (1): 0(14:19:20),
+|       Host (First message received at 14:19:27): dd18795549d9
+|       Messages (15): ...19(14:19:31), 20(14:19:32), 23(14:19:34), 25(14:19:34), 26(14:19:35), 28(14:19:36), 30(14:19:37), 31(14:19:38), 38(14:19:42), 41(14:19:43),
+|       Host (First message received at 14:20:27): 0ad39aca1229
+|       Messages (33): ...1250(14:30:55), 1251(14:30:55), 1253(14:30:57), 1255(14:30:58), 1258(14:31:00), 1266(14:31:05), 1267(14:31:05), 1269(14:31:06), 1273(14:31:08), 1274(14:31:09),
+|       Host (First message received at 14:20:56): 262a01fec68f
+|       Messages (353): ...1192(14:30:23), 1195(14:30:25), 1196(14:30:25), 1197(14:30:26), 1198(14:30:27), 1205(14:30:31), 1209(14:30:34), 1210(14:30:34), 1215(14:30:36), 1217(14:30:38),
+|
+|       Customer: 2
+|       Sources: SwarmSuperStream-13,
+|       Host (First message received at 14:19:21): 0f7159c723f7
+|       Messages (16): ...22(14:19:33), 24(14:19:34), 27(14:19:36), 29(14:19:37), 32(14:19:38), 33(14:19:39), 35(14:19:40), 37(14:19:41), 39(14:19:42), 40(14:19:43),
+|       Host (First message received at 14:20:26): 0ad39aca1229
+|       Messages (15): ...128(14:20:31), 129(14:20:31), 136(14:20:36), 142(14:20:40), 144(14:20:41), 150(14:20:45), 152(14:20:46), 161(14:20:52), 167(14:20:54), 168(14:20:55),
+|       Host (First message received at 14:20:58): 2d2337d09fdb
+|       Messages (386): ...1262(14:31:03), 1263(14:31:03), 1264(14:31:04), 1265(14:31:04), 1268(14:31:06), 1270(14:31:06), 1271(14:31:07), 1272(14:31:08), 1275(14:31:09), 1276(14:31:09),
+
 ```
 
 ## Configuration
