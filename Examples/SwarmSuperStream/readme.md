@@ -32,8 +32,10 @@ The 10 most recent messages are shown for each customer.
 
 ### What consumer containers are processing which customers messages 
 
-Consumer baaf3c4d0426 processing messages for 7 customers
-Consumer 622c9a2d0a10 processing messages for 3 customers
+- Consumer baaf3c4d0426 processing messages for 7 customers
+- Consumer 622c9a2d0a10 processing messages for 3 customers
+
+Breakdown:
 
 - Customer 0: 622c9a2d0a10
 - Customer 1: baaf3c4d0426
