@@ -1,6 +1,14 @@
-# Super Streams
+# Docker Swarm Super Streams Example
 
-This demo shows multiple consumers running, with a producer sending messages for a number of different "customers".
+## Showing:
+
+- RabbitMQ
+- SuperStreams
+- SingleActiveConsumer
+- dotnet rabbitmq streaming client library
+
+## Summary
+This example code shows multiple consumers running, with a producer sending messages for a number of different "customers".
 
 The messages for each customer will be processed in order on the same host. If a host goes down, or the number of consumers is increased, the host processing the messages for a consumer will change.
 
@@ -326,6 +334,7 @@ public class RabbitMqStreamOptions
 These can be set from Environment Variables, appsettings.json, or inline code.
 
 From docker compose environment variables
+
 ```
   producer:
     image: swarmsuperstreamclient
@@ -342,6 +351,7 @@ From docker compose environment variables
 ```
 
 App Settings
+
 ```
 {
   "SwarmSuperStreams": {
@@ -361,6 +371,7 @@ App Settings
 ```
 
 Inline code
+
 ```
 builder.Services.AddSwarmSuperStream(
     builder.Configuration.GetSection(RabbitMqStreamOptions.Name),
@@ -370,9 +381,11 @@ builder.Services.AddSwarmSuperStream(
     });
 ```
 
-[TODO]
+
 
 ### Example Config Chamges
+
+[TODO]
 
 #### Change Number of Customers
 
