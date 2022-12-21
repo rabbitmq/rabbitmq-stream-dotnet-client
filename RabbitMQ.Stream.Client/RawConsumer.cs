@@ -215,9 +215,14 @@ namespace RabbitMQ.Stream.Client
             }
 
             var consumerProperties = new Dictionary<string, string>();
-            if (_config.IsSingleActiveConsumer)
+
+            if (!string.IsNullOrEmpty(_config.Reference))
             {
                 consumerProperties["name"] = _config.Reference;
+            }
+
+            if (_config.IsSingleActiveConsumer)
+            {
                 consumerProperties["single-active-consumer"] = "true";
                 if (!string.IsNullOrEmpty(_config.SuperStream))
                 {
