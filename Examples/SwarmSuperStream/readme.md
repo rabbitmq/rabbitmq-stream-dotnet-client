@@ -6,6 +6,8 @@
 - SuperStreams
 - SingleActiveConsumer
 - dotnet rabbitmq streaming client library
+- docker swarm scaling
+- multiple available consumer containers 
 
 ## Summary
 This example code shows multiple consumers running, with a producer sending messages for a number of different "customers".
