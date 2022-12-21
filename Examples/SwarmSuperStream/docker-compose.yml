@@ -79,6 +79,10 @@ services:
       - SwarmSuperStreams__Analytics=true
       - Logging__LogLevel__Default=Information
       - DOTNET_ENVIRONMENT=Development
+    ports:
+      - target: 5070
+        published: 5070
+        mode: host
     deploy:
       replicas: 1
       restart_policy:

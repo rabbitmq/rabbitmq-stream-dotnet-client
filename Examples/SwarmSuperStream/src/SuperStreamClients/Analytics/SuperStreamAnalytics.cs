@@ -2,7 +2,7 @@ using System.Text;
 
 namespace SuperStreamClients.Analytics;
 
-public class SuperStreamAnalytics
+public partial class SuperStreamAnalytics
 {
     private readonly IOptions<RabbitMqStreamOptions> _options;
     public SuperStreamAnalytics(IOptions<RabbitMqStreamOptions> options)
@@ -12,6 +12,123 @@ public class SuperStreamAnalytics
     private Dictionary<int, AnalyticsInfo> receivedMessages =
      new Dictionary<int, AnalyticsInfo>();
 
+    public IEnumerable<ReceivedCustomerMessage> GetMessagesForCustomer(
+        int customerId,
+        CancellationToken cancellationToken)
+    {
+        if (!receivedMessages.ContainsKey(customerId))
+            yield break;
+
+        var customerMessages = receivedMessages[customerId];
+
+        foreach (var host in customerMessages.Hosts)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                yield break;
+
+            foreach (var message in host.Value.Messages)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    yield break;
+
+                yield return message;
+            }
+        }
+    }
+
+    public MessageSummary GetMessageSummary(CancellationToken cancellationToken)
+    {
+        var messageSummary = GetCustomerMessageSummary(cancellationToken);
+        var hostSummary = GetHostSummary(cancellationToken);
+        return new MessageSummary(hostSummary, messageSummary);
+    }
+
+    public IEnumerable<HostSummaries> GetHostSummary(
+        CancellationToken cancellationToken)
+    {
+        Dictionary<string, int> hostCount = new Dictionary<string, int>();
+        Dictionary<string, int> hostHistoricCount = new Dictionary<string, int>();
+
+        foreach (var customerMessages in receivedMessages)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                yield break;
+
+            var lastHost = customerMessages.Value.Hosts.Last();
+            if (!hostCount.ContainsKey(lastHost.Key))
+                hostCount.Add(lastHost.Key, 0);
+            
+            hostCount[lastHost.Key]++;
+
+            foreach (var host in customerMessages.Value.Hosts)
+            {
+                if (!hostHistoricCount.ContainsKey(host.Key))
+                    hostHistoricCount.Add(host.Key, 0);
+                
+                 hostHistoricCount[host.Key]++;
+            }
+        }
+        
+        var hostSummaries = new List<HostSummaries>();
+
+        foreach (var hostCountSummary in hostHistoricCount)
+        {
+            var activeCount = hostCount.ContainsKey(hostCountSummary.Key) ? hostCount[hostCountSummary.Key] : 0;
+
+            hostSummaries.Add(new HostSummaries(
+                activeCount > 0,
+                hostCountSummary.Key,
+                activeCount,
+                hostCountSummary.Value));
+        }
+
+        foreach( var ordered in hostSummaries
+            .OrderByDescending(x=>x.ActiveCustomerCount)
+            .ThenBy(x=>x.HostName))
+        {
+            yield return ordered;
+        }
+    }
+
+    public IEnumerable<CustomerSummary> GetCustomerMessageSummary(
+        CancellationToken cancellationToken)
+    {
+
+        foreach (var customerMessages in receivedMessages.OrderBy(x=>x.Key))
+        {
+            var customerHostSummary = new List<CustomerHostSummary>();
+
+            if (cancellationToken.IsCancellationRequested)
+                yield break;
+
+            foreach (var host in customerMessages.Value.Hosts)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    yield break;
+
+                var summary = new CustomerHostSummary(
+                    customerMessages.Key,
+                    host.Key,
+                    host.Value.Messages.Count,
+                    host.Value.Messages.Last().CustomerMessage.MessageNumber,
+                    host.Value.Messages.Last().TimeReceived);
+
+                customerHostSummary.Add(summary);
+            }
+
+            var customerSummary = new CustomerSummary(
+                customerMessages.Key,
+                customerHostSummary.Count,
+                customerHostSummary.Sum(x=>x.NumberOfMessages),
+                customerHostSummary.Last().LastMessageNumber,
+                customerHostSummary.Last().LastMessage,
+                customerHostSummary
+                );
+
+            yield return customerSummary;
+        }
+    }
+
     public void NewMessage(ReceivedCustomerMessage message)
     {
         if (!receivedMessages.ContainsKey(message.CustomerMessage.CustomerId))
@@ -20,10 +137,12 @@ public class SuperStreamAnalytics
         }
         var customerAnalytics = receivedMessages[message.CustomerMessage.CustomerId];
 
-        if(!customerAnalytics.Hosts.ContainsKey(message.ReceivedOnHost))
-            customerAnalytics.Hosts.Add(message.ReceivedOnHost, new HostMessages(){
+        if (!customerAnalytics.Hosts.ContainsKey(message.ReceivedOnHost))
+            customerAnalytics.Hosts.Add(message.ReceivedOnHost, new HostMessages()
+            {
                 Host = message.ReceivedOnHost,
-                TimeSeen = TimeOnly.FromDateTime(DateTime.Now)});
+                TimeSeen = TimeOnly.FromDateTime(DateTime.Now)
+            });
 
         var host = customerAnalytics.Hosts[message.ReceivedOnHost];
 
@@ -79,11 +198,11 @@ public class SuperStreamAnalytics
 
                 sb.AppendLine();
             }
-            
+
 
             sb.AppendLine();
         }
-        if(!infoFound)
+        if (!infoFound)
             sb.AppendLine("Waiting on analytic data to arrive.");
 
         return sb.ToString();

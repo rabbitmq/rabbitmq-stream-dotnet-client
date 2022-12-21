@@ -30,4 +30,16 @@ public class CustomerAnalyticsController : ControllerBase
 
         return response;
     }
+
+    [HttpGet("{customerId}", Name="GetCustomerMessages")]
+    public IEnumerable<ReceivedCustomerMessage> Get(int customerId, CancellationToken cancellationToken = (default))
+    {
+        return _analytics.GetMessagesForCustomer(customerId, cancellationToken);
+    }
+
+    [HttpGet(Name="GetCustomerMessageSummary")]
+    public MessageSummary Get(CancellationToken cancellationToken = (default))
+    {
+        return _analytics.GetMessageSummary( cancellationToken);
+    }
 }

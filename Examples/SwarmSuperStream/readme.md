@@ -459,9 +459,367 @@ builder.Services.AddSwarmSuperStream(
 
 [TODO]
 
-## Features to add
-- Web GUI for showing stats / analytics
+## API
 
+### Swagger Exposed
+
+```
+http://localhost:5070/swagger/index.html
+```
+
+### Basic Summary
+
+```
+curl -X 'GET' \
+  'http://localhost:5070/CustomerAnalytics' \
+  -H 'accept: text/plain'
+```
+
+#### Example Response
+
+```
+{
+  "hostSummaries": [
+    {
+      "active": true,
+      "hostName": "f670efaab3ed",
+      "activeCustomerCount": 3,
+      "allTimeCustomerCount": 3
+    },
+    {
+      "active": true,
+      "hostName": "860c19f3422d",
+      "activeCustomerCount": 2,
+      "allTimeCustomerCount": 3
+    },
+    {
+      "active": true,
+      "hostName": "875d017cd9f8",
+      "activeCustomerCount": 2,
+      "allTimeCustomerCount": 2
+    },
+    {
+      "active": true,
+      "hostName": "ebc094545237",
+      "activeCustomerCount": 2,
+      "allTimeCustomerCount": 10
+    },
+    {
+      "active": true,
+      "hostName": "9f22a97704be",
+      "activeCustomerCount": 1,
+      "allTimeCustomerCount": 1
+    },
+    {
+      "active": false,
+      "hostName": "1dd06dfa5395",
+      "activeCustomerCount": 0,
+      "allTimeCustomerCount": 5
+    },
+    {
+      "active": false,
+      "hostName": "63915d6176cd",
+      "activeCustomerCount": 0,
+      "allTimeCustomerCount": 5
+    }
+  ],
+  "customerSummaries": [
+    {
+      "customerId": 0,
+      "differentHostCount": 2,
+      "numberOfMessages": 19,
+      "lastMessageNumber": 202,
+      "lastMessage": "16:24:45.3393598",
+      "customerHostSummaries": [
+        {
+          "customerId": 0,
+          "hostId": "63915d6176cd",
+          "numberOfMessages": 4,
+          "lastMessageNumber": 21,
+          "lastMessage": "16:23:04.7310155"
+        },
+        {
+          "customerId": 0,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 15,
+          "lastMessageNumber": 202,
+          "lastMessage": "16:24:45.3393598"
+        }
+      ]
+    },
+    {
+      "customerId": 1,
+      "differentHostCount": 3,
+      "numberOfMessages": 12,
+      "lastMessageNumber": 190,
+      "lastMessage": "16:24:39.4840432",
+      "customerHostSummaries": [
+        {
+          "customerId": 1,
+          "hostId": "1dd06dfa5395",
+          "numberOfMessages": 3,
+          "lastMessageNumber": 48,
+          "lastMessage": "16:23:19.8573355"
+        },
+        {
+          "customerId": 1,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 7,
+          "lastMessageNumber": 154,
+          "lastMessage": "16:24:19.9524436"
+        },
+        {
+          "customerId": 1,
+          "hostId": "f670efaab3ed",
+          "numberOfMessages": 2,
+          "lastMessageNumber": 190,
+          "lastMessage": "16:24:39.4840432"
+        }
+      ]
+    },
+    {
+      "customerId": 2,
+      "differentHostCount": 3,
+      "numberOfMessages": 22,
+      "lastMessageNumber": 211,
+      "lastMessage": "16:24:50.0260407",
+      "customerHostSummaries": [
+        {
+          "customerId": 2,
+          "hostId": "63915d6176cd",
+          "numberOfMessages": 6,
+          "lastMessageNumber": 49,
+          "lastMessage": "16:23:20.6839039"
+        },
+        {
+          "customerId": 2,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 9,
+          "lastMessageNumber": 159,
+          "lastMessage": "16:24:23.9498597"
+        },
+        {
+          "customerId": 2,
+          "hostId": "f670efaab3ed",
+          "numberOfMessages": 7,
+          "lastMessageNumber": 211,
+          "lastMessage": "16:24:50.0260407"
+        }
+      ]
+    },
+    {
+      "customerId": 3,
+      "differentHostCount": 3,
+      "numberOfMessages": 19,
+      "lastMessageNumber": 212,
+      "lastMessage": "16:24:50.6586932",
+      "customerHostSummaries": [
+        {
+          "customerId": 3,
+          "hostId": "1dd06dfa5395",
+          "numberOfMessages": 5,
+          "lastMessageNumber": 46,
+          "lastMessage": "16:23:19.2146684"
+        },
+        {
+          "customerId": 3,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 10,
+          "lastMessageNumber": 140,
+          "lastMessage": "16:24:11.3695605"
+        },
+        {
+          "customerId": 3,
+          "hostId": "9f22a97704be",
+          "numberOfMessages": 4,
+          "lastMessageNumber": 212,
+          "lastMessage": "16:24:50.6586932"
+        }
+      ]
+    },
+    {
+      "customerId": 4,
+      "differentHostCount": 3,
+      "numberOfMessages": 18,
+      "lastMessageNumber": 203,
+      "lastMessage": "16:24:45.8459297",
+      "customerHostSummaries": [
+        {
+          "customerId": 4,
+          "hostId": "63915d6176cd",
+          "numberOfMessages": 4,
+          "lastMessageNumber": 51,
+          "lastMessage": "16:23:22.3752205"
+        },
+        {
+          "customerId": 4,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 8,
+          "lastMessageNumber": 165,
+          "lastMessage": "16:24:25.7448531"
+        },
+        {
+          "customerId": 4,
+          "hostId": "860c19f3422d",
+          "numberOfMessages": 6,
+          "lastMessageNumber": 203,
+          "lastMessage": "16:24:45.8459297"
+        }
+      ]
+    },
+    {
+      "customerId": 5,
+      "differentHostCount": 3,
+      "numberOfMessages": 27,
+      "lastMessageNumber": 201,
+      "lastMessage": "16:24:44.5152366",
+      "customerHostSummaries": [
+        {
+          "customerId": 5,
+          "hostId": "63915d6176cd",
+          "numberOfMessages": 6,
+          "lastMessageNumber": 45,
+          "lastMessage": "16:23:18.5441506"
+        },
+        {
+          "customerId": 5,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 16,
+          "lastMessageNumber": 166,
+          "lastMessage": "16:24:26.1834939"
+        },
+        {
+          "customerId": 5,
+          "hostId": "875d017cd9f8",
+          "numberOfMessages": 5,
+          "lastMessageNumber": 201,
+          "lastMessage": "16:24:44.5152366"
+        }
+      ]
+    },
+    {
+      "customerId": 6,
+      "differentHostCount": 3,
+      "numberOfMessages": 18,
+      "lastMessageNumber": 206,
+      "lastMessage": "16:24:47.2334830",
+      "customerHostSummaries": [
+        {
+          "customerId": 6,
+          "hostId": "63915d6176cd",
+          "numberOfMessages": 8,
+          "lastMessageNumber": 33,
+          "lastMessage": "16:23:11.4540249"
+        },
+        {
+          "customerId": 6,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 7,
+          "lastMessageNumber": 151,
+          "lastMessage": "16:24:18.2338778"
+        },
+        {
+          "customerId": 6,
+          "hostId": "f670efaab3ed",
+          "numberOfMessages": 3,
+          "lastMessageNumber": 206,
+          "lastMessage": "16:24:47.2334830"
+        }
+      ]
+    },
+    {
+      "customerId": 7,
+      "differentHostCount": 3,
+      "numberOfMessages": 19,
+      "lastMessageNumber": 213,
+      "lastMessage": "16:24:51.2151167",
+      "customerHostSummaries": [
+        {
+          "customerId": 7,
+          "hostId": "1dd06dfa5395",
+          "numberOfMessages": 4,
+          "lastMessageNumber": 50,
+          "lastMessage": "16:23:21.6190934"
+        },
+        {
+          "customerId": 7,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 11,
+          "lastMessageNumber": 142,
+          "lastMessage": "16:24:12.7913958"
+        },
+        {
+          "customerId": 7,
+          "hostId": "860c19f3422d",
+          "numberOfMessages": 4,
+          "lastMessageNumber": 213,
+          "lastMessage": "16:24:51.2151167"
+        }
+      ]
+    },
+    {
+      "customerId": 8,
+      "differentHostCount": 2,
+      "numberOfMessages": 29,
+      "lastMessageNumber": 214,
+      "lastMessage": "16:24:52.1905390",
+      "customerHostSummaries": [
+        {
+          "customerId": 8,
+          "hostId": "1dd06dfa5395",
+          "numberOfMessages": 8,
+          "lastMessageNumber": 47,
+          "lastMessage": "16:23:19.5041539"
+        },
+        {
+          "customerId": 8,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 21,
+          "lastMessageNumber": 214,
+          "lastMessage": "16:24:52.1905390"
+        }
+      ]
+    },
+    {
+      "customerId": 9,
+      "differentHostCount": 4,
+      "numberOfMessages": 17,
+      "lastMessageNumber": 208,
+      "lastMessage": "16:24:48.7949561",
+      "customerHostSummaries": [
+        {
+          "customerId": 9,
+          "hostId": "1dd06dfa5395",
+          "numberOfMessages": 4,
+          "lastMessageNumber": 43,
+          "lastMessage": "16:23:17.5548159"
+        },
+        {
+          "customerId": 9,
+          "hostId": "ebc094545237",
+          "numberOfMessages": 9,
+          "lastMessageNumber": 150,
+          "lastMessage": "16:24:17.3008101"
+        },
+        {
+          "customerId": 9,
+          "hostId": "860c19f3422d",
+          "numberOfMessages": 1,
+          "lastMessageNumber": 167,
+          "lastMessage": "16:24:27.1554561"
+        },
+        {
+          "customerId": 9,
+          "hostId": "875d017cd9f8",
+          "numberOfMessages": 3,
+          "lastMessageNumber": 208,
+          "lastMessage": "16:24:48.7949561"
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## Run In Swarm
 This demo uses docker swarm to show scaling of consumers up and down.
@@ -509,8 +867,6 @@ docker service logs superstack_consumer -f
 docker service logs superstack_producer -f
 ```
 
-### Issues
-
 
 
 ## Run Locally
@@ -536,3 +892,8 @@ Run App
 ```
 dotnet run --project src/SuperStreamClients 
 ```
+
+## Todo / Issues
+- SuperStreamAnalytics.cs to tidy
+- Metrics api / prometheus
+- Web GUI for showing stats / analytics
