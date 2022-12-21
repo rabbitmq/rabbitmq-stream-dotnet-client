@@ -9,7 +9,6 @@ builder.Services.AddSwarmSuperStream(
     builder.Configuration.GetSection(RabbitMqStreamOptions.Name),
     options =>
     {
-       options.HostName = "localhost";
     });
 
 builder.Services.AddControllers();

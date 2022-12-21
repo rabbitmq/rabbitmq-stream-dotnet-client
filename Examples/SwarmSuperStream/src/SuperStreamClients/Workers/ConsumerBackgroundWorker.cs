@@ -3,8 +3,7 @@ using System.Text;
 using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
 
-namespace SuperStreamClients;
-
+namespace SuperStreamClients.Consumers;
 public class ConsumerBackgroundWorker : BackgroundService
 {
     private readonly ILogger<ConsumerBackgroundWorker> _logger;
@@ -32,21 +31,33 @@ public class ConsumerBackgroundWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await CreateConnection();
-        await CreateConsumer(stoppingToken);
+        if (_options.Value.Consumer)
+        {
+            try
+            {
+                await CreateConnection(stoppingToken);
+                await CreateConsumer(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failure. Consumer worker terminating.");
+            }
+        }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        await _consumer?.Close();
-        await _streamSystem?.Close();
+        if (_options.Value.Consumer)
+        {
+            await _consumer?.Close();
+            await _streamSystem?.Close();
+        }
         await base.StopAsync(cancellationToken);
     }
 
-    private async Task CreateConnection()
+    private async Task CreateConnection(CancellationToken cancellationToken)
     {
-        var config = await _systemConnection.Create();
-        _streamSystem = await StreamSystem.Create(config);
+        _streamSystem = await _systemConnection.Create(cancellationToken);
     }
 
     public async Task<Consumer> CreateConsumer(CancellationToken cancellationToken)
@@ -125,7 +136,11 @@ public class ConsumerBackgroundWorker : BackgroundService
         CustomerMessage sentMessage)
     {
         var hostName = GetHostName();
-        return new ReceivedCustomerMessage(hostName, sourceStream, sentMessage);
+        return new ReceivedCustomerMessage(
+            TimeOnly.FromDateTime(DateTime.Now),
+            hostName, 
+            sourceStream, 
+            sentMessage);
     }
 
     private CustomerMessage DecodeProducedData(Message message)

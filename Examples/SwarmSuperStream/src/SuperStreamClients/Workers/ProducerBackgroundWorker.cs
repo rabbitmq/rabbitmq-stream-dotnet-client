@@ -2,7 +2,7 @@ using System.Text;
 using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
 
-namespace SuperStreamClients;
+namespace SuperStreamClients.Producers;
 
 public class ProducerBackgroundWorker : BackgroundService
 {
@@ -28,15 +28,28 @@ public class ProducerBackgroundWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await CreateConnection();
-        await CreateProducer(stoppingToken);
-        await SendMessages(stoppingToken);
+        if (_options.Value.Producer)
+        {
+            try
+            {
+                await CreateConnection(stoppingToken);
+                await CreateProducer(stoppingToken);
+                await SendMessages(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failure. Producer worker terminating.");
+            }
+        }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        await _producer?.Close();
-        await _streamSystem?.Close();
+        if (_options.Value.Producer)
+        {
+            await _producer?.Close();
+            await _streamSystem?.Close();
+        }
         await base.StopAsync(cancellationToken);
     }
 
@@ -123,10 +136,9 @@ public class ProducerBackgroundWorker : BackgroundService
         customerId.ToString();
 
 
-    private async Task CreateConnection()
+    private async Task CreateConnection(CancellationToken cancellationToken)
     {
-        var config = await _systemConnection.Create();
-        _streamSystem = await StreamSystem.Create(config);
+        _streamSystem = await _systemConnection.Create(cancellationToken);
     }
 
     private async Task CreateProducer(CancellationToken cancellationToken)

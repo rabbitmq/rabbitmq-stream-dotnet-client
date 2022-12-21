@@ -1,0 +1,92 @@
+version: "3.8"
+services:
+  rabbitmq:
+    hostname: rabbitmq  
+    image: swarmsuperstreamrabbitmq
+    environment:
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbitmq_stream advertised_host rabbitmq
+    deploy:
+      mode: global
+      endpoint_mode: dnsrr
+      restart_policy:
+          condition: any
+          delay: 5s
+          window: 120s
+    ports:
+      - target: 5672
+        published: 5672
+        protocol: tcp
+        mode: host
+      - target: 5671
+        published: 5671
+        protocol: tcp
+        mode: host
+      - target: 5552
+        published: 5552
+        protocol: tcp
+        mode: host
+      - target: 15672
+        published: 15672
+        protocol: tcp
+        mode: host
+    networks:
+      - supersuperstreams
+  consumer:
+    image: swarmsuperstreamclient
+    depends_on:
+      - rabbitmq
+    environment:
+      - SwarmSuperStreams__Consumer=true
+      - SwarmSuperStreams__Producer=false
+      - SwarmSuperStreams__Analytics=false
+      - SwarmSuperStreams__AnalyticsApi=http://analytics:5070
+      - Logging__LogLevel__Default=Information
+      - DOTNET_ENVIRONMENT=Production
+    deploy:
+      replicas: 2
+      restart_policy:
+          condition: any
+          delay: 5s
+          window: 120s
+    networks:
+      - supersuperstreams
+  producer:
+    image: swarmsuperstreamclient
+    depends_on:
+      - rabbitmq
+    environment:
+      - SwarmSuperStreams__Consumer=false
+      - SwarmSuperStreams__Producer=true
+      - SwarmSuperStreams__Analytics=false   
+      - SwarmSuperStreams__NumberOfCustomers=10
+      - Logging__LogLevel__Default=Information
+      - DOTNET_ENVIRONMENT=Production
+    deploy:
+      replicas: 1
+      restart_policy:
+          condition: any
+          delay: 5s
+          window: 120s
+    networks:
+      - supersuperstreams
+  analytics:
+    image: swarmsuperstreamclient
+    depends_on:
+      - rabbitmq
+    environment:
+      - SwarmSuperStreams__Consumer=false
+      - SwarmSuperStreams__Producer=false
+      - SwarmSuperStreams__Analytics=true
+      - Logging__LogLevel__Default=Information
+      - DOTNET_ENVIRONMENT=Development
+    deploy:
+      replicas: 1
+      restart_policy:
+          condition: any
+          delay: 5s
+          window: 120s
+    networks:
+      - supersuperstreams
+networks:
+  supersuperstreams:
+      name: supersuperstreams

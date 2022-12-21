@@ -1,4 +1,7 @@
 using SuperStreamClients;
+using SuperStreamClients.Consumers;
+using SuperStreamClients.Producers;
+using SuperStreamClients.Analytics;
 
 public static class SwarmSuperStreamExensionMethods
 {
@@ -10,14 +13,19 @@ public static class SwarmSuperStreamExensionMethods
         
         services.Configure<RabbitMqStreamOptions>(namedConfigurationSection);
         services.Configure<RabbitMqStreamOptions>((options)=> {config(options);});
-
+        services.AddSingleton<SuperStreamAnalytics>();
         services.AddSingleton<RabbitMqStreamConnectionFactory>();
         services.AddHostedService<ConsumerBackgroundWorker>();
         services.AddHostedService<ProducerBackgroundWorker>();
+        services.AddHostedService<AnalyticsBackgroundWorker>();
 
-        services.AddHttpClient<CustomerAnalyticsClient>((client)=>
+        services.AddHttpClient<CustomerAnalyticsClient>((sp, client )=>
         {
-            client.BaseAddress = new Uri("http://localhost:5070/CustomerAnalytics");
+            var options = sp.GetService<IOptions<RabbitMqStreamOptions>>();
+            var logger = sp.GetService<ILogger<CustomerAnalyticsClient>>();
+            var uri = options.Value.AnalyticsApi;
+            client.BaseAddress = new Uri(uri + "/CustomerAnalytics");
+            logger.LogInformation("Analytics URI set to {analyticsUrl}", client.BaseAddress);
         });
         return services;
     }
