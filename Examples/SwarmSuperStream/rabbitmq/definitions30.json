@@ -1,0 +1,708 @@
+{
+    "bindings": [
+        {
+            "arguments": {
+                "x-stream-partition-order": 0
+            },
+            "destination": "SwarmSuperStream-0",
+            "destination_type": "queue",
+            "routing_key": "0",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 1
+            },
+            "destination": "SwarmSuperStream-1",
+            "destination_type": "queue",
+            "routing_key": "1",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 10
+            },
+            "destination": "SwarmSuperStream-10",
+            "destination_type": "queue",
+            "routing_key": "10",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 11
+            },
+            "destination": "SwarmSuperStream-11",
+            "destination_type": "queue",
+            "routing_key": "11",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 12
+            },
+            "destination": "SwarmSuperStream-12",
+            "destination_type": "queue",
+            "routing_key": "12",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 13
+            },
+            "destination": "SwarmSuperStream-13",
+            "destination_type": "queue",
+            "routing_key": "13",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 14
+            },
+            "destination": "SwarmSuperStream-14",
+            "destination_type": "queue",
+            "routing_key": "14",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 15
+            },
+            "destination": "SwarmSuperStream-15",
+            "destination_type": "queue",
+            "routing_key": "15",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 16
+            },
+            "destination": "SwarmSuperStream-16",
+            "destination_type": "queue",
+            "routing_key": "16",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 17
+            },
+            "destination": "SwarmSuperStream-17",
+            "destination_type": "queue",
+            "routing_key": "17",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 18
+            },
+            "destination": "SwarmSuperStream-18",
+            "destination_type": "queue",
+            "routing_key": "18",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 19
+            },
+            "destination": "SwarmSuperStream-19",
+            "destination_type": "queue",
+            "routing_key": "19",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 2
+            },
+            "destination": "SwarmSuperStream-2",
+            "destination_type": "queue",
+            "routing_key": "2",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 20
+            },
+            "destination": "SwarmSuperStream-20",
+            "destination_type": "queue",
+            "routing_key": "20",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 21
+            },
+            "destination": "SwarmSuperStream-21",
+            "destination_type": "queue",
+            "routing_key": "21",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 22
+            },
+            "destination": "SwarmSuperStream-22",
+            "destination_type": "queue",
+            "routing_key": "22",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 23
+            },
+            "destination": "SwarmSuperStream-23",
+            "destination_type": "queue",
+            "routing_key": "23",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 24
+            },
+            "destination": "SwarmSuperStream-24",
+            "destination_type": "queue",
+            "routing_key": "24",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 25
+            },
+            "destination": "SwarmSuperStream-25",
+            "destination_type": "queue",
+            "routing_key": "25",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 26
+            },
+            "destination": "SwarmSuperStream-26",
+            "destination_type": "queue",
+            "routing_key": "26",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 27
+            },
+            "destination": "SwarmSuperStream-27",
+            "destination_type": "queue",
+            "routing_key": "27",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 28
+            },
+            "destination": "SwarmSuperStream-28",
+            "destination_type": "queue",
+            "routing_key": "28",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 29
+            },
+            "destination": "SwarmSuperStream-29",
+            "destination_type": "queue",
+            "routing_key": "29",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 3
+            },
+            "destination": "SwarmSuperStream-3",
+            "destination_type": "queue",
+            "routing_key": "3",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 4
+            },
+            "destination": "SwarmSuperStream-4",
+            "destination_type": "queue",
+            "routing_key": "4",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 5
+            },
+            "destination": "SwarmSuperStream-5",
+            "destination_type": "queue",
+            "routing_key": "5",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 6
+            },
+            "destination": "SwarmSuperStream-6",
+            "destination_type": "queue",
+            "routing_key": "6",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 7
+            },
+            "destination": "SwarmSuperStream-7",
+            "destination_type": "queue",
+            "routing_key": "7",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 8
+            },
+            "destination": "SwarmSuperStream-8",
+            "destination_type": "queue",
+            "routing_key": "8",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 9
+            },
+            "destination": "SwarmSuperStream-9",
+            "destination_type": "queue",
+            "routing_key": "9",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        }
+    ],
+    "exchanges": [
+        {
+            "arguments": {
+                "x-super-stream": true
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream",
+            "type": "direct",
+            "vhost": "/"
+        }
+    ],
+    "global_parameters": [],
+    "parameters": [],
+    "permissions": [
+        {
+            "configure": ".*",
+            "read": ".*",
+            "user": "guest",
+            "vhost": "/",
+            "write": ".*"
+        },
+        {
+            "configure": ".*",
+            "read": ".*",
+            "user": "admin",
+            "vhost": "/",
+            "write": ".*"
+        }
+    ],
+    "policies": [],
+    "queues": [
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-6",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-22",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-10",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-21",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-9",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-0",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-25",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-18",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-26",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-8",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-13",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-11",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-3",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-19",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-7",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-15",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-1",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-23",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-27",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-12",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-29",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-20",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-28",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-16",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-24",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-14",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-4",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-5",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-17",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-2",
+            "type": "stream",
+            "vhost": "/"
+        }
+    ],
+    "rabbit_version": "3.11.4",
+    "rabbitmq_version": "3.11.4",
+    "topic_permissions": [
+        {
+            "exchange": "",
+            "read": ".*",
+            "user": "admin",
+            "vhost": "/",
+            "write": ".*"
+        }
+    ],
+    "users": [
+        {
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "limits": {},
+            "name": "admin",
+            "password_hash": "YR4Z8HOtalmmKUG82oTayoXZWiIxI6xYcW/5a1+prorj0pYr"
+            ,
+            "tags": [
+            ]
+        },
+        {
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "limits": {},
+            "name": "guest",
+            "password_hash": "m47dzZN/0Y5BwpX/P5B8iYjs08jQy9wPFCaLGa/wHinFLROD",
+            "tags": [
+                "administrator"
+            ]
+        }
+    ],
+    "vhosts": [
+        {
+            "limits": [],
+            "metadata": {
+                "description": "Default virtual host",
+                "tags": []
+            },
+            "name": "/"
+        }
+    ]
+}

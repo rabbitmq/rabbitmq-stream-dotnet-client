@@ -1,0 +1,141 @@
+{
+    "bindings": [
+        {
+            "arguments": {
+                "x-stream-partition-order": 0
+            },
+            "destination": "SwarmSuperStream-0",
+            "destination_type": "queue",
+            "routing_key": "0",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 1
+            },
+            "destination": "SwarmSuperStream-1",
+            "destination_type": "queue",
+            "routing_key": "1",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-stream-partition-order": 2
+            },
+            "destination": "SwarmSuperStream-2",
+            "destination_type": "queue",
+            "routing_key": "2",
+            "source": "SwarmSuperStream",
+            "vhost": "/"
+        }
+    ],
+    "exchanges": [
+        {
+            "arguments": {
+                "x-super-stream": true
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream",
+            "type": "direct",
+            "vhost": "/"
+        }
+    ],
+    "global_parameters": [],
+    "parameters": [],
+    "permissions": [
+        {
+            "configure": ".*",
+            "read": ".*",
+            "user": "guest",
+            "vhost": "/",
+            "write": ".*"
+        },
+        {
+            "configure": ".*",
+            "read": ".*",
+            "user": "admin",
+            "vhost": "/",
+            "write": ".*"
+        }
+    ],
+    "policies": [],
+    "queues": [
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-0",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-1",
+            "type": "stream",
+            "vhost": "/"
+        },
+        {
+            "arguments": {
+                "x-queue-leader-locator": "balanced",
+                "x-queue-type": "stream"
+            },
+            "auto_delete": false,
+            "durable": true,
+            "name": "SwarmSuperStream-2",
+            "type": "stream",
+            "vhost": "/"
+        }
+    ],
+    "rabbit_version": "3.11.4",
+    "rabbitmq_version": "3.11.4",
+    "topic_permissions": [
+        {
+            "exchange": "",
+            "read": ".*",
+            "user": "admin",
+            "vhost": "/",
+            "write": ".*"
+        }
+    ],
+    "users": [
+        {
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "limits": {},
+            "name": "admin",
+            "password_hash": "YR4Z8HOtalmmKUG82oTayoXZWiIxI6xYcW/5a1+prorj0pYr"
+            ,
+            "tags": [
+            ]
+        },
+        {
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "limits": {},
+            "name": "guest",
+            "password_hash": "m47dzZN/0Y5BwpX/P5B8iYjs08jQy9wPFCaLGa/wHinFLROD",
+            "tags": [
+                "administrator"
+            ]
+        }
+    ],
+    "vhosts": [
+        {
+            "limits": [],
+            "metadata": {
+                "description": "Default virtual host",
+                "tags": []
+            },
+            "name": "/"
+        }
+    ]
+}
