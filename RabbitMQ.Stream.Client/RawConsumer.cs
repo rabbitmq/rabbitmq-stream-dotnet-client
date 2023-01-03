@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -95,11 +96,14 @@ namespace RabbitMQ.Stream.Client
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
         private readonly ILogger _logger;
+        private readonly CancellationTokenSource _cancelTokenSource = new();
+        private readonly CancellationToken _token;
 
         private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
             _client = client;
             _config = config;
+            _token = _cancelTokenSource.Token;
             _logger = logger ?? NullLogger.Instance;
         }
 
@@ -148,9 +152,16 @@ namespace RabbitMQ.Stream.Client
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
                     {
+                        _logger.LogInformation("doing.. {MessageMessageOffset}", message.MessageOffset);
+                        if (_cancelTokenSource.IsCancellationRequested)
+                        {
+                            _logger.LogInformation("cancelling..");
+                            return;
+                        }
+
                         _config.MessageHandler(this,
                             new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                            message).GetAwaiter().GetResult();
+                            message).Wait(_token);
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
@@ -277,6 +288,8 @@ namespace RabbitMQ.Stream.Client
             {
                 return ResponseCode.Ok;
             }
+
+            _cancelTokenSource.Cancel();
 
             var result = ResponseCode.Ok;
             try
