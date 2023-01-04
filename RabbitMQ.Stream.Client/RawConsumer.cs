@@ -154,7 +154,6 @@ namespace RabbitMQ.Stream.Client
                     {
                         if (_token.IsCancellationRequested)
                         {
-                            _logger.LogInformation("cancelling..");
                             return;
                         }
 
@@ -168,6 +167,12 @@ namespace RabbitMQ.Stream.Client
                     _logger.LogError(e, "Unexpected error while parsing message. Message will be skipped. " +
                                         "Please report this issue to the RabbitMQ team on GitHub {Repo}",
                         Consts.RabbitMQClientRepo);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning(
+                        "OperationCanceledException. The consumer id: {SubscriberId} reference: {Reference} has been closed while consuming messages",
+                        _subscriberId, _config.Reference);
                 }
                 catch (Exception e)
                 {
