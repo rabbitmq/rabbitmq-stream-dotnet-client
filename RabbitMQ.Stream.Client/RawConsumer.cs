@@ -152,8 +152,7 @@ namespace RabbitMQ.Stream.Client
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
                     {
-                        _logger.LogInformation("doing.. {MessageMessageOffset}", message.MessageOffset);
-                        if (_cancelTokenSource.IsCancellationRequested)
+                        if (_token.IsCancellationRequested)
                         {
                             _logger.LogInformation("cancelling..");
                             return;
@@ -334,6 +333,7 @@ namespace RabbitMQ.Stream.Client
             closeConsumer.Wait(TimeSpan.FromSeconds(1));
             ClientExceptions.MaybeThrowException(closeConsumer.Result,
                 $"Error during remove producer. Subscriber: {_subscriberId}");
+            _cancelTokenSource.Dispose();
         }
 
         public void Dispose()
