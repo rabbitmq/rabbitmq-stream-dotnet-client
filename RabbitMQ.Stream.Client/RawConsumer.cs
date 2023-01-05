@@ -316,12 +316,10 @@ namespace RabbitMQ.Stream.Client
 
             var closed = _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
-            _disposed = true;
             _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
             return result;
         }
 
-        //
         private void Dispose(bool disposing)
         {
             if (!disposing)
@@ -334,11 +332,18 @@ namespace RabbitMQ.Stream.Client
                 return;
             }
 
-            var closeConsumer = Close();
-            closeConsumer.Wait(TimeSpan.FromSeconds(1));
-            ClientExceptions.MaybeThrowException(closeConsumer.Result,
-                $"Error during remove producer. Subscriber: {_subscriberId}");
-            _cancelTokenSource.Dispose();
+            try
+            {
+                var closeConsumer = Close();
+                closeConsumer.Wait(TimeSpan.FromSeconds(1));
+                ClientExceptions.MaybeThrowException(closeConsumer.Result,
+                    $"Error during remove producer. Subscriber: {_subscriberId}");
+            }
+            finally
+            {
+                _cancelTokenSource.Dispose();
+                _disposed = true;
+            }
         }
 
         public void Dispose()
@@ -351,8 +356,10 @@ namespace RabbitMQ.Stream.Client
             {
                 _logger.LogError(e, "Error during disposing of consumer: {SubscriberId}.", _subscriberId);
             }
-
-            GC.SuppressFinalize(this);
+            finally
+            {
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }
