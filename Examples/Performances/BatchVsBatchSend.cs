@@ -38,7 +38,7 @@ public class BatchVsBatchSend
         var reliableProducer = await Producer.Create(new ProducerConfig(system, stream)
         {
             MaxInFlight = 1_000_000,
-            ConfirmationHandler = messagesConfirmed =>
+            ConfirmationHandler = async messagesConfirmed =>
             {
                 if (messagesConfirmed.Status == ConfirmationStatus.Confirmed)
                 {
@@ -55,7 +55,7 @@ public class BatchVsBatchSend
                         $"*****Reliable Producer Send No Batch Confirmed: {confirmed} Error: {error}*****");
                 }
 
-                return Task.CompletedTask;
+                await Task.CompletedTask;
             }
         });
 
@@ -85,10 +85,10 @@ public class BatchVsBatchSend
         var total = 0;
         var confirmed = 0;
         var error = 0;
-        var producer = await Producer.Create(new ProducerConfig(system,stream)
+        var producer = await Producer.Create(new ProducerConfig(system, stream)
         {
             MaxInFlight = 1_000_000,
-            ConfirmationHandler = messagesConfirmed =>
+            ConfirmationHandler = async messagesConfirmed =>
             {
                 if (messagesConfirmed.Status == ConfirmationStatus.Confirmed)
                 {
@@ -104,7 +104,7 @@ public class BatchVsBatchSend
                     Console.WriteLine($"*****Reliable Producer Batch Confirmed: {confirmed}, Error: {error}*****");
                 }
 
-                return Task.CompletedTask;
+                await Task.CompletedTask;
             }
         });
 
