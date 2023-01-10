@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -95,11 +96,14 @@ namespace RabbitMQ.Stream.Client
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
         private readonly ILogger _logger;
+        private readonly CancellationTokenSource _cancelTokenSource = new();
+        private readonly CancellationToken _token;
 
         private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
             _client = client;
             _config = config;
+            _token = _cancelTokenSource.Token;
             _logger = logger ?? NullLogger.Instance;
         }
 
@@ -148,9 +152,14 @@ namespace RabbitMQ.Stream.Client
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
                     {
+                        if (_token.IsCancellationRequested)
+                        {
+                            return;
+                        }
+
                         _config.MessageHandler(this,
                             new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                            message).GetAwaiter().GetResult();
+                            message).Wait(_token);
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
@@ -158,6 +167,12 @@ namespace RabbitMQ.Stream.Client
                     _logger.LogError(e, "Unexpected error while parsing message. Message will be skipped. " +
                                         "Please report this issue to the RabbitMQ team on GitHub {Repo}",
                         Consts.RabbitMQClientRepo);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning(
+                        "OperationCanceledException. The consumer id: {SubscriberId} reference: {Reference} has been closed while consuming messages",
+                        _subscriberId, _config.Reference);
                 }
                 catch (Exception e)
                 {
@@ -278,6 +293,8 @@ namespace RabbitMQ.Stream.Client
                 return ResponseCode.Ok;
             }
 
+            _cancelTokenSource.Cancel();
+
             var result = ResponseCode.Ok;
             try
             {
@@ -299,12 +316,10 @@ namespace RabbitMQ.Stream.Client
 
             var closed = _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
-            _disposed = true;
             _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
             return result;
         }
 
-        //
         private void Dispose(bool disposing)
         {
             if (!disposing)
@@ -317,10 +332,18 @@ namespace RabbitMQ.Stream.Client
                 return;
             }
 
-            var closeConsumer = Close();
-            closeConsumer.Wait(TimeSpan.FromSeconds(1));
-            ClientExceptions.MaybeThrowException(closeConsumer.Result,
-                $"Error during remove producer. Subscriber: {_subscriberId}");
+            try
+            {
+                var closeConsumer = Close();
+                closeConsumer.Wait(TimeSpan.FromSeconds(1));
+                ClientExceptions.MaybeThrowException(closeConsumer.Result,
+                    $"Error during remove producer. Subscriber: {_subscriberId}");
+            }
+            finally
+            {
+                _cancelTokenSource.Dispose();
+                _disposed = true;
+            }
         }
 
         public void Dispose()
@@ -333,8 +356,10 @@ namespace RabbitMQ.Stream.Client
             {
                 _logger.LogError(e, "Error during disposing of consumer: {SubscriberId}.", _subscriberId);
             }
-
-            GC.SuppressFinalize(this);
+            finally
+            {
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }
