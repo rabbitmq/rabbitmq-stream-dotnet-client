@@ -25,11 +25,11 @@ public static class SuperStreamConsumer
             // must have the same ReferenceName for all the consumers
             Reference = "MyApp",
             OffsetSpec = new OffsetTypeFirst(),
-            MessageHandler = (stream, consumer1, context, message) =>
+            MessageHandler = async (stream, consumer1, context, message) =>
             {
                 Console.WriteLine(
                     $"Consumer Name {consumerName} -Received message id: {message.Properties.MessageId} body: {Encoding.UTF8.GetString(message.Data.Contents)}, Stream {stream}");
-                return Task.CompletedTask;
+                await Task.CompletedTask;
             }
         });
     }
