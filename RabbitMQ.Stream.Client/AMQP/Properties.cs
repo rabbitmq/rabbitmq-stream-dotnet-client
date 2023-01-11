@@ -134,7 +134,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             var offset = DescribedFormatCode.Write(span, DescribedFormatCode.MessageProperties);
             offset += WireFormatting.WriteByte(span[offset..], FormatCode.List32);
             offset += WireFormatting.WriteUInt32(span[offset..], (uint)PropertySize() + DescribedFormatCode.Size + sizeof(byte)); // PropertySize  + DescribedFormatCode.Size + sizeof(FormatCode.List32)
-            offset += WireFormatting.WriteUInt32(span[offset..], 12); // field numbers
+            offset += WireFormatting.WriteUInt32(span[offset..], 13); // field numbers
             offset += AmqpWireFormatting.WriteAny(span[offset..], MessageId);
             offset += AmqpWireFormatting.WriteAny(span[offset..], UserId);
             offset += AmqpWireFormatting.WriteAny(span[offset..], To);
