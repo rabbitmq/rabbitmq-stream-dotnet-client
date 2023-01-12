@@ -30,7 +30,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 bool bo => WriteBool(seq, bo),
                 byte[] bArr => bArr.Length == 0 ? WriteNull(seq) : WriteBytes(seq, bArr),
                 DateTime d => d == DateTime.MinValue ? WriteNull(seq) : WriteTimestamp(seq, d),
-                Simbol s => WriteSymbol(seq, s),
+                Simbol s => string.IsNullOrEmpty(s.Value) ? WriteNull(seq) : WriteSymbol(seq, s),
                 _ => throw new AmqpParseException($"WriteAny Invalid type {value}")
             };
         }
