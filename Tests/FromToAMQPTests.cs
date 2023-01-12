@@ -2,6 +2,8 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,6 +12,7 @@ using RabbitMQ.Client.Events;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
+using Xunit.Abstractions;
 
 namespace Tests;
 
@@ -17,13 +20,18 @@ using Xunit;
 
 public class FromToAmqpTests
 {
-    // private readonly ITestOutputHelper _testOutputHelper;
-    //
-    // public FromToAmqpTests(ITestOutputHelper testOutputHelper)
-    // {
-    //     _testOutputHelper = testOutputHelper;
-    // }
+    private readonly ITestOutputHelper _testOutputHelper;
 
+    public FromToAmqpTests(ITestOutputHelper testOutputHelper)
+    {
+        _testOutputHelper = testOutputHelper;
+    }
+
+    /// <summary>
+    /// This test is to ensure that the conversion from AMQP to Stream AMQP 1.0 is correct.
+    /// Stream sends the message and AMQP client reads it.
+    /// In this case the server decodes anc converts the message
+    /// </summary>
     [Fact]
     public async void Amqp091ShouldReadTheAmqp10Properties()
     {
@@ -42,6 +50,7 @@ public class FromToAmqpTests
                 ReplyToGroupId = "ReplyToGroupId",
                 GroupId = "GroupId",
             },
+            ApplicationProperties = new ApplicationProperties() { { "stream_key", "stream_value" } }
         });
 
         var factory = new ConnectionFactory();
@@ -64,7 +73,57 @@ public class FromToAmqpTests
         Assert.Equal("text/plain", result.BasicProperties.ContentType);
         Assert.Equal("utf-8", result.BasicProperties.ContentEncoding);
         Assert.Equal("MY_USER_ID", result.BasicProperties.UserId);
+        Assert.Equal("stream_value",
+            Encoding.ASCII.GetString(result.BasicProperties.Headers["stream_key"] as byte[] ?? Array.Empty<byte>()));
         channel.QueueDelete(stream);
         channel.Close();
+    }
+
+    /// <summary>
+    /// This test is to ensure that the conversion from AMQP 091 to Stream AMQP 1.0 is correct.
+    /// AMQP sends the message and Stream has to read it.
+    /// In this case the server decodes anc converts the message
+    /// </summary>
+    [Fact]
+    public async void Amqp10ShouldReadTheAmqp019Properties()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+
+        var factory = new ConnectionFactory();
+        using var connection = factory.CreateConnection();
+        var channel = connection.CreateModel();
+        var properties = channel.CreateBasicProperties();
+
+        properties.MessageId = "年 6 月";
+        properties.CorrelationId = "10000_00000";
+        properties.ContentType = "text/plain";
+        properties.ContentEncoding = "utf-8";
+        properties.UserId = "guest";
+        properties.Headers = new Dictionary<string, object>() { { "stream_key", "stream_value" } };
+        channel.BasicPublish("", stream, properties, Encoding.ASCII.GetBytes("FromAMQP"));
+        var tcs = new TaskCompletionSource<Message>();
+
+        var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+        {
+            OffsetSpec = new OffsetTypeFirst(),
+            MessageHandler = async (_, _, _, message) =>
+            {
+                tcs.SetResult(message);
+                await Task.CompletedTask;
+            }
+        });
+
+        new Utils<Message>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
+        var result = tcs.Task.Result;
+        Assert.Equal("FromAMQP", Encoding.ASCII.GetString(result.Data.Contents.ToArray()));
+        Assert.Equal("年 6 月", result.Properties.MessageId);
+        Assert.Equal("10000_00000", result.Properties.CorrelationId);
+        Assert.Equal("text/plain", result.Properties.ContentType);
+        Assert.Equal("utf-8", result.Properties.ContentEncoding);
+        Assert.Equal(Encoding.Default.GetBytes("guest"), result.Properties.UserId);
+        Assert.Equal("stream_value", result.ApplicationProperties["stream_key"]);
+        await consumer.Close();
+        await system.DeleteStream(stream);
+        await system.Close();
     }
 }
