@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -99,7 +100,11 @@ public class FromToAmqpTests
         properties.ContentType = "text/plain";
         properties.ContentEncoding = "utf-8";
         properties.UserId = "guest";
-        properties.Headers = new Dictionary<string, object>() { { "stream_key", "stream_value" } };
+        properties.Headers = new Dictionary<string, object>()
+        {
+            {"stream_key", "stream_value"},
+            {"stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日"},
+        };
         channel.BasicPublish("", stream, properties, Encoding.ASCII.GetBytes("FromAMQP"));
         var tcs = new TaskCompletionSource<Message>();
 
@@ -122,6 +127,7 @@ public class FromToAmqpTests
         Assert.Equal("utf-8", result.Properties.ContentEncoding);
         Assert.Equal(Encoding.Default.GetBytes("guest"), result.Properties.UserId);
         Assert.Equal("stream_value", result.ApplicationProperties["stream_key"]);
+        Assert.Equal("Alan Mathison Turing（1912 年 6 月 23 日", result.ApplicationProperties["stream_key4"]);
         await consumer.Close();
         await system.DeleteStream(stream);
         await system.Close();
@@ -132,7 +138,6 @@ public class FromToAmqpTests
     /// due of this issue https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/211 the write is changed
     /// but the read must be compatible
     /// </summary> 
-
     [Fact]
     public void DecodeMessageFrom100Version()
     {
@@ -151,5 +156,106 @@ public class FromToAmqpTests
         Assert.Equal(1111, msg.ApplicationProperties["key2_int"]);
         Assert.Equal(10_000_000_000, msg.ApplicationProperties["key2_decimal"]);
         Assert.Equal(true, msg.ApplicationProperties["key2_bool"]);
+    }
+
+    [Fact]
+    public async void Amqp091ShouldReadTheAmqp10Properties1000Messages()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var producer = await Producer.Create(new ProducerConfig(system, stream));
+        const int NumberOfMessages = 1000;
+        for (var i = 0; i < NumberOfMessages; i++)
+        {
+            await producer.Send(new Message(Encoding.ASCII.GetBytes($"FromStream{i}"))
+            {
+                Properties = new Properties()
+                {
+                    MessageId = $"Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父{i}",
+                    CorrelationId = "10000_00000",
+                    ContentType = "text/plain",
+                    ContentEncoding = "utf-8",
+                    UserId = Encoding.ASCII.GetBytes("MY_USER_ID"),
+                    GroupSequence = 601,
+                    ReplyToGroupId = "ReplyToGroupId",
+                    GroupId = "GroupId",
+
+                },
+                ApplicationProperties = new ApplicationProperties()
+                {
+                    {"stream_key", "stream_value"},
+                    {"stream_key2",  100},
+                    {"stream_key3", 10_000_009},
+                    {"stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日"},
+                }
+            });
+        }
+
+        var factory = new ConnectionFactory();
+        using var connection = factory.CreateConnection();
+        var channel = connection.CreateModel();
+        var consumer = new EventingBasicConsumer(channel);
+        var consumed = 0;
+        var tcs = new TaskCompletionSource<int>();
+        consumer.Received += (sender, ea) =>
+        {
+            if (Interlocked.Increment(ref consumed) == NumberOfMessages)
+            {
+                tcs.SetResult(consumed);
+            }
+
+            channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+        };
+        channel.BasicQos(0, 100, false);
+        channel.BasicConsume(stream, false, "consumerTag",
+            arguments: new Dictionary<string, object>() { { "x-stream-offset", "first" } }, consumer);
+        new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
+        Assert.Equal(NumberOfMessages, tcs.Task.Result);
+        channel.QueueDelete(stream);
+        channel.Close();
+    }
+
+    [Fact]
+    public async void Amqp10ShouldReadTheAmqp019Properties1000Messages()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+
+        var factory = new ConnectionFactory();
+        using var connection = factory.CreateConnection();
+        var channel = connection.CreateModel();
+        var properties = channel.CreateBasicProperties();
+        const int NumberOfMessages = 1000;
+        for (var i = 0; i < NumberOfMessages; i++)
+        {
+            properties.MessageId = $"messageId{i}";
+            properties.CorrelationId = "10000_00000";
+            properties.ContentType = "text/plain";
+            properties.ContentEncoding = "utf-8";
+            properties.UserId = "guest";
+            properties.Headers = new Dictionary<string, object>() { { "stream_key", "stream_value" } };
+            channel.BasicPublish("", stream, properties, Encoding.ASCII.GetBytes($"FromAMQP{i}"));
+        }
+
+        var tcs = new TaskCompletionSource<int>();
+        var consumed = 0;
+        var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+        {
+            OffsetSpec = new OffsetTypeFirst(),
+            MessageHandler = async (_, _, _, message) =>
+            {
+                if (Interlocked.Increment(ref consumed) == NumberOfMessages)
+                {
+                    tcs.SetResult(consumed);
+                }
+
+                await Task.CompletedTask;
+            }
+        });
+
+        new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
+        var result = tcs.Task.Result;
+        Assert.Equal(NumberOfMessages, result);
+        await consumer.Close();
+        await system.DeleteStream(stream);
+        await system.Close();
     }
 }
