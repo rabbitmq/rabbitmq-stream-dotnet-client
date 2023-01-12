@@ -50,7 +50,7 @@ public class FromToAmqpTests
                 ReplyToGroupId = "ReplyToGroupId",
                 GroupId = "GroupId",
             },
-            ApplicationProperties = new ApplicationProperties() {{"stream_key", "stream_value"}}
+            ApplicationProperties = new ApplicationProperties() { { "stream_key", "stream_value" } }
         });
 
         var factory = new ConnectionFactory();
@@ -65,7 +65,7 @@ public class FromToAmqpTests
         };
         channel.BasicQos(0, 100, false);
         channel.BasicConsume(stream, false, "consumerTag",
-            arguments: new Dictionary<string, object>() {{"x-stream-offset", "first"}}, consumer);
+            arguments: new Dictionary<string, object>() { { "x-stream-offset", "first" } }, consumer);
         var result = tcs.Task.Result;
         Assert.Equal("FromStream", Encoding.ASCII.GetString(result.Body.ToArray()));
         Assert.Equal("年 6 月", result.BasicProperties.MessageId);
@@ -99,7 +99,7 @@ public class FromToAmqpTests
         properties.ContentType = "text/plain";
         properties.ContentEncoding = "utf-8";
         properties.UserId = "guest";
-        properties.Headers = new Dictionary<string, object>() {{"stream_key", "stream_value"}};
+        properties.Headers = new Dictionary<string, object>() { { "stream_key", "stream_value" } };
         channel.BasicPublish("", stream, properties, Encoding.ASCII.GetBytes("FromAMQP"));
         var tcs = new TaskCompletionSource<Message>();
 
@@ -127,14 +127,12 @@ public class FromToAmqpTests
         await system.Close();
     }
 
-
-    
     /// <summary>
     /// The file message_from_version_1_0_0 was generated with the 1.0.0 version of the client
     /// due of this issue https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/211 the write is changed
     /// but the read must be compatible
     /// </summary> 
-    
+
     [Fact]
     public void DecodeMessageFrom100Version()
     {
