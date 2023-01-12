@@ -30,8 +30,29 @@ namespace RabbitMQ.Stream.Client.AMQP
                 bool bo => WriteBool(seq, bo),
                 byte[] bArr => bArr.Length == 0 ? WriteNull(seq) : WriteBytes(seq, bArr),
                 DateTime d => d == DateTime.MinValue ? WriteNull(seq) : WriteTimestamp(seq, d),
+                Simbol s => WriteSymbol(seq, s),
                 _ => throw new AmqpParseException($"WriteAny Invalid type {value}")
             };
+        }
+
+        private static int WriteSymbol(Span<byte> seq, Simbol simbol)
+        {
+            var len = s_encoding.GetByteCount(simbol.Value);
+            var offset = 0;
+            // Sym8
+            if (len <= byte.MaxValue)
+            {
+                offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Sym8);
+                offset += WireFormatting.WriteByte(seq[offset..], (byte)len);
+                offset += s_encoding.GetBytes(simbol.Value, seq[offset..]);
+                return offset;
+            }
+
+            // Sym32
+            offset += WireFormatting.WriteByte(seq[offset..], FormatCode.Sym32);
+            offset += WireFormatting.WriteInt32(seq[offset..], len);
+            offset += s_encoding.GetBytes(simbol.Value, seq[offset..]);
+            return offset;
         }
 
         private static int WriteString(Span<byte> seq, string value)
@@ -232,7 +253,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             {
                 0 => 1, // 0x40
                 <= byte.MaxValue => len + 1 + //marker 1 byte FormatCode.Vbin8
-                                   1,
+                                    1,
                 _ => len + 1 //marker 1 byte  FormatCode.Vbin32 
                          + 4
             };

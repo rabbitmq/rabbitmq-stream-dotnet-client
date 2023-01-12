@@ -133,7 +133,9 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             var offset = DescribedFormatCode.Write(span, DescribedFormatCode.MessageProperties);
             offset += WireFormatting.WriteByte(span[offset..], FormatCode.List32);
-            offset += WireFormatting.WriteUInt32(span[offset..], (uint)PropertySize() + DescribedFormatCode.Size + sizeof(byte)); // PropertySize  + DescribedFormatCode.Size + sizeof(FormatCode.List32)
+            offset += WireFormatting.WriteUInt32(span[offset..],
+                (uint)PropertySize() + DescribedFormatCode.Size +
+                sizeof(byte)); // PropertySize  + DescribedFormatCode.Size + sizeof(FormatCode.List32)
             offset += WireFormatting.WriteUInt32(span[offset..], 13); // field numbers
             offset += AmqpWireFormatting.WriteAny(span[offset..], MessageId);
             offset += AmqpWireFormatting.WriteAny(span[offset..], UserId);
@@ -141,8 +143,8 @@ namespace RabbitMQ.Stream.Client.AMQP
             offset += AmqpWireFormatting.WriteAny(span[offset..], Subject);
             offset += AmqpWireFormatting.WriteAny(span[offset..], ReplyTo);
             offset += AmqpWireFormatting.WriteAny(span[offset..], CorrelationId);
-            offset += AmqpWireFormatting.WriteAny(span[offset..], ContentType);
-            offset += AmqpWireFormatting.WriteAny(span[offset..], ContentEncoding);
+            offset += AmqpWireFormatting.WriteAny(span[offset..], new Simbol(ContentType));
+            offset += AmqpWireFormatting.WriteAny(span[offset..], new Simbol(ContentEncoding));
             offset += AmqpWireFormatting.WriteAny(span[offset..], AbsoluteExpiryTime);
             offset += AmqpWireFormatting.WriteAny(span[offset..], CreationTime);
             offset += AmqpWireFormatting.WriteAny(span[offset..], GroupId);
