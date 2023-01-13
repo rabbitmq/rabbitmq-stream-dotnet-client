@@ -4,7 +4,7 @@
 
 namespace RabbitMQ.Stream.Client.AMQP;
 
-public class Symbol
+internal class Symbol
 {
     private readonly string _value;
 
