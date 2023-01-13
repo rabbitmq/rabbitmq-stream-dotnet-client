@@ -143,8 +143,8 @@ namespace RabbitMQ.Stream.Client.AMQP
             offset += AmqpWireFormatting.WriteAny(span[offset..], Subject);
             offset += AmqpWireFormatting.WriteAny(span[offset..], ReplyTo);
             offset += AmqpWireFormatting.WriteAny(span[offset..], CorrelationId);
-            offset += AmqpWireFormatting.WriteAny(span[offset..], new Simbol(ContentType));
-            offset += AmqpWireFormatting.WriteAny(span[offset..], new Simbol(ContentEncoding));
+            offset += AmqpWireFormatting.WriteAny(span[offset..], new Symbol(ContentType));
+            offset += AmqpWireFormatting.WriteAny(span[offset..], new Symbol(ContentEncoding));
             offset += AmqpWireFormatting.WriteAny(span[offset..], AbsoluteExpiryTime);
             offset += AmqpWireFormatting.WriteAny(span[offset..], CreationTime);
             offset += AmqpWireFormatting.WriteAny(span[offset..], GroupId);

@@ -1,4 +1,5 @@
-override RabbitMQ.Stream.Client.AMQP.Simbol.ToString() -> string
-RabbitMQ.Stream.Client.AMQP.Simbol
-RabbitMQ.Stream.Client.AMQP.Simbol.Simbol(string value) -> void
-RabbitMQ.Stream.Client.AMQP.Simbol.Value.get -> string
+override RabbitMQ.Stream.Client.AMQP.Symbol.ToString() -> string
+RabbitMQ.Stream.Client.AMQP.Symbol
+RabbitMQ.Stream.Client.AMQP.Symbol.IsNull.get -> bool
+RabbitMQ.Stream.Client.AMQP.Symbol.Symbol(string value) -> void
+RabbitMQ.Stream.Client.AMQP.Symbol.Value.get -> string
