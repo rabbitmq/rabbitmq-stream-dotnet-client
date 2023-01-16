@@ -24,7 +24,7 @@
     <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</RepositoryUrl>
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
     <Title>RabbitMQ Stream Client Library for .NET</Title>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
