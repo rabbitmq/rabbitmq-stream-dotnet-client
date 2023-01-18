@@ -243,6 +243,12 @@ namespace RabbitMQ.Stream.Client
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async ValueTask Send(ulong publishingId, Message message)
         {
+            if (message.Size > _client.MaxFrameSize)
+            {
+                throw new InvalidOperationException($"Message size is to big. " +
+                                                    $"Max allowed is {_client.MaxFrameSize}");
+            }
+
             await SemaphoreWait();
 
             var msg = new OutgoingMsg(_publisherId, publishingId, message);

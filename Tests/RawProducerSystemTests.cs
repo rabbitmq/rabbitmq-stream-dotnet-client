@@ -272,7 +272,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerBatchSendValidate()
+        public async void ProducerSendValidate()
         {
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             // validate that the messages batch size is not greater than the MaxInFlight
@@ -296,6 +296,10 @@ namespace Tests
             // we can't send messages greater than 1048576 bytes
             messages.Add((1, new Message(new byte[1048576 * 2]))); // 2MB >  MaxFrameSize so it must raise an exception
             await Assert.ThrowsAsync<InvalidOperationException>(() => rawProducer.Send(messages).AsTask());
+
+            var messagetoBig = new Message(new byte[1048576 * 2]); // 2MB >  MaxFrameSize so it must raise an exception
+            await Assert.ThrowsAsync<InvalidOperationException>(() => rawProducer.Send(2, messagetoBig).AsTask());
+
             await system.DeleteStream(stream);
             await system.Close();
         }
