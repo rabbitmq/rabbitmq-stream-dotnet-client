@@ -158,4 +158,4 @@ Write-Host '[INFO] Getting RabbitMQ status...'
 
 $ErrorActionPreference = 'Continue'
 Write-Host '[INFO] Enabling plugins...'
-& $rabbitmq_plugins_path enable rabbitmq_management rabbitmq_stream rabbitmq_stream_management
+& $rabbitmq_plugins_path enable rabbitmq_management rabbitmq_stream rabbitmq_stream_management rabbitmq_amqp1_0
