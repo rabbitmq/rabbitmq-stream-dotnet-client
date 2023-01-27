@@ -68,7 +68,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-v2-nuget-
       - name: Enable RabbitMQ Plugins
-        run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_stream rabbitmq_stream_management
+        run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_stream rabbitmq_stream_management rabbitmq_amqp1_0
       - name: Restore
         run: dotnet restore --verbosity=normal
       - name: Build
