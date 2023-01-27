@@ -199,23 +199,24 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SemaphoreWait()
         {
-            if (!await _semaphore.WaitAsync(0) && !_client.IsClosed)
-            {
-                // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
-                if (!await _semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
-                {
-                    _logger.LogWarning("Semaphore Wait timeout during publishing.");
-                }
-            }
+            await _semaphore.WaitAsync();
+            // if (!await _semaphore.WaitAsync(0) && !_client.IsClosed)
+            // {
+            //     // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
+            //     if (!await _semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
+            //     {
+            //         _logger.LogWarning("Semaphore Wait timeout during publishing.");
+            //     }
+            // }
         }
 
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
-            var publishTask = _client.Publish(new Publish(_publisherId, messages));
-            if (!publishTask.IsCompletedSuccessfully)
-            {
-                await publishTask.ConfigureAwait(false);
-            }
+            await _client.Publish(new Publish(_publisherId, messages));
+            // if (!publishTask.IsCompletedSuccessfully)
+            // {
+            //     await publishTask.ConfigureAwait(false);
+            // }
 
             if (clearMessagesList)
             {
