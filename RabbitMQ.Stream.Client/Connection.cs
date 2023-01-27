@@ -85,30 +85,21 @@ namespace RabbitMQ.Stream.Client
             return new Connection(socket, commandCallback, closedCallBack, sslOption);
         }
 
-        private ValueTask<FlushResult> FlushAsync()
-        {
-            lock (writeLock)
-            {
-                var flushTask = writer.FlushAsync();
-                return flushTask;
-            }
-        }
-
         public async ValueTask<bool> Write<T>(T command) where T : struct, ICommand
         {
-            WriteCommand(command);
-            var flushTask = FlushAsync();
+
+            var flushTask = await WriteCommand(command);
 
             // Let's check if this is completed synchronously before invoking the async state machine
-            if (!flushTask.IsCompletedSuccessfully)
-            {
-                await flushTask.ConfigureAwait(false);
-            }
+            // if (!flushTask.IsCompletedSuccessfully)
+            // {
+            //     await flushTask.ConfigureAwait(false);
+            // }
 
-            return flushTask.Result.IsCompleted;
+            return flushTask.IsCompleted;
         }
 
-        private void WriteCommand<T>(T command) where T : struct, ICommand
+        private ValueTask<FlushResult> WriteCommand<T>(T command) where T : struct, ICommand
         {
             // Only one thread should be able to write to the output pipeline at a time.
             lock (writeLock)
@@ -119,6 +110,7 @@ namespace RabbitMQ.Stream.Client
                 var written = command.Write(mem.Slice(4));
                 Debug.Assert(size == written);
                 writer.Advance(4 + written);
+                return writer.FlushAsync();
             }
         }
 
