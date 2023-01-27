@@ -89,30 +89,21 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<bool> Write<T>(T command) where T : struct, ICommand
         {
             await WriteCommand(command);
-
-            // Let's check if this is completed synchronously before invoking the async state machine
-            // if (!flushTask.IsCompletedSuccessfully)
-            // {
-            //     await flushTask.ConfigureAwait(false);
-            // }
-
+            // we return true to indicate that the command was written
             return true;
         }
 
         private async Task WriteCommand<T>(T command) where T : struct, ICommand
         {
             // Only one thread should be able to write to the output pipeline at a time.
-            // lock (writeLock)
             await writeLock.WaitAsync();
             {
                 var size = command.SizeNeeded;
                 var mem = new byte[4 + size]; // + 4 to write the size
                 WireFormatting.WriteUInt32(mem, (uint)size);
                 var written = command.Write(mem.AsSpan()[4..]);
-
                 await writer.WriteAsync(new ReadOnlyMemory<byte>(mem));
                 Debug.Assert(size == written);
-                // writer.Advance(4 + written);
                 await writer.FlushAsync();
             }
 

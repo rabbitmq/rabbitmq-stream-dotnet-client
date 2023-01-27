@@ -79,7 +79,7 @@ namespace RabbitMQ.Stream.Client
             });
             _logger = logger ?? NullLogger.Instance;
             Task.Run(ProcessBuffer);
-            _semaphore = new(config.MaxInFlight, config.MaxInFlight);
+            _semaphore = new SemaphoreSlim(config.MaxInFlight, config.MaxInFlight);
         }
 
         public int MessagesSent => _client.MessagesSent;
@@ -150,7 +150,7 @@ namespace RabbitMQ.Stream.Client
         {
             if (subEntryMessages.Count != 0)
             {
-                await SemaphoreWait();
+                await _semaphore.WaitAsync();
                 var publishTask =
                     _client.Publish(new SubEntryPublish(_publisherId, publishingId,
                         CompressionHelper.Compress(subEntryMessages, compressionType)));
@@ -171,12 +171,12 @@ namespace RabbitMQ.Stream.Client
         {
             for (var i = 0; i < messages.Count; i++)
             {
-                await SemaphoreWait();
+                await _semaphore.WaitAsync();
             }
 
             if (messages.Count != 0 && !_client.IsClosed)
             {
-                await SendMessages(messages, false).ConfigureAwait(false);
+                await SendMessages(messages, false);
             }
         }
 
@@ -197,27 +197,9 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private async Task SemaphoreWait()
-        {
-            await _semaphore.WaitAsync();
-            // if (!await _semaphore.WaitAsync(0) && !_client.IsClosed)
-            // {
-            //     // Nope, we have maxed our In-Flight messages, let's asynchronously wait for confirms
-            //     if (!await _semaphore.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false))
-            //     {
-            //         _logger.LogWarning("Semaphore Wait timeout during publishing.");
-            //     }
-            // }
-        }
-
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
             await _client.Publish(new Publish(_publisherId, messages));
-            // if (!publishTask.IsCompletedSuccessfully)
-            // {
-            //     await publishTask.ConfigureAwait(false);
-            // }
-
             if (clearMessagesList)
             {
                 messages.Clear();
@@ -250,8 +232,7 @@ namespace RabbitMQ.Stream.Client
                                                     $"Max allowed is {_client.MaxFrameSize}");
             }
 
-            await SemaphoreWait();
-
+            await _semaphore.WaitAsync();
             var msg = new OutgoingMsg(_publisherId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait
@@ -275,13 +256,13 @@ namespace RabbitMQ.Stream.Client
                         messages.Add((msg.PublishingId, msg.Data));
                         if (messages.Count == _config.MessagesBufferSize)
                         {
-                            await SendMessages(messages).ConfigureAwait(false);
+                            await SendMessages(messages);
                         }
                     }
 
                     if (messages.Count > 0)
                     {
-                        await SendMessages(messages).ConfigureAwait(false);
+                        await SendMessages(messages);
                     }
                 }
             }

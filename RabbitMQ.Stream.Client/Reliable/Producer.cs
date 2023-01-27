@@ -181,7 +181,9 @@ public class Producer : ProducerFactory
     /// In case of error the message is considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(Message message)
     {
+
         await SemaphoreSlim.WaitAsync();
+
         Interlocked.Increment(ref _publishingId);
         _confirmationPipe.AddUnConfirmedMessage(_publishingId, message);
         try
@@ -224,9 +226,9 @@ public class Producer : ProducerFactory
     /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
+        await SemaphoreSlim.WaitAsync();
         Interlocked.Increment(ref _publishingId);
         _confirmationPipe.AddUnConfirmedMessage(_publishingId, messages);
-        await SemaphoreSlim.WaitAsync();
         try
         {
             if (!_inReconnection)
