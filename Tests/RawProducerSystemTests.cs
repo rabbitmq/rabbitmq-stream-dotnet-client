@@ -129,7 +129,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerMessagesListLenValidation()
+        public async Task ProducerMessagesListLenValidation()
         {
             // by protocol the subEntryList is ushort
             var messages = new List<Message>();
