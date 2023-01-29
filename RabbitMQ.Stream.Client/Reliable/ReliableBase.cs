@@ -88,11 +88,11 @@ public abstract class ReliableBase
         }
     }
 
-    // <summary>
+    /// <summary>
     /// Init the a new Entity (Producer/Consumer)
     /// <param name="boot"> If it is the First boot for the reliable P/C </param>
     /// Called by Init method
-    // </summary>
+    /// </summary>
     internal abstract Task CreateNewEntity(bool boot);
 
     // <summary>
@@ -198,13 +198,13 @@ public abstract class ReliableBase
         }
     }
 
-    // <summary>
+    /// <summary>
     /// ONLY close the current Entity (Producer/Consumer)
     /// without closing the Reliable(Producer/Consumer) instance.
     /// It happens when the stream change topology, and the entity 
     /// must be recreated. In the producer case for example when the
     /// leader changes.
-    // </summary>
+    /// </summary>
     protected abstract Task CloseEntity();
 
     // <summary>
