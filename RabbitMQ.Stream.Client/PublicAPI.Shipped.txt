@@ -687,7 +687,6 @@ RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.Enabled.get -> bool
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.Enabled.init -> void
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.Routing.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.Routing.set -> void
-RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.SuperStreamConfig() -> void
 RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.ResponseCode.AccessRefused = 16 -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.ResponseCode.AuthenticationFailure = 8 -> RabbitMQ.Stream.Client.ResponseCode
