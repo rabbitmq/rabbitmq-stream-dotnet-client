@@ -102,8 +102,8 @@ public class ConfirmationPipe
             {
                 MaxDegreeOfParallelism = 1,
                 // We set the BoundedCapacity to the double of the maxInFlightMessages
-                // because we want a cache of messages to speedup the performances.
-                BoundedCapacity = (_maxInFlightMessages * 2)
+                // because we want a cache of messages to speedup performance.
+                BoundedCapacity = _maxInFlightMessages * 2
             });
 
         _invalidateTimer.Elapsed += OnTimedEvent;
