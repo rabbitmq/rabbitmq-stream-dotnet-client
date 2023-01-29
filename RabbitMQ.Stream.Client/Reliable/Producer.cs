@@ -12,50 +12,56 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
-public record SuperStreamConfig()
+public record SuperStreamConfig
 {
     public bool Enabled { get; init; } = true;
-    public Func<Message, string> Routing { get; set; } = null;
+    public Func<Message, string> Routing { get; set; }
 }
 
 public record ProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
 
-    // <summary>
-    // Reference is mostly used for deduplication. In most of the cases reference is not needed.
-    // </summary>
+    /// <summary>
+    /// Reference is mostly used for deduplication.
+    /// In most of the cases reference is not needed.
+    /// </summary>
     public string Reference { get; set; }
 
-    // <summary>
-    // Confirmation is used to confirm that the message has been received by the server.
-    // After the timeout TimeoutMessageAfter/0 the message is considered not confirmed.
-    // See MessagesConfirmation.ConfirmationStatus for more details.
-    // </summary>
+    /// <summary>
+    /// Publish confirmation callback.<br/>
+    /// Used to inform publisher about success or failure of a publish.<br/>
+    /// Depending on publishing function used, either single message or whole batch can be in MessagesConfirmation.<br/>
+    /// For statuses that can be set on MessagesConfirmation, check <see cref="ConfirmationStatus"/>.
+    /// </summary>
     public Func<MessagesConfirmation, Task> ConfirmationHandler { get; init; }
 
-    // <summary>
-    // The client name used to identify the producer. 
-    // You can see this value on the Management UI or in the connection detail
-    // </summary>
+    /// <summary>
+    /// The client name used to identify the producer. 
+    /// You can see this value on the Management UI or in the connection details.
+    /// </summary>
 
     public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
 
     public int MaxInFlight { get; set; } = 1000;
 
     /// <summary>
-    /// Number of the messages sent for each frame-send.
-    /// High values can increase the throughput.
-    /// Low values can reduce the messages latency.
+    /// Number of the messages sent for each frame-send.<br/>
+    /// High values can increase the throughput.<br/>
+    /// Low values can reduce the messages latency.<br/>
     /// Default value is 100.
     /// </summary>
     public int MessagesBufferSize { get; set; } = 100;
 
-    // SuperStream configuration enables the SuperStream feature
-    public SuperStreamConfig SuperStreamConfig { get; set; } = null;
+    /// <summary>
+    /// SuperStream configuration enables the SuperStream feature.
+    /// </summary>
+    public SuperStreamConfig SuperStreamConfig { get; set; }
 
-    // TimeoutMessageAfter is the time after which a message is considered as timed out
-    // If client does not receive a confirmation for a message after this time, the message is considered as timed out
+    /// <summary>
+    /// TimeSpan after which Producer should give up on published message(s).
+    /// </summary>
+    /// <exception cref="ValidationException">Thrown if value is unreasonably low.</exception>
     public TimeSpan TimeoutMessageAfter
     {
         get => _timeoutMessageAfter;
@@ -78,13 +84,26 @@ public record ProducerConfig : ReliableConfig
 /// <summary>
 /// Producer is a wrapper around the standard RawProducer/RawSuperStream Consumer.
 /// Main features are:
-/// - Auto-reconnection if the connection is dropped
-/// - Trace sent and received messages. The event Producer:ConfirmationHandler/2
-///   receives back messages sent with the status.
-/// - Handle the Metadata Update. In case the stream is deleted Producer closes Producer/Connection.
-///   Reconnect the Producer if the stream still exists.
-/// - Set automatically the next PublisherID
-/// - Automatically retrieves the last sequence. By default is AutoPublishingId see IPublishingIdStrategy.
+/// <list type="bullet">
+/// <item>
+/// Auto-reconnection if the connection is dropped
+/// </item>
+/// <item>
+/// Trace sent and received messages.
+/// <see cref="ProducerConfig.ConfirmationHandler"/> will be invoked whenever message is (n)acked. 
+/// </item>
+/// <item>
+/// Handle the Metadata Update.
+/// In case the stream is deleted Producer closes Producer/Connection.
+/// In case stream still exists, reconnect the producer.
+/// </item>
+/// Automatically set the next PublisherId.
+/// <item>
+/// </item>
+/// <item>
+/// Automatically retrieves the last sequence.
+/// </item>
+/// </list>
 /// </summary>
 public class Producer : ProducerFactory
 {
@@ -105,16 +124,19 @@ public class Producer : ProducerFactory
         _logger = logger ?? NullLogger<Producer>.Instance;
     }
 
-    // <summary>
-    // Create a new Producer.
-    // </summary> 
+    /// <summary>
+    /// Create a new Producer.
+    /// </summary> 
     public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
         await rProducer.Init(producerConfig.ReconnectStrategy);
-        logger?.LogDebug("Producer: {Reference} created for Stream: {Stream}",
-            producerConfig.Reference, producerConfig.Stream);
+        logger?.LogDebug(
+            "Producer: {Reference} created for Stream: {Stream}",
+            producerConfig.Reference,
+            producerConfig.Stream
+        );
 
         return rProducer;
     }

@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadBool invalid type {type}");
+            throw new AmqpParseException($"ReadBool invalid type {type}");
         }
 
         internal static int ReadUshort(ref SequenceReader<byte> reader, out ushort value)
@@ -55,7 +55,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadUshort invalid type {type}");
+            throw new AmqpParseException($"ReadUshort invalid type {type}");
         }
 
         internal static int ReadAny(ref SequenceReader<byte> reader, out object value)
@@ -146,7 +146,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return 1;
             }
 
-            throw new AMQP.AmqpParseException($"Read Any: Invalid type: {type}");
+            throw new AmqpParseException($"Read Any: Invalid type: {type}");
         }
 
         internal static int ReadTimestamp(ref SequenceReader<byte> reader, out DateTime value)
@@ -161,7 +161,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadTimestamp invalid type {type}");
+            throw new AmqpParseException($"ReadTimestamp invalid type {type}");
         }
 
         internal static int ReadString(ref SequenceReader<byte> reader, out string value)
@@ -199,7 +199,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset + len;
             }
 
-            throw new AMQP.AmqpParseException($"ReadString invalid type {type}");
+            throw new AmqpParseException($"ReadString invalid type {type}");
         }
 
         internal static int ReadUInt64(ref SequenceReader<byte> reader, out ulong value)
@@ -220,7 +220,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadUlong Invalid type {type}");
+            throw new AmqpParseException($"ReadUlong Invalid type {type}");
         }
 
         internal static int ReadInt64(ref SequenceReader<byte> reader, out long value)
@@ -238,7 +238,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadUlong Invalid type {type}");
+            throw new AmqpParseException($"ReadUlong Invalid type {type}");
         }
 
         internal static int ReadFloat(ref SequenceReader<byte> reader, out float value)
@@ -253,7 +253,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadFloat Invalid type {type}");
+            throw new AmqpParseException($"ReadFloat Invalid type {type}");
         }
 
         internal static int ReadDouble(ref SequenceReader<byte> reader, out double value)
@@ -268,7 +268,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadDouble Invalid type {type}");
+            throw new AmqpParseException($"ReadDouble Invalid type {type}");
         }
 
         internal static int ReadSByte(ref SequenceReader<byte> reader, out sbyte value)
@@ -283,7 +283,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadSByte Invalid type {type}");
+            throw new AmqpParseException($"ReadSByte Invalid type {type}");
         }
 
         internal static int ReadInt16(ref SequenceReader<byte> reader, out short value)
@@ -297,7 +297,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadInt16 Invalid type {type}");
+            throw new AmqpParseException($"ReadInt16 Invalid type {type}");
         }
 
         internal static int ReadBinary(ref SequenceReader<byte> reader, out byte[] value)
@@ -315,7 +315,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     length = lenI;
                     break;
                 default:
-                    throw new AMQP.AmqpParseException($"ReadBinary Invalid type {type}");
+                    throw new AmqpParseException($"ReadBinary Invalid type {type}");
             }
 
             offset += WireFormatting.ReadBytes(ref reader, length, out value);
@@ -340,7 +340,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadMapHeader Invalid type {type}");
+            throw new AmqpParseException($"ReadMapHeader Invalid type {type}");
         }
 
         internal static int ReadListHeader(ref SequenceReader<byte> reader, out long lenght)
@@ -371,7 +371,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadCompositeHeader Invalid type {type}");
+            throw new AmqpParseException($"ReadCompositeHeader Invalid type {type}");
         }
 
         internal static int ReadCompositeHeader(ref SequenceReader<byte> reader, out long fields, out byte next)
@@ -411,7 +411,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadUint32 Invalid type {type}");
+            throw new AmqpParseException($"ReadUint32 Invalid type {type}");
         }
 
         internal static int ReadInt32(ref SequenceReader<byte> reader, out int value)
@@ -428,7 +428,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadInt32 Invalid type {type}");
+            throw new AmqpParseException($"ReadInt32 Invalid type {type}");
         }
 
         internal static int ReadUByte(ref SequenceReader<byte> reader, out byte value)
@@ -441,7 +441,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                     return offset;
             }
 
-            throw new AMQP.AmqpParseException($"ReadUbyte Invalid type {type}");
+            throw new AmqpParseException($"ReadUbyte Invalid type {type}");
         }
 
         internal static int TryReadNull(ref SequenceReader<byte> reader, out bool value)

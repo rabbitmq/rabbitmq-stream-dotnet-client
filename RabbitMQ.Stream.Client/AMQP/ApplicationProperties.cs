@@ -6,9 +6,9 @@ namespace RabbitMQ.Stream.Client.AMQP
 {
     public class ApplicationProperties : Map<string>
     {
-        public ApplicationProperties() : base()
+        public ApplicationProperties()
         {
-            MapDataCode = AMQP.DescribedFormatCode.ApplicationProperties;
+            MapDataCode = DescribedFormatCode.ApplicationProperties;
         }
     }
 }
