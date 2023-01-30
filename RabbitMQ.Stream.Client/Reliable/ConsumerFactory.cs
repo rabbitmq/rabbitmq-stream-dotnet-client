@@ -21,7 +21,7 @@ public abstract class ConsumerFactory : ReliableBase
     // standard consumer is just one 
     // super stream consumer is one per stream-partition
     private readonly ConcurrentDictionary<string, ulong> _lastOffsetConsumed = new();
-    private bool _consumedFirstTime = false;
+    private bool _consumedFirstTime;
 
     protected async Task<IConsumer> CreateConsumer(bool boot)
     {
@@ -37,7 +37,7 @@ public abstract class ConsumerFactory : ReliableBase
     {
         var offsetSpec = _consumerConfig.OffsetSpec;
         // if is not the boot time and at least one message was consumed
-        // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume fro the next)
+        // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume from the next)
         if (!boot && _consumedFirstTime)
         {
             offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_consumerConfig.Stream] + 1);
