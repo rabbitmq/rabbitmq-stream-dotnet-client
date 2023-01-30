@@ -90,6 +90,9 @@ namespace RabbitMQ.Stream.Client
         {
             await WriteCommand(command);
             // we return true to indicate that the command was written
+            // In this PR https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/220
+            // we made all WriteCommand async so await is enough to indicate that the command was written
+            // We decided to keep the return value to avoid a breaking change
             return true;
         }
 

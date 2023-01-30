@@ -150,15 +150,17 @@ namespace RabbitMQ.Stream.Client
         {
             if (subEntryMessages.Count != 0)
             {
-                await _semaphore.WaitAsync();
+                await SemaphoreAwaitAsync();
                 var publishTask =
                     _client.Publish(new SubEntryPublish(_publisherId, publishingId,
                         CompressionHelper.Compress(subEntryMessages, compressionType)));
-                if (!publishTask.IsCompletedSuccessfully)
-                {
-                    await publishTask.ConfigureAwait(false);
-                }
+                await publishTask;
             }
+        }
+
+        private async Task SemaphoreAwaitAsync()
+        {
+            await _semaphore.WaitAsync();
         }
 
         public async ValueTask Send(List<(ulong, Message)> messages)
@@ -171,7 +173,7 @@ namespace RabbitMQ.Stream.Client
         {
             for (var i = 0; i < messages.Count; i++)
             {
-                await _semaphore.WaitAsync();
+                await SemaphoreAwaitAsync();
             }
 
             if (messages.Count != 0 && !_client.IsClosed)
@@ -232,7 +234,7 @@ namespace RabbitMQ.Stream.Client
                                                     $"Max allowed is {_client.MaxFrameSize}");
             }
 
-            await _semaphore.WaitAsync();
+            await SemaphoreAwaitAsync();
             var msg = new OutgoingMsg(_publisherId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait
