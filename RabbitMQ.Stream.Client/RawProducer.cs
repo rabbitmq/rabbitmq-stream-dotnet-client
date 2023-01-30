@@ -178,7 +178,7 @@ namespace RabbitMQ.Stream.Client
 
             if (messages.Count != 0 && !_client.IsClosed)
             {
-                await SendMessages(messages, false);
+                await SendMessages(messages, false).ConfigureAwait(false);
             }
         }
 
@@ -258,13 +258,13 @@ namespace RabbitMQ.Stream.Client
                         messages.Add((msg.PublishingId, msg.Data));
                         if (messages.Count == _config.MessagesBufferSize)
                         {
-                            await SendMessages(messages);
+                            await SendMessages(messages).ConfigureAwait(false);
                         }
                     }
 
                     if (messages.Count > 0)
                     {
-                        await SendMessages(messages);
+                        await SendMessages(messages).ConfigureAwait(false);
                     }
                 }
             }
