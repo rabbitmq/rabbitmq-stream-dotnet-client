@@ -181,34 +181,45 @@ namespace RabbitMQ.Stream.Client
             }
 
             var reader = new SequenceReader<byte>(chunk.Data);
-            if (chunk.HasSubEntries)
+            // if (chunk.HasSubEntries)
             {
                 // it means that it is a subentry batch 
                 var numRecords = chunk.NumRecords;
                 while (numRecords != 0)
                 {
-                    SubEntryChunk.Read(ref reader, out var subEntryChunk);
-                    var unCompressedData = CompressionHelper.UnCompress(
-                        subEntryChunk.CompressionType,
-                        subEntryChunk.Data,
-                        subEntryChunk.DataLen,
-                        subEntryChunk.UnCompressedDataSize);
-                    var readerUnCompressed = new SequenceReader<byte>(unCompressedData);
-
-                    for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
+                    // don't move the offset. It is a "peek" to determinate the entry type
+                    // (entryType & 0x80) == 0 is standard entry
+                    // (entryType & 0x80) != 0 is compress entry (used for subEntry)
+                    WireFormatting.ReadByte(ref reader, out var entryType);
+                    var hasSubEntries = (entryType & 0x80) != 0;
+                    if (hasSubEntries)
                     {
-                        DispatchMessage(ref readerUnCompressed, z);
-                    }
+                        SubEntryChunk.Read(ref reader, entryType, out var subEntryChunk);
+                        var unCompressedData = CompressionHelper.UnCompress(
+                            subEntryChunk.CompressionType,
+                            subEntryChunk.Data,
+                            subEntryChunk.DataLen,
+                            subEntryChunk.UnCompressedDataSize);
+                        var readerUnCompressed = new SequenceReader<byte>(unCompressedData);
 
-                    numRecords -= subEntryChunk.NumRecordsInBatch;
-                }
-            }
-            else
-            {
-                // Standard chunk. 
-                for (ulong i = 0; i < chunk.NumEntries; i++)
-                {
-                    DispatchMessage(ref reader, i);
+                        for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
+                        {
+                            DispatchMessage(ref readerUnCompressed, z);
+                        }
+
+                        numRecords -= subEntryChunk.NumRecordsInBatch;
+                    }
+                    else
+                    {
+                        reader.Rewind(1);
+                        // Standard chunk. 
+                        // for (ulong i = 0; i < chunk.NumEntries; i++)
+                        {
+                            DispatchMessage(ref reader, chunk.ChunkId);
+                        }
+
+                        numRecords--;
+                    }
                 }
             }
         }

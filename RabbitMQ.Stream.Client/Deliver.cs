@@ -69,19 +69,22 @@ namespace RabbitMQ.Stream.Client
         public uint DataLen { get; }
         public ReadOnlySequence<byte> Data { get; }
 
-        internal static int Read(ref SequenceReader<byte> reader, out SubEntryChunk subEntryChunk)
+        internal static int Read(ref SequenceReader<byte> reader, byte entryType, out SubEntryChunk subEntryChunk)
         {
-            var offset = WireFormatting.ReadByte(ref reader, out var compression);
-            offset += WireFormatting.ReadUInt16(ref reader, out var numRecordsInBatch);
+            // var offset = WireFormatting.ReadByte(ref reader, out var compression);
+            var offset = WireFormatting.ReadUInt16(ref reader, out var numRecordsInBatch);
             offset += WireFormatting.ReadUInt32(ref reader, out var unCompressedDataSize);
             offset += WireFormatting.ReadUInt32(ref reader, out var dataLen);
             // Determinate what kind of the compression it is using
             // See Compress:CompressMode
-            var compress = (byte)((byte)(compression & 0x70) >> 4);
-            var data = reader.Sequence.Slice(offset, dataLen);
+            var compress = (byte)((byte)(entryType & 0x70) >> 4);
+            offset++;
+
+            var data = reader.Sequence.Slice(reader.Consumed, dataLen);
             subEntryChunk =
                 new SubEntryChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, data);
             offset += (int)dataLen;
+            reader.Advance(dataLen);
             return offset;
         }
     }
@@ -136,15 +139,10 @@ namespace RabbitMQ.Stream.Client
             // offset += 4; // reserved
             offset += WireFormatting.ReadUInt32(ref reader, out _); // reserved
 
-            // don't move the offset. It is a "peek" to determinate the entry type
-            // (entryType & 0x80) == 0 is standard entry
-            // (entryType & 0x80) != 0 is compress entry (used for subEntry)
-            WireFormatting.ReadByte(ref reader, out var entryType);
-            var hasSubEntries = (entryType & 0x80) != 0;
             var data = reader.Sequence.Slice(offset, dataLen);
             offset += (int)dataLen;
             chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data,
-                hasSubEntries);
+                false);
             return offset;
         }
     }

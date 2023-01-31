@@ -150,6 +150,7 @@ public class Producer : ProducerFactory
         if (boot)
         {
             // Init the publishing id
+            // Init the publishing id
             Interlocked.Exchange(ref _publishingId,
                 await _producer.GetLastPublishingId());
 

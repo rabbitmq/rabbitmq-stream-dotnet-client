@@ -100,6 +100,7 @@ namespace RabbitMQ.Stream.Client
         {
             // Only one thread should be able to write to the output pipeline at a time.
             await writeLock.WaitAsync();
+            try
             {
                 var size = command.SizeNeeded;
                 var mem = new byte[4 + size]; // + 4 to write the size
@@ -109,8 +110,10 @@ namespace RabbitMQ.Stream.Client
                 Debug.Assert(size == written);
                 await writer.FlushAsync();
             }
-
-            writeLock.Release();
+            finally
+            {
+                writeLock.Release();
+            }
         }
 
         private async Task ProcessIncomingFrames()

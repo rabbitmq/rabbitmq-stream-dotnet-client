@@ -240,7 +240,6 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<bool> Publish(Publish publishMsg)
         {
             var publishTask = await Publish<Publish>(publishMsg);
-
             publishCommandsSent += 1;
             messagesSent += publishMsg.MessageCount;
             return publishTask;
@@ -248,7 +247,7 @@ namespace RabbitMQ.Stream.Client
 
         public ValueTask<bool> Publish<T>(T msg) where T : struct, ICommand
         {
-            return connection.Write(msg);
+            return isClosed ? new ValueTask<bool>(false) : connection.Write(msg);
         }
 
         public async Task<(byte, DeclarePublisherResponse)> DeclarePublisher(string publisherRef,

@@ -270,7 +270,12 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "error while Process Buffer");
+                if (!_disposed && _client.IsClosed)
+                {
+                    _logger.LogError(e, "error while Process Buffer");
+                }
+
+                // _logger.LogError(e, "error while Process Buffer");
             }
         }
 
