@@ -71,7 +71,7 @@ public interface IProducer
 public record IProducerConfig : INamedEntity
 {
     public string Reference { get; set; }
-    public int MaxInFlight { get; set; } = 1000;
+    public int MaxInFlight { get; set; } = 1_000;
     public string ClientProvidedName { get; set; } = "dotnet-stream-raw-producer";
 
     public int BatchSize { get; set; } = 100;

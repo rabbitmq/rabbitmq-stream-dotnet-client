@@ -239,15 +239,11 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask<bool> Publish(Publish publishMsg)
         {
-            var publishTask = Publish<Publish>(publishMsg);
-            if (!publishTask.IsCompletedSuccessfully)
-            {
-                await publishTask.ConfigureAwait(false);
-            }
+            var publishTask = await Publish<Publish>(publishMsg);
 
             publishCommandsSent += 1;
             messagesSent += publishMsg.MessageCount;
-            return publishTask.Result;
+            return publishTask;
         }
 
         public ValueTask<bool> Publish<T>(T msg) where T : struct, ICommand

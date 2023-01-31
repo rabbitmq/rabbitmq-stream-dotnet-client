@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -20,7 +21,7 @@ namespace RabbitMQ.Stream.Client
         private Func<Memory<byte>, Task> commandCallback;
         private readonly Func<string, Task> closedCallback;
         private int numFrames;
-        private readonly object writeLock = new();
+        private readonly SemaphoreSlim writeLock = new SemaphoreSlim(1, 1);
         internal int NumFrames => numFrames;
         private bool isClosed = false;
 
@@ -85,41 +86,31 @@ namespace RabbitMQ.Stream.Client
             return new Connection(socket, commandCallback, closedCallBack, sslOption);
         }
 
-        private ValueTask<FlushResult> FlushAsync()
-        {
-            lock (writeLock)
-            {
-                var flushTask = writer.FlushAsync();
-                return flushTask;
-            }
-        }
-
         public async ValueTask<bool> Write<T>(T command) where T : struct, ICommand
         {
-            WriteCommand(command);
-            var flushTask = FlushAsync();
-
-            // Let's check if this is completed synchronously before invoking the async state machine
-            if (!flushTask.IsCompletedSuccessfully)
-            {
-                await flushTask.ConfigureAwait(false);
-            }
-
-            return flushTask.Result.IsCompleted;
+            await WriteCommand(command);
+            // we return true to indicate that the command was written
+            // In this PR https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/220
+            // we made all WriteCommand async so await is enough to indicate that the command was written
+            // We decided to keep the return value to avoid a breaking change
+            return true;
         }
 
-        private void WriteCommand<T>(T command) where T : struct, ICommand
+        private async Task WriteCommand<T>(T command) where T : struct, ICommand
         {
             // Only one thread should be able to write to the output pipeline at a time.
-            lock (writeLock)
+            await writeLock.WaitAsync();
             {
                 var size = command.SizeNeeded;
-                var mem = writer.GetSpan(4 + size); // + 4 to write the size
+                var mem = new byte[4 + size]; // + 4 to write the size
                 WireFormatting.WriteUInt32(mem, (uint)size);
-                var written = command.Write(mem.Slice(4));
+                var written = command.Write(mem.AsSpan()[4..]);
+                await writer.WriteAsync(new ReadOnlyMemory<byte>(mem));
                 Debug.Assert(size == written);
-                writer.Advance(4 + written);
+                await writer.FlushAsync();
             }
+
+            writeLock.Release();
         }
 
         private async Task ProcessIncomingFrames()
