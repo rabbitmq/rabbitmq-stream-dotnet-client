@@ -51,7 +51,7 @@ namespace RabbitMQ.Stream.Client
                 // We use the localhost ip as default
                 // this is mostly to have a default value.
 
-                var endPointNoLb = new IPEndPoint(IPAddress.Loopback, (int)broker.Port);
+                EndPoint endPointNoLb = new IPEndPoint(IPAddress.Loopback, (int)broker.Port);
 
                 // ValidateDns just validate the DNS 
                 // it the real world application is always TRUE
@@ -59,8 +59,7 @@ namespace RabbitMQ.Stream.Client
                 // it should not change.
                 if (routing.ValidateDns)
                 {
-                    var hostEntry = await Dns.GetHostEntryAsync(broker.Host);
-                    endPointNoLb = new IPEndPoint(hostEntry.AddressList.First(), (int)broker.Port);
+                    endPointNoLb = await GetEndPoint(broker);
                 }
 
                 // In this case we just return the node (leader for producer, random for consumer)
@@ -98,6 +97,25 @@ namespace RabbitMQ.Stream.Client
             }
 
             return client;
+        }
+
+        internal static async Task<EndPoint> GetEndPoint(Broker broker)
+        {
+            switch (Uri.CheckHostName(broker.Host))
+            {
+                case UriHostNameType.Basic:
+                case UriHostNameType.Dns:
+                    var hostEntry = await Dns.GetHostEntryAsync(broker.Host);
+                    var endPointNoLb = new IPEndPoint(hostEntry.AddressList.First(), (int)broker.Port);
+                    return endPointNoLb;
+                case UriHostNameType.IPv4:
+                case UriHostNameType.IPv6:
+                    return new IPEndPoint(IPAddress.Parse(broker.Host), (int)broker.Port);
+                case UriHostNameType.Unknown:
+                    throw new RoutingClientException($"Unknown host name {broker.Host}");
+                default:
+                    throw new RoutingClientException($"Unknown host name {broker.Host}");
+            }
         }
 
         private static int MaxAttempts(StreamInfo metaDataInfo)
