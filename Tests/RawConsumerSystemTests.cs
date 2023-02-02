@@ -550,22 +550,8 @@ namespace Tests
             // we need to wait a bit because the StoreOffset is async
             // and `QueryOffset` could raise NoOffsetFound
             SystemUtils.Wait();
-        
-/* Unmerged change from project 'Tests(net7.0)'
-Before:
-        [Fact]
-After:
-        [Fact]
-*/
 
-/* Unmerged change from project 'Tests(net7.0)'
-Before:
-                        if (conf.Code == ResponseCode.Ok) return;
-After:
-                        if (conf.Code == ResponseCode.Ok)
-                            return;
-*/
-    // new consumer that should start from stored offset
+            // new consumer that should start from stored offset
             var offset = await system.QueryOffset(Reference, stream);
             // the offset received must be the same from the last stored
             Assert.Equal(offset, storedOffset.Task.Result);

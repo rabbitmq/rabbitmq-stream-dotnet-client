@@ -35,7 +35,7 @@ namespace RabbitMQ.Stream.Client
 
         private static System.IO.Stream MaybeTcpUpgrade(NetworkStream networkStream, SslOption sslOption)
         {
-            return sslOption is {Enabled: false} ? networkStream : SslHelper.TcpUpgrade(networkStream, sslOption);
+            return sslOption is { Enabled: false } ? networkStream : SslHelper.TcpUpgrade(networkStream, sslOption);
         }
 
         private Connection(Socket socket, Func<Memory<byte>, Task> callback,
