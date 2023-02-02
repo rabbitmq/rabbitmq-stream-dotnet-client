@@ -181,45 +181,43 @@ namespace RabbitMQ.Stream.Client
             }
 
             var reader = new SequenceReader<byte>(chunk.Data);
-            // if (chunk.HasSubEntries)
+
+            var numRecords = chunk.NumRecords;
+            ulong messageOffset = 0; // it is used to calculate the message offset.
+            while (numRecords != 0)
             {
-                // it means that it is a subentry batch 
-                var numRecords = chunk.NumRecords;
-                while (numRecords != 0)
+                // (entryType & 0x80) == 0 is standard entry
+                // (entryType & 0x80) != 0 is compress entry (used for subEntry)
+                // In Case of subEntry the entryType is the compression type
+                // In case of standard entry the entryType si part of the message
+                WireFormatting.ReadByte(ref reader, out var entryType);
+                var isSubEntryBatch = (entryType & 0x80) != 0;
+                if (isSubEntryBatch)
                 {
-                    // don't move the offset. It is a "peek" to determinate the entry type
-                    // (entryType & 0x80) == 0 is standard entry
-                    // (entryType & 0x80) != 0 is compress entry (used for subEntry)
-                    WireFormatting.ReadByte(ref reader, out var entryType);
-                    var hasSubEntries = (entryType & 0x80) != 0;
-                    if (hasSubEntries)
+                    // it means that it is a subentry batch 
+                    // We continue to read from the stream to decode the subEntryChunk values
+                    SubEntryChunk.Read(ref reader, entryType, out var subEntryChunk);
+                    var unCompressedData = CompressionHelper.UnCompress(
+                        subEntryChunk.CompressionType,
+                        subEntryChunk.Data,
+                        subEntryChunk.DataLen,
+                        subEntryChunk.UnCompressedDataSize);
+                    var readerUnCompressed = new SequenceReader<byte>(unCompressedData);
+
+                    for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
                     {
-                        SubEntryChunk.Read(ref reader, entryType, out var subEntryChunk);
-                        var unCompressedData = CompressionHelper.UnCompress(
-                            subEntryChunk.CompressionType,
-                            subEntryChunk.Data,
-                            subEntryChunk.DataLen,
-                            subEntryChunk.UnCompressedDataSize);
-                        var readerUnCompressed = new SequenceReader<byte>(unCompressedData);
-
-                        for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
-                        {
-                            DispatchMessage(ref readerUnCompressed, z);
-                        }
-
-                        numRecords -= subEntryChunk.NumRecordsInBatch;
+                        DispatchMessage(ref readerUnCompressed, ++messageOffset);
                     }
-                    else
-                    {
-                        reader.Rewind(1);
-                        // Standard chunk. 
-                        // for (ulong i = 0; i < chunk.NumEntries; i++)
-                        {
-                            DispatchMessage(ref reader, chunk.ChunkId);
-                        }
 
-                        numRecords--;
-                    }
+                    numRecords -= subEntryChunk.NumRecordsInBatch;
+                }
+                else
+                {
+                    // Ok the entry is a standard entry
+                    // we need to rewind the stream to one byte to decode the messages
+                    reader.Rewind(1);
+                    DispatchMessage(ref reader, ++messageOffset);
+                    numRecords--;
                 }
             }
         }

@@ -71,7 +71,6 @@ namespace RabbitMQ.Stream.Client
 
         internal static int Read(ref SequenceReader<byte> reader, byte entryType, out SubEntryChunk subEntryChunk)
         {
-            // var offset = WireFormatting.ReadByte(ref reader, out var compression);
             var offset = WireFormatting.ReadUInt16(ref reader, out var numRecordsInBatch);
             offset += WireFormatting.ReadUInt32(ref reader, out var unCompressedDataSize);
             offset += WireFormatting.ReadUInt32(ref reader, out var dataLen);
@@ -80,10 +79,14 @@ namespace RabbitMQ.Stream.Client
             var compress = (byte)((byte)(entryType & 0x70) >> 4);
             offset++;
 
+            // Data contains the subEntryChunk information
+            // We need to pass it to the subEntryChunk that will decode the information
             var data = reader.Sequence.Slice(reader.Consumed, dataLen);
             subEntryChunk =
                 new SubEntryChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, data);
             offset += (int)dataLen;
+            // Here we need to advance the reader to the datalen
+            // Since Data is passed to the subEntryChunk.
             reader.Advance(dataLen);
             return offset;
         }
@@ -98,7 +101,7 @@ namespace RabbitMQ.Stream.Client
             ulong epoch,
             ulong chunkId,
             int crc,
-            ReadOnlySequence<byte> data, bool hasSubEntries)
+            ReadOnlySequence<byte> data)
         {
             MagicVersion = magicVersion;
             NumEntries = numEntries;
@@ -107,11 +110,8 @@ namespace RabbitMQ.Stream.Client
             Epoch = epoch;
             ChunkId = chunkId;
             Crc = crc;
-            HasSubEntries = hasSubEntries;
             Data = data;
         }
-
-        public bool HasSubEntries { get; }
 
         public byte MagicVersion { get; }
 
@@ -141,8 +141,7 @@ namespace RabbitMQ.Stream.Client
 
             var data = reader.Sequence.Slice(offset, dataLen);
             offset += (int)dataLen;
-            chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data,
-                false);
+            chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data);
             return offset;
         }
     }
