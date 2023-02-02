@@ -142,6 +142,8 @@ namespace RabbitMQ.Stream.Client
         /// SubEntry Batch send: Aggregate more messages under the same publishingId.
         /// Relation is publishingId ->[]messages. 
         /// Messages can be compressed using different methods.
+        /// Note:
+        /// Deduplication is not guaranteed when using sub-entries batching.
         /// </summary>
         /// <param name="publishingId"></param>
         /// <param name="subEntryMessages"> List of messages for sub-entry. Max len allowed is ushort.MaxValue</param>
@@ -163,6 +165,13 @@ namespace RabbitMQ.Stream.Client
             await _semaphore.WaitAsync();
         }
 
+        /// <summary>
+        /// Send messages in a synchronous way.
+        /// This method is needed to be used when you want to send messages in a synchronous way
+        /// to control the latency of the messages.
+        /// The Send(Message) method is asynchronous the aggregation of messages is done in the background.
+        /// </summary>
+        /// <param name="messages"></param>
         public async ValueTask Send(List<(ulong, Message)> messages)
         {
             PreValidateBatch(messages);
@@ -225,6 +234,15 @@ namespace RabbitMQ.Stream.Client
             return !_disposed && !_client.IsClosed;
         }
 
+        /// <summary>
+        /// This is the standard way to send messages.
+        /// The send is asynchronous and the aggregation of messages is done in the background.
+        /// This method can be used for the messages deduplication, if the publishingId is the same the broker will deduplicate the messages.
+        /// so only the fist message will be stored the second one will be discarded.
+        /// Read the documentation for more details.
+        /// <param name="publishingId">The Id for the message and has to be an incremental value.</param>>
+        /// <param name="message">Message to store</param>>
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async ValueTask Send(ulong publishingId, Message message)
         {

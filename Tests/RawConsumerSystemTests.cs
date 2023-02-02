@@ -550,7 +550,22 @@ namespace Tests
             // we need to wait a bit because the StoreOffset is async
             // and `QueryOffset` could raise NoOffsetFound
             SystemUtils.Wait();
-            // new consumer that should start from stored offset
+        
+/* Unmerged change from project 'Tests(net7.0)'
+Before:
+        [Fact]
+After:
+        [Fact]
+*/
+
+/* Unmerged change from project 'Tests(net7.0)'
+Before:
+                        if (conf.Code == ResponseCode.Ok) return;
+After:
+                        if (conf.Code == ResponseCode.Ok)
+                            return;
+*/
+    // new consumer that should start from stored offset
             var offset = await system.QueryOffset(Reference, stream);
             // the offset received must be the same from the last stored
             Assert.Equal(offset, storedOffset.Task.Result);
@@ -613,6 +628,70 @@ namespace Tests
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await rawConsumer.Close();
+            await system.Close();
+        }
+
+        [Fact]
+        public async void ProducerConsumerMixingDifferentSendTypesCompressAndStandard()
+        {
+            // We send messages mixing different send
+            // This test is to validate the consumer can handle
+            // different messages inside the same chuck
+            // This is not a common pattern but it is possible
+
+            var testPassed = new TaskCompletionSource<bool>();
+
+            var stream = Guid.NewGuid().ToString();
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            await system.CreateStream(new StreamSpec(stream));
+            ulong count = 0;
+            var rawProducer = await system.CreateRawProducer(
+                new RawProducerConfig(stream)
+                {
+                    ConfirmHandler = conf =>
+                    {
+                        if (conf.Code == ResponseCode.Ok)
+                            return;
+                        testOutputHelper.WriteLine($"error confirmation {conf.Code}");
+                        testPassed.SetResult(false);
+                    }
+                });
+            var consumer = await system.CreateRawConsumer(new RawConsumerConfig(stream)
+            {
+                MessageHandler = async (rawConsumer, context, arg3) =>
+                {
+                    if (Interlocked.Increment(ref count) == 1500)
+                    {
+                        testPassed.SetResult(true);
+                    }
+
+                    await Task.CompletedTask;
+                }
+            });
+            var messages = new List<Message>();
+            const int MessagesToSend = 500;
+            const int BatchSize = 100;
+            ulong pid = 0;
+            for (var i = 1; i <= MessagesToSend; i++)
+            {
+                var msg = new Message(Encoding.UTF8.GetBytes($"data_{i}"));
+                messages.Add(msg); // 500
+                await rawProducer.Send(pid++, msg);
+                if (i % BatchSize == 0)
+                {
+                    await rawProducer.Send(pid++, messages, CompressionType.None); // 100 * 5
+                    await rawProducer.Send(pid++, messages, CompressionType.Gzip); // 100 * 5
+                    messages.Clear();
+                }
+            }
+
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            Assert.Equal((ulong)1500, count);
+            Assert.Equal(ResponseCode.Ok, await rawProducer.Close());
+            await consumer.Close();
+            await rawProducer.Close();
+            await system.DeleteStream(stream);
             await system.Close();
         }
     }
