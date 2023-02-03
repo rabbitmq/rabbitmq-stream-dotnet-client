@@ -91,6 +91,7 @@ namespace RabbitMQ.Stream.Client
         {
             _client.ConnectionClosed += async reason =>
             {
+                await Close();
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason);
@@ -162,7 +163,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SemaphoreAwaitAsync()
         {
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync(Token);
         }
 
         /// <summary>
@@ -259,7 +260,7 @@ namespace RabbitMQ.Stream.Client
             if (!_messageBuffer.Writer.TryWrite(msg))
             {
                 // Nope, channel is full and being processed, let's asynchronously wait until we can buffer the message
-                await _messageBuffer.Writer.WriteAsync(msg).ConfigureAwait(false);
+                await _messageBuffer.Writer.WriteAsync(msg, Token).ConfigureAwait(false);
             }
         }
 
@@ -294,6 +295,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<ResponseCode> Close()
         {
+            // This unlocks the semaphore so that the background task can exit
+            // see SemaphoreAwaitAsync method and processBuffer method
+            MaybeCancelToken();
             if (_client.IsClosed)
             {
                 return ResponseCode.Ok;
@@ -318,7 +322,7 @@ namespace RabbitMQ.Stream.Client
                 _logger.LogError(e, "Error removing the producer id: {PublisherId} from the server", _publisherId);
             }
 
-            var closed = _client.MaybeClose($"client-close-publisher: {_publisherId}");
+            var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
             _logger?.LogDebug("Publisher {PublisherId} closed", _publisherId);
             return result;

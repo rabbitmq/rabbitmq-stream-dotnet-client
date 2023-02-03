@@ -6,7 +6,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -96,14 +95,11 @@ namespace RabbitMQ.Stream.Client
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
         private readonly ILogger _logger;
-        private readonly CancellationTokenSource _cancelTokenSource = new();
-        private readonly CancellationToken _token;
 
         private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
             _client = client;
             _config = config;
-            _token = _cancelTokenSource.Token;
             _logger = logger ?? NullLogger.Instance;
         }
 
@@ -152,14 +148,14 @@ namespace RabbitMQ.Stream.Client
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
                     {
-                        if (_token.IsCancellationRequested)
+                        if (Token.IsCancellationRequested)
                         {
                             return;
                         }
 
                         _config.MessageHandler(this,
                             new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                            message).Wait(_token);
+                            message).Wait(Token);
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
@@ -228,6 +224,7 @@ namespace RabbitMQ.Stream.Client
 
             _client.ConnectionClosed += async reason =>
             {
+                await Close();
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason);
@@ -297,12 +294,13 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<ResponseCode> Close()
         {
+            // this unlock the consumer if it is waiting for a message
+            // see DispatchMessage method where the token is used
+            MaybeCancelToken();
             if (_client.IsClosed)
             {
                 return ResponseCode.Ok;
             }
-
-            _cancelTokenSource.Cancel();
 
             var result = ResponseCode.Ok;
             try
@@ -323,7 +321,7 @@ namespace RabbitMQ.Stream.Client
                 _logger.LogError(e, "Error removing the consumer id: {SubscriberId} from the server", _subscriberId);
             }
 
-            var closed = _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
+            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
             return result;
@@ -350,7 +348,6 @@ namespace RabbitMQ.Stream.Client
             }
             finally
             {
-                _cancelTokenSource.Dispose();
                 _disposed = true;
             }
         }

@@ -547,30 +547,38 @@ namespace RabbitMQ.Stream.Client
                 return new CloseResponse(0, ResponseCode.Ok);
             }
 
-            var result =
-                await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
-                    TimeSpan.FromSeconds(30));
             try
             {
+                var result =
+                    await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
+                        TimeSpan.FromSeconds(10));
+
                 InternalClose();
                 connection.Dispose();
+                return result;
+            }
+
+            catch (System.TimeoutException)
+            {
+                _logger.LogError("Timeout while closing the connection. The connection will be closed anyway");
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "An error occurred while calling {CalledFunction}", nameof(connection.Dispose));
             }
 
-            return result;
+            return new CloseResponse(0, ResponseCode.Ok);
+
         }
 
         // Safe close 
         // the client can be closed only if the publishers are == 0
         // not a public method used internally by producers and consumers
-        internal CloseResponse MaybeClose(string reason)
+        internal async Task<CloseResponse> MaybeClose(string reason)
         {
             if (publishers.Count == 0 && consumers.Count == 0)
             {
-                return Close(reason).Result;
+                await Close(reason).ConfigureAwait(false);
             }
 
             var result = new CloseResponse(0, ResponseCode.Ok);
