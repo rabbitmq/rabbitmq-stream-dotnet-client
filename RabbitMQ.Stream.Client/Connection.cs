@@ -21,7 +21,7 @@ namespace RabbitMQ.Stream.Client
         private Func<Memory<byte>, Task> commandCallback;
         private readonly Func<string, Task> closedCallback;
         private int numFrames;
-        private readonly SemaphoreSlim writeLock = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
         internal int NumFrames => numFrames;
         private bool isClosed = false;
 
@@ -99,7 +99,8 @@ namespace RabbitMQ.Stream.Client
         private async Task WriteCommand<T>(T command) where T : struct, ICommand
         {
             // Only one thread should be able to write to the output pipeline at a time.
-            await writeLock.WaitAsync();
+            await _writeLock.WaitAsync();
+            try
             {
                 var size = command.SizeNeeded;
                 var mem = new byte[4 + size]; // + 4 to write the size
@@ -109,8 +110,10 @@ namespace RabbitMQ.Stream.Client
                 Debug.Assert(size == written);
                 await writer.FlushAsync();
             }
-
-            writeLock.Release();
+            finally
+            {
+                _writeLock.Release();
+            }
         }
 
         private async Task ProcessIncomingFrames()

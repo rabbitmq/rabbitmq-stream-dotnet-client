@@ -126,6 +126,8 @@ public class Producer : ProducerFactory
 
     /// <summary>
     /// Create a new Producer.
+    /// <param name="producerConfig">Producer Configuration. Where StreamSystem and Stream are mandatory.</param>
+    /// <param name="logger">Enable the logging. By default is null. Add a logging is suggested</param>
     /// </summary> 
     public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
@@ -194,9 +196,9 @@ public class Producer : ProducerFactory
     }
 
     /// <summary>
-    /// Send a message to the stream.
+    /// This is the standard way to send messages.
     /// The client aggregates the messages and sends them to the server in batches.
-    /// The publisherId is automatically set. 
+    /// The publisherId is automatically set.
     /// </summary>
     /// <param name="message">Standard Message</param>
     /// The method does not raise any exception during the send.
@@ -235,7 +237,7 @@ public class Producer : ProducerFactory
     }
 
     /// <summary>
-    /// Enable sub-batch feature.
+    /// Enable sub-entry batch feature.
     /// It is needed when you need to sub aggregate the messages and compress them.
     /// For example you can aggregate 100 log messages and compress to reduce the space.
     /// One single publishingId can have multiple sub-batches messages.

@@ -69,19 +69,25 @@ namespace RabbitMQ.Stream.Client
         public uint DataLen { get; }
         public ReadOnlySequence<byte> Data { get; }
 
-        internal static int Read(ref SequenceReader<byte> reader, out SubEntryChunk subEntryChunk)
+        internal static int Read(ref SequenceReader<byte> reader, byte entryType, out SubEntryChunk subEntryChunk)
         {
-            var offset = WireFormatting.ReadByte(ref reader, out var compression);
-            offset += WireFormatting.ReadUInt16(ref reader, out var numRecordsInBatch);
+            var offset = WireFormatting.ReadUInt16(ref reader, out var numRecordsInBatch);
             offset += WireFormatting.ReadUInt32(ref reader, out var unCompressedDataSize);
             offset += WireFormatting.ReadUInt32(ref reader, out var dataLen);
             // Determinate what kind of the compression it is using
             // See Compress:CompressMode
-            var compress = (byte)((byte)(compression & 0x70) >> 4);
-            var data = reader.Sequence.Slice(offset, dataLen);
+            var compress = (byte)((byte)(entryType & 0x70) >> 4);
+            offset++;
+
+            // Data contains the subEntryChunk information
+            // We need to pass it to the subEntryChunk that will decode the information
+            var data = reader.Sequence.Slice(reader.Consumed, dataLen);
             subEntryChunk =
                 new SubEntryChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, data);
             offset += (int)dataLen;
+            // Here we need to advance the reader to the datalen
+            // Since Data is passed to the subEntryChunk.
+            reader.Advance(dataLen);
             return offset;
         }
     }
@@ -95,7 +101,7 @@ namespace RabbitMQ.Stream.Client
             ulong epoch,
             ulong chunkId,
             int crc,
-            ReadOnlySequence<byte> data, bool hasSubEntries)
+            ReadOnlySequence<byte> data)
         {
             MagicVersion = magicVersion;
             NumEntries = numEntries;
@@ -104,11 +110,8 @@ namespace RabbitMQ.Stream.Client
             Epoch = epoch;
             ChunkId = chunkId;
             Crc = crc;
-            HasSubEntries = hasSubEntries;
             Data = data;
         }
-
-        public bool HasSubEntries { get; }
 
         public byte MagicVersion { get; }
 
@@ -135,16 +138,9 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt32(ref reader, out _);
             // offset += 4; // reserved
             offset += WireFormatting.ReadUInt32(ref reader, out _); // reserved
-
-            // don't move the offset. It is a "peek" to determinate the entry type
-            // (entryType & 0x80) == 0 is standard entry
-            // (entryType & 0x80) != 0 is compress entry (used for subEntry)
-            WireFormatting.ReadByte(ref reader, out var entryType);
-            var hasSubEntries = (entryType & 0x80) != 0;
-            var data = reader.Sequence.Slice(offset, dataLen);
+            var data = reader.Sequence.Slice(reader.Consumed, dataLen);
             offset += (int)dataLen;
-            chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data,
-                hasSubEntries);
+            chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, data);
             return offset;
         }
     }
