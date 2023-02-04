@@ -156,7 +156,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     {
         var c = await RawConsumer.Create(
             _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
-            FromStreamConfig(stream), _streamInfos[stream], _logger);
+            FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
         _logger?.LogDebug("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference,
             stream);
         return c;
@@ -166,7 +166,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     {
         if (!_consumers.ContainsKey(stream))
         {
-            var p = await InitConsumer(stream);
+            var p = await InitConsumer(stream).ConfigureAwait(false);
             _consumers.TryAdd(stream, p);
         }
 

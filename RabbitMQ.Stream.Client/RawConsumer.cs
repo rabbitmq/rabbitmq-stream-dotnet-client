@@ -224,10 +224,10 @@ namespace RabbitMQ.Stream.Client
 
             _client.ConnectionClosed += async reason =>
             {
-                await Close();
+                await Close().ConfigureAwait(false);
                 if (_config.ConnectionClosedHandler != null)
                 {
-                    await _config.ConnectionClosedHandler(reason);
+                    await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
             };
             if (_config.MetadataHandler != null)
@@ -282,7 +282,7 @@ namespace RabbitMQ.Stream.Client
 
                     return _config.StoredOffsetSpec;
                 }
-            );
+            ).ConfigureAwait(false);
             if (response.ResponseCode == ResponseCode.Ok)
             {
                 _subscriberId = consumerId;

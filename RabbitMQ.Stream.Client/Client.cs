@@ -190,7 +190,8 @@ namespace RabbitMQ.Stream.Client
         {
             if (ConnectionClosed != null)
             {
-                await ConnectionClosed?.Invoke(reason)!;
+                var t = ConnectionClosed?.Invoke(reason)!;
+                await t.ConfigureAwait(false);
             }
         }
 
@@ -234,7 +235,7 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask<bool> Publish(Publish publishMsg)
         {
-            var publishTask = await Publish<Publish>(publishMsg);
+            var publishTask = await Publish<Publish>(publishMsg).ConfigureAwait(false);
 
             publishCommandsSent += 1;
             messagesSent += publishMsg.MessageCount;
@@ -254,7 +255,7 @@ namespace RabbitMQ.Stream.Client
             var publisherId = nextPublisherId++;
             publishers.Add(publisherId, (confirmCallback, errorCallback));
             return (publisherId, await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
-                new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)));
+                new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)).ConfigureAwait(false));
         }
 
         public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
@@ -282,7 +283,7 @@ namespace RabbitMQ.Stream.Client
                 initialCredit,
                 properties,
                 deliverHandler,
-                consumerUpdateHandler);
+                consumerUpdateHandler).ConfigureAwait(false);
         }
 
         public async Task<(byte, SubscribeResponse)> Subscribe(RawConsumerConfig config,

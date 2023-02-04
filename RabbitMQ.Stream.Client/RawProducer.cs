@@ -153,11 +153,11 @@ namespace RabbitMQ.Stream.Client
         {
             if (subEntryMessages.Count != 0)
             {
-                await SemaphoreAwaitAsync();
+                await SemaphoreAwaitAsync().ConfigureAwait(false);
                 var publishTask =
                     _client.Publish(new SubEntryPublish(_publisherId, publishingId,
                         CompressionHelper.Compress(subEntryMessages, compressionType)));
-                await publishTask;
+                await publishTask.ConfigureAwait(false);
             }
         }
 

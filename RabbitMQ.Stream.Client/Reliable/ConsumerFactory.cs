@@ -52,7 +52,7 @@ public abstract class ConsumerFactory : ReliableBase
             OffsetSpec = offsetSpec,
             ConnectionClosedHandler = async _ =>
             {
-                await TryToReconnect(_consumerConfig.ReconnectStrategy);
+                await TryToReconnect(_consumerConfig.ReconnectStrategy).ConfigureAwait(false);
             },
             MetadataHandler = update =>
             {
@@ -70,11 +70,10 @@ public abstract class ConsumerFactory : ReliableBase
                 _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
                 if (_consumerConfig.MessageHandler != null)
                 {
-                    await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx,
-                        message);
+                    await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message).ConfigureAwait(false);
                 }
             },
-        }, BaseLogger);
+        }, BaseLogger).ConfigureAwait(false);
     }
 
     private async Task<IConsumer> SuperConsumer(bool boot)

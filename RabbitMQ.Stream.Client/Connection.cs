@@ -153,7 +153,7 @@ namespace RabbitMQ.Stream.Client
 
                 // Mark the PipeReader as complete
 
-                await reader.CompleteAsync();
+                await reader.CompleteAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -166,7 +166,8 @@ namespace RabbitMQ.Stream.Client
             finally
             {
                 isClosed = true;
-                await closedCallback?.Invoke("TCP Connection Closed")!;
+                var t = closedCallback?.Invoke("TCP Connection Closed")!;
+                await t.ConfigureAwait(false);
                 Debug.WriteLine("TCP Connection Closed");
             }
         }

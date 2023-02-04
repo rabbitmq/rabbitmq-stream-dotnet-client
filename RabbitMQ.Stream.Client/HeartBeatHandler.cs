@@ -77,7 +77,7 @@ public class HeartBeatHandler
         // client will be closed
         _logger.LogCritical("Too many heartbeats missed: {MissedHeartbeatCounter}", _missedHeartbeat);
         Close();
-        await _close($"Too many heartbeats missed: {_missedHeartbeat}. Client connection will be closed.");
+        await _close($"Too many heartbeats missed: {_missedHeartbeat}. Client connection will be closed.").ConfigureAwait(false);
     }
 
     internal void UpdateHeartBeat()

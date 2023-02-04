@@ -144,7 +144,7 @@ public class Consumer : ConsumerFactory
     internal override async Task CreateNewEntity(bool boot)
     {
         _consumer = await CreateConsumer(boot).ConfigureAwait(false);
-        await _consumerConfig.ReconnectStrategy.WhenConnected(ToString());
+        await _consumerConfig.ReconnectStrategy.WhenConnected(ToString()).ConfigureAwait(false);
     }
 
     // just close the consumer. See base/metadataupdate
