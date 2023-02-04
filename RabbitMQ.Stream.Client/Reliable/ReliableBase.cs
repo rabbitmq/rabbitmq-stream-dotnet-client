@@ -45,7 +45,7 @@ public abstract class ReliableBase
 
     internal async Task Init(IReconnectStrategy reconnectStrategy)
     {
-        await Init(true, reconnectStrategy);
+        await Init(true, reconnectStrategy).ConfigureAwait(false);
     }
 
     // <summary>
@@ -58,11 +58,11 @@ public abstract class ReliableBase
     private async Task Init(bool boot, IReconnectStrategy reconnectStrategy)
     {
         var reconnect = false;
-        await SemaphoreSlim.WaitAsync();
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
             _isOpen = true;
-            await CreateNewEntity(boot);
+            await CreateNewEntity(boot).ConfigureAwait(false);
         }
 
         catch (Exception e)
@@ -84,7 +84,7 @@ public abstract class ReliableBase
 
         if (reconnect)
         {
-            await TryToReconnect(reconnectStrategy);
+            await TryToReconnect(reconnectStrategy).ConfigureAwait(false);
         }
     }
 

@@ -27,10 +27,10 @@ public abstract class ConsumerFactory : ReliableBase
     {
         if (_consumerConfig.IsSuperStream)
         {
-            return await SuperConsumer(boot);
+            return await SuperConsumer(boot).ConfigureAwait(false);
         }
 
-        return await StandardConsumer(boot);
+        return await StandardConsumer(boot).ConfigureAwait(false);
     }
 
     private async Task<IConsumer> StandardConsumer(bool boot)
@@ -92,7 +92,7 @@ public abstract class ConsumerFactory : ReliableBase
         }
         else
         {
-            var partitions = await _consumerConfig.StreamSystem.QueryPartition(_consumerConfig.Stream);
+            var partitions = await _consumerConfig.StreamSystem.QueryPartition(_consumerConfig.Stream).ConfigureAwait(false);
             foreach (var partition in partitions)
             {
                 offsetSpecs[partition] =

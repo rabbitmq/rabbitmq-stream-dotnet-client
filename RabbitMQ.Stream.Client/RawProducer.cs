@@ -59,10 +59,10 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger);
+            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger).ConfigureAwait(false);
 
             var producer = new RawProducer((Client)client, config, logger);
-            await producer.Init();
+            await producer.Init().ConfigureAwait(false);
             return producer;
         }
 
@@ -306,23 +306,19 @@ namespace RabbitMQ.Stream.Client
             var result = ResponseCode.Ok;
             try
             {
-                var deletePublisherResponseTask = _client.DeletePublisher(_publisherId);
                 // The  default timeout is usually 10 seconds 
                 // in this case we reduce the waiting time
                 // the producer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                await deletePublisherResponseTask.WaitAsync(TimeSpan.FromSeconds(3));
-                if (deletePublisherResponseTask.IsCompletedSuccessfully)
-                {
-                    result = deletePublisherResponseTask.Result.ResponseCode;
-                }
+                var closeResponse = await _client.DeletePublisher(_publisherId).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                result = closeResponse.ResponseCode;
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error removing the producer id: {PublisherId} from the server", _publisherId);
             }
 
-            var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}");
+            var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}").ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
             _logger?.LogDebug("Publisher {PublisherId} closed", _publisherId);
             return result;

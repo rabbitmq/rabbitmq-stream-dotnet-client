@@ -64,7 +64,7 @@ namespace RabbitMQ.Stream.Client
 
             try
             {
-                await socket.ConnectAsync(endpoint);
+                await socket.ConnectAsync(endpoint).ConfigureAwait(false);
             }
             catch (SocketException ex)
             {
@@ -88,7 +88,7 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask<bool> Write<T>(T command) where T : struct, ICommand
         {
-            await WriteCommand(command);
+            await WriteCommand(command).ConfigureAwait(false);
             // we return true to indicate that the command was written
             // In this PR https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/220
             // we made all WriteCommand async so await is enough to indicate that the command was written
@@ -99,16 +99,16 @@ namespace RabbitMQ.Stream.Client
         private async Task WriteCommand<T>(T command) where T : struct, ICommand
         {
             // Only one thread should be able to write to the output pipeline at a time.
-            await _writeLock.WaitAsync();
+            await _writeLock.WaitAsync().ConfigureAwait(false);
             try
             {
                 var size = command.SizeNeeded;
                 var mem = new byte[4 + size]; // + 4 to write the size
                 WireFormatting.WriteUInt32(mem, (uint)size);
                 var written = command.Write(mem.AsSpan()[4..]);
-                await writer.WriteAsync(new ReadOnlyMemory<byte>(mem));
+                await writer.WriteAsync(new ReadOnlyMemory<byte>(mem)).ConfigureAwait(false);
                 Debug.Assert(size == written);
-                await writer.FlushAsync();
+                await writer.FlushAsync().ConfigureAwait(false);
             }
             finally
             {

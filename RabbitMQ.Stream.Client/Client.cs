@@ -197,36 +197,31 @@ namespace RabbitMQ.Stream.Client
         public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
         {
             var client = new Client(parameters, logger);
-
-            client.connection = await Connection.Create(parameters.Endpoint,
-                client.HandleIncoming, client.HandleClosed, parameters.Ssl);
+            
+            client.connection = await Connection.Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl).ConfigureAwait(false);
 
             // exchange properties
-            var peerPropertiesResponse =
-                await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
-                    new PeerPropertiesRequest(corr, parameters.Properties));
+            await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
+                new PeerPropertiesRequest(corr, parameters.Properties)).ConfigureAwait(false);
             logger?.LogDebug("Server properties: {@Properties}", parameters.Properties);
 
             //auth
             var saslHandshakeResponse =
-                await client.Request<SaslHandshakeRequest, SaslHandshakeResponse>(
-                    corr => new SaslHandshakeRequest(corr));
+                await client.Request<SaslHandshakeRequest, SaslHandshakeResponse>(corr => new SaslHandshakeRequest(corr)).ConfigureAwait(false);
             logger?.LogDebug("Sasl mechanism: {Mechanisms}", saslHandshakeResponse.Mechanisms);
 
             var saslData = Encoding.UTF8.GetBytes($"\0{parameters.UserName}\0{parameters.Password}");
             var authResponse =
-                await client.Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
-                    new SaslAuthenticateRequest(corr, "PLAIN", saslData));
+                await client.Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr => new SaslAuthenticateRequest(corr, "PLAIN", saslData)).ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
             //tune
-            await client.tuneReceived.Task;
+            await client.tuneReceived.Task.ConfigureAwait(false);
             await client.Publish(new TuneRequest(0,
-                (uint)client.Parameters.Heartbeat.TotalSeconds));
+                (uint)client.Parameters.Heartbeat.TotalSeconds)).ConfigureAwait(false);
 
             // open 
-            var open = await client.Request<OpenRequest, OpenResponse>(corr =>
-                new OpenRequest(corr, parameters.VirtualHost));
+            var open = await client.Request<OpenRequest, OpenResponse>(corr => new OpenRequest(corr, parameters.VirtualHost)).ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(open.ResponseCode, parameters.VirtualHost);
             logger?.LogDebug("Open: ConnectionProperties: {ConnectionProperties}", open.ConnectionProperties);
             client.ConnectionProperties = open.ConnectionProperties;
@@ -268,7 +263,7 @@ namespace RabbitMQ.Stream.Client
             {
                 var result =
                     await Request<DeletePublisherRequest, DeletePublisherResponse>(corr =>
-                        new DeletePublisherRequest(corr, publisherId));
+                        new DeletePublisherRequest(corr, publisherId)).ConfigureAwait(false);
 
                 return result;
             }
@@ -314,7 +309,7 @@ namespace RabbitMQ.Stream.Client
             {
                 var result =
                     await Request<UnsubscribeRequest, UnsubscribeResponse>(corr =>
-                        new UnsubscribeRequest(corr, subscriptionId));
+                        new UnsubscribeRequest(corr, subscriptionId)).ConfigureAwait(false);
                 return result;
             }
             finally
@@ -327,7 +322,7 @@ namespace RabbitMQ.Stream.Client
         public async Task<PartitionsQueryResponse> QueryPartition(string superStream)
         {
             return await Request<PartitionsQueryRequest, PartitionsQueryResponse>(corr =>
-                new PartitionsQueryRequest(corr, superStream));
+                new PartitionsQueryRequest(corr, superStream)).ConfigureAwait(false);
         }
 
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
@@ -336,15 +331,15 @@ namespace RabbitMQ.Stream.Client
             var corr = NextCorrelationId();
             var tcs = PooledTaskSource<TOut>.Rent();
             requests.TryAdd(corr, tcs);
-            await Publish(request(corr));
+            await Publish(request(corr)).ConfigureAwait(false);
             using var cts = new CancellationTokenSource(timeout ?? defaultTimeout);
             await using (cts.Token.Register(
                              valueTaskSource =>
                                  ((ManualResetValueTaskSource<TOut>)valueTaskSource).SetException(
-                                     new TimeoutException()), tcs))
+                                     new TimeoutException()), tcs).ConfigureAwait(false))
             {
                 var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
-                var result = await valueTask;
+                var result = await valueTask.ConfigureAwait(false);
                 PooledTaskSource<TOut>.Return(tcs);
                 return result;
             }
@@ -551,7 +546,7 @@ namespace RabbitMQ.Stream.Client
             {
                 var result =
                     await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
-                        TimeSpan.FromSeconds(10));
+                        TimeSpan.FromSeconds(10)).ConfigureAwait(false);
 
                 InternalClose();
                 connection.Dispose();
@@ -598,7 +593,7 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask<MetaDataResponse> QueryMetadata(string[] streams)
         {
-            return await Request<MetaDataQuery, MetaDataResponse>(corr => new MetaDataQuery(corr, streams.ToList()));
+            return await Request<MetaDataQuery, MetaDataResponse>(corr => new MetaDataQuery(corr, streams.ToList())).ConfigureAwait(false);
         }
 
         public async Task<bool> StreamExists(string stream)
@@ -612,7 +607,7 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<QueryOffsetResponse> QueryOffset(string reference, string stream)
         {
             return await Request<QueryOffsetRequest, QueryOffsetResponse>(corr =>
-                new QueryOffsetRequest(stream, corr, reference));
+                new QueryOffsetRequest(stream, corr, reference)).ConfigureAwait(false);
         }
 
         public async ValueTask<CreateResponse> CreateStream(string stream, IDictionary<string, string> args)

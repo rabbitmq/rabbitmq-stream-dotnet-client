@@ -305,23 +305,19 @@ namespace RabbitMQ.Stream.Client
             var result = ResponseCode.Ok;
             try
             {
-                var deleteConsumerResponseTask = _client.Unsubscribe(_subscriberId);
                 // The  default timeout is usually 10 seconds 
                 // in this case we reduce the waiting time
                 // the consumer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                await deleteConsumerResponseTask.WaitAsync(TimeSpan.FromSeconds(3));
-                if (deleteConsumerResponseTask.IsCompletedSuccessfully)
-                {
-                    result = deleteConsumerResponseTask.Result.ResponseCode;
-                }
+                var unsubscribeResponse = await _client.Unsubscribe(_subscriberId).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                result = unsubscribeResponse.ResponseCode;
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error removing the consumer id: {SubscriberId} from the server", _subscriberId);
             }
 
-            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
+            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}").ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
             return result;

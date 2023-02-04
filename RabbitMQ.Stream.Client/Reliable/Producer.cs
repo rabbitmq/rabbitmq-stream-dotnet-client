@@ -133,7 +133,7 @@ public class Producer : ProducerFactory
     {
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
-        await rProducer.Init(producerConfig.ReconnectStrategy);
+        await rProducer.Init(producerConfig.ReconnectStrategy).ConfigureAwait(false);
         logger?.LogDebug(
             "Producer: {Reference} created for Stream: {Stream}",
             producerConfig.Reference,
@@ -145,7 +145,7 @@ public class Producer : ProducerFactory
 
     internal override async Task CreateNewEntity(bool boot)
     {
-        _producer = await CreateProducer();
+        _producer = await CreateProducer().ConfigureAwait(false);
 
         await _producerConfig.ReconnectStrategy.WhenConnected(ToString());
 
@@ -178,14 +178,14 @@ public class Producer : ProducerFactory
 
     public override async Task Close()
     {
-        await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10));
+        await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10)).ConfigureAwait(false);
         try
         {
             _isOpen = false;
             _confirmationPipe.Stop();
             if (_producer != null)
             {
-                await _producer.Close();
+                await _producer.Close().ConfigureAwait(false);
                 _logger?.LogDebug("Producer closed for {Stream}", _producerConfig.Stream);
             }
         }
