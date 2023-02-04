@@ -119,7 +119,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task StoreOffset(ulong offset)
         {
-            await _client.StoreOffset(_config.Reference, _config.Stream, offset);
+            await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
         }
 
         public static async Task<IConsumer> Create(
@@ -129,9 +129,9 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger);
+            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger).ConfigureAwait(false);
             var consumer = new RawConsumer((Client)client, config, logger);
-            await consumer.Init();
+            await consumer.Init().ConfigureAwait(false);
             return consumer;
         }
 

@@ -131,7 +131,7 @@ namespace RabbitMQ.Stream.Client
                 if (brokers.Count > 0)
                 {
                     var replicas = replicaRefs.Select(r => brokers[r]).ToList();
-                    var leader = brokers.ContainsKey(leaderRef) ? brokers[leaderRef] : default;
+                    var leader = brokers.TryGetValue(leaderRef, out var value) ? value : default;
                     streamInfos.Add(stream, new StreamInfo(stream, (ResponseCode)code, leader, replicas));
                 }
                 else

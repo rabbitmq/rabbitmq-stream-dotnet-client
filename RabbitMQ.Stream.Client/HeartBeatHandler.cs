@@ -57,7 +57,7 @@ public class HeartBeatHandler
     private async Task PerformHeartBeatAsync()
     {
         var f = _sendHeartbeatFunc();
-        await f.AsTask().WaitAsync(TimeSpan.FromMilliseconds(1000));
+        await f.AsTask().WaitAsync(TimeSpan.FromMilliseconds(1000)).ConfigureAwait(false);
 
         var seconds = (DateTime.Now - _lastUpdate).TotalSeconds;
         if (seconds < _heartbeat)

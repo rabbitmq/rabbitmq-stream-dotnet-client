@@ -83,7 +83,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                         stream
                     );
                     _consumers.TryRemove(stream, out _);
-                    await GetConsumer(stream);
+                    await GetConsumer(stream).ConfigureAwait(false);
                 }
             },
             MessageHandler = async (consumer, context, message) =>
@@ -148,7 +148,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                     });
                 }
             },
-            OffsetSpec = _config.OffsetSpec.ContainsKey(stream) ? _config.OffsetSpec[stream] : new OffsetTypeNext(),
+            OffsetSpec = _config.OffsetSpec.TryGetValue(stream, out var value) ? value : new OffsetTypeNext(),
         };
     }
 

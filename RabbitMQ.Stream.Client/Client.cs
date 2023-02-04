@@ -197,7 +197,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
         {
             var client = new Client(parameters, logger);
-            
+
             client.connection = await Connection.Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl).ConfigureAwait(false);
 
             // exchange properties

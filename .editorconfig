@@ -224,6 +224,9 @@ csharp_space_between_square_brackets = false
 # Analyzers
 dotnet_code_quality.ca1802.api_surface = private, internal
 
+# CA2007: Do not directly await a Task
+dotnet_diagnostic.CA2007.severity = warning
+
 # IDE0073: File header
 dotnet_diagnostic.IDE0073.severity = warning
 file_header_template =  This source code is dual-licensed under the Apache License, version\n2.0, and the Mozilla Public License, version 2.0.\nCopyright (c) 2007-2023 VMware, Inc.

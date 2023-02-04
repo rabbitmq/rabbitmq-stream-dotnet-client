@@ -339,7 +339,7 @@ namespace Tests
                 return 0;
             }
 
-            return obj.ContainsKey("messages_ready") ? Convert.ToInt32(obj["messages_ready"].ToString()) : 0;
+            return obj.TryGetValue("messages_ready", out var value) ? Convert.ToInt32(value.ToString()) : 0;
         }
 
         public static void HttpPost(string jsonBody, string api)
