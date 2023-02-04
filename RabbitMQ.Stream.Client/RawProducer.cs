@@ -128,7 +128,7 @@ namespace RabbitMQ.Stream.Client
                     }
 
                     _semaphore.Release(errors.Length);
-                });
+                }).ConfigureAwait(false);
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
@@ -163,7 +163,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SemaphoreAwaitAsync()
         {
-            await _semaphore.WaitAsync(Token);
+            await _semaphore.WaitAsync(Token).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -176,14 +176,14 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask Send(List<(ulong, Message)> messages)
         {
             PreValidateBatch(messages);
-            await InternalBatchSend(messages);
+            await InternalBatchSend(messages).ConfigureAwait(false);
         }
 
         internal async Task InternalBatchSend(List<(ulong, Message)> messages)
         {
             for (var i = 0; i < messages.Count; i++)
             {
-                await SemaphoreAwaitAsync();
+                await SemaphoreAwaitAsync().ConfigureAwait(false);
             }
 
             if (messages.Count != 0 && !_client.IsClosed)
@@ -211,7 +211,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
-            await _client.Publish(new Publish(_publisherId, messages));
+            await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
             if (clearMessagesList)
             {
                 messages.Clear();
@@ -224,7 +224,7 @@ namespace RabbitMQ.Stream.Client
         /// <returns>The last sequence id stored by the producer.</returns>
         public async Task<ulong> GetLastPublishingId()
         {
-            var response = await _client.QueryPublisherSequence(_config.Reference, _config.Stream);
+            var response = await _client.QueryPublisherSequence(_config.Reference, _config.Stream).ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
                 $"GetLastPublishingId stream: {_config.Stream}, reference: {_config.Reference}");
             return response.Sequence;
@@ -253,7 +253,7 @@ namespace RabbitMQ.Stream.Client
                                                     $"Max allowed is {_client.MaxFrameSize}");
             }
 
-            await SemaphoreAwaitAsync();
+            await SemaphoreAwaitAsync().ConfigureAwait(false);
             var msg = new OutgoingMsg(_publisherId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait

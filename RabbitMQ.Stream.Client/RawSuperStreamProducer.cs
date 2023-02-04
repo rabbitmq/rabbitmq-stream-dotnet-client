@@ -181,7 +181,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
 
         foreach (var (producer, list) in aggregate)
         {
-            await producer.Send(list);
+            await producer.Send(list).ConfigureAwait(false);
         }
     }
 
@@ -194,7 +194,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         // and send them to the right producer
         foreach (var subMessage in subEntryMessages)
         {
-            var p = await GetProducerForMessage(subMessage);
+            var p = await GetProducerForMessage(subMessage).ConfigureAwait(false);
             if (aggregate.Any(a => a.Item1 == p))
             {
                 aggregate.First(a => a.Item1 == p).Item2.Add(subMessage);
@@ -209,7 +209,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         // sub aggregate is a list of messages that have to be sent to the same producer
         foreach (var (producer, messages) in aggregate)
         {
-            await producer.Send(publishingId, messages, compressionType);
+            await producer.Send(publishingId, messages, compressionType).ConfigureAwait(false);
         }
     }
 

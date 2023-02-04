@@ -124,7 +124,7 @@ public class ConfirmationPipe
 
         foreach (var pair in timedOutMessages)
         {
-            await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null);
+            await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null).ConfigureAwait(false);
         }
     }
 

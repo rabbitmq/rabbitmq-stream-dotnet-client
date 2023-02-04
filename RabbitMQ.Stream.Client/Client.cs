@@ -301,7 +301,7 @@ namespace RabbitMQ.Stream.Client
             return (subscriptionId,
                 await Request<SubscribeRequest, SubscribeResponse>(corr =>
                     new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
-                        properties)));
+                        properties)).ConfigureAwait(false));
         }
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
@@ -354,7 +354,7 @@ namespace RabbitMQ.Stream.Client
         private async Task HandleClosed(string reason)
         {
             InternalClose();
-            await OnConnectionClosed(reason);
+            await OnConnectionClosed(reason).ConfigureAwait(false);
         }
 
         private async Task HandleIncoming(Memory<byte> frameMemory)
@@ -408,7 +408,7 @@ namespace RabbitMQ.Stream.Client
                     var consumerEventsUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
                     await ConsumerUpdateResponse(
                         consumerUpdateQueryResponse.CorrelationId,
-                        await consumerEventsUpd.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive));
+                        await consumerEventsUpd.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive).ConfigureAwait(false)).ConfigureAwait(false);
                     break;
                 case CreditResponse.Key:
                     CreditResponse.Read(frame, out var creditResponse);
@@ -522,7 +522,7 @@ namespace RabbitMQ.Stream.Client
 
         private async ValueTask<bool> SendHeartBeat()
         {
-            return await Publish(new HeartBeatRequest());
+            return await Publish(new HeartBeatRequest()).ConfigureAwait(false);
         }
 
         private void InternalClose()
@@ -533,7 +533,7 @@ namespace RabbitMQ.Stream.Client
 
         private async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
         {
-            return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification));
+            return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification)).ConfigureAwait(false);
         }
 
         public async Task<CloseResponse> Close(string reason)
@@ -584,12 +584,12 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<QueryPublisherResponse> QueryPublisherSequence(string publisherRef, string stream)
         {
             return await Request<QueryPublisherRequest, QueryPublisherResponse>(corr =>
-                new QueryPublisherRequest(corr, publisherRef, stream));
+                new QueryPublisherRequest(corr, publisherRef, stream)).ConfigureAwait(false);
         }
 
         public async ValueTask<bool> StoreOffset(string reference, string stream, ulong offsetValue)
         {
-            return await Publish(new StoreOffsetRequest(stream, reference, offsetValue));
+            return await Publish(new StoreOffsetRequest(stream, reference, offsetValue)).ConfigureAwait(false);
         }
 
         public async ValueTask<MetaDataResponse> QueryMetadata(string[] streams)
@@ -600,7 +600,7 @@ namespace RabbitMQ.Stream.Client
         public async Task<bool> StreamExists(string stream)
         {
             var streams = new[] { stream };
-            var response = await QueryMetadata(streams);
+            var response = await QueryMetadata(streams).ConfigureAwait(false);
             return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
@@ -613,17 +613,17 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask<CreateResponse> CreateStream(string stream, IDictionary<string, string> args)
         {
-            return await Request<CreateRequest, CreateResponse>(corr => new CreateRequest(corr, stream, args));
+            return await Request<CreateRequest, CreateResponse>(corr => new CreateRequest(corr, stream, args)).ConfigureAwait(false);
         }
 
         public async ValueTask<DeleteResponse> DeleteStream(string stream)
         {
-            return await Request<DeleteRequest, DeleteResponse>(corr => new DeleteRequest(corr, stream));
+            return await Request<DeleteRequest, DeleteResponse>(corr => new DeleteRequest(corr, stream)).ConfigureAwait(false);
         }
 
         public async ValueTask<bool> Credit(byte subscriptionId, ushort credit)
         {
-            return await Publish(new CreditRequest(subscriptionId, credit));
+            return await Publish(new CreditRequest(subscriptionId, credit)).ConfigureAwait(false);
         }
     }
 

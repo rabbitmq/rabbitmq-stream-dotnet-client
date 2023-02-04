@@ -114,9 +114,9 @@ public abstract class ConsumerFactory : ReliableBase
                     if (_consumerConfig.MessageHandler != null)
                     {
                         await _consumerConfig.MessageHandler(stream, consumer, ctx,
-                            message);
+                            message).ConfigureAwait(false);
                     }
                 },
-            }, BaseLogger);
+            }, BaseLogger).ConfigureAwait(false);
     }
 }

@@ -93,7 +93,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                 // it is useful client side to know from which stream the message is coming from
                 if (_config.MessageHandler != null)
                 {
-                    await _config.MessageHandler(stream, consumer, context, message);
+                    await _config.MessageHandler(stream, consumer, context, message).ConfigureAwait(false);
                 }
             },
             MetadataHandler = async update =>
@@ -141,11 +141,11 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                             _config.Reference,
                             update.Stream
                         );
-                        var x = await _config.Client.QueryMetadata(new[] { update.Stream });
+                        var x = await _config.Client.QueryMetadata(new[] { update.Stream }).ConfigureAwait(false);
                         x.StreamInfos.TryGetValue(update.Stream, out var streamInfo);
                         _streamInfos.Add(update.Stream, streamInfo);
-                        await GetConsumer(update.Stream);
-                    });
+                        await GetConsumer(update.Stream).ConfigureAwait(false);
+                    }).ConfigureAwait(false);
                 }
             },
             OffsetSpec = _config.OffsetSpec.TryGetValue(stream, out var value) ? value : new OffsetTypeNext(),
@@ -177,7 +177,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     {
         foreach (var stream in _streamInfos.Keys)
         {
-            await GetConsumer(stream);
+            await GetConsumer(stream).ConfigureAwait(false);
         }
     }
 

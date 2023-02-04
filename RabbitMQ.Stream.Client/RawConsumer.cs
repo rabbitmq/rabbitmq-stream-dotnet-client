@@ -264,7 +264,7 @@ namespace RabbitMQ.Stream.Client
                     // receive the chunk from the deliver
                     // before parse the chunk, we ask for more credits
                     // in thi way we keep the network busy
-                    await _client.Credit(deliver.SubscriptionId, 1);
+                    await _client.Credit(deliver.SubscriptionId, 1).ConfigureAwait(false);
                     // parse the chunk, we have another function because the sequence reader
                     // can't be used in async context
                     ParseChunk(deliver.Chunk);
@@ -277,7 +277,7 @@ namespace RabbitMQ.Stream.Client
                         _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
                             _config.Reference,
                             _config.Stream,
-                            b);
+                            b).ConfigureAwait(false);
                     }
 
                     return _config.StoredOffsetSpec;
