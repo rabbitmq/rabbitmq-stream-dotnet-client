@@ -75,8 +75,7 @@ namespace RabbitMQ.Stream.Client
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
         // in this way the consumer is notified is something happens in the super stream
-        // it is internal because it is used only internally
-        internal string SuperStream { get; set; }
+        public string SuperStream { get; set; }
 
         public IOffsetType OffsetSpec { get; set; } = new OffsetTypeNext();
 

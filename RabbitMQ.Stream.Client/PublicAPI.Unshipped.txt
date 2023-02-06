@@ -1,3 +1,5 @@
+RabbitMQ.Stream.Client.RawConsumerConfig.SuperStream.get -> string
+RabbitMQ.Stream.Client.RawConsumerConfig.SuperStream.set -> void
 RabbitMQ.Stream.Client.AbstractEntity.MaybeCancelToken() -> void
 RabbitMQ.Stream.Client.AbstractEntity.Token.get -> System.Threading.CancellationToken
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
