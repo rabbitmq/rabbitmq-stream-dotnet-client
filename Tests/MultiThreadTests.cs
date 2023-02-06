@@ -101,10 +101,10 @@ public class MultiThreadTests
             });
             for (var j = 0; j < 10000; j++)
             {
-                await producer.Send(new RabbitMQ.Stream.Client.Message(new byte[3]));
+                await producer.Send(new Message(new byte[3]));
             }
 
-            SystemUtils.Wait();
+            SystemUtils.WaitUntil(() => producers.TrueForAll(c => !c.IsOpen()));
             Assert.All(producers, p => Assert.False(p.IsOpen()));
         }
 
@@ -124,9 +124,8 @@ public class MultiThreadTests
             });
         }
 
-        SystemUtils.Wait();
+        SystemUtils.WaitUntil(() => consumers.TrueForAll(c => !c.IsOpen()));
         Assert.All(consumers, c => Assert.False(c.IsOpen()));
-
         await system.DeleteStream(stream);
         await system.Close();
     }
