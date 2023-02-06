@@ -134,7 +134,7 @@ public class Consumer : ConsumerFactory
     {
         consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rConsumer = new Consumer(consumerConfig, logger);
-        await rConsumer.Init(consumerConfig.ReconnectStrategy);
+        await rConsumer.Init(consumerConfig.ReconnectStrategy).ConfigureAwait(false);
         logger?.LogDebug("Consumer: {Reference} created for Stream: {Stream}",
             consumerConfig.Reference, consumerConfig.Stream);
 
@@ -143,19 +143,19 @@ public class Consumer : ConsumerFactory
 
     internal override async Task CreateNewEntity(bool boot)
     {
-        _consumer = await CreateConsumer(boot);
-        await _consumerConfig.ReconnectStrategy.WhenConnected(ToString());
+        _consumer = await CreateConsumer(boot).ConfigureAwait(false);
+        await _consumerConfig.ReconnectStrategy.WhenConnected(ToString()).ConfigureAwait(false);
     }
 
     // just close the consumer. See base/metadataupdate
     protected override async Task CloseEntity()
     {
-        await SemaphoreSlim.WaitAsync(10);
+        await SemaphoreSlim.WaitAsync(10).ConfigureAwait(false);
         try
         {
             if (_consumer != null)
             {
-                await _consumer.Close();
+                await _consumer.Close().ConfigureAwait(false);
             }
         }
         finally
@@ -167,7 +167,7 @@ public class Consumer : ConsumerFactory
     public override async Task Close()
     {
         _isOpen = false;
-        await CloseEntity();
+        await CloseEntity().ConfigureAwait(false);
         _logger?.LogDebug("Consumer closed for stream {Stream}", _consumerConfig.Stream);
     }
 

@@ -124,7 +124,7 @@ public class ConfirmationPipe
 
         foreach (var pair in timedOutMessages)
         {
-            await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null);
+            await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null).ConfigureAwait(false);
         }
     }
 
@@ -136,7 +136,13 @@ public class ConfirmationPipe
     internal void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
     {
         _waitForConfirmation.TryAdd(publishingId,
-            new MessagesConfirmation { Messages = messages, PublishingId = publishingId, InsertDateTime = DateTime.Now });
+            new MessagesConfirmation
+            {
+                // We need to copy the messages because the user can reuse the same message or deleted them.
+                Messages = new List<Message>(messages),
+                PublishingId = publishingId,
+                InsertDateTime = DateTime.Now
+            });
     }
 
     internal Task RemoveUnConfirmedMessage(ConfirmationStatus confirmationStatus, ulong publishingId, string stream)

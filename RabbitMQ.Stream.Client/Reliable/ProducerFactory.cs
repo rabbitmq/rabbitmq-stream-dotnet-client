@@ -23,10 +23,10 @@ public abstract class ProducerFactory : ReliableBase
     {
         if (_producerConfig.SuperStreamConfig is { Enabled: true })
         {
-            return await SuperStreamProducer();
+            return await SuperStreamProducer().ConfigureAwait(false);
         }
 
-        return await StandardProducer();
+        return await StandardProducer().ConfigureAwait(false);
     }
 
     private async Task<IProducer> SuperStreamProducer()
@@ -55,7 +55,7 @@ public abstract class ProducerFactory : ReliableBase
                     _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
                         stream);
                 }
-            }, BaseLogger);
+            }, BaseLogger).ConfigureAwait(false);
     }
 
     private async Task<IProducer> StandardProducer()
@@ -77,7 +77,7 @@ public abstract class ProducerFactory : ReliableBase
                         _producerConfig.StreamSystem).WaitAsync(CancellationToken.None);
                 });
             },
-            ConnectionClosedHandler = async _ => { await TryToReconnect(_producerConfig.ReconnectStrategy); },
+            ConnectionClosedHandler = async _ => { await TryToReconnect(_producerConfig.ReconnectStrategy).ConfigureAwait(false); },
             ConfirmHandler = confirmation =>
             {
                 var confirmationStatus = confirmation.Code switch
@@ -93,6 +93,6 @@ public abstract class ProducerFactory : ReliableBase
                 _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
                     confirmation.Stream);
             }
-        }, BaseLogger);
+        }, BaseLogger).ConfigureAwait(false);
     }
 }

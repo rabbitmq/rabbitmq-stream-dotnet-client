@@ -227,7 +227,7 @@ public class ReliableTests
         await producer.HandleMetaDataMaybeReconnect(stream, system);
         SystemUtils.Wait();
         Assert.True(producer.IsOpen());
-        // await system.DeleteStream(stream);
+        await system.DeleteStream(stream);
         await system.Close();
     }
 

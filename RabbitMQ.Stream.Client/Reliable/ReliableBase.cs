@@ -45,7 +45,7 @@ public abstract class ReliableBase
 
     internal async Task Init(IReconnectStrategy reconnectStrategy)
     {
-        await Init(true, reconnectStrategy);
+        await Init(true, reconnectStrategy).ConfigureAwait(false);
     }
 
     // <summary>
@@ -58,11 +58,11 @@ public abstract class ReliableBase
     private async Task Init(bool boot, IReconnectStrategy reconnectStrategy)
     {
         var reconnect = false;
-        await SemaphoreSlim.WaitAsync();
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
             _isOpen = true;
-            await CreateNewEntity(boot);
+            await CreateNewEntity(boot).ConfigureAwait(false);
         }
 
         catch (Exception e)
@@ -84,7 +84,7 @@ public abstract class ReliableBase
 
         if (reconnect)
         {
-            await TryToReconnect(reconnectStrategy);
+            await TryToReconnect(reconnectStrategy).ConfigureAwait(false);
         }
     }
 
@@ -107,15 +107,15 @@ public abstract class ReliableBase
         _inReconnection = true;
         try
         {
-            switch (await reconnectStrategy.WhenDisconnected(ToString()) && _isOpen)
+            switch (await reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false) && _isOpen)
             {
                 case true:
                     BaseLogger.LogInformation("{Identity} is disconnected. Client will try reconnect", ToString());
-                    await Init(false, reconnectStrategy);
+                    await Init(false, reconnectStrategy).ConfigureAwait(false);
                     break;
                 case false:
                     BaseLogger.LogInformation("{Identity} is asked to be closed", ToString());
-                    await Close();
+                    await Close().ConfigureAwait(false);
                     break;
             }
         }
@@ -140,8 +140,8 @@ public abstract class ReliableBase
     {
         // This sleep is needed. When a stream is deleted it takes sometime.
         // The StreamExists/1 could return true even the stream doesn't exist anymore.
-        await Task.Delay(500);
-        if (await system.StreamExists(stream))
+        await Task.Delay(500).ConfigureAwait(false);
+        if (await system.StreamExists(stream).ConfigureAwait(false))
         {
             BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
                 stream,
@@ -150,7 +150,7 @@ public abstract class ReliableBase
             // Here we just close the producer connection
             // the func TryToReconnect/0 will be called. 
 
-            await CloseEntity();
+            await CloseEntity().ConfigureAwait(false);
         }
         else
         {
@@ -160,7 +160,7 @@ public abstract class ReliableBase
                 stream,
                 ToString()
             );
-            await Close();
+            await Close().ConfigureAwait(false);
         }
     }
 

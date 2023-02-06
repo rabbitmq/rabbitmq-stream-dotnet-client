@@ -239,7 +239,7 @@ namespace Tests
                 }));
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            Assert.Equal(2, messages.Count());
+            Assert.Equal(2, messages.Count);
             await client.DeleteStream(stream);
             await client.Close("done");
         }

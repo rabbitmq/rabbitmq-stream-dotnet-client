@@ -83,7 +83,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                         stream
                     );
                     _consumers.TryRemove(stream, out _);
-                    await GetConsumer(stream);
+                    await GetConsumer(stream).ConfigureAwait(false);
                 }
             },
             MessageHandler = async (consumer, context, message) =>
@@ -93,7 +93,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                 // it is useful client side to know from which stream the message is coming from
                 if (_config.MessageHandler != null)
                 {
-                    await _config.MessageHandler(stream, consumer, context, message);
+                    await _config.MessageHandler(stream, consumer, context, message).ConfigureAwait(false);
                 }
             },
             MetadataHandler = async update =>
@@ -141,14 +141,14 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                             _config.Reference,
                             update.Stream
                         );
-                        var x = await _config.Client.QueryMetadata(new[] { update.Stream });
+                        var x = await _config.Client.QueryMetadata(new[] { update.Stream }).ConfigureAwait(false);
                         x.StreamInfos.TryGetValue(update.Stream, out var streamInfo);
                         _streamInfos.Add(update.Stream, streamInfo);
-                        await GetConsumer(update.Stream);
-                    });
+                        await GetConsumer(update.Stream).ConfigureAwait(false);
+                    }).ConfigureAwait(false);
                 }
             },
-            OffsetSpec = _config.OffsetSpec.ContainsKey(stream) ? _config.OffsetSpec[stream] : new OffsetTypeNext(),
+            OffsetSpec = _config.OffsetSpec.TryGetValue(stream, out var value) ? value : new OffsetTypeNext(),
         };
     }
 
@@ -156,7 +156,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     {
         var c = await RawConsumer.Create(
             _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
-            FromStreamConfig(stream), _streamInfos[stream], _logger);
+            FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
         _logger?.LogDebug("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference,
             stream);
         return c;
@@ -166,7 +166,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     {
         if (!_consumers.ContainsKey(stream))
         {
-            var p = await InitConsumer(stream);
+            var p = await InitConsumer(stream).ConfigureAwait(false);
             _consumers.TryAdd(stream, p);
         }
 
@@ -177,7 +177,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     {
         foreach (var stream in _streamInfos.Keys)
         {
-            await GetConsumer(stream);
+            await GetConsumer(stream).ConfigureAwait(false);
         }
     }
 

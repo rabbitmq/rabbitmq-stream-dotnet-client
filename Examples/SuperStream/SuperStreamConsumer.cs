@@ -17,6 +17,7 @@ public static class SuperStreamConsumer
         var system = await StreamSystem.Create(config);
 
         Console.WriteLine("Super Stream Consumer connected to RabbitMQ. ConsumerName {0}", consumerName);
+
         var consumer = await Consumer.Create(new ConsumerConfig(system, Costants.StreamName)
         {
             IsSuperStream = true, // Mandatory for enabling the super stream
@@ -25,12 +26,13 @@ public static class SuperStreamConsumer
             // must have the same ReferenceName for all the consumers
             Reference = "MyApp",
             OffsetSpec = new OffsetTypeFirst(),
+            
             MessageHandler = async (stream, consumer1, context, message) =>
             {
                 Console.WriteLine(
                     $"Consumer Name {consumerName} -Received message id: {message.Properties.MessageId} body: {Encoding.UTF8.GetString(message.Data.Contents)}, Stream {stream}");
-                await Task.CompletedTask;
+                await Task.CompletedTask.ConfigureAwait(false);
             }
-        });
+        }).ConfigureAwait(false);
     }
 }
