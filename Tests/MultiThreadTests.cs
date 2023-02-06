@@ -108,7 +108,6 @@ public class MultiThreadTests
             Assert.All(producers, p => Assert.False(p.IsOpen()));
         }
 
-
         var consumers = new List<Consumer>();
         for (var i = 0; i < 10; i++)
         {
@@ -127,7 +126,6 @@ public class MultiThreadTests
 
         SystemUtils.Wait();
         Assert.All(consumers, c => Assert.False(c.IsOpen()));
-
 
         await system.DeleteStream(stream);
         await system.Close();
