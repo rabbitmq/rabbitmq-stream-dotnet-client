@@ -119,7 +119,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task StoreOffset(ulong offset)
         {
-            await _client.StoreOffset(_config.Reference, _config.Stream, offset);
+            await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
         }
 
         public static async Task<IConsumer> Create(
@@ -129,9 +129,9 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger);
+            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger).ConfigureAwait(false);
             var consumer = new RawConsumer((Client)client, config, logger);
-            await consumer.Init();
+            await consumer.Init().ConfigureAwait(false);
             return consumer;
         }
 
@@ -224,10 +224,10 @@ namespace RabbitMQ.Stream.Client
 
             _client.ConnectionClosed += async reason =>
             {
-                await Close();
+                await Close().ConfigureAwait(false);
                 if (_config.ConnectionClosedHandler != null)
                 {
-                    await _config.ConnectionClosedHandler(reason);
+                    await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
             };
             if (_config.MetadataHandler != null)
@@ -264,7 +264,7 @@ namespace RabbitMQ.Stream.Client
                     // receive the chunk from the deliver
                     // before parse the chunk, we ask for more credits
                     // in thi way we keep the network busy
-                    await _client.Credit(deliver.SubscriptionId, 1);
+                    await _client.Credit(deliver.SubscriptionId, 1).ConfigureAwait(false);
                     // parse the chunk, we have another function because the sequence reader
                     // can't be used in async context
                     ParseChunk(deliver.Chunk);
@@ -277,12 +277,12 @@ namespace RabbitMQ.Stream.Client
                         _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
                             _config.Reference,
                             _config.Stream,
-                            b);
+                            b).ConfigureAwait(false);
                     }
 
                     return _config.StoredOffsetSpec;
                 }
-            );
+            ).ConfigureAwait(false);
             if (response.ResponseCode == ResponseCode.Ok)
             {
                 _subscriberId = consumerId;
@@ -305,23 +305,19 @@ namespace RabbitMQ.Stream.Client
             var result = ResponseCode.Ok;
             try
             {
-                var deleteConsumerResponseTask = _client.Unsubscribe(_subscriberId);
                 // The  default timeout is usually 10 seconds 
                 // in this case we reduce the waiting time
                 // the consumer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                await deleteConsumerResponseTask.WaitAsync(TimeSpan.FromSeconds(3));
-                if (deleteConsumerResponseTask.IsCompletedSuccessfully)
-                {
-                    result = deleteConsumerResponseTask.Result.ResponseCode;
-                }
+                var unsubscribeResponse = await _client.Unsubscribe(_subscriberId).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                result = unsubscribeResponse.ResponseCode;
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error removing the consumer id: {SubscriberId} from the server", _subscriberId);
             }
 
-            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}");
+            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}").ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
             return result;

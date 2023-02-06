@@ -62,7 +62,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
             connectionIdentifier,
             Tentatives * 100
         );
-        await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100));
+        await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100)).ConfigureAwait(false);
         MaybeResetTentatives();
         return true;
     }

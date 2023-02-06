@@ -133,7 +133,7 @@ public class Producer : ProducerFactory
     {
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
-        await rProducer.Init(producerConfig.ReconnectStrategy);
+        await rProducer.Init(producerConfig.ReconnectStrategy).ConfigureAwait(false);
         logger?.LogDebug(
             "Producer: {Reference} created for Stream: {Stream}",
             producerConfig.Reference,
@@ -145,15 +145,15 @@ public class Producer : ProducerFactory
 
     internal override async Task CreateNewEntity(bool boot)
     {
-        _producer = await CreateProducer();
+        _producer = await CreateProducer().ConfigureAwait(false);
 
-        await _producerConfig.ReconnectStrategy.WhenConnected(ToString());
+        await _producerConfig.ReconnectStrategy.WhenConnected(ToString()).ConfigureAwait(false);
 
         if (boot)
         {
             // Init the publishing id
             Interlocked.Exchange(ref _publishingId,
-                await _producer.GetLastPublishingId());
+                await _producer.GetLastPublishingId().ConfigureAwait(false));
 
             // confirmation Pipe can start only if the producer is ready
             _confirmationPipe.Start();
@@ -162,12 +162,12 @@ public class Producer : ProducerFactory
 
     protected override async Task CloseEntity()
     {
-        await SemaphoreSlim.WaitAsync(10);
+        await SemaphoreSlim.WaitAsync(10).ConfigureAwait(false);
         try
         {
             if (_producer != null)
             {
-                await _producer.Close();
+                await _producer.Close().ConfigureAwait(false);
             }
         }
         finally
@@ -178,14 +178,14 @@ public class Producer : ProducerFactory
 
     public override async Task Close()
     {
-        await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10));
+        await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10)).ConfigureAwait(false);
         try
         {
             _isOpen = false;
             _confirmationPipe.Stop();
             if (_producer != null)
             {
-                await _producer.Close();
+                await _producer.Close().ConfigureAwait(false);
                 _logger?.LogDebug("Producer closed for {Stream}", _producerConfig.Stream);
             }
         }
@@ -206,7 +206,7 @@ public class Producer : ProducerFactory
     public async ValueTask Send(Message message)
     {
 
-        await SemaphoreSlim.WaitAsync();
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
 
         Interlocked.Increment(ref _publishingId);
         _confirmationPipe.AddUnConfirmedMessage(_publishingId, message);
@@ -219,7 +219,7 @@ public class Producer : ProducerFactory
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
             {
-                await _producer.Send(_publishingId, message);
+                await _producer.Send(_publishingId, message).ConfigureAwait(false);
             }
         }
 
@@ -250,14 +250,14 @@ public class Producer : ProducerFactory
     /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
-        await SemaphoreSlim.WaitAsync();
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         Interlocked.Increment(ref _publishingId);
         _confirmationPipe.AddUnConfirmedMessage(_publishingId, messages);
         try
         {
             if (!_inReconnection)
             {
-                await _producer.Send(_publishingId, messages, compressionType);
+                await _producer.Send(_publishingId, messages, compressionType).ConfigureAwait(false);
             }
         }
 
@@ -290,7 +290,7 @@ public class Producer : ProducerFactory
     /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(List<Message> messages)
     {
-        await SemaphoreSlim.WaitAsync();
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         var messagesToSend = new List<(ulong, Message)>();
         foreach (var message in messages)
         {
@@ -312,7 +312,7 @@ public class Producer : ProducerFactory
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
             {
-                await _producer.Send(messagesToSend);
+                await _producer.Send(messagesToSend).ConfigureAwait(false);
             }
         }
 

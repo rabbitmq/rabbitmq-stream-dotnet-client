@@ -122,7 +122,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream], _logger);
+        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
         _logger?.LogDebug("Producer {ProducerReference} created for Stream {StreamIdentifier}", _config.Reference,
             stream);
         return p;
@@ -132,7 +132,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     {
         if (!_producers.ContainsKey(stream))
         {
-            var p = await InitProducer(stream);
+            var p = await InitProducer(stream).ConfigureAwait(false);
             _producers.TryAdd(stream, p);
         }
 
@@ -149,13 +149,13 @@ public class RawSuperStreamProducer : IProducer, IDisposable
 
         var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
             _streamInfos.Keys.ToList());
-        return await GetProducer(routes[0]);
+        return await GetProducer(routes[0]).ConfigureAwait(false);
     }
 
     public async ValueTask Send(ulong publishingId, Message message)
     {
-        var producer = await GetProducerForMessage(message);
-        await producer.Send(publishingId, message);
+        var producer = await GetProducerForMessage(message).ConfigureAwait(false);
+        await producer.Send(publishingId, message).ConfigureAwait(false);
     }
 
     public async ValueTask Send(List<(ulong, Message)> messages)
@@ -167,7 +167,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         // and send them to the right producer
         foreach (var subMessage in messages)
         {
-            var p = await GetProducerForMessage(subMessage.Item2);
+            var p = await GetProducerForMessage(subMessage.Item2).ConfigureAwait(false);
             if (aggregate.Any(a => a.Item1 == p))
             {
                 aggregate.First(a => a.Item1 == p).Item2.Add((subMessage.Item1,
@@ -181,7 +181,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
 
         foreach (var (producer, list) in aggregate)
         {
-            await producer.Send(list);
+            await producer.Send(list).ConfigureAwait(false);
         }
     }
 
@@ -194,7 +194,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         // and send them to the right producer
         foreach (var subMessage in subEntryMessages)
         {
-            var p = await GetProducerForMessage(subMessage);
+            var p = await GetProducerForMessage(subMessage).ConfigureAwait(false);
             if (aggregate.Any(a => a.Item1 == p))
             {
                 aggregate.First(a => a.Item1 == p).Item2.Add(subMessage);
@@ -209,7 +209,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         // sub aggregate is a list of messages that have to be sent to the same producer
         foreach (var (producer, messages) in aggregate)
         {
-            await producer.Send(publishingId, messages, compressionType);
+            await producer.Send(publishingId, messages, compressionType).ConfigureAwait(false);
         }
     }
 

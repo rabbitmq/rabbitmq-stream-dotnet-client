@@ -59,10 +59,10 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger);
+            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger).ConfigureAwait(false);
 
             var producer = new RawProducer((Client)client, config, logger);
-            await producer.Init();
+            await producer.Init().ConfigureAwait(false);
             return producer;
         }
 
@@ -91,10 +91,10 @@ namespace RabbitMQ.Stream.Client
         {
             _client.ConnectionClosed += async reason =>
             {
-                await Close();
+                await Close().ConfigureAwait(false);
                 if (_config.ConnectionClosedHandler != null)
                 {
-                    await _config.ConnectionClosedHandler(reason);
+                    await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
             };
 
@@ -128,7 +128,7 @@ namespace RabbitMQ.Stream.Client
                     }
 
                     _semaphore.Release(errors.Length);
-                });
+                }).ConfigureAwait(false);
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
@@ -153,17 +153,17 @@ namespace RabbitMQ.Stream.Client
         {
             if (subEntryMessages.Count != 0)
             {
-                await SemaphoreAwaitAsync();
+                await SemaphoreAwaitAsync().ConfigureAwait(false);
                 var publishTask =
                     _client.Publish(new SubEntryPublish(_publisherId, publishingId,
                         CompressionHelper.Compress(subEntryMessages, compressionType)));
-                await publishTask;
+                await publishTask.ConfigureAwait(false);
             }
         }
 
         private async Task SemaphoreAwaitAsync()
         {
-            await _semaphore.WaitAsync(Token);
+            await _semaphore.WaitAsync(Token).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -176,14 +176,14 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask Send(List<(ulong, Message)> messages)
         {
             PreValidateBatch(messages);
-            await InternalBatchSend(messages);
+            await InternalBatchSend(messages).ConfigureAwait(false);
         }
 
         internal async Task InternalBatchSend(List<(ulong, Message)> messages)
         {
             for (var i = 0; i < messages.Count; i++)
             {
-                await SemaphoreAwaitAsync();
+                await SemaphoreAwaitAsync().ConfigureAwait(false);
             }
 
             if (messages.Count != 0 && !_client.IsClosed)
@@ -211,7 +211,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
-            await _client.Publish(new Publish(_publisherId, messages));
+            await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
             if (clearMessagesList)
             {
                 messages.Clear();
@@ -224,7 +224,7 @@ namespace RabbitMQ.Stream.Client
         /// <returns>The last sequence id stored by the producer.</returns>
         public async Task<ulong> GetLastPublishingId()
         {
-            var response = await _client.QueryPublisherSequence(_config.Reference, _config.Stream);
+            var response = await _client.QueryPublisherSequence(_config.Reference, _config.Stream).ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
                 $"GetLastPublishingId stream: {_config.Stream}, reference: {_config.Reference}");
             return response.Sequence;
@@ -253,7 +253,7 @@ namespace RabbitMQ.Stream.Client
                                                     $"Max allowed is {_client.MaxFrameSize}");
             }
 
-            await SemaphoreAwaitAsync();
+            await SemaphoreAwaitAsync().ConfigureAwait(false);
             var msg = new OutgoingMsg(_publisherId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait
@@ -306,23 +306,19 @@ namespace RabbitMQ.Stream.Client
             var result = ResponseCode.Ok;
             try
             {
-                var deletePublisherResponseTask = _client.DeletePublisher(_publisherId);
                 // The  default timeout is usually 10 seconds 
                 // in this case we reduce the waiting time
                 // the producer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                await deletePublisherResponseTask.WaitAsync(TimeSpan.FromSeconds(3));
-                if (deletePublisherResponseTask.IsCompletedSuccessfully)
-                {
-                    result = deletePublisherResponseTask.Result.ResponseCode;
-                }
+                var closeResponse = await _client.DeletePublisher(_publisherId).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                result = closeResponse.ResponseCode;
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error removing the producer id: {PublisherId} from the server", _publisherId);
             }
 
-            var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}");
+            var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}").ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
             _logger?.LogDebug("Publisher {PublisherId} closed", _publisherId);
             return result;

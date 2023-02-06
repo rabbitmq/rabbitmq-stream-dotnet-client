@@ -152,10 +152,7 @@ namespace RabbitMQ.Stream.Client
 
         public static void UnRegisterCodec(CompressionType compressionType)
         {
-            if (AvailableCompressCodecs.ContainsKey(compressionType))
-            {
-                AvailableCompressCodecs.Remove(compressionType);
-            }
+            AvailableCompressCodecs.Remove(compressionType);
         }
 
         public static ICompressionCodec GetCompressionCodec(CompressionType compressionType)
