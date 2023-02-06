@@ -2,8 +2,10 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
@@ -76,5 +78,58 @@ public class MultiThreadTests
         Assert.Equal(802, receivedTask.Task.Result);
         Assert.Equal(0, error);
         await system.DeleteStream(stream);
+    }
+
+    [Fact]
+    public async Task CloseProducersConsumersInMultiThreads()
+    {
+        // This test is to verify that the producer and consumer can be closed in multi threads
+        // without any error.
+        // See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/230 for more details
+        // The producers/consumers should not go in hang state
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var producers = new List<Producer>();
+        for (var i = 0; i < 10; i++)
+        {
+            var producer = await Producer.Create(new ProducerConfig(system, stream));
+            producers.Add(producer);
+
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(200);
+                await producer.Close();
+            });
+            for (var j = 0; j < 10000; j++)
+            {
+                await producer.Send(new RabbitMQ.Stream.Client.Message(new byte[3]));
+            }
+
+            SystemUtils.Wait();
+            Assert.All(producers, p => Assert.False(p.IsOpen()));
+        }
+
+
+        var consumers = new List<Consumer>();
+        for (var i = 0; i < 10; i++)
+        {
+            var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+            {
+                OffsetSpec = new OffsetTypeFirst(),
+                MessageHandler = async (stream1, consumer1, context, message) => { await Task.CompletedTask; }
+            });
+            consumers.Add(consumer);
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(200);
+                await consumer.Close();
+            });
+        }
+
+        SystemUtils.Wait();
+        Assert.All(consumers, c => Assert.False(c.IsOpen()));
+
+
+        await system.DeleteStream(stream);
+        await system.Close();
     }
 }
