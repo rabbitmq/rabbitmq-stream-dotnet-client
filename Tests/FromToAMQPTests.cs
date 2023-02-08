@@ -225,37 +225,82 @@ public class FromToAmqpTests
         using var connection = factory.CreateConnection();
         var channel = connection.CreateModel();
         var properties = channel.CreateBasicProperties();
-        const int NumberOfMessages = 1000;
-        for (var i = 0; i < NumberOfMessages; i++)
+        const int NumberOfMessages = 500;
+        var messagesConsumed = new List<Message>();
+
+        var i = 0;
+        while (i < NumberOfMessages)
         {
             properties.MessageId = $"messageId{i}";
             properties.CorrelationId = "10000_00000";
             properties.ContentType = "text/plain";
             properties.ContentEncoding = "utf-8";
             properties.UserId = "guest";
-            properties.Headers = new Dictionary<string, object>() { { "stream_key", "stream_value" } };
+            properties.Headers = new Dictionary<string, object>()
+            {
+                {"stream_key", "stream_value"},
+                {"stream_key2", 100},
+                {"stream_key3", 10_000_009},
+                {"stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日"},
+                {"bool", true},
+                {"decimal", 10_000_000_000},
+                {"int", 1111},
+                {"string", "value"},
+            };
             channel.BasicPublish("", stream, properties, Encoding.ASCII.GetBytes($"FromAMQP{i}"));
+            i++;
         }
 
-        var tcs = new TaskCompletionSource<int>();
+        Message CloneMessage(Message message)
+        {
+            var copy = new byte[message.Size];
+            message.Write(copy);
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(copy));
+            return Message.From(ref reader, (uint)message.Size);
+        }
+
+        var tcs = new TaskCompletionSource<List<Message>>();
         var consumed = 0;
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
             OffsetSpec = new OffsetTypeFirst(),
             MessageHandler = async (_, _, _, message) =>
             {
+                messagesConsumed.Add(CloneMessage(message));
                 if (Interlocked.Increment(ref consumed) == NumberOfMessages)
                 {
-                    tcs.SetResult(consumed);
+                    tcs.SetResult(messagesConsumed);
                 }
 
                 await Task.CompletedTask;
             }
         });
-
-        new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
+        new Utils<List<Message>>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
         var result = tcs.Task.Result;
-        Assert.Equal(NumberOfMessages, result);
+        Assert.Equal(NumberOfMessages, result.Count);
+        i = 0;
+        while (i < NumberOfMessages)
+        {
+            var s = Encoding.ASCII.GetString(tcs.Task.Result[i].Data.Contents.ToArray());
+            Assert.Equal($"FromAMQP{i}", s);
+            Assert.Equal($"messageId{i}", tcs.Task.Result[i].Properties.MessageId);
+            Assert.Equal("10000_00000", tcs.Task.Result[i].Properties.CorrelationId);
+            Assert.Equal("text/plain", tcs.Task.Result[i].Properties.ContentType);
+            Assert.Equal("utf-8", tcs.Task.Result[i].Properties.ContentEncoding);
+            Assert.Equal("guest", Encoding.ASCII.GetString(tcs.Task.Result[i].Properties.UserId));
+            Assert.Equal("stream_value", tcs.Task.Result[i].ApplicationProperties["stream_key"]);
+            Assert.Equal(100, tcs.Task.Result[i].ApplicationProperties["stream_key2"]);
+            Assert.Equal(10_000_009, tcs.Task.Result[i].ApplicationProperties["stream_key3"]);
+            Assert.Equal("Alan Mathison Turing（1912 年 6 月 23 日",
+                tcs.Task.Result[i].ApplicationProperties["stream_key4"]);
+            Assert.Equal(true, tcs.Task.Result[i].ApplicationProperties["bool"]);
+            Assert.Equal(10_000_000_000, tcs.Task.Result[i].ApplicationProperties["decimal"]);
+            Assert.Equal(1111, tcs.Task.Result[i].ApplicationProperties["int"]);
+            Assert.Equal("value", tcs.Task.Result[i].ApplicationProperties["string"]);
+
+            i++;
+        }
+
         await consumer.Close();
         await system.DeleteStream(stream);
         await system.Close();
@@ -284,7 +329,7 @@ public class FromToAmqpTests
         };
         message.ApplicationProperties = new Amqp.Framing.ApplicationProperties()
         {
-            Map = { { "key1", "value1" }, { "key2", 2 } }
+            Map = { { "key1", "value1" }, { "key2", 2 }, { "bool", true } }
         };
 
         var sender = new SenderLink(session, "mixing", $"/amq/queue/{stream}");

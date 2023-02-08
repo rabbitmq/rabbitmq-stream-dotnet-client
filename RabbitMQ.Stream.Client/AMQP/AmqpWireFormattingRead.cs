@@ -30,7 +30,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             switch (type)
             {
                 case FormatCode.Bool:
-                    offset = WireFormatting.ReadByte(ref reader, out var valueB);
+                    offset += WireFormatting.ReadByte(ref reader, out var valueB);
                     value = valueB != 0;
                     return offset;
                 case FormatCode.BoolTrue:
