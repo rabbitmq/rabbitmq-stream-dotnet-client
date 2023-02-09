@@ -1,3 +1,12 @@
 RabbitMQ.Stream.Client.AbstractEntity.MaybeCancelToken() -> void
 RabbitMQ.Stream.Client.AbstractEntity.Token.get -> System.Threading.CancellationToken
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
+RabbitMQ.Stream.Client.Reliable.DeduplicationProducer
+RabbitMQ.Stream.Client.Reliable.DeduplicationProducer.Close() -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.Reliable.DeduplicationProducer.GetLastPublishedId() -> System.Threading.Tasks.Task<ulong>
+RabbitMQ.Stream.Client.Reliable.DeduplicationProducer.IsOpen() -> bool
+RabbitMQ.Stream.Client.Reliable.DeduplicationProducer.Send(ulong publishing, RabbitMQ.Stream.Client.Message message) -> System.Threading.Tasks.ValueTask
+RabbitMQ.Stream.Client.Reliable.DeduplicationProducerConfig
+RabbitMQ.Stream.Client.Reliable.DeduplicationProducerConfig.DeduplicationProducerConfig(RabbitMQ.Stream.Client.StreamSystem streamSystem, string stream, string reference) -> void
+RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
+static RabbitMQ.Stream.Client.Reliable.DeduplicationProducer.Create(RabbitMQ.Stream.Client.Reliable.DeduplicationProducerConfig producerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.Reliable.Producer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.DeduplicationProducer>

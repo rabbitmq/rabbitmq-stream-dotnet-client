@@ -59,7 +59,8 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger).ConfigureAwait(false);
+            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger)
+                .ConfigureAwait(false);
 
             var producer = new RawProducer((Client)client, config, logger);
             await producer.Init().ConfigureAwait(false);
@@ -224,7 +225,13 @@ namespace RabbitMQ.Stream.Client
         /// <returns>The last sequence id stored by the producer.</returns>
         public async Task<ulong> GetLastPublishingId()
         {
-            var response = await _client.QueryPublisherSequence(_config.Reference, _config.Stream).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(_config.Reference))
+            {
+                return 0;
+            }
+
+            var response = await _client.QueryPublisherSequence(_config.Reference, _config.Stream)
+                .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
                 $"GetLastPublishingId stream: {_config.Stream}, reference: {_config.Reference}");
             return response.Sequence;
@@ -310,7 +317,8 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the producer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                var closeResponse = await _client.DeletePublisher(_publisherId).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                var closeResponse = await _client.DeletePublisher(_publisherId).WaitAsync(TimeSpan.FromSeconds(3))
+                    .ConfigureAwait(false);
                 result = closeResponse.ResponseCode;
             }
             catch (Exception e)

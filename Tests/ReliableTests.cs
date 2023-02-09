@@ -235,9 +235,10 @@ public class ReliableTests
     public async void AutoPublishIdDefaultShouldStartFromTheLast()
     {
         // RProducer automatically retrieves the last producer offset.
-        // see IPublishingIdStrategy implementation
         // This tests if the the last id stored 
         // A new RProducer should restart from the last offset. 
+        // This test will be removed when Reference will be mandatory 
+        // in the DeduplicationProducer
 
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var testPassed = new TaskCompletionSource<ulong>();
@@ -247,8 +248,8 @@ public class ReliableTests
         var producer = await Producer.Create(
             new ProducerConfig(system, stream)
             {
+                _reference = reference,
                 ClientProvidedName = clientProviderName,
-                Reference = reference,
                 ConfirmationHandler = confirm =>
                 {
                     if (Interlocked.Increment(ref count) != 5)
@@ -284,7 +285,7 @@ public class ReliableTests
         var producerSecond = await Producer.Create(
             new ProducerConfig(system, stream)
             {
-                Reference = reference,
+                _reference = reference,
                 ClientProvidedName = clientProviderName,
                 ConfirmationHandler = confirm =>
                 {
