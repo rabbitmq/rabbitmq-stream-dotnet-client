@@ -36,7 +36,7 @@ public class DeduplicationProducer
     public static async Task<DeduplicationProducer> Create(DeduplicationProducerConfig producerConfig,
         ILogger<Producer> logger = null)
     {
-        var x = new DeduplicationProducer(producerConfig, logger)
+        var x = new DeduplicationProducer()
         {
             _producer = await Producer
                 .Create(
@@ -55,8 +55,7 @@ public class DeduplicationProducer
         return x;
     }
 
-    // ReSharper disable once ContextualLoggerProblem
-    private DeduplicationProducer(ProducerConfig producerConfig, ILogger<Producer> logger = null)
+    private DeduplicationProducer()
     {
     }
 
