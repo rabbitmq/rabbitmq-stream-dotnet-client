@@ -28,14 +28,14 @@ public class ReliableTests
     [Fact]
     public void MessageWithoutConfirmationRaiseTimeout()
     {
-        var confirmationTask = new TaskCompletionSource<List<ConfirmationStatus>>();
+        var confirmationTask = new TaskCompletionSource<int>();
         var l = new List<ConfirmationStatus>();
         var confirmationPipe = new ConfirmationPipe(async confirmation =>
             {
                 l.Add(confirmation.Status);
                 if (confirmation.PublishingId == 2)
                 {
-                    confirmationTask.SetResult(l);
+                    confirmationTask.SetResult(2);
                 }
 
                 await Task.CompletedTask;
@@ -46,11 +46,12 @@ public class ReliableTests
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
         confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
-        new Utils<List<ConfirmationStatus>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
+        new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
+        Assert.Equal(2, confirmationTask.Task.Result);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
-        Assert.Equal(ConfirmationStatus.ClientTimeoutError, confirmationTask.Task.Result[0]);
-        Assert.Equal(ConfirmationStatus.ClientTimeoutError, confirmationTask.Task.Result[1]);
+        Assert.Equal(ConfirmationStatus.ClientTimeoutError, l[0]);
+        Assert.Equal(ConfirmationStatus.ClientTimeoutError, l[1]);
         confirmationPipe.Stop();
     }
 
