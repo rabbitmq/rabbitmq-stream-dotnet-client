@@ -1,0 +1,95 @@
+:test-examples: ../../test/java/com/rabbitmq/stream/docs
+
+=== Sample Application
+
+This section covers the basics of the RabbitMQ Stream Java API by building
+a small publish/consume application. This is a good way to get
+an overview of the API. If you want a more comprehensive introduction,
+you can go to the <<api.adoc#rabbitmq-stream-java-api,reference documentation section>>.
+
+The sample application publishes some messages and then registers
+a consumer to make some computations out of them. The
+https://github.com/rabbitmq/rabbitmq-stream-java-client/blob/main/src/test/java/com/rabbitmq/stream/docs/SampleApplication.java[source code is available on GitHub].
+
+The sample class starts with a few imports:
+
+.Imports for the sample application
+[source,java,indent=0]
+--------
+include::{test-examples}/SampleApplication.java[tag=sample-imports]
+--------
+
+The next step is to create the `Environment`. It is a management object
+used to manage streams and create producers as well as consumers. The
+next snippet shows how to create an `Environment` instance and
+create the stream used in the application:
+
+.Creating the environment
+[source,java,indent=0]
+--------
+include::{test-examples}/SampleApplication.java[tag=sample-environment]
+--------
+<1> Use `Environment#builder` to create the environment
+<2> Create the stream
+
+Then comes the publishing part. The next snippet shows how to create
+a `Producer`, send messages, and handle publishing confirmations, to
+make sure the broker has taken outbound messages into account.
+The application uses a count down latch to move on once the messages
+have been confirmed.
+
+.Publishing messages
+[source,java,indent=0]
+--------
+include::{test-examples}/SampleApplication.java[tag=sample-publisher]
+--------
+<1> Create the `Producer` with `Environment#producerBuilder`
+<2> Send messages with `Producer#send(Message, ConfirmationHandler)`
+<3> Create a message with `Producer#messageBuilder`
+<4> Count down on message publishing confirmation
+<5> Wait for all publishing confirmations to have arrived
+<6> Close the producer
+
+It is now time to consume the messages. The `Environment` lets us create a `Consumer`
+and provide some logic on each incoming message by implementing a `MessageHandler`.
+The next snippet does this to calculate a sum and output it once all the messages
+have been received:
+
+.Consuming messages
+[source,java,indent=0]
+--------
+include::{test-examples}/SampleApplication.java[tag=sample-consumer]
+--------
+<1> Create the `Consumer` with `Environment#consumerBuilder`
+<2> Start consuming from the beginning of the stream
+<3> Set up the logic to handle messages
+<4> Add the value in the message body to the sum
+<5> Count down on each message
+<6> Wait for all messages to have arrived
+<7> Output the sum
+<8> Close the consumer
+
+The application has some cleaning to do before terminating, that is
+deleting the stream and closing the environment:
+
+.Cleaning before terminating
+[source,java,indent=0]
+--------
+include::{test-examples}/SampleApplication.java[tag=sample-environment-close]
+--------
+<1> Delete the stream
+<2> Close the environment
+
+You can run the sample application from the root of the project (you need
+a running local RabbitMQ node with the stream plugin enabled):
+
+----
+$ ./mvnw -q test-compile exec:java -Dexec.classpathScope="test" \
+    -Dexec.mainClass="com.rabbitmq.stream.docs.SampleApplication"
+Starting publishing...
+Published 10000 messages
+Starting consuming...
+Sum: 49995000
+----
+
+You can remove the `-q` flag if you want more insight on the execution of the build.

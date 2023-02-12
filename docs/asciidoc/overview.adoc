@@ -1,0 +1,98 @@
+:stylesheet: clean.css
+== What is a RabbitMQ Stream?
+
+A RabbitMQ stream is a persistent and replicated data structure that models
+an https://en.wikipedia.org/wiki/Append-only[append-only log]. It differs from the classical
+RabbitMQ queue in the way message consumption works. In a classical RabbitMQ queue,
+consuming removes messages from the queue. In a RabbitMQ stream, consuming leaves
+the stream intact. So the content of a stream can be read and re-read without
+impact or destructive effect.
+
+None of the stream or classical queue data structure is better than the other,
+they are usually suited for different use cases.
+
+== When to Use RabbitMQ Stream?
+
+RabbitMQ Stream was developed to cover the following messaging use cases:
+
+* _Large fan-outs:_ when several consumer applications need to read the same messages.
+* _Replay / Time-traveling:_ when consumer applications need to read the whole
+history of data or from a given point in a stream.
+* _Throughput performance:_ when higher throughput than with other protocols
+(AMQP, STOMP, MQTT) is required.
+* _Large logs:_ when large amount of data need to be stored, with minimal
+in-memory overhead.
+
+== Other Way to Use Streams in RabbitMQ
+
+It is also possible to use the stream abstraction in RabbitMQ
+with the AMQP 0-9-1 protocol. Instead of consuming from a stream
+with the stream protocol, one consumes from a "stream-powered" queue with
+the AMQP 0-9-1 protocol. A "stream-powered" queue is a special type of queue that
+is backed up with a stream infrastructure layer and adapted to
+provide the stream semantics (mainly non-destructive reading).
+
+Using such a queue has the advantage to provide the features
+inherent to the stream abstraction (append-only structure, non-destructive
+reading) with any AMQP 0-9-1 client library. This is clearly
+interesting when considering the maturity of AMQP 0-9-1 client libraries
+and the ecosystem around AMQP 0-9-1.
+
+But by using it, one does not benefit from the performance
+of the stream protocol, which has been designed for performance in mind,
+whereas AMQP 0-9-1 is a more general-purpose protocol.
+
+See also https://www.rabbitmq.com/stream-core-plugin-comparison.html[stream-core stream-plugin comparison]
+
+== Guarantees
+
+RabbitMQ stream provides at-least-once guarantees thanks to the
+publisher confirm mechanism, which is supported by the stream .NET client.
+
+Message <<api.adoc#outbound-message-deduplication,deduplication>>
+is also supported on the publisher side.
+
+[[stream-client-overview]]
+== Stream Client Overview
+
+The RabbitMQ Stream .NET Client implements the
+https://github.com/rabbitmq/rabbitmq-server/blob/v3.10.x/deps/rabbitmq_stream/docs/PROTOCOL.adoc[RabbitMQ Stream protocol]
+and avoids dealing with low-level concerns by providing high-level functionalities
+to build fast, efficient, and robust client applications.
+
+* _administrate streams (creation/deletion) directly from applications._ This
+can also be useful for development and testing.
+* _adapt publishing throughput_ thanks to the configurable batch size and flow control.
+* _avoid publishing duplicate messages_ thanks to message deduplication.
+* _consume asynchronously from streams and resume where left off_ thanks to
+manual offset tracking.
+* _enforce https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/[best practices] to create client connections_ – to stream leaders for publishers to minimize inter-node traffic and to stream replicas for consumers to offload leaders.
+* _let the client handle network failure_ thanks to automatic connection
+recovery and automatic re-subscription for consumers.
+
+
+[[stability-of-programming-interfaces]]
+== Stability of Programming Interfaces
+
+The client contains 2 sets of programming interfaces whose stability are of interest for application developers:
+
+* Application Programming Interfaces (API): those are the ones used to write application logic. They include the interfaces and classes in the `RabbitMQ.Stream.Client.Reliable` package (e.g. `Producer`, `Consumer`, `Message`). These API constitute the main programming model of the client and will be kept as stable as possible.
+
+
+
+[[low-high-level-classes]]
+== Low Level and High Level classes
+
+.NET stream client provides  two types of classes:
+
+* Low-level classes
+* High-level classes
+
+High-level classes (`Producer` and `Consumer`) are a wrapper around the Low-Level classes (`Raw*Producer` and `Raw*Consumer`)
+
+`Producer` and `Consumer` classes handle auto-reconnection, metadata updates, super-stream and some low-level client behaviour.
+
+It would be best to use `Producer` and `Consumer` classes unless you need to handle the low-level details.  
+
+
+
