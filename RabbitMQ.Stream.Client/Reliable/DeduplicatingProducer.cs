@@ -8,9 +8,9 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
-public record DeduplicationProducerConfig : ProducerConfig
+public record DeduplicatingProducerConfig : ProducerConfig
 {
-    public DeduplicationProducerConfig(StreamSystem streamSystem, string stream, string reference) : base(streamSystem,
+    public DeduplicatingProducerConfig(StreamSystem streamSystem, string stream, string reference) : base(streamSystem,
         stream)
     {
         if (string.IsNullOrWhiteSpace(reference))
@@ -29,14 +29,14 @@ public record DeduplicationProducerConfig : ProducerConfig
 // to decide deduplication or not.
 // The best way to handle the deduplication is to use a single thread avoiding the id overlaps.
 
-public class DeduplicationProducer
+public class DeduplicatingProducer
 {
     private Producer _producer = null!;
 
-    public static async Task<DeduplicationProducer> Create(DeduplicationProducerConfig producerConfig,
+    public static async Task<DeduplicatingProducer> Create(DeduplicatingProducerConfig producerConfig,
         ILogger<Producer> logger = null)
     {
-        var x = new DeduplicationProducer()
+        var x = new DeduplicatingProducer()
         {
             _producer = await Producer
                 .Create(
@@ -55,7 +55,7 @@ public class DeduplicationProducer
         return x;
     }
 
-    private DeduplicationProducer()
+    private DeduplicatingProducer()
     {
     }
 

@@ -34,10 +34,10 @@ public class DeduplicationProducerTests
     public async Task ValidateDeduplicationProducer()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
-        Assert.Throws<ArgumentException>(() => new DeduplicationProducerConfig(system, stream, null));
+        Assert.Throws<ArgumentException>(() => new DeduplicatingProducerConfig(system, stream, null));
         await Assert.ThrowsAsync<ArgumentException>(async () =>
             // reference is white space, not valid
-            await DeduplicationProducer.Create(new DeduplicationProducerConfig(system, stream, " ")));
+            await DeduplicatingProducer.Create(new DeduplicatingProducerConfig(system, stream, " ")));
         await SystemUtils.CleanUpStreamSystem(system, stream);
     }
 
@@ -51,8 +51,8 @@ public class DeduplicationProducerTests
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var testPassed = new TaskCompletionSource<ulong>();
         const ulong TotalMessages = 1000UL;
-        var p = await DeduplicationProducer.Create(
-            new DeduplicationProducerConfig(system, stream, "my_producer_reference")
+        var p = await DeduplicatingProducer.Create(
+            new DeduplicatingProducerConfig(system, stream, "my_producer_reference")
             {
                 ConfirmationHandler = async confirmation =>
                 {
@@ -87,8 +87,8 @@ public class DeduplicationProducerTests
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var testPassed = new TaskCompletionSource<ulong>();
         const ulong TotalMessages = 1000UL;
-        var p = await DeduplicationProducer.Create(
-            new DeduplicationProducerConfig(system, stream, "my_producer_reference")
+        var p = await DeduplicatingProducer.Create(
+            new DeduplicatingProducerConfig(system, stream, "my_producer_reference")
             {
                 ConfirmationHandler = async confirmation =>
                 {
