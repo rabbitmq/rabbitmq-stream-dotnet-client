@@ -35,19 +35,22 @@ public class ReliableTests
                 l.Add(confirmation.Status);
                 if (confirmation.PublishingId == 2)
                 {
+                    await Task.CompletedTask;
                     confirmationTask.SetResult(2);
                 }
-
-                await Task.CompletedTask;
+                else
+                {
+                    await Task.CompletedTask;
+                }
             },
             TimeSpan.FromSeconds(2), 100
         );
         confirmationPipe.Start();
-        var message = new Message(Encoding.UTF8.GetBytes($"hello"));
-        confirmationPipe.AddUnConfirmedMessage(1, message);
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
+        confirmationPipe.AddUnConfirmedMessage(1, new Message(Encoding.UTF8.GetBytes($"hello")));
+        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { new Message(Encoding.UTF8.GetBytes($"hello")) });
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         Assert.Equal(2, confirmationTask.Task.Result);
+        Assert.Equal(2, l.Count);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
         Assert.Equal(ConfirmationStatus.ClientTimeoutError, l[0]);
