@@ -1,4 +1,4 @@
-:stylesheet: clean.css
+:stylesheet: asciidoctor.css
 = RabbitMQ Stream .Net Client
 :toc: left
 :toclevels: 5
@@ -23,7 +23,7 @@ The library requires .NET 6 or .NET 7.
 
 include::setup.adoc[]
 
-// include::sample-application.adoc[]
+include::sample-application.adoc[]
 
 // include::api.adoc[]
 

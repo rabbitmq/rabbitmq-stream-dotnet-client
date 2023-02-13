@@ -1,95 +1,112 @@
-:test-examples: ../../test/java/com/rabbitmq/stream/docs
+:test-examples: ../Documentation
 
 === Sample Application
 
-This section covers the basics of the RabbitMQ Stream Java API by building
+This section covers the basics of the RabbitMQ Stream .NET API by building
 a small publish/consume application. This is a good way to get
-an overview of the API. If you want a more comprehensive introduction,
-you can go to the <<api.adoc#rabbitmq-stream-java-api,reference documentation section>>.
+an overview of the API. 
+
+// TODO
+// If you want a more comprehensive introduction,
+//you can go to the <<api.adoc#rabbitmq-stream-java-api,reference documentation section>>.
 
 The sample application publishes some messages and then registers
 a consumer to make some computations out of them. The
-https://github.com/rabbitmq/rabbitmq-stream-java-client/blob/main/src/test/java/com/rabbitmq/stream/docs/SampleApplication.java[source code is available on GitHub].
+https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/doc/Documentation/GettingStarted.cs[source code is available on GitHub].
 
 The sample class starts with a few imports:
 
 .Imports for the sample application
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
-include::{test-examples}/SampleApplication.java[tag=sample-imports]
+include::{test-examples}/GettingStarted.cs[tag=sample-imports]
 --------
 
-The next step is to create the `Environment`. It is a management object
+The next step is to create the `StreamSystem`. It is a management object
 used to manage streams and create producers as well as consumers. The
-next snippet shows how to create an `Environment` instance and
+next snippet shows how to create an `StreamSystem` instance and
 create the stream used in the application:
 
 .Creating the environment
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
-include::{test-examples}/SampleApplication.java[tag=sample-environment]
+include::{test-examples}/GettingStarted.cs[tag=sample-system]
 --------
-<1> Use `Environment#builder` to create the environment
-<2> Create the stream
+<1> Use `StreamSystem.Create(..)` to create the environment
+<2> Define the connection configuration
+<3> Add the logger. (Not mandatory it is very useful to understand what is going on)
+<4> Create the stream
+<5> Define the retention policy
 
 Then comes the publishing part. The next snippet shows how to create
 a `Producer`, send messages, and handle publishing confirmations, to
 make sure the broker has taken outbound messages into account.
-The application uses a count down latch to move on once the messages
-have been confirmed.
 
 .Publishing messages
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
-include::{test-examples}/SampleApplication.java[tag=sample-publisher]
+include::{test-examples}/GettingStarted.cs[tag=sample-producer]
 --------
-<1> Create the `Producer` with `Environment#producerBuilder`
-<2> Send messages with `Producer#send(Message, ConfirmationHandler)`
-<3> Create a message with `Producer#messageBuilder`
-<4> Count down on message publishing confirmation
-<5> Wait for all publishing confirmations to have arrived
-<6> Close the producer
+<1> Create the `Producer` with `Producer.Create`
+<2> Define the `ConfirmationHandler` where the messages are confirmed or not
+<3> Message is confirmed from the server
+<4> Message not confirmed
+<5> Add the logger. (Not mandatory it is very useful to understand what is going on)
+<6> Send messages with `producer.Send(Message)`
+<7> Wait for messages confirmation
+<8> Close the producer
 
-It is now time to consume the messages. The `Environment` lets us create a `Consumer`
+It is now time to consume the messages. The `Consumer.Create` lets us create a `Consumer`
 and provide some logic on each incoming message by implementing a `MessageHandler`.
 The next snippet does this to calculate a sum and output it once all the messages
 have been received:
 
 .Consuming messages
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
-include::{test-examples}/SampleApplication.java[tag=sample-consumer]
+include::{test-examples}/GettingStarted.cs[tag=sample-consumer]
 --------
-<1> Create the `Consumer` with `Environment#consumerBuilder`
+<1> Create the `Consumer` with `Consumer.Create`
 <2> Start consuming from the beginning of the stream
-<3> Set up the logic to handle messages
-<4> Add the value in the message body to the sum
-<5> Count down on each message
-<6> Wait for all messages to have arrived
-<7> Output the sum
-<8> Close the consumer
-
-The application has some cleaning to do before terminating, that is
-deleting the stream and closing the environment:
+<3> Set up the logic to handle message
+<4> Add the logger. (Not mandatory it is very useful to understand what is going on)
+<5> Wait for all the messages are consumed
+<6> Close the consumer
 
 .Cleaning before terminating
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
-include::{test-examples}/SampleApplication.java[tag=sample-environment-close]
+include::{test-examples}/GettingStarted.cs[tag=sample-close]
 --------
 <1> Delete the stream
-<2> Close the environment
+<2> Close the stream system
 
+
+.About logging
+[source,c#,indent=0]
+--------
+include::{test-examples}/GettingStarted.cs[tag=sample-logging]
+--------
+<1> Define the logger for the producer
+<2> Define the logger for the consumer
+<3> Define the logger for the stream system
+
+The logger is not mandatory but it is highly recommended to configure it to understand what is happening.
+In this example, we are using `Microsoft.Extensions.Logging.Console` to log to the console, but you can use any logger you want.
+`Microsoft.Extensions.Logging.Console` is not shipped with the client.
+
+.Run the sample application
 You can run the sample application from the root of the project (you need
 a running local RabbitMQ node with the stream plugin enabled):
 
 ----
-$ ./mvnw -q test-compile exec:java -Dexec.classpathScope="test" \
-    -Dexec.mainClass="com.rabbitmq.stream.docs.SampleApplication"
+$  dotnet run --gs
 Starting publishing...
-Published 10000 messages
+*********************************
+All the 100 messages are confirmed
+*********************************
 Starting consuming...
-Sum: 49995000
+*********************************
+All the 100 messages are received
+*********************************
 ----
-
-You can remove the `-q` flag if you want more insight on the execution of the build.
