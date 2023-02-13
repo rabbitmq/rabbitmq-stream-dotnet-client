@@ -33,7 +33,7 @@ public class ReliableTests
         var confirmationPipe = new ConfirmationPipe(async confirmation =>
             {
                 l.Add(confirmation.Status);
-                if (confirmation.PublishingId == 2)
+                if (l.Count == 2)
                 {
                     await Task.CompletedTask;
                     confirmationTask.SetResult(2);
