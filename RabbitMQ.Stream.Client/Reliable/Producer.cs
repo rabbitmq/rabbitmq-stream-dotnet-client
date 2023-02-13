@@ -18,15 +18,35 @@ public record SuperStreamConfig
     public Func<Message, string> Routing { get; set; }
 }
 
+[AttributeUsage(AttributeTargets.Method)]
+internal class MyMethodAttribute : Attribute
+{
+    public string Message { get; }
+
+    public MyMethodAttribute(string message)
+    {
+        Message = message;
+    }
+}
+
 public record ProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
 
     /// <summary>
-    /// Reference is mostly used for deduplication.
-    /// In most of the cases reference is not needed.
+    /// Reference used for deduplication.
+    /// For the Producer Class, it is not needed to set this value
+    /// See DeduplicatingProducer for Deduplication Messages where this value is needed.
     /// </summary>
-    public string Reference { get; set; }
+    internal string _reference;
+
+    public string Reference
+    {
+        get { return _reference; }
+        [Obsolete("Deprecated. Use ClientProvidedName instead. Se DeduplicatingProducer for Deduplication Messages ",
+            false)]
+        set { _reference = value; }
+    }
 
     /// <summary>
     /// Publish confirmation callback.<br/>
@@ -113,7 +133,7 @@ public class Producer : ProducerFactory
 
     protected override ILogger BaseLogger => _logger;
 
-    private Producer(ProducerConfig producerConfig, ILogger<Producer> logger = null)
+    private protected Producer(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
         _producerConfig = producerConfig;
         _confirmationPipe = new ConfirmationPipe(
@@ -205,11 +225,25 @@ public class Producer : ProducerFactory
     /// In case of error the message is considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(Message message)
     {
-
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await SendInternal(Interlocked.Increment(ref _publishingId), message).ConfigureAwait(false);
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
+    }
 
-        Interlocked.Increment(ref _publishingId);
-        _confirmationPipe.AddUnConfirmedMessage(_publishingId, message);
+    internal async Task<ulong> GetLastPublishingId()
+    {
+        return await _producer.GetLastPublishingId().ConfigureAwait(false);
+    }
+
+    internal async ValueTask SendInternal(ulong publishingId, Message message)
+    {
+        _confirmationPipe.AddUnConfirmedMessage(publishingId, message);
         try
         {
             // This flags avoid some race condition,
@@ -219,7 +253,7 @@ public class Producer : ProducerFactory
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
             {
-                await _producer.Send(_publishingId, message).ConfigureAwait(false);
+                await _producer.Send(publishingId, message).ConfigureAwait(false);
             }
         }
 
@@ -229,10 +263,6 @@ public class Producer : ProducerFactory
                                  "Most likely the message is not sent to the stream: {Stream}." +
                                  "Message wont' receive confirmation so you will receive a timeout error",
                 _producerConfig.Stream);
-        }
-        finally
-        {
-            SemaphoreSlim.Release();
         }
     }
 

@@ -28,29 +28,33 @@ public class ReliableTests
     [Fact]
     public void MessageWithoutConfirmationRaiseTimeout()
     {
-        var confirmationTask = new TaskCompletionSource<List<MessagesConfirmation>>();
-        var l = new List<MessagesConfirmation>();
-        var confirmationPipe = new ConfirmationPipe(confirmation =>
+        var confirmationTask = new TaskCompletionSource<int>();
+        var l = new List<ConfirmationStatus>();
+        var confirmationPipe = new ConfirmationPipe(async confirmation =>
             {
-                l.Add(confirmation);
+                l.Add(confirmation.Status);
                 if (confirmation.PublishingId == 2)
                 {
-                    confirmationTask.SetResult(l);
+                    await Task.CompletedTask;
+                    confirmationTask.SetResult(2);
                 }
-
-                return Task.CompletedTask;
+                else
+                {
+                    await Task.CompletedTask;
+                }
             },
             TimeSpan.FromSeconds(2), 100
         );
         confirmationPipe.Start();
-        var message = new Message(Encoding.UTF8.GetBytes($"hello"));
-        confirmationPipe.AddUnConfirmedMessage(1, message);
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
-        new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
+        confirmationPipe.AddUnConfirmedMessage(1, new Message(Encoding.UTF8.GetBytes($"hello")));
+        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { new Message(Encoding.UTF8.GetBytes($"hello")) });
+        new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
+        Assert.Equal(2, confirmationTask.Task.Result);
+        Assert.Equal(2, l.Count);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
-        Assert.Equal(ConfirmationStatus.ClientTimeoutError, confirmationTask.Task.Result[0].Status);
-        Assert.Equal(ConfirmationStatus.ClientTimeoutError, confirmationTask.Task.Result[1].Status);
+        Assert.Equal(ConfirmationStatus.ClientTimeoutError, l[0]);
+        Assert.Equal(ConfirmationStatus.ClientTimeoutError, l[1]);
         confirmationPipe.Stop();
     }
 
@@ -235,9 +239,10 @@ public class ReliableTests
     public async void AutoPublishIdDefaultShouldStartFromTheLast()
     {
         // RProducer automatically retrieves the last producer offset.
-        // see IPublishingIdStrategy implementation
         // This tests if the the last id stored 
         // A new RProducer should restart from the last offset. 
+        // This test will be removed when Reference will be mandatory 
+        // in the DeduplicationProducer
 
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var testPassed = new TaskCompletionSource<ulong>();
@@ -247,8 +252,8 @@ public class ReliableTests
         var producer = await Producer.Create(
             new ProducerConfig(system, stream)
             {
+                _reference = reference,
                 ClientProvidedName = clientProviderName,
-                Reference = reference,
                 ConfirmationHandler = confirm =>
                 {
                     if (Interlocked.Increment(ref count) != 5)
@@ -284,7 +289,7 @@ public class ReliableTests
         var producerSecond = await Producer.Create(
             new ProducerConfig(system, stream)
             {
-                Reference = reference,
+                _reference = reference,
                 ClientProvidedName = clientProviderName,
                 ConfirmationHandler = confirm =>
                 {
