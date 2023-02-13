@@ -19,7 +19,7 @@ public record DeduplicatingProducerConfig : ProducerConfig
     }
 }
 
-// DeduplicationProducer is a wrapper around the Producer class
+// DeduplicatingProducer is a wrapper around the Producer class
 // to handle the deduplication of the messages.
 // The deduplication is enabled by setting the reference in the DeduplicationProducerConfig 
 // and it is mandatory to set the reference.
@@ -61,7 +61,8 @@ public class DeduplicatingProducer
 
     // Send a message with a specific publishing id
     // the publishing id is used to deduplicate the messages
-    // the publishing id must be unique and incremental. It can accept gaps the important is to be incremental
+    // the publishing id must be unique and incremental. The publishing ID may have gaps.
+    // It is important to always increment the ID, otherwise, messages will be discarded by the deduplication algorithm
     public async ValueTask Send(ulong publishing, Message message)
     {
         await _producer.SendInternal(publishing, message).ConfigureAwait(false);

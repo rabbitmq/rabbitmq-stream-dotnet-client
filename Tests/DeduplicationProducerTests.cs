@@ -2,16 +2,6 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
-/* Unmerged change from project 'Tests(net7.0)'
-Before:
-using System.Collections.Generic;
-using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
-After:
-using System.Threading.Tasks;
-*/
-
 using System;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;

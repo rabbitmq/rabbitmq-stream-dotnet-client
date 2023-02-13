@@ -35,15 +35,15 @@ public record ProducerConfig : ReliableConfig
 
     /// <summary>
     /// Reference used for deduplication.
-    /// For the Producer Class it is not needed to set this value.
-    /// See DeduplicationProducer for Deduplication Messages where this value is needed.
+    /// For the Producer Class, it is not needed to set this value
+    /// See DeduplicatingProducer for Deduplication Messages where this value is needed.
     /// </summary>
     internal string _reference;
 
     public string Reference
     {
         get { return _reference; }
-        [Obsolete("Deprecated. Use ClientProvidedName instead. Se DeduplicationProducer for Deduplication Messages ",
+        [Obsolete("Deprecated. Use ClientProvidedName instead. Se DeduplicatingProducer for Deduplication Messages ",
             false)]
         set { _reference = value; }
     }
@@ -243,8 +243,6 @@ public class Producer : ProducerFactory
 
     internal async ValueTask SendInternal(ulong publishingId, Message message)
     {
-        // await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
-        // Interlocked.Increment(ref _publishingId);
         _confirmationPipe.AddUnConfirmedMessage(publishingId, message);
         try
         {
@@ -265,10 +263,6 @@ public class Producer : ProducerFactory
                                  "Most likely the message is not sent to the stream: {Stream}." +
                                  "Message wont' receive confirmation so you will receive a timeout error",
                 _producerConfig.Stream);
-        }
-        finally
-        {
-            // SemaphoreSlim.Release();
         }
     }
 
