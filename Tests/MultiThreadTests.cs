@@ -35,6 +35,8 @@ public class MultiThreadTests
     public async Task PublishMessagesInMultiThreads()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        const int TotalMessages = 1000;
+        const int ThreadNumber = 3;
         var receivedTask = new TaskCompletionSource<int>();
         var confirmed = 0;
         var error = 0;
@@ -53,7 +55,7 @@ public class MultiThreadTests
                         break;
                 }
 
-                if (error + confirmed == 802)
+                if (confirmed == TotalMessages * ThreadNumber)
                 {
                     receivedTask.SetResult(confirmed);
                 }
@@ -62,20 +64,20 @@ public class MultiThreadTests
             }
         });
 
-        for (var i = 0; i < 2; i++)
+        for (var i = 0; i < ThreadNumber; i++)
         {
             _ = Task.Run(async () =>
             {
-                for (var j = 0; j < 401; j++)
+                for (var j = 0; j < TotalMessages; j++)
                 {
-                    await producer.Send(new RabbitMQ.Stream.Client.Message(new byte[3]));
+                    await producer.Send(new Message(new byte[3]));
                 }
             });
         }
 
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(receivedTask);
-        Assert.Equal(802, confirmed);
-        Assert.Equal(802, receivedTask.Task.Result);
+        Assert.Equal(TotalMessages * ThreadNumber, confirmed);
+        Assert.Equal(TotalMessages * ThreadNumber, receivedTask.Task.Result);
         Assert.Equal(0, error);
         await system.DeleteStream(stream);
     }

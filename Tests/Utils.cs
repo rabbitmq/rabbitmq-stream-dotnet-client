@@ -113,6 +113,12 @@ namespace Tests
             x.Wait();
         }
 
+        public static async Task CleanUpStreamSystem(StreamSystem system, string stream)
+        {
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             ITestOutputHelper testOutputHelper)
         {
