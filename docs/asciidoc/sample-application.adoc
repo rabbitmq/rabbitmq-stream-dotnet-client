@@ -1,5 +1,4 @@
 :test-examples: ../Documentation
-
 === Sample Application
 
 This section covers the basics of the RabbitMQ Stream .NET API by building
@@ -28,7 +27,7 @@ next snippet shows how to create an `StreamSystem` instance and
 create the stream used in the application:
 
 .Creating the environment
-[source,c#,indent=0]
+[source,java,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-system]
 --------
@@ -43,7 +42,7 @@ a `Producer`, send messages, and handle publishing confirmations, to
 make sure the broker has taken outbound messages into account.
 
 .Publishing messages
-[source,c#,indent=0]
+[source,java,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-producer]
 --------
@@ -62,7 +61,7 @@ The next snippet does this to calculate a sum and output it once all the message
 have been received:
 
 .Consuming messages
-[source,c#,indent=0]
+[source,java,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-consumer]
 --------
@@ -74,7 +73,7 @@ include::{test-examples}/GettingStarted.cs[tag=sample-consumer]
 <6> Close the consumer
 
 .Cleaning before terminating
-[source,c#,indent=0]
+[source,java,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-close]
 --------
@@ -83,7 +82,7 @@ include::{test-examples}/GettingStarted.cs[tag=sample-close]
 
 
 .About logging
-[source,c#,indent=0]
+[source,java,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-logging]
 --------

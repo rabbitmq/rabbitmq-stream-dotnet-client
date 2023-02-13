@@ -1,4 +1,5 @@
 :stylesheet: asciidoctor.css
+:source-highlighter: coderay
 = RabbitMQ Stream .Net Client
 :toc: left
 :toclevels: 5
