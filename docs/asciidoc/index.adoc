@@ -3,8 +3,9 @@
 = RabbitMQ Stream .Net Client
 :toc: left
 :toclevels: 5
-:revnumber: {project-version}
-:revremark: ({build-number})
+// TODO:
+// :revnumber: {project-version}
+// :revremark: ({build-number})
 ifndef::imagesdir[:imagesdir: images]
 
 
@@ -26,7 +27,7 @@ include::setup.adoc[]
 
 include::sample-application.adoc[]
 
-// include::api.adoc[]
+include::api.adoc[]
 
 // include::super-streams.adoc[]
 

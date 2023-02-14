@@ -13,7 +13,7 @@ using RabbitMQ.Stream.Client.Reliable; // <3>
 
 namespace Documentation;
 
-public class GettingStarted
+public static class GettingStarted
 {
     public static async Task Start()
     {
