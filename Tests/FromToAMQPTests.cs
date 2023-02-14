@@ -351,11 +351,7 @@ public class FromToAmqpTests
 
         new Utils<Message>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
         var result = tcs.Task.Result;
-        // Why do we need result.Data.Contents.ToArray()[5..]? 
-        // Because of https://github.com/rabbitmq/rabbitmq-server/issues/6937 
-        // When it will be fixed we can remove the [5..]
-        // For the moment we leave it as it is because it is not a problem for the client
-        Assert.Equal("msg from amqp 1.0", Encoding.UTF8.GetString(result.Data.Contents.ToArray()[5..]));
+        Assert.Equal("msg from amqp 1.0", result.AmqpValue);
         await consumer.Close();
         await system.DeleteStream(stream);
         await system.Close();
