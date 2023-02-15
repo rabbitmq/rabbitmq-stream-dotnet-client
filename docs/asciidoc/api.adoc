@@ -23,54 +23,33 @@ way to create an `StreamSystem` instance:
 .Creating an environment with all the defaults
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=environment-creation]
+include::{test-examples}/StreamSystemUsage.cs[tag=create-simple]
 --------
 <1> Create an environment that will connect to localhost:5552
 <2> Close the environment after usage
 
-Note the environment must be closed to release resources when it is no
+Note the streamSystem must be closed to release resources when it is no
 longer needed.
 
 Consider the environment like a long-lived object. An application will usually
-create one `Environment` instance when it starts up and close it when it exits.
+create one `StreamSystem` instance when it starts up and close it when it exits.
 
-It is possible to use a URI to specify all the necessary information to
-connect to a node:
+It is possible to use a multiple end-points to connect to a cluster of nodes. The:
 
-.Creating an environment with a URI
+.Creating an streamSystem with multiple end-points
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=environment-creation-with-uri]
+include::{test-examples}/StreamSystemUsage.cs[tag=create-multi-endpoints]
 --------
-<1> Use the `uri` method to specify the URI to connect to
+<1>  Define the end-points to connect to
 
-The previous snippet uses a URI that specifies the following information: host, port,
-username, password, and virtual host (`/`, which is encoded as `%2f`).
-The URI follows the same rules as the
-https://www.rabbitmq.com/uri-spec.html[AMQP 0.9.1 URI],
-except the protocol must be `rabbitmq-stream`. <<enabling-tls,TLS is enabled>> by using
-the `rabbitmq-stream+tls` scheme in the URI.
-
-When using one URI, the corresponding node will be the main entry point to connect to. The
-`Environment` will then use the stream protocol to find out more about streams topology
-(leaders and replicas) when asked to create `Producer` and `Consumer` instances. The `Environment`
-may become blind if this node goes down though, so it may be more appropriate to specify
-several other URIs to try in case of failure of a node:
-
-.Creating an environment with several URIs
-[source,java,indent=0]
---------
-include::{test-examples}/EnvironmentUsage.java[tag=environment-creation-with-uris]
---------
-<1> Use the `uris` method to specify several URIs
-
-By specifying several URIs, the environment will try to connect to the first one, and
-will pick a new URI randomly in case of disconnection.
+By specifying several endpoints, the system will try to connect to the first one, and
+will pick a new endpoint randomly in case of disconnection.
 
 [[understanding-connection-logic]]
 ===== Understanding Connection Logic
 
-Creating the environment to connect to a cluster node works usually seamlessly.
+Creating the StreamSystem to connect to a cluster node works usually seamlessly.
 Creating publishers and consumers can cause problems as the client uses hints from the cluster to find the nodes where stream leaders and replicas are located to connect to the appropriate nodes.
 
 These connection hints can be accurate or less appropriate depending on the infrastructure.
@@ -78,44 +57,26 @@ If you hit some connection problems at some point – like hostnames impossible 
 
 ===== Enabling TLS
 
-TLS can be enabled by using the `rabbitmq-stream+tls` scheme in the URI.
 The default TLS port is 5551.
 
-Use the `EnvironmentBuilder#tls` method to configure TLS.
-The most important setting is a `io.netty.handler.ssl.SslContext` instance,
-which is created and configured with the
-`io.netty.handler.ssl.SslContext#forClient` method. Note hostname verification
-is enabled by default.
-
-The following snippet shows a common configuration, whereby
-the client is instructed to trust servers with certificates
-signed by the configured certificate authority (CA).
-
-.Creating an environment that uses TLS
+.Creating an StreamSystem that uses TLS
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=environment-creation-with-tls]
+include::{test-examples}/StreamSystemUsage.cs[tag=create-tls]
 --------
-<1> Load certificate authority (CA) certificate from PEM file
-<2> Configure Netty `SslContext` to trust CA certificate
-<3> Use TLS scheme in environment URI
-<4> Set `SslContext` in environment configuration
-
-It is sometimes handy to trust any server certificates
-in development environments. `EnvironmentBuilder#tls` provides the
-`trustEverything` method to do so. **This should
-not be used in a production environment**.
+<1> Enable TLS
+<2> Load certificate authority (CA) certificate from PEM file
 
 .Creating a TLS environment that trusts all server certificates for development
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=environment-creation-with-tls-trust-everything]
+include::{test-examples}/StreamSystemUsage.cs[tag=create-tls-trust]
 --------
 <1> Trust all server certificates
 
-===== Configuring the Environment
+===== Configuring the Stream System
 
-The following table sums up the main settings to create an `Environment`:
+The following table sums up the main settings to create an `StreamSystem` using the `StreamSystemConfig`:
 
 [%header,cols=3*]
 |===
@@ -123,130 +84,38 @@ The following table sums up the main settings to create an `Environment`:
 |Description
 |Default
 
-|`uri`
-|The URI of the node to connect to (single node).
-|`rabbitmq-stream://guest:guest@localhost:5552/%2f`
-
-|`uris`
-|The URI of the nodes to try to connect to (cluster).
-|`rabbitmq-stream://guest:guest@localhost:5552/%2f` singleton list
-
-|`host`
-|Host to connect to.
-|`localhost`
-
-|`port`
-|Port to use.
-|`5552`
-
-|`username`
-|Username to use to connect.
+|`UserName`
+|User name to use to connect.
 |`guest`
 
-|`password`
+|`Password`
 |Password to use to connect.
 |`guest`
 
-|`virtualHost`
+|`VirtualHost`
 |Virtual host to connect to.
 |`/`
 
-|`rpcTimeout`
-|Timeout for RPC calls.
-|`Duration.ofSeconds(10)`
+|`ClientProvidedName`
+| To identify the client in the management UI. 
+|`dotnet-stream-locator`
 
-|`recoveryBackOffDelayPolicy`
-|Delay policy to use for backoff on connection recovery.
-|Fixed delay of 5 seconds
+|`Heartbeat`
+|Time between heartbeats.
+|`1 minute`
 
-|`topologyUpdateBackOffDelayPolicy`
-|Delay policy to use for backoff on topology update, e.g.
-when a stream replica moves and a consumer needs to connect to another
-node.
-|Initial delay of 5 seconds then delay of 1 second.
+|`Endpoints`
+|The list of endpoints to connect to.
+|`localhost:5552`
 
-|`scheduledExecutorService`
-|Executor used to schedule infrastructure tasks like background publishing, producers
-and consumers migration after disconnection or topology update. If a custom executor is provided,
-it is the developer's responsibility to close it once it is no longer necessary.
-a|
-[source%autofit,java]
-----
-Executors
-  .newScheduledThreadPool(
-    Runtime
-      .getRuntime()
-      .availableProcessors()
-);
-----
-|`maxProducersByConnection`
-|The maximum number of `Producer` instances a single connection can maintain before
-a new connection is open. The value must be between 1 and 255.
-|255
-
-|`maxTrackingConsumersByConnection`
-|The maximum number of `Consumer` instances that store their offset a single connection
-can maintain before a new connection is open. The value must be between 1 and 255.
-|50
-
-|`maxConsumersByConnection`
-|The maximum number of `Consumer` instances a single connection can maintain before
-a new connection is open. The value must be between 1 and 255.
-|255
-
-|`lazyInitialization`
-|To delay the connection opening until necessary.
-|false
-
-|`id`
-|Informational ID for the environment instance.
-Used as a prefix for connection names.
-|`rabbitmq-stream`
 
 |`addressResolver`
 |Contract to change resolved node address to connect to.
 |Pass-through (no-op)
 
-|`tls`
+|`Ssl`
 |Configuration helper for TLS.
-|TLS is enabled if a `rabbitmq-stream+tls` URI is provided.
-
-|`tls#hostnameVerification`
-|Enable or disable hostname verification.
-|Enabled by default.
-
-|`tls#sslContext`
-|Set the `io.netty.handler.ssl.SslContext` used for the TLS connection.
-Use `io.netty.handler.ssl.SslContextBuilder#forClient` to configure it.
-The server certificate chain and the client private key are the typical
-elements that need to be configured.
-|The JDK trust manager and no client private key.
-
-|`tls#trustEverything`
-|Helper to configure a `SslContext` that trusts all server certificates
-and does not use a client private key. **Only for development**.
-|Disabled by default.
-
-|`netty`
-|Configuration helper for Netty.
-|
-
-|`netty#eventLoopGroup`
-|Netty's event dispatcher.
-It is the developer's responsibility to close the `EventLoopGroup` they provide.
-|`NioEventLoopGroup` instance closed automatically with the `Environment` instance.
-
-|`netty#ByteBufAllocator`
-|`ByteBuf` allocator.
-|ByteBufAllocator.DEFAULT
-
-|`netty#channelCustomizer`
-|Extension point to customize Netty's `Channel` instances used for connections.
-|None
-
-|`netty#bootstrapCustomizer`
-|Extension point to customize Netty's `Bootstrap` instances used to configure connections.
-|None
+|`null`
 
 |===
 
@@ -255,17 +124,17 @@ It is the developer's responsibility to close the `EventLoopGroup` they provide.
 A load balancer can misguide the client when it tries to connect to nodes that host stream leaders and replicas.
 The https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/["Connecting to Streams"] blog post covers why client applications must connect to the appropriate nodes in a cluster and how a https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/#with-a-load-balancer[load balancer can make things complicated] for them.
 
-The `EnvironmentBuilder#addressResolver(AddressResolver)` method allows intercepting the node resolution after metadata hints and before connection.
+The `StreamSystemConfig#AddressResolver(AddressResolver)` method allows intercepting the node resolution after metadata hints and before connection.
 Applications can use this hook to ignore metadata hints and always use the load balancer, as illustrated in the following snippet:
 
 .Using a custom address resolver to always use a load balancer
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=address-resolver]
+include::{test-examples}/StreamSystemUsage.cs[tag=create-address-resolver]
 --------
 <1> Set the load balancer address
 <2> Use load balancer address for initial connection
-<3> Ignore metadata hints, always use load balancer
+<3> Set the endpoints based on `AddressResolver` 
 
 The blog post covers the https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/#client-workaround-with-a-load-balancer[underlying details of this workaround].
 
@@ -273,7 +142,7 @@ The blog post covers the https://blog.rabbitmq.com/posts/2021/07/connecting-to-s
 
 Streams are usually long-lived, centrally-managed entities, that is, applications
 are not supposed to create and delete them. It is nevertheless possible to create and
-delete stream with the `Environment`. This comes in handy for development and testing
+delete stream with the `StreamSystem`. This comes in handy for development and testing
 purposes.
 
 Streams are created with the `Environment#streamCreator()` method:
@@ -281,13 +150,13 @@ Streams are created with the `Environment#streamCreator()` method:
 .Creating a stream
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=stream-creation]
+include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation]
 --------
 <1> Create the `my-stream` stream
 
-`StreamCreator#create` is idempotent: trying to re-create a stream with the same name
+`StreamSystem.Create` is idempotent: trying to re-create a stream with the same name
 and same properties (e.g. maximum size, see below) will not throw an exception. In other words,
-you can be sure the stream has been created once `StreamCreator#create` returns. Note it is
+you can be sure the stream has been created once `StreamSystem.Create` returns. Note it is
 not possible to create a stream with the same name as an existing stream but with different
 properties. Such a request will result in an exception.
 
@@ -296,7 +165,7 @@ Streams can be deleted with the `Environment#delete(String)` method:
 .Deleting a stream
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=stream-deletion]
+include::{test-examples}/StreamSystemUsage.cs[tag=stream-deletion]
 --------
 <1> Delete the `my-stream` stream
 
@@ -324,7 +193,7 @@ It is possible to set up the retention policy when creating the stream:
 .Setting the retention policy when creating a stream
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=stream-creation-retention]
+include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-retention]
 --------
 <1> Set the maximum size to 10 GB
 <2> Set the segment size to 500 MB
@@ -351,7 +220,7 @@ illustrates how to set the time-based retention policy:
 .Setting a time-based retention policy when creating a stream
 [source,java,indent=0]
 --------
-include::{test-examples}/EnvironmentUsage.java[tag=stream-creation-time-based-retention]
+include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-time-based-retention]
 --------
 <1> Set the maximum age to 6 hours
 <2> Set the segment size to 500 MB
@@ -360,18 +229,17 @@ include::{test-examples}/EnvironmentUsage.java[tag=stream-creation-time-based-re
 
 ===== Creating a Producer
 
-A `Producer` instance is created from the `Environment`. The only mandatory
+A `Producer` instance is created with `Producer.Create`. The only mandatory
 setting to specify is the stream to publish to:
 
 .Creating a producer from the environment
 [source,java,indent=0]
 --------
-include::{test-examples}/ProducerUsage.java[tag=producer-creation]
+include::{test-examples}/ProducerUsage.cs[tag=producer-creation]
 --------
-<1> Use `Environment#producerBuilder()` to define the producer
+<1> Use `Producer.Create` to define the producer
 <2> Specify the stream to publish to
-<3> Create the producer instance with `build()`
-<4> Close the producer after usage
+<3> Close the producer after usage
 
 Consider a `Producer` instance like a long-lived object, do not create one
 to send just one message.
@@ -380,15 +248,16 @@ to send just one message.
 [NOTE]
 .Producer thread safety
 ====
-Producer instances are thread-safe.
-<<outbound-message-deduplication,Deduplication>> imposes <<deduplication-multithreading,restrictions on the usage of threads>> though.
+`Producer` instances are thread-safe when `Reference` is not set.
+Starting from version 1.2.0 the `Reference` field is deprecated. 
+`Reference` is needed for deduplication see the Deduplication section for more details.
 ====
 
-Internally, the `Environment` will query the broker to find out about
+Internally, the `StreamSystem` will query the broker to find out about
 the topology of the stream and will create or re-use a connection to
 publish to the leader node of the stream.
 
-The following table sums up the main settings to create a `Producer`:
+The following table sums up the main settings to create a `ProducerConfig`:
 
 [%header,cols=3*]
 |===
@@ -396,41 +265,38 @@ The following table sums up the main settings to create a `Producer`:
 |Description
 |Default
 
+|`StreamSystem`
+|The StreamSystem to use to create the producer.
+|No default, mandatory setting.
+
 |`stream`
 |The stream to publish to.
 |No default, mandatory setting.
 
-|`name`
+|`Reference`
 |The logical name of the producer. Specify a name to enable
 <<outbound-message-deduplication,message deduplication>>.
-|`null` (no deduplication)
+|`null` (no deduplication) - Deprecated in version 1.2.0
 
-|`batchSize`
-|The maximum number of messages to accumulate before sending them to the broker.
-|100
+|`ConfirmationHandler`
+|The confirmation handler where received the messages confirmations.
+|`null` (no confirmation handler)
 
-|`subEntrySize`
-|[[producer-sub-entry-size-configuration-entry]]The number of messages to put in a sub-entry.
-A sub-entry is one "slot" in a publishing
-frame, meaning outbound messages are not only batched in publishing frames, but in sub-entries
-as well.
-Use this feature to increase throughput at the cost of increased latency and
-potential duplicated messages even when deduplication is enabled.
-See the <<sub-entry-batching-and-compression, dedicated section>> for more information.
-|1 (meaning no use of sub-entry batching)
+|ClientProvidedName
+|The TCP connection name to identify the client.
+|`dotnet-stream-producer` 
 
-|`compression`
-|Compression algorithm to use when sub-entry batching is in use.
-See the <<sub-entry-batching-and-compression, dedicated section>> for more information.
-|Compression.NONE
+|`MaxInFlight`
+|The maximum number of messages that can be in flight at any given time. Messages sent - Messages confirmed. To avoid to flood the broker with messages.
+|1000
 
-|`maxUnconfirmedMessages`
-|The maximum number of unconfirmed outbound messages. `Producer#send` will start
-blocking when the limit is reached.
-|10,000
+|`ReconnectStrategy`
+|The strategy to use when the connection to the broker is lost.
+|`BackOffReconnectStrategy`
 
-|`batchPublishingDelay`
-|Period to send a batch of messages.
+|`MessagesBufferSize`
+|Number of the messages sent for each frame-send.
+This value is valid only for the `Send(Message)` method.
 |100 ms
 
 |`confirmTimeout`
