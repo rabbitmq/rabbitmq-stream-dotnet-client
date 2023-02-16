@@ -299,60 +299,132 @@ The following table sums up the main settings to create a `ProducerConfig`:
 This value is valid only for the `Send(Message)` method.
 |100 ms
 
-|`confirmTimeout`
-|[[producer-confirm-timeout-configuration-entry]]Time before the client calls the confirm callback to signal
-outstanding unconfirmed messages timed out.
-|30 seconds
+|`TimeoutMessageAfter`
+|Time to wait before considering a message as not confirmed.
+| 3 seconds
+// TODO: Document Super stream
+|`SuperStreamConfig`
+|The super stream configuration.
+|`null` (no super stream)
 
-|`enqueueTimeout`
-|Time before enqueueing of a message fail when the maximum number of unconfirmed
-is reached. The callback of the message will be called with a negative status.
-Set the value to `Duration.ZERO` if there should be no timeout.
-|10 seconds.
 |===
 
 ===== Sending Messages
 
-Once a `Producer` has been created, it is possible to send a message with
-the `Producer#send(Message, ConfirmationHandler)` method. The following
+Once a `Producer` has been created, it is possible to send a message with:
+- `Producer#send(Message)`,
+- `Producer#send(List<Message>)`  
+- `Producer#send(List<Message> messages, CompressionType compressionType)`.
 snippet shows how to publish a message with a byte array payload:
 
 .Sending a message
 [source,java,indent=0]
 --------
-include::{test-examples}/ProducerUsage.java[tag=producer-publish]
+include::{test-examples}/ProducerUsage.cs[tag=producer-publish]
 --------
-<1> The payload of a message is an array of bytes
-<2> Create the message with `Producer#messageBuilder()`
-<3> Define the behavior on publish confirmation
-
+<1> The payload of a message is an array of bytes.
 Messages are not only made of a `byte[]` payload, we will see in
 <<working-with-complex-messages,the next section>>
 they can also carry pre-defined and application properties.
-
-[NOTE]
-.Use a `MessageBuilder` instance only once
-====
-A `MessageBuilder` instance is meant to create only one message. You
-need to create a new instance of `MessageBuilder` for every message
-you want to create.
-====
-
-The `ConfirmationHandler` defines an asynchronous callback invoked
+<2> Send the message. The method is asynchronous, internally the messages are buffered and sent in batch. Most of the time you can use this method.
+<3> Batch send is synchronous, there is not additional buffering. The messages are sent immediately. This method is useful when you want to control the number of the messages to sent is a single frame. Can be useful in case you need low latency.
+<4> Subentry batch send is synchronous, there is not additional buffering. The messages are sent immediately. The messages are compressed and assigned to a single publishingid. 
+It is useful when you want to compress the messages. For example logs or text messages.
+The client by default supports GZIP algorithm or None. Other algorithms can be added by implementing the `ICompression` interface.
+<5> The `ConfirmationHandler` defines an asynchronous callback invoked
 when the client received from the broker the confirmation the message
 has been taken into account. The `ConfirmationHandler` is the place
 for any logic on publishing confirmation, including
 re-publishing the message if it is negatively acknowledged.
+
+`MessagesConfirmation` contains the following information:
+
+[%header,cols=2*]
+|===
+
+|Parameter Name
+|Description
+
+|`Stream`
+|The stream the message was published to.
+
+|`PublishingId`
+|The publishing id of the message.
+
+|`Status`
+|The confirmation status of the message. See <<confirmation-status,Confirmation Status>> for more details.
+
+|`Messages`
+|The list of messages that have been confirmed or not.
+
+|===
+
+[[confirmation-status]]
+`confirmation.Status` values:
+
+[%header,cols=3*]
+|===
+|Parameter Name
+|Description
+|Source
+
+|`ConfirmationStatus.Confirmed`
+|The message has been confirmed by the broker.
+|Server
+
+|`ConfirmationStatus.Timeout`
+| Client gave up waiting for the message
+| Client
+
+|StreamNotAvailable
+|The stream is not available.
+|Server
+
+|InternalError
+|The broker encountered an internal error.
+|Server
+
+|AccessRefused
+|Provided credentials are invalid or you lack permissions for specific vhost/etc.
+|Server
+
+|PreconditionFailed
+|Catch-all for validation on server (eg. requested to create stream with different parameters but same name).
+|Server
+
+|PublisherDoesNotExist
+|The publisher does not exist.
+|Server
+
+|UndefinedError
+|Catch-all for any new status that is not yet handled in the library.
+|Server
+
+|===
+
 
 [WARNING]
 .Keep the confirmation callback as short as possible
 ====
 The confirmation callback should be kept as short as possible
 to avoid blocking the connection thread. Not doing so can
-make the `Environment`, `Producer`, `Consumer` instances sluggish
+make the `StreamSystem`, `Producer`, `Consumer` instances sluggish
 or even block them. Any long processing should be done in
-a separate thread (e.g. with an asynchronous `ExecutorService`).
+a separate thread (e.g. with an asynchronous `Task.Run(....)`).
 ====
+
+
+
+[NOTE]
+.Mixing different send methods
+====
+You can mix different send methods. For example you can send a message with `send(Message)` and then send a batch of messages with `send(List<Message>)`.
+Avoid to sent the `Refence` property in the `ProducerConfig` it enables the deduplication and you could have unexpected results.
+
+`Reference` is deprecated in the version `1.2.0`  see deduplication section for more details.
+====
+
+
 
 [[working-with-complex-messages]]
 ===== Working with Complex Messages
@@ -370,22 +442,26 @@ message ID, correlation ID, content type, etc).
 * body: typically an array of bytes.
 * message annotations: a set of key/value pairs (aimed at the infrastructure).
 
-The RabbitMQ Stream Java client uses the `Message` interface to abstract
-a message and the recommended way to create `Message` instances is to
-use the `Producer#messageBuilder()` method. To publish a `Message`, use
-the `Producer#send(Message,ConfirmationHandler)`:
+The RabbitMQ Stream NET client uses the `Message` class to represent a message.
 
 .Creating a message with properties
 [source,java,indent=0]
 --------
-include::{test-examples}/ProducerUsage.java[tag=producer-publish-complex-message]
+include::{test-examples}/ProducerUsage.cs[tag=producer-publish-complex-message]
 --------
-<1> Get the message builder from the producer
-<2> Get the properties builder and set some properties
-<3> Go back to message builder
-<4> Set byte array payload
-<5> Build the message instance
-<6> Publish the message
+<1> Get the message 
+<2> Set the Application properties
+<3> Set the message Properties. You usually don't need to set the properties.
+
+The `Message` contains also the following read-only properties:
+
+* `MessageHeader`
+* `Annotations`
+* `AmqpValue`
+
+These values are only for compatibility with the AMQP 1.0 message format.
+
+
 
 [NOTE]
 .Is RabbitMQ Stream based on AMQP 1.0?
