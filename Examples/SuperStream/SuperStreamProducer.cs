@@ -3,6 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System.Text;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
@@ -17,6 +18,15 @@ public class SuperStreamProducer
         var config = new StreamSystemConfig();
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
         Console.WriteLine("Super Stream Producer connected to RabbitMQ");
+
+        var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.AddSimpleConsole();
+            builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
+        });
+
+        var logger = loggerFactory.CreateLogger<Producer>();
+
         // We define a Producer with the SuperStream name (that is the Exchange name)
         var producer = await Producer.Create(new ProducerConfig(system, Costants.StreamName)
         {
@@ -25,7 +35,7 @@ public class SuperStreamProducer
                 // The super stream is enable and we define the routing hashing algorithm
                 Routing = msg => msg.Properties.MessageId.ToString()
             }
-        }).ConfigureAwait(false);
+        }, logger).ConfigureAwait(false);
         const int NumberOfMessages = 1_000_000;
         for (var i = 0; i < NumberOfMessages; i++)
         {
@@ -35,7 +45,7 @@ public class SuperStreamProducer
             };
             await producer.Send(message).ConfigureAwait(false);
             Console.WriteLine("Super Stream Producer sent {0} messages to {1}", i, Costants.StreamName);
-            Thread.Sleep(TimeSpan.FromSeconds(1));
+            Thread.Sleep(TimeSpan.FromMilliseconds(1000));
         }
     }
 }
