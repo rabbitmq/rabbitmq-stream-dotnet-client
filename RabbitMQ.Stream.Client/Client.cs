@@ -430,7 +430,8 @@ namespace RabbitMQ.Stream.Client
                             "ConsumerUpdateHandler can't returned null, a default offsetType (OffsetTypeNext) will be used");
                         off = new OffsetTypeNext();
                     }
-
+                    // event the consumer is not active, we need to send a ConsumerUpdateResponse
+                    // by protocol definition. the offsetType can't be null so we use OffsetTypeNext as default
                     await ConsumerUpdateResponse(
                         consumerUpdateQueryResponse.CorrelationId,
                         off).ConfigureAwait(false);
