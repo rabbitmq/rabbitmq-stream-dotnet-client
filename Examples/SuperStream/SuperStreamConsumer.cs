@@ -9,14 +9,10 @@ using RabbitMQ.Stream.Client.Reliable;
 
 namespace SuperStream;
 
-public static class SuperStreamConsumer
+public class SuperStreamConsumer
 {
     public static async Task Start(string consumerName)
     {
-        Console.WriteLine("Starting SuperStream Consumer {0}", consumerName);
-        var config = new StreamSystemConfig();
-        var system = await StreamSystem.Create(config).ConfigureAwait(false);
-
         var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddSimpleConsole();
@@ -24,8 +20,14 @@ public static class SuperStreamConsumer
         });
 
         var logger = loggerFactory.CreateLogger<Consumer>();
+        var loggerMain = loggerFactory.CreateLogger<SuperStreamConsumer>();
+        loggerMain.LogInformation("Starting SuperStream Consumer {ConsumerName}", consumerName);
+        var config = new StreamSystemConfig();
+        var system = await StreamSystem.Create(config).ConfigureAwait(false);
 
-        Console.WriteLine("Super Stream Consumer connected to RabbitMQ. ConsumerName {0}", consumerName);
+
+        loggerMain.LogInformation("Super Stream Consumer connected to RabbitMQ. ConsumerName {ConsumerName}",
+            consumerName);
 
         var consumer = await Consumer.Create(new ConsumerConfig(system, Costants.StreamName)
         {
@@ -37,16 +39,15 @@ public static class SuperStreamConsumer
             OffsetSpec = new OffsetTypeFirst(),
             ConsumerUpdateListener = async (reference, stream, isActive) =>
             {
-                Console.WriteLine($"******************************************************");
-                Console.WriteLine($"reference {reference} stream {stream} is active: {isActive}");
-                Console.WriteLine($"******************************************************");
+                loggerMain.LogInformation($"******************************************************");
+                loggerMain.LogInformation("reference {Reference} stream {Stream} is active: {IsActive}", reference, stream, isActive);
+                loggerMain.LogInformation($"******************************************************");
                 await Task.CompletedTask.ConfigureAwait(false);
                 return new OffsetTypeLast();
             },
             MessageHandler = async (stream, consumer1, context, message) =>
             {
-                Console.WriteLine(
-                    $"Consumer Name {consumerName} -Received message id: {message.Properties.MessageId} body: {Encoding.UTF8.GetString(message.Data.Contents)}, Stream {stream}");
+                loggerMain.LogInformation("Consumer Name {ConsumerName} -Received message id: {PropertiesMessageId} body: {S}, Stream {Stream}", consumerName, message.Properties.MessageId, Encoding.UTF8.GetString(message.Data.Contents), stream);
                 await Task.CompletedTask.ConfigureAwait(false);
             }
         }, logger).ConfigureAwait(false);

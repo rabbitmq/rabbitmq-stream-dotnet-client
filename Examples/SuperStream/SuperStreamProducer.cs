@@ -14,11 +14,6 @@ public class SuperStreamProducer
 {
     public static async Task Start()
     {
-        Console.WriteLine("Starting SuperStream Producer");
-        var config = new StreamSystemConfig();
-        var system = await StreamSystem.Create(config).ConfigureAwait(false);
-        Console.WriteLine("Super Stream Producer connected to RabbitMQ");
-
         var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddSimpleConsole();
@@ -26,6 +21,13 @@ public class SuperStreamProducer
         });
 
         var logger = loggerFactory.CreateLogger<Producer>();
+        var loggerMain = loggerFactory.CreateLogger<SuperStreamProducer>();
+
+        loggerMain.LogInformation("Starting SuperStream Producer");
+        var config = new StreamSystemConfig();
+        var system = await StreamSystem.Create(config).ConfigureAwait(false);
+        loggerMain.LogInformation("Super Stream Producer connected to RabbitMQ");
+
 
         // We define a Producer with the SuperStream name (that is the Exchange name)
         var producer = await Producer.Create(new ProducerConfig(system, Costants.StreamName)
@@ -44,7 +46,7 @@ public class SuperStreamProducer
                 Properties = new Properties() {MessageId = $"hello{i}"}
             };
             await producer.Send(message).ConfigureAwait(false);
-            Console.WriteLine("Super Stream Producer sent {0} messages to {1}", i, Costants.StreamName);
+            loggerMain.LogInformation("Super Stream Producer sent {I} messages to {StreamName}", i, Costants.StreamName);
             Thread.Sleep(TimeSpan.FromMilliseconds(1000));
         }
     }

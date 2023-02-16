@@ -8,7 +8,6 @@ public class Start
 {
     private static async Task Main(string[] arguments)
     {
-        Console.WriteLine("Starting SuperStream");
         if (arguments.Length == 0)
         {
             Console.WriteLine("Unknown command (values: --producer / --consumer)");
