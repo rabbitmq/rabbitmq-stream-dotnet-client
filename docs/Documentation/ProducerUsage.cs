@@ -98,8 +98,7 @@ public class ProducerUsage
         {
             ApplicationProperties = new ApplicationProperties() // <2>
             {
-                {"key1", "value1"}, 
-                {"key2", "value2"}
+                {"key1", "value1"}, {"key2", "value2"}
             },
             Properties = new Properties() // <3>
             {
@@ -108,10 +107,78 @@ public class ProducerUsage
                 ContentType = "application/json",
                 ContentEncoding = "utf-8",
             }
-        }; 
-        
+        };
+
         await producer.Send(message).ConfigureAwait(false);
         await streamSystem.Close().ConfigureAwait(false);
         // end::producer-publish-complex-message[]
+    }
+
+
+    public static async Task Deduplication()
+    {
+        // tag::deduplication-producer[]
+        var streamSystem = await StreamSystem.Create(
+            new StreamSystemConfig()
+        ).ConfigureAwait(false);
+
+        var deduplicatingProducer = await DeduplicatingProducer.Create( // <1>
+            new DeduplicatingProducerConfig(
+                streamSystem,
+                "my-stream", "my_producer_reference") { }
+        ).ConfigureAwait(false);
+
+        var message = new Message(Encoding.UTF8.GetBytes("hello")); // <2>
+        await deduplicatingProducer.Send(1, message).ConfigureAwait(false); // <3>
+        await deduplicatingProducer.Send(2, message).ConfigureAwait(false);
+        await deduplicatingProducer.Send(3, message).ConfigureAwait(false);
+
+        // deduplication is enabled, so this message will be skipped
+        await deduplicatingProducer.Send(1, message).ConfigureAwait(false); // <4>
+
+
+        await streamSystem.Close().ConfigureAwait(false);
+        // end::deduplication-producer[]
+    }
+
+    public static async Task DeduplicationLastID()
+    {
+        // tag::deduplication-queries-last-publishing-id[]
+        var streamSystem = await StreamSystem.Create(
+            new StreamSystemConfig()
+        ).ConfigureAwait(false);
+
+        var deduplicatingProducer = await DeduplicatingProducer.Create( // <1>
+            new DeduplicatingProducerConfig(
+                streamSystem,
+                "my-stream", "my_producer_reference") { }
+        ).ConfigureAwait(false);
+
+        var lastid = await deduplicatingProducer.GetLastPublishedId().ConfigureAwait(false); // <2>
+        var message = new Message(Encoding.UTF8.GetBytes("hello"));
+
+        await deduplicatingProducer.Send(lastid + 1, message).ConfigureAwait(false); // <3>
+        await deduplicatingProducer.Send(lastid + 2, message).ConfigureAwait(false);
+        await deduplicatingProducer.Send(lastid + 3, message).ConfigureAwait(false);
+        await streamSystem.Close().ConfigureAwait(false);
+        // end::deduplication-queries-last-publishing-id[]
+    }
+    
+    public static async Task ProducerSubEntryBatching()
+    {
+        // tag::producer-creation[]
+        var streamSystem = await StreamSystem.Create(
+            new StreamSystemConfig()
+        ).ConfigureAwait(false);
+
+        var producer = await Producer.Create( // <1>
+            new ProducerConfig(
+                streamSystem,
+                "my-stream") // <2>
+        ).ConfigureAwait(false);
+
+        await producer.Close().ConfigureAwait(false); // <3>
+        await streamSystem.Close().ConfigureAwait(false);
+        // end::producer-creation[]
     }
 }

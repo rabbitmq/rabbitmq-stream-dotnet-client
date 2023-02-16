@@ -328,9 +328,7 @@ Messages are not only made of a `byte[]` payload, we will see in
 they can also carry pre-defined and application properties.
 <2> Send the message. The method is asynchronous, internally the messages are buffered and sent in batch. Most of the time you can use this method.
 <3> Batch send is synchronous, there is not additional buffering. The messages are sent immediately. This method is useful when you want to control the number of the messages to sent is a single frame. Can be useful in case you need low latency.
-<4> Subentry batch send is synchronous, there is not additional buffering. The messages are sent immediately. The messages are compressed and assigned to a single publishingid. 
-It is useful when you want to compress the messages. For example logs or text messages.
-The client by default supports GZIP algorithm or None. Other algorithms can be added by implementing the `ICompression` interface.
+<4> Sub entry batching see <<sub-entry-batching-and-compression,Sub Entry Batching>> for more details. 
 <5> The `ConfirmationHandler` defines an asynchronous callback invoked
 when the client received from the broker the confirmation the message
 has been taken into account. The `ConfirmationHandler` is the place
@@ -492,18 +490,10 @@ the confirmation reaches the producer. Once reconnected, the producer will
 retry to send the same message, as it never received the confirmation. So the
 message will be persisted twice.
 
-Luckily RabbitMQ Stream can detect and filter out duplicated messages, based
-on 2 client-side elements: the _producer name_ and the _message publishing ID_.
+Luckily RabbitMQ Stream can detect and filter out duplicated messages. 
 
-[WARNING]
-.Deduplication is not guaranteed when using sub-entries batching
-====
-It is not possible to guarantee deduplication when
-<<sub-entry-batching-and-compression, sub-entry batching>> is in use.
-Sub-entry batching is disabled by default and it does not prevent from
-batching messages in a single publish frame, which can already provide
-very high throughput.
-====
+The client provides a specific class to handle deduplication: `DeduplicationProducer`.
+
 
 [[deduplication-multithreading]]
 [WARNING]
@@ -520,37 +510,22 @@ If you worry about performance, note it is possible to publish hundreds of thous
 
 ====== Setting the Name of a Producer
 
-The producer name is set when creating the producer instance, which automatically
-enables deduplication:
+The `DeduplicationProducer` requires the `Reference` as mandatory parameter. This parameter enables deduplication:
 
 .Naming a producer to enable message deduplication
 [source,java,indent=0]
 --------
-include::{test-examples}/ProducerUsage.java[tag=producer-with-name]
+include::{test-examples}/ProducerUsage.cs[tag=deduplication-producer]
 --------
-<1> Set a name for the producer
-<2> Disable confirm timeout check
+<1> Define the `DeduplicatingProducer` class with `Reference` property.
+<2> Get a message
+<3> Send three messages specifying the `publishingid` and the `Message`.
+<4> Send again the same message with the same `publishingid` and the `Message` will be skipped by the broker since the `publishingid` is already present with the `Reference` "my_producer_reference" .
 
 Thanks to the name, the broker will be able to track the messages it has persisted
-on a given stream for this producer. If the producer connection unexpectedly closes, it
-will automatically recover and retry outstanding messages. The broker will then
-filter out messages it has already received and persisted. No more duplicates!
+on a given stream for this producer. 
 
-[IMPORTANT]
-.Why setting `confirmTimeout` to 0 when using deduplication?
-====
-The point of deduplication is to avoid duplicates when retrying unconfirmed messages.
-But why retrying in the first place? To avoid _losing_ messages, that is enforcing
-_at-least-once_ semantics. If the client does not stubbornly retry messages and gives
-up at some point, messages can be lost, which maps to _at-most-once_ semantics. This
-is why the deduplication examples set the
-<<producer-confirm-timeout-configuration-entry,`confirmTimeout` setting>> to `Duration.ZERO`:
-to disable the background task that calls the confirmation callback for outstanding
-messages that time out. This way the client will do its best to retry messages
-until they are confirmed.
-====
-
-Consider the producer name a logical name. It should not be a random sequence that
+Consider the `Reference` a logical name. It should not be a random sequence that
 changes when the producer application is restarted. Names like `online-shop-order` or
 `online-shop-invoice` are better names than `3d235e79-047a-46a6-8c80-9d159d3e1b05`.
 There should be only one living instance of a producer with a given name on a given
@@ -558,21 +533,9 @@ stream at the same time.
 
 ====== Understanding Publishing ID
 
-The producer name is only one part of the deduplication mechanism, the other part
-is the _message publishing ID_. If the producer has a name, the client automatically
-assigns a publishing ID to each outbound message for the producer. The publishing ID
-is a strictly increasing sequence, starting at 0 and incremented for each message. The default
-publishing sequence is good enough for deduplication, but it is possible to
-assign a publishing ID to each message:
-
-.Using an explicit publishing ID
-[source,java,indent=0]
---------
-include::{test-examples}/ProducerUsage.java[tag=message-with-publishing-id]
---------
-<1> Set a publishing ID on a message
-
-There are a few rules to follow when using a custom publishing ID sequence:
+The `Reference` is only one part of the deduplication mechanism, the other part
+is the _message publishing ID_. The publishing ID
+is a strictly increasing sequence, starting at 0 and incremented for each message. 
 
  * the sequence should start at 0
  * the sequence must be strictly increasing
@@ -586,13 +549,6 @@ and so is not available when consuming the message. It is still possible to stor
 the value in the AMQP 1.0 message application properties or in an appropriate
 properties (e.g. `messageId`).
 
-[IMPORTANT]
-.Do not mix client-assigned and custom publishing ID
-====
-As soon as a producer name is set, message deduplication is enabled.
-It is then possible to let the producer assign a publishing ID to each
-message or assign custom publishing IDs. *Do one or the other, not both!*
-====
 
 ====== Restarting a Producer Where It Left Off
 
@@ -604,22 +560,20 @@ from the beginning of the file: there would no duplicate messages because the pr
 has a name and the application sets publishing IDs appropriately. Nevertheless,
 this is far from ideal, it would be much better to restart just after the last line
 the broker successfully confirmed. Fortunately this is possible thanks to
-the `Producer#getLastPublishing()` method, which returns the last publishing ID for a given
+the `DeduplicatingProducer#GetLastPublishedId()` method, which returns the last publishing ID for a given
 producer. As the publishing ID in this case is the line number, the application can
 easily scroll to the next line and restart publishing from there.
 
-The next snippet illustrates the use of `Producer#getLastPublishing()`:
+The next snippet illustrates the use of `DeduplicatingProducer#GetLastPublishedId()`:
 
 .Setting a producer where it left off
 [source,java,indent=0]
 --------
-include::{test-examples}/ProducerUsage.java[tag=producer-queries-last-publishing-id]
+include::{test-examples}/ProducerUsage.cs[tag=deduplication-queries-last-publishing-id]
 --------
-<1> Set a name for the producer
-<2> Disable confirm timeout check
-<3> Query last publishing ID for this producer and increment it
-<4> Scroll to the content for the next publishing ID
-<5> Set the message publishing
+<1> Get a `DeduplicatingProducer` instance
+<2> Query last publishing ID for this producer
+<3> Use the lastid and increment it
 
 [[sub-entry-batching-and-compression]]
 ===== Sub-Entry Batching and Compression
@@ -636,7 +590,7 @@ You can enable sub-entry batching by setting the `ProducerBuilder#subEntrySize` 
 .Enabling sub-entry batching
 [source,java,indent=0]
 --------
-include::{test-examples}/ProducerUsage.java[tag=producer-sub-entry-batching]
+include::{test-examples}/ProducerUsage.cs[tag=producer-sub-entry-batching]
 --------
 <1> Set batch size to 100 (the default)
 <2> Set sub-entry size to 10
