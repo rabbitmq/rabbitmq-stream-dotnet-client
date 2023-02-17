@@ -163,10 +163,10 @@ public class ProducerUsage
         await streamSystem.Close().ConfigureAwait(false);
         // end::deduplication-queries-last-publishing-id[]
     }
-    
+
     public static async Task ProducerSubEntryBatching()
     {
-        // tag::producer-creation[]
+        // tag::producer-sub-entry-batching[]
         var streamSystem = await StreamSystem.Create(
             new StreamSystemConfig()
         ).ConfigureAwait(false);
@@ -177,8 +177,12 @@ public class ProducerUsage
                 "my-stream") // <2>
         ).ConfigureAwait(false);
 
-        await producer.Close().ConfigureAwait(false); // <3>
+        var message = new Message(Encoding.UTF8.GetBytes("hello")); 
+        var list = new List<Message> {message, message, message}; // <1>
+        await producer.Send(list, CompressionType.Gzip).ConfigureAwait(false); // <2>
+
+        await producer.Close().ConfigureAwait(false);
         await streamSystem.Close().ConfigureAwait(false);
-        // end::producer-creation[]
+        // end::producer-sub-entry-batching[]
     }
 }
