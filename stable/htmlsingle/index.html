@@ -518,7 +518,6 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_guarantees">Guarantees</a></li>
 <li><a href="#stream-client-overview">Stream Client Overview</a></li>
 <li><a href="#stability-of-programming-interfaces">Stability of Programming Interfaces</a></li>
-<li><a href="#low-high-level-classes">Low Level and High Level classes</a></li>
 <li><a href="#_the_stream_net_client">The Stream .NET Client</a>
 <ul class="sectlevel2">
 <li><a href="#_setting_up_rabbitmq">Setting up RabbitMQ</a>
@@ -568,10 +567,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#specifying-an-offset">Specifying an Offset</a></li>
 <li><a href="#consumer-offset-tracking">Tracking the Offset for a Consumer</a>
 <ul class="sectlevel5">
-<li><a href="#consumer-automatic-offset-tracking">Automatic Offset Tracking</a></li>
 <li><a href="#consumer-manual-offset-tracking">Manual Offset Tracking</a></li>
 <li><a href="#_considerations_on_offset_tracking">Considerations On Offset Tracking</a></li>
-<li><a href="#consumer-subscription-listener">Subscription Listener</a></li>
 </ul>
 </li>
 <li><a href="#single-active-consumer">Single Active Consumer</a>
@@ -587,6 +584,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 </ul>
 </li>
+<li><a href="#low-high-level-classes">Low Level and High Level classes</a></li>
 </ul>
 </div>
 </div>
@@ -734,31 +732,6 @@ recovery and automatic re-subscription for consumers.</p>
 <p>Application Programming Interfaces (API): those are the ones used to write application logic. They include the interfaces and classes in the <code>RabbitMQ.Stream.Client.Reliable</code> package (e.g. <code>Producer</code>, <code>Consumer</code>, <code>Message</code>). These API constitute the main programming model of the client and will be kept as stable as possible.</p>
 </li>
 </ul>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="low-high-level-classes">Low Level and High Level classes</h2>
-<div class="sectionbody">
-<div class="ulist">
-<div class="title">NET stream client provides  two types of classes:</div>
-<ul>
-<li>
-<p>Low-level classes</p>
-</li>
-<li>
-<p>High-level classes</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>High-level classes (<code>Producer</code> and <code>Consumer</code>) are a wrapper around the Low-Level classes (<code>Raw*Producer</code> and <code>Raw*Consumer</code>)</p>
-</div>
-<div class="paragraph">
-<p><code>Producer</code> and <code>Consumer</code> classes handle auto-reconnection, metadata updates, super-stream and some low-level client behaviour.</p>
-</div>
-<div class="paragraph">
-<p>It would be best to use <code>Producer</code> and <code>Consumer</code> classes unless you need to handle the low-level details.</p>
 </div>
 </div>
 </div>
@@ -1218,14 +1191,13 @@ All the 100 messages are received
 <div class="sect3">
 <h4 id="_overview">Overview</h4>
 <div class="paragraph">
-<p>This section describes the API to connect to the RabbitMQ Stream Plugin, publish messages, and
-consume messages. There are 3 main interfaces:</p>
+<p>This section describes the API to connect to the RabbitMQ Stream Plugin, publish messages, and consume messages.
+There are 3 main interfaces:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>RabbitMQ.Stream.Client</code> for connecting to a node and optionally
-managing streams.</p>
+<p><code>RabbitMQ.Stream.Client</code> for connecting to a node and optionally managing streams.</p>
 </li>
 <li>
 <p><code>RabbitMQ.Stream.Client.Reliable.Producer</code> to publish messages.</p>
@@ -1242,8 +1214,8 @@ managing streams.</p>
 <h5 id="_creating_the_streamsystem">Creating the StreamSystem</h5>
 <div class="paragraph">
 <p>The environment is the main entry point to a node or a cluster of nodes. <code>Producer</code> and
-<code>Consumer</code> instances need an <code>StreamSystem</code> instance. Here is the simplest
-way to create an <code>StreamSystem</code> instance:</p>
+<code>Consumer</code> instances need an <code>StreamSystem</code> instance.
+Here is the simplest way to create an <code>StreamSystem</code> instance:</p>
 </div>
 <div class="listingblock">
 <div class="title">Creating an environment with all the defaults</div>
@@ -1270,15 +1242,15 @@ way to create an <code>StreamSystem</code> instance:</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>Note the streamSystem must be closed to release resources when it is no
-longer needed.</p>
+<p>Note the streamSystem must be closed to release resources when it is no longer needed.</p>
 </div>
 <div class="paragraph">
-<p>Consider the environment like a long-lived object. An application will usually
-create one <code>StreamSystem</code> instance when it starts up and close it when it exits.</p>
+<p>Consider the environment like a long-lived object.
+An application will usually create one <code>StreamSystem</code> instance when it starts up and close it when it exits.</p>
 </div>
 <div class="paragraph">
-<p>It is possible to use a multiple end-points to connect to a cluster of nodes. The:</p>
+<p>It is possible to use a multiple end-points to connect to a cluster of nodes.
+The:</p>
 </div>
 <div class="listingblock">
 <div class="title">Creating an streamSystem with multiple end-points</div>
@@ -1309,8 +1281,7 @@ create one <code>StreamSystem</code> instance when it starts up and close it whe
 </ol>
 </div>
 <div class="paragraph">
-<p>By specifying several endpoints, the system will try to connect to the first one, and
-will pick a new endpoint randomly in case of disconnection.</p>
+<p>By specifying several endpoints, the system will try to connect to the first one, and will pick a new endpoint randomly in case of disconnection.</p>
 </div>
 </div>
 <div class="sect4">
@@ -1507,10 +1478,9 @@ Applications can use this hook to ignore metadata hints and always use the load 
 <div class="sect4">
 <h5 id="_managing_streams">Managing Streams</h5>
 <div class="paragraph">
-<p>Streams are usually long-lived, centrally-managed entities, that is, applications
-are not supposed to create and delete them. It is nevertheless possible to create and
-delete stream with the <code>StreamSystem</code>. This comes in handy for development and testing
-purposes.</p>
+<p>Streams are usually long-lived, centrally-managed entities, that is, applications are not supposed to create and delete them.
+It is nevertheless possible to create and delete stream with the <code>StreamSystem</code>.
+This comes in handy for development and testing purposes.</p>
 </div>
 <div class="paragraph">
 <p>Streams are created with the <code>Environment#streamCreator()</code> method:</p>
@@ -1539,14 +1509,13 @@ purposes.</p>
 </ol>
 </div>
 <div class="paragraph">
-<p><code>StreamSystem.Create</code> is idempotent: trying to re-create a stream with the same name
-and same properties (e.g. maximum size, see below) will not throw an exception. In other words,
-you can be sure the stream has been created once <code>StreamSystem.Create</code> returns. Note it is
-not possible to create a stream with the same name as an existing stream but with different
-properties. Such a request will result in an exception.</p>
+<p><code>StreamSystem.Create</code> is idempotent: trying to re-create a stream with the same name and same properties (e.g. maximum size, see below) will not throw an exception.
+In other words, you can be sure the stream has been created once <code>StreamSystem.Create</code> returns.
+Note it is not possible to create a stream with the same name as an existing stream but with different properties.
+Such a request will result in an exception.</p>
 </div>
 <div class="paragraph">
-<p>Streams can be deleted with the <code>Environment#delete(String)</code> method:</p>
+<p>Streams can be deleted with the <code>StreamSystem#Delete(String)</code> method:</p>
 </div>
 <div class="listingblock">
 <div class="title">Deleting a stream</div>
@@ -1570,17 +1539,13 @@ properties. Such a request will result in an exception.</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>Note you should avoid stream churn (creating and deleting streams repetitively)
-as their creation and deletion imply some significant housekeeping on
-the server side (interactions with the file system, communication between nodes of the cluster).</p>
+<p>Note you should avoid stream churn (creating and deleting streams repetitively) as their creation and deletion imply some significant housekeeping on the server side (interactions with the file system, communication between nodes of the cluster).</p>
 </div>
-<div class="paragraph">
-<p><a id="limiting-the-size-of-a-stream"></a>It is also possible to limit the size of a stream
-when creating it. A stream
-is an append-only data structure and reading from it does not remove data.
-This means a stream can grow indefinitely. RabbitMQ Stream supports a
-size-based and time-based retention policies: once the stream reaches a given size
-or a given age, it is truncated (starting from the beginning).</p>
+<div id="limiting-the-size-of-a-stream" class="paragraph">
+<p>It is also possible to limit the size of a stream when creating it.
+A stream is an append-only data structure and reading from it does not remove data.
+This means a stream can grow indefinitely.
+RabbitMQ Stream supports a size-based and time-based retention policies: once the stream reaches a given size or a given age, it is truncated (starting from the beginning).</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -1591,9 +1556,8 @@ or a given age, it is truncated (starting from the beginning).</p>
 <td class="content">
 <div class="title">Limit the size of streams if appropriate!</div>
 <div class="paragraph">
-<p>Make sure to set up a retention policy on potentially large streams
-if you don&#8217;t want to saturate the storage devices of your servers. Keep
-in mind that this means some data will be erased!</p>
+<p>Make sure to set up a retention policy on potentially large streams if you don&#8217;t want to saturate the storage devices of your servers.
+Keep in mind that this means some data will be erased!</p>
 </div>
 </td>
 </tr>
@@ -1633,11 +1597,9 @@ in mind that this means some data will be erased!</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>The previous snippet mentions a segment size. RabbitMQ Stream does not store a stream
-in a big, single file, it uses segment files for technical reasons.
-A stream is truncated by deleting whole segment files (and not part of them)so
-the maximum size of a stream is usually significantly higher than the size of
-segment files. 500 MB is a reasonable segment file size to begin with.</p>
+<p>The previous snippet mentions a segment size.
+RabbitMQ Stream does not store a stream in a big, single file, it uses segment files for technical reasons.
+A stream is truncated by deleting whole segment files (and not part of them)so the maximum size of a stream is usually significantly higher than the size of segment files. 500 MB is a reasonable segment file size to begin with.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -1648,19 +1610,16 @@ segment files. 500 MB is a reasonable segment file size to begin with.</p>
 <td class="content">
 <div class="title">When does the broker enforce the retention policy?</div>
 <div class="paragraph">
-<p>The broker enforces the retention policy when the segments of a stream
-roll over, that is when the current segment has reached its maximum
-size and is closed in favor of a new one. This means the maximum segment
-size is a critical setting in the retention mechanism.</p>
+<p>The broker enforces the retention policy when the segments of a stream roll over, that is when the current segment has reached its maximum size and is closed in favor of a new one.
+This means the maximum segment size is a critical setting in the retention mechanism.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>RabbitMQ Stream also supports a time-based retention policy: segments get truncated
-when they reach a certain age. The following snippet
-illustrates how to set the time-based retention policy:</p>
+<p>RabbitMQ Stream also supports a time-based retention policy: segments get truncated when they reach a certain age.
+The following snippet illustrates how to set the time-based retention policy:</p>
 </div>
 <div class="listingblock">
 <div class="title">Setting a time-based retention policy when creating a stream</div>
@@ -1699,8 +1658,8 @@ illustrates how to set the time-based retention policy:</p>
 <div class="sect4">
 <h5 id="_creating_a_producer">Creating a Producer</h5>
 <div class="paragraph">
-<p>A <code>Producer</code> instance is created with <code>Producer.Create</code>. The only mandatory
-setting to specify is the stream to publish to:</p>
+<p>A <code>Producer</code> instance is created with <code>Producer.Create</code>.
+The only mandatory setting to specify is the stream to publish to:</p>
 </div>
 <div class="listingblock">
 <div class="title">Creating a producer from the environment</div>
@@ -1733,8 +1692,7 @@ await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">fals
 </ol>
 </div>
 <div class="paragraph">
-<p>Consider a <code>Producer</code> instance like a long-lived object, do not create one
-to send just one message.</p>
+<p>Consider a <code>Producer</code> instance like a long-lived object, do not create one to send just one message.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -1754,9 +1712,7 @@ Starting from version 1.2.0 the <code>Reference</code> field is deprecated.
 </table>
 </div>
 <div class="paragraph">
-<p>Internally, the <code>StreamSystem</code> will query the broker to find out about
-the topology of the stream and will create or re-use a connection to
-publish to the leader node of the stream.</p>
+<p>Internally, the <code>StreamSystem</code> will query the broker to find out about the topology of the stream and will create or re-use a connection to publish to the leader node of the stream.</p>
 </div>
 <div class="paragraph">
 <p>The following table sums up the main settings to create a <code>ProducerConfig</code>:</p>
@@ -1834,8 +1790,7 @@ This value is valid only for the <code>Send(Message)</code> method.</p></td>
 <h5 id="_sending_messages">Sending Messages</h5>
 <div class="paragraph">
 <p>Once a <code>Producer</code> has been created, it is possible to send a message with:
-- <code>Producer#send(Message)</code>,
-- <code>Producer#send(List&lt;Message&gt;)</code>
+- <code>Producer#send(Message)</code>, - <code>Producer#send(List&lt;Message&gt;)</code>
 - <code>Producer#send(List&lt;Message&gt; messages, CompressionType compressionType)</code>.
 snippet shows how to publish a message with a byte array payload:</p>
 </div>
@@ -1897,20 +1852,22 @@ Messages are not only made of a <code>byte[]</code> payload, we will see in
 they can also carry pre-defined and application properties.</p>
 </li>
 <li>
-<p>Send the message. The method is asynchronous, internally the messages are buffered and sent in batch. Most of the time you can use this method.</p>
+<p>Send the message.
+The method is asynchronous, internally the messages are buffered and sent in batch.
+Most of the time you can use this method.</p>
 </li>
 <li>
-<p>Batch send is synchronous, there is not additional buffering. The messages are sent immediately. This method is useful when you want to control the number of the messages to sent is a single frame. Can be useful in case you need low latency.</p>
+<p>Batch send is synchronous, there is not additional buffering.
+The messages are sent immediately.
+This method is useful when you want to control the number of the messages to sent is a single frame.
+Can be useful in case you need low latency.</p>
 </li>
 <li>
 <p>Sub entry batching see <a href="#sub-entry-batching-and-compression">Sub Entry Batching</a> for more details.</p>
 </li>
 <li>
-<p>The <code>ConfirmationHandler</code> defines an asynchronous callback invoked
-when the client received from the broker the confirmation the message
-has been taken into account. The <code>ConfirmationHandler</code> is the place
-for any logic on publishing confirmation, including
-re-publishing the message if it is negatively acknowledged.</p>
+<p>The <code>ConfirmationHandler</code> defines an asynchronous callback invoked when the client received from the broker the confirmation the message has been taken into account.
+The <code>ConfirmationHandler</code> is the place for any logic on publishing confirmation, including re-publishing the message if it is negatively acknowledged.</p>
 </li>
 </ol>
 </div>
@@ -2015,11 +1972,9 @@ re-publishing the message if it is negatively acknowledged.</p>
 <td class="content">
 <div class="title">Keep the confirmation callback as short as possible</div>
 <div class="paragraph">
-<p>The confirmation callback should be kept as short as possible
-to avoid blocking the connection thread. Not doing so can
-make the <code>StreamSystem</code>, <code>Producer</code>, <code>Consumer</code> instances sluggish
-or even block them. Any long processing should be done in
-a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;.)</code>).</p>
+<p>The confirmation callback should be kept as short as possible to avoid blocking the connection thread.
+Not doing so can make the <code>StreamSystem</code>, <code>Producer</code>, <code>Consumer</code> instances sluggish or even block them.
+Any long processing should be done in a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;.)</code>).</p>
 </div>
 </td>
 </tr>
@@ -2034,7 +1989,8 @@ a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;.)</co
 <td class="content">
 <div class="title">Mixing different send methods</div>
 <div class="paragraph">
-<p>You can mix different send methods. For example you can send a message with <code>send(Message)</code> and then send a batch of messages with <code>send(List&lt;Message&gt;)</code>.
+<p>You can mix different send methods.
+For example you can send a message with <code>send(Message)</code> and then send a batch of messages with <code>send(List&lt;Message&gt;)</code>.
 Avoid to sent the <code>Refence</code> property in the <code>ProducerConfig</code> it enables the deduplication and you could have unexpected results.</p>
 </div>
 <div class="paragraph">
@@ -2048,9 +2004,8 @@ Avoid to sent the <code>Refence</code> property in the <code>ProducerConfig</cod
 <div class="sect4">
 <h5 id="working-with-complex-messages">Working with Complex Messages</h5>
 <div class="paragraph">
-<p>The publishing example above showed that messages are made of
-a byte array payload, but it did not go much further. Messages in RabbitMQ Stream
-can actually be more sophisticated, as they comply to the
+<p>The publishing example above showed that messages are made of a byte array payload, but it did not go much further.
+Messages in RabbitMQ Stream can actually be more sophisticated, as they comply to the
 <a href="https://www.amqp.org/resources/specifications">AMQP 1.0 message format</a>.</p>
 </div>
 <div class="paragraph">
@@ -2059,8 +2014,7 @@ can actually be more sophisticated, as they comply to the
 <div class="ulist">
 <ul>
 <li>
-<p>properties: <em>a defined set of standard properties of the message</em> (e.g.
-message ID, correlation ID, content type, etc).</p>
+<p>properties: <em>a defined set of standard properties of the message</em> (e.g. message ID, correlation ID, content type, etc).</p>
 </li>
 <li>
 <p>application properties: a set of arbitrary key/value pairs.</p>
@@ -2117,7 +2071,8 @@ await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">fals
 <p>Set the Application properties</p>
 </li>
 <li>
-<p>Set the message Properties. You usually don&#8217;t need to set the properties.</p>
+<p>Set the message Properties.
+You usually don&#8217;t need to set the properties.</p>
 </li>
 </ol>
 </div>
@@ -2149,21 +2104,17 @@ await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">fals
 <td class="content">
 <div class="title">Is RabbitMQ Stream based on AMQP 1.0?</div>
 <div class="paragraph">
-<p>AMQP 1.0 is a standard that defines <em>an efficient binary peer-to-peer
-protocol for transporting messages between two processes over a network</em>.
+<p>AMQP 1.0 is a standard that defines <em>an efficient binary peer-to-peer protocol for transporting messages between two processes over a network</em>.
 It also defines <em>an abstract message format, with concrete standard encoding</em>.
-This is only the latter part that RabbitMQ Stream uses. The AMQP 1.0 protocol is not used,
-only AMQP 1.0 encoded messages are wrapped into the RabbitMQ Stream binary protocol.</p>
+This is only the latter part that RabbitMQ Stream uses.
+The AMQP 1.0 protocol is not used, only AMQP 1.0 encoded messages are wrapped into the RabbitMQ Stream binary protocol.</p>
 </div>
 <div class="paragraph">
-<p>The actual AMQP 1.0 message encoding and decoding happen on the client side, the
-RabbitMQ Stream plugin stores only bytes, it has no idea that AMQP 1.0 message format
-is used.</p>
+<p>The actual AMQP 1.0 message encoding and decoding happen on the client side, the RabbitMQ Stream plugin stores only bytes, it has no idea that AMQP 1.0 message format is used.</p>
 </div>
 <div class="paragraph">
-<p>AMQP 1.0 message format was chosen because of its flexibility and its advanced
-type system. It provides good interoperability, which allows streams
-to be accessed as AMQP 0-9-1 queues, without data loss.</p>
+<p>AMQP 1.0 message format was chosen because of its flexibility and its advanced type system.
+It provides good interoperability, which allows streams to be accessed as AMQP 0-9-1 queues, without data loss.</p>
 </div>
 </td>
 </tr>
@@ -2173,13 +2124,11 @@ to be accessed as AMQP 0-9-1 queues, without data loss.</p>
 <div class="sect4">
 <h5 id="outbound-message-deduplication">Message Deduplication</h5>
 <div class="paragraph">
-<p>RabbitMQ Stream provides publisher confirms to avoid losing messages: once
-the broker has persisted a message it sends a confirmation for this message.
-But this can lead to duplicate messages: imagine the connection closes
-because of a network glitch after the message has been persisted but <em>before</em>
-the confirmation reaches the producer. Once reconnected, the producer will
-retry to send the same message, as it never received the confirmation. So the
-message will be persisted twice.</p>
+<p>RabbitMQ Stream provides publisher confirms to avoid losing messages: once the broker has persisted a message it sends a confirmation for this message.
+But this can lead to duplicate messages: imagine the connection closes because of a network glitch after the message has been persisted but <em>before</em>
+the confirmation reaches the producer.
+Once reconnected, the producer will retry to send the same message, as it never received the confirmation.
+So the message will be persisted twice.</p>
 </div>
 <div class="paragraph">
 <p>Luckily RabbitMQ Stream can detect and filter out duplicated messages.</p>
@@ -2212,7 +2161,8 @@ If you worry about performance, note it is possible to publish hundreds of thous
 <div class="sect5">
 <h6 id="_use_deduplicationproducer">Use DeduplicationProducer</h6>
 <div class="paragraph">
-<p>The <code>DeduplicationProducer</code> requires the <code>Reference</code> as mandatory parameter. This parameter enables deduplication:</p>
+<p>The <code>DeduplicationProducer</code> requires the <code>Reference</code> as mandatory parameter.
+This parameter enables deduplication:</p>
 </div>
 <div class="listingblock">
 <div class="title">Naming a producer to enable message deduplication</div>
@@ -2256,23 +2206,21 @@ await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">fals
 </ol>
 </div>
 <div class="paragraph">
-<p>Thanks to the name, the broker will be able to track the messages it has persisted
-on a given stream for this producer.</p>
+<p>Thanks to the name, the broker will be able to track the messages it has persisted on a given stream for this producer.</p>
 </div>
 <div class="paragraph">
-<p>Consider the <code>Reference</code> a logical name. It should not be a random sequence that
-changes when the producer application is restarted. Names like <code>online-shop-order</code> or
+<p>Consider the <code>Reference</code> a logical name.
+It should not be a random sequence that changes when the producer application is restarted.
+Names like <code>online-shop-order</code> or
 <code>online-shop-invoice</code> are better names than <code>3d235e79-047a-46a6-8c80-9d159d3e1b05</code>.
-There should be only one living instance of a producer with a given name on a given
-stream at the same time.</p>
+There should be only one living instance of a producer with a given name on a given stream at the same time.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="_understanding_publishing_id">Understanding Publishing ID</h6>
 <div class="paragraph">
-<p>The <code>Reference</code> is only one part of the deduplication mechanism, the other part
-is the <em>message publishing ID</em>. The publishing ID
-is a strictly increasing sequence, starting at 0 and incremented for each message.</p>
+<p>The <code>Reference</code> is only one part of the deduplication mechanism, the other part is the <em>message publishing ID</em>.
+The publishing ID is a strictly increasing sequence, starting at 0 and incremented for each message.</p>
 </div>
 <div class="ulist">
 <ul>
@@ -2288,30 +2236,22 @@ is a strictly increasing sequence, starting at 0 and incremented for each messag
 </ul>
 </div>
 <div class="paragraph">
-<p>A custom publishing ID sequence has usually a meaning: it can be the line number of a file
-or the primary key in a database.</p>
+<p>A custom publishing ID sequence has usually a meaning: it can be the line number of a file or the primary key in a database.</p>
 </div>
 <div class="paragraph">
-<p>Note the publishing ID is not part of the message: it is not stored with the message
-and so is not available when consuming the message. It is still possible to store
-the value in the AMQP 1.0 message application properties or in an appropriate
-properties (e.g. <code>messageId</code>).</p>
+<p>Note the publishing ID is not part of the message: it is not stored with the message and so is not available when consuming the message.
+It is still possible to store the value in the AMQP 1.0 message application properties or in an appropriate properties (e.g. <code>messageId</code>).</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="_restarting_a_producer_where_it_left_off">Restarting a Producer Where It Left Off</h6>
 <div class="paragraph">
-<p>Using a custom publishing sequence is even more useful to restart a producer where it left
-off. Imagine a scenario whereby the producer is sending a message for each line in a file and
-the application uses the line number as the publishing ID. If the application restarts
-because of some necessary maintenance or even a crash, the producer can restart
-from the beginning of the file: there would no duplicate messages because the producer
-has a name and the application sets publishing IDs appropriately. Nevertheless,
-this is far from ideal, it would be much better to restart just after the last line
-the broker successfully confirmed. Fortunately this is possible thanks to
-the <code>DeduplicatingProducer#GetLastPublishedId()</code> method, which returns the last publishing ID for a given
-producer. As the publishing ID in this case is the line number, the application can
-easily scroll to the next line and restart publishing from there.</p>
+<p>Using a custom publishing sequence is even more useful to restart a producer where it left off.
+Imagine a scenario whereby the producer is sending a message for each line in a file and the application uses the line number as the publishing ID.
+If the application restarts because of some necessary maintenance or even a crash, the producer can restart from the beginning of the file: there would no duplicate messages because the producer has a name and the application sets publishing IDs appropriately.
+Nevertheless, this is far from ideal, it would be much better to restart just after the last line the broker successfully confirmed.
+Fortunately this is possible thanks to the <code>DeduplicatingProducer#GetLastPublishedId()</code> method, which returns the last publishing ID for a given producer.
+As the publishing ID in this case is the line number, the application can easily scroll to the next line and restart publishing from there.</p>
 </div>
 <div class="paragraph">
 <p>The next snippet illustrates the use of <code>DeduplicatingProducer#GetLastPublishedId()</code>:</p>
@@ -2480,7 +2420,42 @@ So when you set up sub-entry batching and compression in your publishers, the co
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java"><span class="type">class</span> <span class="class">StreamLz4Codec</span> : ICompressionCodec // <b class="conum">(1)</b>
 {
-    <span class="directive">private</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt; _compressedReadOnlySequence;</code></pre>
+
+
+
+    <span class="directive">private</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt; _compressedReadOnlySequence;
+    <span class="directive">public</span> <span class="type">void</span> Compress(<span class="predefined-type">List</span>&lt;Message&gt; messages)
+    {
+        MessagesCount = messages.Count;
+        UnCompressedSize = messages.Sum(msg =&gt; <span class="integer">4</span> + msg.Size);
+        <span class="type">var</span> messagesSource = <span class="keyword">new</span> Span&lt;<span class="type">byte</span>&gt;(<span class="keyword">new</span> <span class="type">byte</span>[UnCompressedSize]);
+        <span class="type">var</span> offset = <span class="integer">0</span>;
+        foreach (<span class="type">var</span> msg in messages)
+        {
+            offset += WriteUInt32(messagesSource.Slice(offset), (uint)msg.Size);
+            offset += msg.Write(messagesSource.Slice(offset));
+        }
+
+        using <span class="type">var</span> source = <span class="keyword">new</span> MemoryStream(messagesSource.ToArray());
+        using <span class="type">var</span> destination = <span class="keyword">new</span> MemoryStream();
+        <span class="type">var</span> settings = <span class="keyword">new</span> LZ4EncoderSettings {ChainBlocks = <span class="predefined-constant">false</span>};
+        using (<span class="type">var</span> target = LZ4Stream.Encode(destination, settings, <span class="predefined-constant">false</span>))
+        {
+            source.CopyTo(target);
+        }
+
+        _compressedReadOnlySequence = <span class="keyword">new</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt;(destination.ToArray());
+    }
+
+    <span class="directive">public</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt; UnCompress(ReadOnlySequence&lt;<span class="type">byte</span>&gt; source, uint dataLen, uint unCompressedDataSize)
+    {
+        using <span class="type">var</span> target = <span class="keyword">new</span> MemoryStream();
+        using (<span class="type">var</span> sourceDecode = LZ4Stream.Decode(<span class="keyword">new</span> MemoryStream(source.ToArray())))
+        {
+            sourceDecode.CopyTo(target);
+        }
+        <span class="keyword">return</span> <span class="keyword">new</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt;(target.ToArray());
+    }</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2529,10 +2504,9 @@ await producer.Send(list, CompressionType.Lz4).ConfigureAwait(<span class="prede
 <div class="sect4">
 <h5 id="_creating_a_consumer">Creating a Consumer</h5>
 <div class="paragraph">
-<p>A <code>Consumer</code> instance is created with <code>Consumer.Create(..)</code>. The main
-settings are the stream to consume from, the place in the stream to start
-consuming from (the <em>offset</em>), and a callback when a message is received
-(the <code>MessageHandler</code>). The next snippet shows how to create a <code>Consumer</code>:</p>
+<p>A <code>Consumer</code> instance is created with <code>Consumer.Create(..)</code>.
+The main settings are the stream to consume from, the place in the stream to start consuming from (the <em>offset</em>), and a callback when a message is received (the <code>MessageHandler</code>).
+The next snippet shows how to create a <code>Consumer</code>:</p>
 </div>
 <div class="listingblock">
 <div class="title">Creating a consumer</div>
@@ -2546,15 +2520,14 @@ consuming from (the <em>offset</em>), and a callback when a message is received
         streamSystem,
         <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
     {
-           
-        <span class="comment">// OffsetSpec = new </span>
+        <span class="comment">// Reference = </span>
         OffsetSpec = <span class="keyword">new</span> OffsetTypeTimestamp(), // <b class="conum">(3)</b>
         MessageHandler = async (stream, consumer, context, message) =&gt; // <b class="conum">(4)</b>
         {
-            Console.WriteLine(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">Received message: {Encoding.UTF8.GetString(message.Data.Contents)}</span><span class="delimiter">&quot;</span></span>); 
+            Console.WriteLine(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">Received message: {Encoding.UTF8.GetString(message.Data.Contents)}</span><span class="delimiter">&quot;</span></span>);
             await Task.CompletedTask.ConfigureAwait(<span class="predefined-constant">false</span>);
-        } 
-    } 
+        }
+    }
 ).ConfigureAwait(<span class="predefined-constant">false</span>);
 
 await consumer.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(5)</b>
@@ -2592,11 +2565,9 @@ await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">fals
 <td class="content">
 <div class="title">Keep the message processing callback as short as possible</div>
 <div class="paragraph">
-<p>The message processing callback should be kept as short as possible
-to avoid blocking the connection thread. Not doing so can
-make the <code>StreamSystem</code>, <code>Producer</code>, <code>Consumer</code> instances sluggish
-or even block them. Any long processing should be done in
-a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;)</code>).</p>
+<p>The message processing callback should be kept as short as possible to avoid blocking the connection thread.
+Not doing so can make the <code>StreamSystem</code>, <code>Producer</code>, <code>Consumer</code> instances sluggish or even block them.
+Any long processing should be done in a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;)</code>).</p>
 </div>
 </td>
 </tr>
@@ -2677,9 +2648,8 @@ a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;)</cod
 <div class="paragraph">
 <p>A consumer starts consuming at the very end of a stream by default (<code>next</code> offset).
 This means the consumer will receive messages as soon as a producer publishes to the stream.
-<em>This also means that if no producers are currently publishing to the stream, the
-consumer will stay idle, waiting for new messages to come in</em>. See the <a href="#specifying-an-offset">offset section</a> to find out more about the different
-types of offset specification.</p>
+<em>This also means that if no producers are currently publishing to the stream, the consumer will stay idle, waiting for new messages to come in</em>.
+See the <a href="#specifying-an-offset">offset section</a> to find out more about the different types of offset specification.</p>
 </div>
 </td>
 </tr>
@@ -2695,29 +2665,24 @@ The possible values for the offset parameter are the following:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>OffsetTypeFirst()</code>: starting from the first available offset. If
-the stream has not been <a href="#limiting-the-size-of-a-stream">truncated</a>, this
-means the beginning of the stream (offset 0).</p>
+<p><code>OffsetTypeFirst()</code>: starting from the first available offset.
+If the stream has not been <a href="#limiting-the-size-of-a-stream">truncated</a>, this means the beginning of the stream (offset 0).</p>
 </li>
 <li>
-<p><code>OffsetTypeLast()</code>: starting from the end of the stream and returning
-the last <a href="#chunk-definition">chunk</a> of messages immediately (if the stream is not empty).</p>
+<p><code>OffsetTypeLast()</code>: starting from the end of the stream and returning the last <a href="#chunk-definition">chunk</a> of messages immediately (if the stream is not empty).</p>
 </li>
 <li>
-<p><code>OffsetTypeNext()</code>: starting from the next offset to be written. Contrary
-to <code>OffsetSpecification.last()</code>, consuming with <code>OffsetSpecification.next()</code>
-will not return anything if no-one is publishing to the stream. The broker will start
-sending messages to the consumer when messages are published to the stream.</p>
+<p><code>OffsetTypeNext()</code>: starting from the next offset to be written.
+Contrary to <code>OffsetTypeLat()</code>, consuming with <code>OffsetTypeNext()</code>
+will not return anything if no-one is publishing to the stream.
+The broker will start sending messages to the consumer when messages are published to the stream.</p>
 </li>
 <li>
-<p><code>OffsetTypeOffset(offset)</code>: starting from the specified offset. 0 means consuming
-from the beginning of the stream (first messages). The client
-can also specify any number, for example the offset where it left off
-in a previous incarnation of the application.</p>
+<p><code>OffsetTypeOffset(offset)</code>: starting from the specified offset. 0 means consuming from the beginning of the stream (first messages).
+The client can also specify any number, for example the offset where it left off in a previous incarnation of the application.</p>
 </li>
 <li>
-<p><code>OffsetTypeTimestamp(timestamp)</code>: starting from the messages stored
-after the specified timestamp.
+<p><code>OffsetTypeTimestamp(timestamp)</code>: starting from the messages stored after the specified timestamp.
 Note consumers can receive messages published a bit before the specified timestamp.
 Application code can filter out those messages if necessary.</p>
 </li>
@@ -2732,18 +2697,16 @@ Application code can filter out those messages if necessary.</p>
 <td class="content">
 <div class="title">What is a chunk of messages?</div>
 <div class="paragraph">
-<p>A chunk is simply a batch of messages. This is the storage and transportation
-unit used in RabbitMQ Stream, that is messages are stored contiguously in a chunk
-and they are delivered as part of a chunk. A chunk can be made of one to several
-thousands of messages, depending on the ingress.</p>
+<p>A chunk is simply a batch of messages.
+This is the storage and transportation unit used in RabbitMQ Stream, that is messages are stored contiguously in a chunk and they are delivered as part of a chunk.
+A chunk can be made of one to several thousands of messages, depending on the ingress.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>The following figure shows the different offset specifications in a stream
-made of 2 chunks:</p>
+<p>The following figure shows the different offset specifications in a stream made of 2 chunks:</p>
 </div>
 <div class="literalblock">
 <div class="title">Offset specifications in a stream made of 2 chunks</div>
@@ -2778,132 +2741,62 @@ All of this without an extra datastore, as the broker stores the offset tracking
 <div class="ulist">
 <ul>
 <li>
-<p>the consumer must have a <strong>name</strong>. The name is set with <code>ConsumerBuilder#name(String)</code>. The name
-can be any value (under 256 characters) and is expected to be unique (from the application
-point of view). Note neither the client library, nor the broker
-enforces uniqueness of the name: if 2 <code>Consumer</code> Java instances share the same name, their
-offset tracking will likely be interleaved, which applications usually do not expect.</p>
+<p>the consumer must have a <strong>name</strong>.
+The name is set with <code>ConsumerConfig#Reference</code>.
+The name can be any value (under 256 characters) and is expected to be unique (from the application point of view).
+Note neither the client library, nor the broker enforces uniqueness of the name: if 2 <code>Consumer</code> .NET instances share the same name, their offset tracking will likely be interleaved, which applications usually do not expect.</p>
 </li>
 <li>
-<p>the consumer must periodically <strong>store the offset</strong> it has reached so far. The way
-offsets are stored depends on the tracking strategy: automatic or manual.</p>
+<p>the consumer must periodically <strong>store the offset</strong> it has reached so far.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>Whatever tracking strategy you use, <strong>a consumer must have a name to be able to store offsets</strong>.</p>
-</div>
-<div class="sect5">
-<h6 id="consumer-automatic-offset-tracking">Automatic Offset Tracking</h6>
-<div class="paragraph">
-<p>The following snippet shows how to enable automatic tracking with the defaults:</p>
-</div>
-<div class="listingblock">
-<div class="title">Using automatic tracking strategy with the defaults</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<ol>
-<li>
-<p>Set the consumer name (mandatory for offset tracking)</p>
-</li>
-<li>
-<p>Use automatic tracking strategy with defaults</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>The automatic tracking strategy has the following available settings:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>message count before storage</strong>: the client will store the offset
-after the specified number of messages, right after the execution
-of the message handler. <em>The default is every 10,000 messages</em>.</p>
-</li>
-<li>
-<p><strong>flush interval</strong>: the client will make sure to store the last received offset
-at the specified interval. This avoids having pending, not stored offsets in
-case of inactivity. <em>The default is 5 seconds</em>.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Those settings are configurable, as shown in the following snippet:</p>
-</div>
-<div class="listingblock">
-<div class="title">Configuring the automatic tracking strategy</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<ol>
-<li>
-<p>Set the consumer name (mandatory for offset tracking)</p>
-</li>
-<li>
-<p>Use automatic tracking strategy</p>
-</li>
-<li>
-<p>Store every 50,000 messages</p>
-</li>
-<li>
-<p>Make sure to store offset at least every 10 seconds</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Note the automatic tracking is the default tracking strategy, so if you are fine
-with its defaults, it is enabled as soon as you specify a name
-for the consumer:</p>
-</div>
-<div class="listingblock">
-<div class="title">Setting only the consumer name to enable automatic tracking</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<ol>
-<li>
-<p>Set only the consumer name to enable automatic tracking with defaults</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Automatic tracking is simple and provides good guarantees. It is nevertheless
-possible to have more fine-grained control over offset tracking by using
-manual tracking.</p>
-</div>
+<p>Whatever tracking strategy you use, <strong>a consumer must have a <code>Reference</code> to be able to store offsets</strong>.</p>
 </div>
 <div class="sect5">
 <h6 id="consumer-manual-offset-tracking">Manual Offset Tracking</h6>
 <div class="paragraph">
-<p>The manual tracking strategy lets the developer in charge of storing offsets
-whenever they want, not only after a given number of messages has been received
-and supposedly processed, like automatic tracking does.</p>
+<p>The manual tracking strategy lets the developer in charge of storing offsets whenever they want, not only after a given number of messages has been received and supposedly processed, like automatic tracking does.</p>
 </div>
 <div class="paragraph">
-<p>The following snippet shows how to enable manual tracking and how to store
-the offset at some point:</p>
+<p>The following snippet shows how to enable manual tracking and how to store the offset at some point:</p>
 </div>
 <div class="listingblock">
 <div class="title">Using manual tracking with defaults</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"></code></pre>
+<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
+    <span class="keyword">new</span> StreamSystemConfig()
+).ConfigureAwait(<span class="predefined-constant">false</span>);
+
+<span class="type">var</span> consumed = <span class="integer">0</span>;
+<span class="type">var</span> consumer = await Consumer.Create(
+    <span class="keyword">new</span> ConsumerConfig(
+        streamSystem,
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+    {
+        <span class="predefined-type">Reference</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">my-reference</span><span class="delimiter">&quot;</span></span>, // <b class="conum">(1)</b>
+        MessageHandler = async (stream, consumer, context, message) =&gt;
+        {
+            <span class="keyword">if</span> (consumed++ % <span class="integer">10000</span> == <span class="integer">0</span>)
+            {
+                await consumer.StoreOffset(context.Offset).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+            }
+
+            Console.WriteLine(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">Received message: {Encoding.UTF8.GetString(message.Data.Contents)}</span><span class="delimiter">&quot;</span></span>);
+            await Task.CompletedTask.ConfigureAwait(<span class="predefined-constant">false</span>);
+        }
+    }
+).ConfigureAwait(<span class="predefined-constant">false</span>);
+
+await consumer.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(5)</b>
+await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
 <ol>
 <li>
-<p>Set the consumer name (mandatory for offset tracking)</p>
-</li>
-<li>
-<p>Use manual tracking with defaults</p>
+<p>Set the consumer Reference (mandatory for offset tracking)</p>
 </li>
 <li>
 <p>Store the current offset on some condition</p>
@@ -2911,167 +2804,32 @@ the offset at some point:</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>Manual tracking has only one setting: the <strong>check interval</strong>. The client checks
-that the last requested stored offset has been actually stored at the
-specified interval. <em>The default check interval is 5 seconds</em>.</p>
-</div>
-<div class="paragraph">
-<p>The following snippet shows the configuration of manual tracking:</p>
-</div>
-<div class="listingblock">
-<div class="title">Configuring manual tracking strategy</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<ol>
-<li>
-<p>Set the consumer name (mandatory for offset tracking)</p>
-</li>
-<li>
-<p>Use manual tracking with defaults</p>
-</li>
-<li>
-<p>Check last requested offset every 10 seconds</p>
-</li>
-<li>
-<p>Store the current offset on some condition</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>The snippet above uses <code>MessageHandler.Context#storeOffset()</code> to store at the
-offset of the current message, but it is possible to store anywhere
-in the stream with <code>MessageHandler.Context#consumer()#store(long)</code> or
-simply <code>Consumer#store(long)</code>.</p>
+<p>The snippet above uses <code>consumer.StoreOffset(context.Offset)</code> to store at the offset of the current message.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="_considerations_on_offset_tracking">Considerations On Offset Tracking</h6>
 <div class="paragraph">
 <p><em>When to store offsets?</em> Avoid storing offsets too often or, worse, for each message.
-Even though offset tracking is a small and fast operation, it will
-make the stream grow unnecessarily, as the broker persists offset
-tracking entries in the stream itself.</p>
+Even though offset tracking is a small and fast operation, it will make the stream grow unnecessarily, as the broker persists offset tracking entries in the stream itself.</p>
 </div>
 <div class="paragraph">
-<p>A good rule of thumb is to store the offset every few thousands
-of messages. Of course, when the consumer will restart consuming in a new incarnation, the
-last tracked offset may be a little behind the very last message the previous incarnation
-actually processed, so the consumer may see some messages that have been already processed.</p>
+<p>A good rule of thumb is to store the offset every few thousands of messages.
+Of course, when the consumer will restart consuming in a new incarnation, the last tracked offset may be a little behind the very last message the previous incarnation actually processed, so the consumer may see some messages that have been already processed.</p>
 </div>
 <div class="paragraph">
-<p>A solution to this problem is to make sure processing is idempotent or filter out the
-last duplicated messages.</p>
+<p>A solution to this problem is to make sure processing is idempotent or filter out the last duplicated messages.</p>
 </div>
 <hr>
 <div class="paragraph">
 <p><em>Is the offset a reliable absolute value?</em> Message offsets may not be contiguous.
-This implies that the message at offset 500 in a stream may
-not be the 501 message in the stream (offsets start at 0).
-There can be different types of entries in a stream storage, a message is
-just one of them. For example, storing an offset creates an offset tracking
-entry, which has its own offset.</p>
+This implies that the message at offset 500 in a stream may not be the 501 message in the stream (offsets start at 0).
+There can be different types of entries in a stream storage, a message is just one of them.
+For example, storing an offset creates an offset tracking entry, which has its own offset.</p>
 </div>
 <div class="paragraph">
-<p>This means one must be careful when basing some decision on offset values, like
-a modulo to perform an operation every X messages. As the message offsets have
-no guarantee to be contiguous, the operation may not happen exactly every X messages.</p>
-</div>
-</div>
-<div class="sect5">
-<h6 id="consumer-subscription-listener">Subscription Listener</h6>
-<div class="paragraph">
-<p>The client provides a <code>SubscriptionListener</code> interface callback to add behavior before a subscription is created.
-This callback can be used to customize the offset the client library computed for the subscription.
-The callback is called when the consumer is first created and when the client has to re-subscribe (e.g. after a disconnection or a topology change).</p>
-</div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Warning</div>
-</td>
-<td class="content">
-This API is <strong>experimental</strong>, it is subject to change.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>It is possible to use the callback to get the last processed offset from an external store, that is not using the server-side offset tracking feature RabbitMQ Stream provides.
-The following code snippet shows how this can be done (note the interaction with the external store is not detailed):</p>
-</div>
-<div class="listingblock">
-<div class="title">Using an external store for offset tracking with a subscription listener</div>
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"></code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<ol>
-<li>
-<p>Set subscription listener</p>
-</li>
-<li>
-<p>Get offset from external store</p>
-</li>
-<li>
-<p>Set offset to use for the subscription</p>
-</li>
-<li>
-<p>Store the offset in the external store after processing</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>When using an external store for offset tracking, it is no longer necessary to set a name and an offset strategy, as these only apply when server-side offset tracking is in use.</p>
-</div>
-<div class="paragraph">
-<p>Using a subscription listener can also be useful to have more accurate offset tracking on re-subscription, at the cost of making the application code slightly more complex.
-This requires a good understanding on how and when subscription occurs in the client, and so when the subscription listener is called:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>for a consumer with no name (server-side offset tracking <em>disabled</em>)</p>
-<div class="ulist">
-<ul>
-<li>
-<p>on the first subscription (when the consumer is created): the offset specification is the one specified with <code>ConsumerBuilder#offset(OffsetSpecification)</code>, the default being <code>OffsetSpecification#next()</code></p>
-</li>
-<li>
-<p>on re-subscription (after a disconnection or topology change): the offset specification is the offset of the last dispatched message</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>for a consumer with a name (server-side offset tracking <em>enabled</em>)</p>
-<div class="ulist">
-<ul>
-<li>
-<p>on the first subscription (when the consumer is created): the server-side stored offset (if any) overrides the value specified with <code>ConsumerBuilder#offset(OffsetSpecification)</code></p>
-</li>
-<li>
-<p>on re-subscription (after a disconnection or topology change): the server-side stored offset is used</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The subscription listener comes in handy on re-subscription.
-The application can track the last processed offset in-memory, with an <code>AtomicLong</code> for example.
-The application knows exactly when a message is processed and updates its in-memory tracking accordingly, whereas the value computed by the client may not be perfectly appropriate on re-subscription.</p>
-</div>
-<div class="paragraph">
-<p>Let&#8217;s take the example of a named consumer with an offset tracking strategy that is lagging because of bad timing and a long flush interval.
-When a glitch happens and triggers the re-subscription, the server-side stored offset can be quite behind what the application actually processed.
-Using this server-side stored offset can lead to duplicates, whereas using the in-memory, application-specific offset tracking variable is more accurate.
-A custom <code>SubscriptionListener</code> lets the application developer uses what&#8217;s best for the application if the computed value is not optimal.</p>
+<p>This means one must be careful when basing some decision on offset values, like a modulo to perform an operation every X messages.
+As the message offsets have no guarantee to be contiguous, the operation may not happen exactly every X messages.</p>
 </div>
 </div>
 </div>
@@ -3194,13 +2952,23 @@ We end up with 3 <code>app-1</code> consumers and 3 <code>app-2</code> consumers
 <div class="listingblock">
 <div class="title">Enabling single active consumer</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"></code></pre>
+<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
+    <span class="keyword">new</span> StreamSystemConfig()
+).ConfigureAwait(<span class="predefined-constant">false</span>);
+
+<span class="type">var</span> consumer = await Consumer.Create(
+    <span class="keyword">new</span> ConsumerConfig(
+        streamSystem,
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+    {
+        <span class="predefined-type">Reference</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">my-reference</span><span class="delimiter">&quot;</span></span>, // <b class="conum">(1)</b>
+        IsSingleActiveConsumer = <span class="predefined-constant">true</span>, // <b class="conum">(2)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
 <ol>
 <li>
-<p>Set the consumer name (mandatory to enable single active consumer)</p>
+<p>Set the <code>Reference</code> name (mandatory to enable single active consumer)</p>
 </li>
 <li>
 <p>Enable single active consumer</p>
@@ -3209,19 +2977,14 @@ We end up with 3 <code>app-1</code> consumers and 3 <code>app-2</code> consumers
 </div>
 <div class="paragraph">
 <p>With the configuration above, the consumer will take part in the <code>application-1</code> group on the <code>my-stream</code> stream.
-If the consumer instance is the first in a group, it will get messages as soon as there are some available. If it is not the first in the group, it will remain idle until it is its turn to be active (likely when all the instances registered before it are gone).</p>
+If the consumer instance is the first in a group, it will get messages as soon as there are some available.
+If it is not the first in the group, it will remain idle until it is its turn to be active (likely when all the instances registered before it are gone).</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="_offset_tracking">Offset Tracking</h6>
 <div class="paragraph">
-<p>Single active consumer and offset tracking work together: when the active consumer goes away, another consumer takes over and resumes when the former active left off.
-Well, this is how things should work and luckily this is what happens when using <a href="#consumer-offset-tracking">server-side offset tracking</a>.
-So as long as you use <a href="#consumer-automatic-offset-tracking">automatic offset tracking</a> or <a href="#consumer-manual-offset-tracking">manual offset tracking</a>, the handoff between a former active consumer and the new one will go well.</p>
-</div>
-<div class="paragraph">
-<p>The story is different is you are using an external store for offset tracking.
-In this case you need to tell the client library where to resume from and you can do this by implementing the <code>ConsumerUpdateListener</code> API.</p>
+<p>Single active consumer and offset tracking work together: when the active consumer goes away, another consumer takes over and you need to tell the client library where to resume from and you can do this by implementing the <code>ConsumerUpdateListener</code> API.</p>
 </div>
 </div>
 <div class="sect5">
@@ -3232,33 +2995,39 @@ The broker expects a response from the consumer and this response contains the o
 So this is the consumer&#8217;s responsibility to compute the appropriate offset, not the broker&#8217;s.
 The default behavior is to look up the last stored offset for the consumer on the stream.
 This works when server-side offset tracking is in use, but it does not when the application chose to use an external store for offset tracking.
-In this case, it is possible to use the <code>ConsumerBuilder#consumerUpdateListener(ConsumerUpdateListener)</code> method like demonstrated in the following snippet:</p>
+In this case, it is possible to use the <code>ConsumerConfig#ConsumerUpdateListener()</code> method like demonstrated in the following snippet:</p>
 </div>
 <div class="listingblock">
 <div class="title">Fetching the last stored offset from an external store in the consumer update listener callback</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"></code></pre>
+<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
+    <span class="keyword">new</span> StreamSystemConfig()
+).ConfigureAwait(<span class="predefined-constant">false</span>);
+
+<span class="type">var</span> consumer = await Consumer.Create(
+    <span class="keyword">new</span> ConsumerConfig(
+        streamSystem,
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+    {
+        <span class="predefined-type">Reference</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">my-reference</span><span class="delimiter">&quot;</span></span>, // <b class="conum">(1)</b>
+        IsSingleActiveConsumer = <span class="predefined-constant">true</span>, // <b class="conum">(2)</b>
+        ConsumerUpdateListener = async (consumerRef, stream, isActive) =&gt; // <b class="conum">(3)</b>
+        {
+           <span class="type">var</span> offset =  await streamSystem.QueryOffset(consumerRef, stream).ConfigureAwait(<span class="predefined-constant">false</span>);
+           <span class="keyword">return</span> <span class="keyword">new</span> OffsetTypeOffset(offset);
+        },</code></pre>
 </div>
 </div>
 <div class="colist arabic">
 <ol>
 <li>
-<p>Set the consumer name (mandatory to enable single active consumer)</p>
+<p>Set the <code>Reference</code> name (mandatory to enable single active consumer)</p>
 </li>
 <li>
 <p>Enable single active consumer</p>
 </li>
 <li>
-<p>Disable server-side offset tracking</p>
-</li>
-<li>
-<p>Set the consumer update listener</p>
-</li>
-<li>
-<p>Fetch last offset from external store</p>
-</li>
-<li>
-<p>Return the offset to resume consuming from to the broker</p>
+<p>Handle <code>ConsumerUpdateListener</code> callback</p>
 </li>
 </ol>
 </div>
@@ -3268,10 +3037,35 @@ In this case, it is possible to use the <code>ConsumerBuilder#consumerUpdateList
 </div>
 </div>
 </div>
+<div class="sect1">
+<h2 id="low-high-level-classes">Low Level and High Level classes</h2>
+<div class="sectionbody">
+<div class="ulist">
+<div class="title">NET stream client provides  two types of classes:</div>
+<ul>
+<li>
+<p>Low-level classes</p>
+</li>
+<li>
+<p>High-level classes</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>High-level classes (<code>Producer</code> and <code>Consumer</code>) are a wrapper around the Low-Level classes (<code>Raw*Producer</code> and <code>Raw*Consumer</code>)</p>
+</div>
+<div class="paragraph">
+<p><code>Producer</code> and <code>Consumer</code> classes handle auto-reconnection, metadata updates, super-stream and some low-level client behaviour.</p>
+</div>
+<div class="paragraph">
+<p>It would be best to use <code>Producer</code> and <code>Consumer</code> classes unless you need to handle the low-level details.</p>
+</div>
+</div>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-02-20 11:13:41 UTC
+Last updated 2023-02-20 14:06:42 UTC
 </div>
 </div>
 </body>
