@@ -2546,7 +2546,9 @@ consuming from (the <em>offset</em>), and a callback when a message is received
         streamSystem,
         <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
     {
-        OffsetSpec = <span class="keyword">new</span> OffsetTypeFirst(), // <b class="conum">(3)</b>
+           
+        <span class="comment">// OffsetSpec = new </span>
+        OffsetSpec = <span class="keyword">new</span> OffsetTypeTimestamp(), // <b class="conum">(3)</b>
         MessageHandler = async (stream, consumer, context, message) =&gt; // <b class="conum">(4)</b>
         {
             Console.WriteLine(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">Received message: {Encoding.UTF8.GetString(message.Data.Contents)}</span><span class="delimiter">&quot;</span></span>); 
@@ -2601,7 +2603,7 @@ a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;)</cod
 </table>
 </div>
 <div class="paragraph">
-<p>The following table sums up the main settings to create a <code>Consumer</code>:</p>
+<p>The following table sums up the main settings to create a <code>Consumer</code> with <code>ConsumerConfig</code>:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -2618,61 +2620,49 @@ a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;)</cod
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stream</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StreamSystem</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The StreamSystem to use.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No default, mandatory setting.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Stream</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The stream to consume from.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No default, mandatory setting.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>offset</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OffsetSpec</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The offset to start consuming from.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OffsetSpecification#next()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OffsetTypeNext()</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>messageHandler</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MessageHandler</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The callback for inbound messages.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No default, mandatory setting.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No default.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>name</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Reference</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The consumer name (for <a href="#consumer-offset-tracking">offset tracking</a>.)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (no offset tracking)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AutoTrackingStrategy</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable and configure the <a href="#consumer-automatic-offset-tracking">auto-tracking strategy</a>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">This is the default tracking strategy if a consumer <code>name</code> is provided.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ReconnectStrategy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The strategy to use when the connection to the broker is lost.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BackOffReconnectStrategy</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AutoTrackingStrategy#messageCountBeforeStorage</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of messages before storing.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">10,000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ClientProvidedName</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To identify the client in the management UI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dotnet-stream-conusmer</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AutoTrackingStrategy#flushInterval</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interval to check and store the last received offset in case of inactivity.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Duration.ofSeconds(5)</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ManualTrackingStrategy</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable and configure the <a href="#consumer-manual-offset-tracking">manual tracking strategy</a>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Disabled by default.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ManualTrackingStrategy#checkInterval</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interval to check if the last requested stored offset has been actually stored.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Duration.ofSeconds(5)</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">noTrackingStrategy</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Disable server-side offset tracking even if a name is provided.
-Useful when <a href="#single-active-consumer">single active consumer</a> is enabled and an external store is used for offset tracking.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IsSingleActiveConsumer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable the Single Active Consumer feature</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">subscriptionListener</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A <a href="#consumer-subscription-listener">callback</a> before the subscription is created.
-Useful when using an external store for offset tracking.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IsSuperStream</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable the Super Stream feature</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -2688,9 +2678,7 @@ Useful when using an external store for offset tracking.</p></td>
 <p>A consumer starts consuming at the very end of a stream by default (<code>next</code> offset).
 This means the consumer will receive messages as soon as a producer publishes to the stream.
 <em>This also means that if no producers are currently publishing to the stream, the
-consumer will stay idle, waiting for new messages to come in</em>. Use the
-<code>ConsumerBuilder#offset(OffsetSpecification)</code> to change the default behavior and
-see the <a href="#specifying-an-offset">offset section</a> to find out more about the different
+consumer will stay idle, waiting for new messages to come in</em>. See the <a href="#specifying-an-offset">offset section</a> to find out more about the different
 types of offset specification.</p>
 </div>
 </td>
@@ -2707,28 +2695,28 @@ The possible values for the offset parameter are the following:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>OffsetSpecification.first()</code>: starting from the first available offset. If
+<p><code>OffsetTypeFirst()</code>: starting from the first available offset. If
 the stream has not been <a href="#limiting-the-size-of-a-stream">truncated</a>, this
 means the beginning of the stream (offset 0).</p>
 </li>
 <li>
-<p><code>OffsetSpecification.last()</code>: starting from the end of the stream and returning
+<p><code>OffsetTypeLast()</code>: starting from the end of the stream and returning
 the last <a href="#chunk-definition">chunk</a> of messages immediately (if the stream is not empty).</p>
 </li>
 <li>
-<p><code>OffsetSpecification.next()</code>: starting from the next offset to be written. Contrary
+<p><code>OffsetTypeNext()</code>: starting from the next offset to be written. Contrary
 to <code>OffsetSpecification.last()</code>, consuming with <code>OffsetSpecification.next()</code>
 will not return anything if no-one is publishing to the stream. The broker will start
 sending messages to the consumer when messages are published to the stream.</p>
 </li>
 <li>
-<p><code>OffsetSpecification.offset(offset)</code>: starting from the specified offset. 0 means consuming
+<p><code>OffsetTypeOffset(offset)</code>: starting from the specified offset. 0 means consuming
 from the beginning of the stream (first messages). The client
 can also specify any number, for example the offset where it left off
 in a previous incarnation of the application.</p>
 </li>
 <li>
-<p><code>OffsetSpecification.timestamp(timestamp)</code>: starting from the messages stored
+<p><code>OffsetTypeTimestamp(timestamp)</code>: starting from the messages stored
 after the specified timestamp.
 Note consumers can receive messages published a bit before the specified timestamp.
 Application code can filter out those messages if necessary.</p>
@@ -3283,7 +3271,7 @@ In this case, it is possible to use the <code>ConsumerBuilder#consumerUpdateList
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-02-20 10:27:05 UTC
+Last updated 2023-02-20 11:13:41 UTC
 </div>
 </div>
 </body>
