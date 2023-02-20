@@ -699,7 +699,7 @@ or even block them. Any long processing should be done in
 a separate thread (e.g. with an asynchronous `Task.Run(...)`).
 ====
 
-The following table sums up the main settings to create a `Consumer`:
+The following table sums up the main settings to create a `Consumer` with `ConsumerConfig`:
 
 [%header,cols=3*]
 |===
@@ -707,51 +707,45 @@ The following table sums up the main settings to create a `Consumer`:
 |Description
 |Default
 
-|`stream`
+|`StreamSystem`
+|The StreamSystem to use. 
+|No default, mandatory setting.
+
+|`Stream`
 |The stream to consume from.
 |No default, mandatory setting.
 
-|`offset`
+|`OffsetSpec`
 |The offset to start consuming from.
-|`OffsetSpecification#next()`
+|`OffsetTypeNext()`
 
-|`messageHandler`
+|`MessageHandler`
 |The callback for inbound messages.
-|No default, mandatory setting.
+|No default.
 
-|`name`
+|`Reference`
 |The consumer name (for <<consumer-offset-tracking,offset tracking>>.)
 |`null` (no offset tracking)
 
-|`AutoTrackingStrategy`
-|Enable and configure the <<consumer-automatic-offset-tracking,auto-tracking strategy>>.
-|This is the default tracking strategy if a consumer `name` is provided.
 
-|`AutoTrackingStrategy#messageCountBeforeStorage`
-|Number of messages before storing.
-|10,000
 
-|`AutoTrackingStrategy#flushInterval`
-|Interval to check and store the last received offset in case of inactivity.
-|`Duration.ofSeconds(5)`
+|`ReconnectStrategy`
+|The strategy to use when the connection to the broker is lost.
+|`BackOffReconnectStrategy`
 
-|`ManualTrackingStrategy`
-|Enable and configure the <<consumer-manual-offset-tracking,manual tracking strategy>>.
-|Disabled by default.
+|`ClientProvidedName`
+| To identify the client in the management UI
+|`dotnet-stream-conusmer`
 
-|`ManualTrackingStrategy#checkInterval`
-|Interval to check if the last requested stored offset has been actually stored.
-|`Duration.ofSeconds(5)`
 
-|noTrackingStrategy
-|Disable server-side offset tracking even if a name is provided.
-Useful when <<single-active-consumer, single active consumer>> is enabled and an external store is used for offset tracking.
+|`IsSingleActiveConsumer`
+|Enable the Single Active Consumer feature
 |`false`
 
-|subscriptionListener
-|A <<consumer-subscription-listener, callback>> before the subscription is created.
-Useful when using an external store for offset tracking.
-|`null`
+|`IsSuperStream`
+|Enable the Super Stream feature
+|`false`
+
 |===
 
 [NOTE]
@@ -760,9 +754,7 @@ Useful when using an external store for offset tracking.
 A consumer starts consuming at the very end of a stream by default (`next` offset).
 This means the consumer will receive messages as soon as a producer publishes to the stream.
 _This also means that if no producers are currently publishing to the stream, the
-consumer will stay idle, waiting for new messages to come in_. Use the
-`ConsumerBuilder#offset(OffsetSpecification)` to change the default behavior and
-see the <<specifying-an-offset,offset section>> to find out more about the different
+consumer will stay idle, waiting for new messages to come in_. See the <<specifying-an-offset,offset section>> to find out more about the different
 types of offset specification.
 ====
 
@@ -772,20 +764,20 @@ types of offset specification.
 The offset is the place in the stream where the consumer starts consuming from.
 The possible values for the offset parameter are the following:
 
-* `OffsetSpecification.first()`: starting from the first available offset. If
+* `OffsetTypeFirst()`: starting from the first available offset. If
 the stream has not been <<limiting-the-size-of-a-stream,truncated>>, this
 means the beginning of the stream (offset 0).
-* `OffsetSpecification.last()`: starting from the end of the stream and returning
+* `OffsetTypeLast()`: starting from the end of the stream and returning
 the last <<chunk-definition,chunk>> of messages immediately (if the stream is not empty).
-* `OffsetSpecification.next()`: starting from the next offset to be written. Contrary
+* `OffsetTypeNext()`: starting from the next offset to be written. Contrary
 to `OffsetSpecification.last()`, consuming with `OffsetSpecification.next()`
 will not return anything if no-one is publishing to the stream. The broker will start
 sending messages to the consumer when messages are published to the stream.
-* `OffsetSpecification.offset(offset)`: starting from the specified offset. 0 means consuming
+* `OffsetTypeOffset(offset)`: starting from the specified offset. 0 means consuming
 from the beginning of the stream (first messages). The client
 can also specify any number, for example the offset where it left off
 in a previous incarnation of the application.
-* `OffsetSpecification.timestamp(timestamp)`: starting from the messages stored
+* `OffsetTypeTimestamp(timestamp)`: starting from the messages stored
 after the specified timestamp.
 Note consumers can receive messages published a bit before the specified timestamp.
 Application code can filter out those messages if necessary.

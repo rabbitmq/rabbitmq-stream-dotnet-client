@@ -11,7 +11,7 @@ namespace Documentation;
 public class ConsumerUsage
 {
    
-    public static async Task CreateProducer()
+    public static async Task CreateConsumer()
     {
         // tag::consumer-creation[]
         var streamSystem = await StreamSystem.Create(
@@ -23,7 +23,9 @@ public class ConsumerUsage
                 streamSystem,
                 "my-stream")
             {
-                OffsetSpec = new OffsetTypeFirst(), // <3>
+                   
+                // OffsetSpec = new 
+                OffsetSpec = new OffsetTypeTimestamp(), // <3>
                 MessageHandler = async (stream, consumer, context, message) => // <4>
                 {
                     Console.WriteLine($"Received message: {Encoding.UTF8.GetString(message.Data.Contents)}"); 
