@@ -4,11 +4,10 @@
 
 ==== Overview
 
-This section describes the API to connect to the RabbitMQ Stream Plugin, publish messages, and
-consume messages. There are 3 main interfaces:
+This section describes the API to connect to the RabbitMQ Stream Plugin, publish messages, and consume messages.
+There are 3 main interfaces:
 
-* `RabbitMQ.Stream.Client` for connecting to a node and optionally
-managing streams.
+* `RabbitMQ.Stream.Client` for connecting to a node and optionally managing streams.
 * `RabbitMQ.Stream.Client.Reliable.Producer` to publish messages.
 * `RabbitMQ.Stream.Client.Reliable.Consumer` to consume messages.
 
@@ -17,34 +16,35 @@ managing streams.
 ===== Creating the StreamSystem
 
 The environment is the main entry point to a node or a cluster of nodes. `Producer` and
-`Consumer` instances need an `StreamSystem` instance. Here is the simplest
-way to create an `StreamSystem` instance:
+`Consumer` instances need an `StreamSystem` instance.
+Here is the simplest way to create an `StreamSystem` instance:
 
 .Creating an environment with all the defaults
 [source,java,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-simple]
 --------
+
 <1> Create an environment that will connect to localhost:5552
 <2> Close the environment after usage
 
-Note the streamSystem must be closed to release resources when it is no
-longer needed.
+Note the streamSystem must be closed to release resources when it is no longer needed.
 
-Consider the environment like a long-lived object. An application will usually
-create one `StreamSystem` instance when it starts up and close it when it exits.
+Consider the environment like a long-lived object.
+An application will usually create one `StreamSystem` instance when it starts up and close it when it exits.
 
-It is possible to use a multiple end-points to connect to a cluster of nodes. The:
+It is possible to use a multiple end-points to connect to a cluster of nodes.
+The:
 
 .Creating an streamSystem with multiple end-points
 [source,java,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-multi-endpoints]
 --------
+
 <1>  Define the end-points to connect to
 
-By specifying several endpoints, the system will try to connect to the first one, and
-will pick a new endpoint randomly in case of disconnection.
+By specifying several endpoints, the system will try to connect to the first one, and will pick a new endpoint randomly in case of disconnection.
 
 [[understanding-connection-logic]]
 ===== Understanding Connection Logic
@@ -64,6 +64,7 @@ The default TLS port is 5551.
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-tls]
 --------
+
 <1> Enable TLS
 <2> Load certificate authority (CA) certificate from PEM file
 
@@ -72,6 +73,7 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-tls]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-tls-trust]
 --------
+
 <1> Trust all server certificates
 
 ===== Configuring the Stream System
@@ -97,7 +99,7 @@ The following table sums up the main settings to create an `StreamSystem` using 
 |`/`
 
 |`ClientProvidedName`
-| To identify the client in the management UI. 
+| To identify the client in the management UI.
 |`dotnet-stream-locator`
 
 |`Heartbeat`
@@ -132,18 +134,18 @@ Applications can use this hook to ignore metadata hints and always use the load 
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-address-resolver]
 --------
+
 <1> Set the load balancer address
 <2> Use load balancer address for initial connection
-<3> Set the endpoints based on `AddressResolver` 
+<3> Set the endpoints based on `AddressResolver`
 
 The blog post covers the https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/#client-workaround-with-a-load-balancer[underlying details of this workaround].
 
 ===== Managing Streams
 
-Streams are usually long-lived, centrally-managed entities, that is, applications
-are not supposed to create and delete them. It is nevertheless possible to create and
-delete stream with the `StreamSystem`. This comes in handy for development and testing
-purposes.
+Streams are usually long-lived, centrally-managed entities, that is, applications are not supposed to create and delete them.
+It is nevertheless possible to create and delete stream with the `StreamSystem`.
+This comes in handy for development and testing purposes.
 
 Streams are created with the `Environment#streamCreator()` method:
 
@@ -152,40 +154,37 @@ Streams are created with the `Environment#streamCreator()` method:
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation]
 --------
+
 <1> Create the `my-stream` stream
 
-`StreamSystem.Create` is idempotent: trying to re-create a stream with the same name
-and same properties (e.g. maximum size, see below) will not throw an exception. In other words,
-you can be sure the stream has been created once `StreamSystem.Create` returns. Note it is
-not possible to create a stream with the same name as an existing stream but with different
-properties. Such a request will result in an exception.
+`StreamSystem.Create` is idempotent: trying to re-create a stream with the same name and same properties (e.g. maximum size, see below) will not throw an exception.
+In other words, you can be sure the stream has been created once `StreamSystem.Create` returns.
+Note it is not possible to create a stream with the same name as an existing stream but with different properties.
+Such a request will result in an exception.
 
-Streams can be deleted with the `Environment#delete(String)` method:
+Streams can be deleted with the `StreamSystem#Delete(String)` method:
 
 .Deleting a stream
 [source,java,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=stream-deletion]
 --------
+
 <1> Delete the `my-stream` stream
 
-Note you should avoid stream churn (creating and deleting streams repetitively)
-as their creation and deletion imply some significant housekeeping on
-the server side (interactions with the file system, communication between nodes of the cluster).
+Note you should avoid stream churn (creating and deleting streams repetitively) as their creation and deletion imply some significant housekeeping on the server side (interactions with the file system, communication between nodes of the cluster).
 
-[[limiting-the-size-of-a-stream]]It is also possible to limit the size of a stream
-when creating it. A stream
-is an append-only data structure and reading from it does not remove data.
-This means a stream can grow indefinitely. RabbitMQ Stream supports a
-size-based and time-based retention policies: once the stream reaches a given size
-or a given age, it is truncated (starting from the beginning).
+[[limiting-the-size-of-a-stream]]
+It is also possible to limit the size of a stream when creating it.
+A stream is an append-only data structure and reading from it does not remove data.
+This means a stream can grow indefinitely.
+RabbitMQ Stream supports a size-based and time-based retention policies: once the stream reaches a given size or a given age, it is truncated (starting from the beginning).
 
 [IMPORTANT]
 .Limit the size of streams if appropriate!
 ====
-Make sure to set up a retention policy on potentially large streams
-if you don't want to saturate the storage devices of your servers. Keep
-in mind that this means some data will be erased!
+Make sure to set up a retention policy on potentially large streams if you don't want to saturate the storage devices of your servers.
+Keep in mind that this means some data will be erased!
 ====
 
 It is possible to set up the retention policy when creating the stream:
@@ -195,33 +194,30 @@ It is possible to set up the retention policy when creating the stream:
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-retention]
 --------
+
 <1> Set the maximum size to 10 GB
 <2> Set the segment size to 500 MB
 
-The previous snippet mentions a segment size. RabbitMQ Stream does not store a stream
-in a big, single file, it uses segment files for technical reasons.
-A stream is truncated by deleting whole segment files (and not part of them)so
-the maximum size of a stream is usually significantly higher than the size of
-segment files. 500 MB is a reasonable segment file size to begin with.
+The previous snippet mentions a segment size.
+RabbitMQ Stream does not store a stream in a big, single file, it uses segment files for technical reasons.
+A stream is truncated by deleting whole segment files (and not part of them)so the maximum size of a stream is usually significantly higher than the size of segment files. 500 MB is a reasonable segment file size to begin with.
 
 [NOTE]
 .When does the broker enforce the retention policy?
 ====
-The broker enforces the retention policy when the segments of a stream
-roll over, that is when the current segment has reached its maximum
-size and is closed in favor of a new one. This means the maximum segment
-size is a critical setting in the retention mechanism.
+The broker enforces the retention policy when the segments of a stream roll over, that is when the current segment has reached its maximum size and is closed in favor of a new one.
+This means the maximum segment size is a critical setting in the retention mechanism.
 ====
 
-RabbitMQ Stream also supports a time-based retention policy: segments get truncated
-when they reach a certain age. The following snippet
-illustrates how to set the time-based retention policy:
+RabbitMQ Stream also supports a time-based retention policy: segments get truncated when they reach a certain age.
+The following snippet illustrates how to set the time-based retention policy:
 
 .Setting a time-based retention policy when creating a stream
 [source,java,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-time-based-retention]
 --------
+
 <1> Set the maximum age to 6 hours
 <2> Set the segment size to 500 MB
 
@@ -229,33 +225,30 @@ include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-time-based-ret
 
 ===== Creating a Producer
 
-A `Producer` instance is created with `Producer.Create`. The only mandatory
-setting to specify is the stream to publish to:
+A `Producer` instance is created with `Producer.Create`.
+The only mandatory setting to specify is the stream to publish to:
 
 .Creating a producer from the environment
 [source,java,indent=0]
 --------
 include::{test-examples}/ProducerUsage.cs[tag=producer-creation]
 --------
+
 <1> Use `Producer.Create` to define the producer
 <2> Specify the stream to publish to
 <3> Close the producer after usage
 
-Consider a `Producer` instance like a long-lived object, do not create one
-to send just one message.
-
+Consider a `Producer` instance like a long-lived object, do not create one to send just one message.
 
 [NOTE]
 .Producer thread safety
 ====
 `Producer` instances are thread-safe when `Reference` is not set.
-Starting from version 1.2.0 the `Reference` field is deprecated. 
+Starting from version 1.2.0 the `Reference` field is deprecated.
 `Reference` is needed for deduplication see the Deduplication section for more details.
 ====
 
-Internally, the `StreamSystem` will query the broker to find out about
-the topology of the stream and will create or re-use a connection to
-publish to the leader node of the stream.
+Internally, the `StreamSystem` will query the broker to find out about the topology of the stream and will create or re-use a connection to publish to the leader node of the stream.
 
 The following table sums up the main settings to create a `ProducerConfig`:
 
@@ -284,7 +277,7 @@ The following table sums up the main settings to create a `ProducerConfig`:
 
 |ClientProvidedName
 |The TCP connection name to identify the client.
-|`dotnet-stream-producer` 
+|`dotnet-stream-producer`
 
 |`MaxInFlight`
 |The maximum number of messages that can be in flight at any given time. Messages sent - Messages confirmed. To avoid to flood the broker with messages.
@@ -312,8 +305,7 @@ This value is valid only for the `Send(Message)` method.
 ===== Sending Messages
 
 Once a `Producer` has been created, it is possible to send a message with:
-- `Producer#send(Message)`,
-- `Producer#send(List<Message>)`  
+- `Producer#send(Message)`, - `Producer#send(List<Message>)`
 - `Producer#send(List<Message> messages, CompressionType compressionType)`.
 snippet shows how to publish a message with a byte array payload:
 
@@ -322,18 +314,21 @@ snippet shows how to publish a message with a byte array payload:
 --------
 include::{test-examples}/ProducerUsage.cs[tag=producer-publish]
 --------
+
 <1> The payload of a message is an array of bytes.
 Messages are not only made of a `byte[]` payload, we will see in
 <<working-with-complex-messages,the next section>>
 they can also carry pre-defined and application properties.
-<2> Send the message. The method is asynchronous, internally the messages are buffered and sent in batch. Most of the time you can use this method.
-<3> Batch send is synchronous, there is not additional buffering. The messages are sent immediately. This method is useful when you want to control the number of the messages to sent is a single frame. Can be useful in case you need low latency.
-<4> Sub entry batching see <<sub-entry-batching-and-compression,Sub Entry Batching>> for more details. 
-<5> The `ConfirmationHandler` defines an asynchronous callback invoked
-when the client received from the broker the confirmation the message
-has been taken into account. The `ConfirmationHandler` is the place
-for any logic on publishing confirmation, including
-re-publishing the message if it is negatively acknowledged.
+<2> Send the message.
+The method is asynchronous, internally the messages are buffered and sent in batch.
+Most of the time you can use this method.
+<3> Batch send is synchronous, there is not additional buffering.
+The messages are sent immediately.
+This method is useful when you want to control the number of the messages to sent is a single frame.
+Can be useful in case you need low latency.
+<4> Sub entry batching see <<sub-entry-batching-and-compression,Sub Entry Batching>> for more details.
+<5> The `ConfirmationHandler` defines an asynchronous callback invoked when the client received from the broker the confirmation the message has been taken into account.
+The `ConfirmationHandler` is the place for any logic on publishing confirmation, including re-publishing the message if it is negatively acknowledged.
 
 `MessagesConfirmation` contains the following information:
 
@@ -400,42 +395,34 @@ re-publishing the message if it is negatively acknowledged.
 
 |===
 
-
 [WARNING]
 .Keep the confirmation callback as short as possible
 ====
-The confirmation callback should be kept as short as possible
-to avoid blocking the connection thread. Not doing so can
-make the `StreamSystem`, `Producer`, `Consumer` instances sluggish
-or even block them. Any long processing should be done in
-a separate thread (e.g. with an asynchronous `Task.Run(....)`).
+The confirmation callback should be kept as short as possible to avoid blocking the connection thread.
+Not doing so can make the `StreamSystem`, `Producer`, `Consumer` instances sluggish or even block them.
+Any long processing should be done in a separate thread (e.g. with an asynchronous `Task.Run(....)`).
 ====
-
-
 
 [NOTE]
 .Mixing different send methods
 ====
-You can mix different send methods. For example you can send a message with `send(Message)` and then send a batch of messages with `send(List<Message>)`.
+You can mix different send methods.
+For example you can send a message with `send(Message)` and then send a batch of messages with `send(List<Message>)`.
 Avoid to sent the `Refence` property in the `ProducerConfig` it enables the deduplication and you could have unexpected results.
 
 `Reference` is deprecated in the version `1.2.0`  see deduplication section for more details.
 ====
 
-
-
 [[working-with-complex-messages]]
 ===== Working with Complex Messages
 
-The publishing example above showed that messages are made of
-a byte array payload, but it did not go much further. Messages in RabbitMQ Stream
-can actually be more sophisticated, as they comply to the
+The publishing example above showed that messages are made of a byte array payload, but it did not go much further.
+Messages in RabbitMQ Stream can actually be more sophisticated, as they comply to the
 https://www.amqp.org/resources/specifications[AMQP 1.0 message format].
 
 In a nutshell, a message in RabbitMQ Stream has the following structure:
 
-* properties: _a defined set of standard properties of the message_ (e.g.
-message ID, correlation ID, content type, etc).
+* properties: _a defined set of standard properties of the message_ (e.g. message ID, correlation ID, content type, etc).
 * application properties: a set of arbitrary key/value pairs.
 * body: typically an array of bytes.
 * message annotations: a set of key/value pairs (aimed at the infrastructure).
@@ -447,9 +434,11 @@ The RabbitMQ Stream NET client uses the `Message` class to represent a message.
 --------
 include::{test-examples}/ProducerUsage.cs[tag=producer-publish-complex-message]
 --------
-<1> Get the message 
+
+<1> Get the message
 <2> Set the Application properties
-<3> Set the message Properties. You usually don't need to set the properties.
+<3> Set the message Properties.
+You usually don't need to set the properties.
 
 The `Message` contains also the following read-only properties:
 
@@ -459,41 +448,32 @@ The `Message` contains also the following read-only properties:
 
 These values are only for compatibility with the AMQP 1.0 message format.
 
-
-
 [NOTE]
 .Is RabbitMQ Stream based on AMQP 1.0?
 ====
-AMQP 1.0 is a standard that defines _an efficient binary peer-to-peer
-protocol for transporting messages between two processes over a network_.
+AMQP 1.0 is a standard that defines _an efficient binary peer-to-peer protocol for transporting messages between two processes over a network_.
 It also defines _an abstract message format, with concrete standard encoding_.
-This is only the latter part that RabbitMQ Stream uses. The AMQP 1.0 protocol is not used,
-only AMQP 1.0 encoded messages are wrapped into the RabbitMQ Stream binary protocol.
+This is only the latter part that RabbitMQ Stream uses.
+The AMQP 1.0 protocol is not used, only AMQP 1.0 encoded messages are wrapped into the RabbitMQ Stream binary protocol.
 
-The actual AMQP 1.0 message encoding and decoding happen on the client side, the
-RabbitMQ Stream plugin stores only bytes, it has no idea that AMQP 1.0 message format
-is used.
+The actual AMQP 1.0 message encoding and decoding happen on the client side, the RabbitMQ Stream plugin stores only bytes, it has no idea that AMQP 1.0 message format is used.
 
-AMQP 1.0 message format was chosen because of its flexibility and its advanced
-type system. It provides good interoperability, which allows streams
-to be accessed as AMQP 0-9-1 queues, without data loss.
+AMQP 1.0 message format was chosen because of its flexibility and its advanced type system.
+It provides good interoperability, which allows streams to be accessed as AMQP 0-9-1 queues, without data loss.
 ====
 
 [[outbound-message-deduplication]]
 ===== Message Deduplication
 
-RabbitMQ Stream provides publisher confirms to avoid losing messages: once
-the broker has persisted a message it sends a confirmation for this message.
-But this can lead to duplicate messages: imagine the connection closes
-because of a network glitch after the message has been persisted but _before_
-the confirmation reaches the producer. Once reconnected, the producer will
-retry to send the same message, as it never received the confirmation. So the
-message will be persisted twice.
+RabbitMQ Stream provides publisher confirms to avoid losing messages: once the broker has persisted a message it sends a confirmation for this message.
+But this can lead to duplicate messages: imagine the connection closes because of a network glitch after the message has been persisted but _before_
+the confirmation reaches the producer.
+Once reconnected, the producer will retry to send the same message, as it never received the confirmation.
+So the message will be persisted twice.
 
-Luckily RabbitMQ Stream can detect and filter out duplicated messages. 
+Luckily RabbitMQ Stream can detect and filter out duplicated messages.
 
 The client provides a specific class to handle deduplication: `DeduplicationProducer`.
-
 
 [[deduplication-multithreading]]
 [WARNING]
@@ -510,59 +490,50 @@ If you worry about performance, note it is possible to publish hundreds of thous
 
 ====== Use DeduplicationProducer
 
-The `DeduplicationProducer` requires the `Reference` as mandatory parameter. This parameter enables deduplication:
+The `DeduplicationProducer` requires the `Reference` as mandatory parameter.
+This parameter enables deduplication:
 
 .Naming a producer to enable message deduplication
 [source,java,indent=0]
 --------
 include::{test-examples}/ProducerUsage.cs[tag=deduplication-producer]
 --------
+
 <1> Define the `DeduplicatingProducer` class with `Reference` property.
 <2> Get a message
 <3> Send three messages specifying the `publishingid` and the `Message`.
 <4> Send again the same message with the same `publishingid` and the `Message` will be skipped by the broker since the `publishingid` is already present with the `Reference` "my_producer_reference" .
 
-Thanks to the name, the broker will be able to track the messages it has persisted
-on a given stream for this producer. 
+Thanks to the name, the broker will be able to track the messages it has persisted on a given stream for this producer.
 
-Consider the `Reference` a logical name. It should not be a random sequence that
-changes when the producer application is restarted. Names like `online-shop-order` or
+Consider the `Reference` a logical name.
+It should not be a random sequence that changes when the producer application is restarted.
+Names like `online-shop-order` or
 `online-shop-invoice` are better names than `3d235e79-047a-46a6-8c80-9d159d3e1b05`.
-There should be only one living instance of a producer with a given name on a given
-stream at the same time.
+There should be only one living instance of a producer with a given name on a given stream at the same time.
 
 ====== Understanding Publishing ID
 
-The `Reference` is only one part of the deduplication mechanism, the other part
-is the _message publishing ID_. The publishing ID
-is a strictly increasing sequence, starting at 0 and incremented for each message. 
+The `Reference` is only one part of the deduplication mechanism, the other part is the _message publishing ID_.
+The publishing ID is a strictly increasing sequence, starting at 0 and incremented for each message.
 
- * the sequence should start at 0
- * the sequence must be strictly increasing
- * there can be gaps in the sequence (e.g. 0, 1, 2, 3, 6, 7, 9, 10, etc)
+* the sequence should start at 0
+* the sequence must be strictly increasing
+* there can be gaps in the sequence (e.g. 0, 1, 2, 3, 6, 7, 9, 10, etc)
 
-A custom publishing ID sequence has usually a meaning: it can be the line number of a file
-or the primary key in a database.
+A custom publishing ID sequence has usually a meaning: it can be the line number of a file or the primary key in a database.
 
-Note the publishing ID is not part of the message: it is not stored with the message
-and so is not available when consuming the message. It is still possible to store
-the value in the AMQP 1.0 message application properties or in an appropriate
-properties (e.g. `messageId`).
-
+Note the publishing ID is not part of the message: it is not stored with the message and so is not available when consuming the message.
+It is still possible to store the value in the AMQP 1.0 message application properties or in an appropriate properties (e.g. `messageId`).
 
 ====== Restarting a Producer Where It Left Off
 
-Using a custom publishing sequence is even more useful to restart a producer where it left
-off. Imagine a scenario whereby the producer is sending a message for each line in a file and
-the application uses the line number as the publishing ID. If the application restarts
-because of some necessary maintenance or even a crash, the producer can restart
-from the beginning of the file: there would no duplicate messages because the producer
-has a name and the application sets publishing IDs appropriately. Nevertheless,
-this is far from ideal, it would be much better to restart just after the last line
-the broker successfully confirmed. Fortunately this is possible thanks to
-the `DeduplicatingProducer#GetLastPublishedId()` method, which returns the last publishing ID for a given
-producer. As the publishing ID in this case is the line number, the application can
-easily scroll to the next line and restart publishing from there.
+Using a custom publishing sequence is even more useful to restart a producer where it left off.
+Imagine a scenario whereby the producer is sending a message for each line in a file and the application uses the line number as the publishing ID.
+If the application restarts because of some necessary maintenance or even a crash, the producer can restart from the beginning of the file: there would no duplicate messages because the producer has a name and the application sets publishing IDs appropriately.
+Nevertheless, this is far from ideal, it would be much better to restart just after the last line the broker successfully confirmed.
+Fortunately this is possible thanks to the `DeduplicatingProducer#GetLastPublishedId()` method, which returns the last publishing ID for a given producer.
+As the publishing ID in this case is the line number, the application can easily scroll to the next line and restart publishing from there.
 
 The next snippet illustrates the use of `DeduplicatingProducer#GetLastPublishedId()`:
 
@@ -571,6 +542,7 @@ The next snippet illustrates the use of `DeduplicatingProducer#GetLastPublishedI
 --------
 include::{test-examples}/ProducerUsage.cs[tag=deduplication-queries-last-publishing-id]
 --------
+
 <1> Get a `DeduplicatingProducer` instance
 <2> Query last publishing ID for this producer
 <3> Use the lastid and increment it
@@ -592,6 +564,7 @@ The following snippet shows how to enable sub-entry batching:
 --------
 include::{test-examples}/ProducerUsage.cs[tag=producer-sub-entry-batching]
 --------
+
 <1> Define a list of messages to compress
 <2> Send the list of messages to the broker in tis case 3 messages compressed with GZIP
 
@@ -634,7 +607,6 @@ The following table lists the supported algorithms, general information about th
 
 You are encouraged to test and evaluate the compression algorithms depending on your needs.
 
-
 [NOTE]
 .Consumers, sub-entry batching, and compression
 ====
@@ -652,6 +624,7 @@ The following snippet shows how to add a compression algorithm to the client lib
 --------
 include::{test-examples}/AddCustomCodec.cs[tag=lz4-i-compression-codec]
 --------
+
 <1> Implement the `ICompressionCodec` interface with all the required methods
 
 The following snippet shows how to register the compression algorithm with the `StreamCompressionCodecs` class:
@@ -661,9 +634,9 @@ The following snippet shows how to register the compression algorithm with the `
 --------
 include::{test-examples}/AddCustomCodec.cs[tag=lz4-register-codec]
 --------
+
 <1> Register the compression algorithm with the `StreamCompressionCodecs` class
 <2> Use the compression algorithm in the `producer.Send(list, CompressionType.Lz4)`
-
 
 ==== Consumer
 
@@ -671,16 +644,16 @@ include::{test-examples}/AddCustomCodec.cs[tag=lz4-register-codec]
 
 ===== Creating a Consumer
 
-A `Consumer` instance is created with `Consumer.Create(..)`. The main
-settings are the stream to consume from, the place in the stream to start
-consuming from (the _offset_), and a callback when a message is received
-(the `MessageHandler`). The next snippet shows how to create a `Consumer`:
+A `Consumer` instance is created with `Consumer.Create(..)`.
+The main settings are the stream to consume from, the place in the stream to start consuming from (the _offset_), and a callback when a message is received (the `MessageHandler`).
+The next snippet shows how to create a `Consumer`:
 
 .Creating a consumer
 [source,java,indent=0]
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=consumer-creation]
 --------
+
 <1> Use `Consumer.Create()` to define the consumer
 <2> Specify `ConsumerConfig` to configure the consumer behavior with the `streamSystem` and `streamName` to consume from
 <3> Specify where to start consuming from
@@ -692,11 +665,9 @@ The broker start sending messages as soon as the `Consumer` instance is created.
 [WARNING]
 .Keep the message processing callback as short as possible
 ====
-The message processing callback should be kept as short as possible
-to avoid blocking the connection thread. Not doing so can
-make the `StreamSystem`, `Producer`, `Consumer` instances sluggish
-or even block them. Any long processing should be done in
-a separate thread (e.g. with an asynchronous `Task.Run(...)`).
+The message processing callback should be kept as short as possible to avoid blocking the connection thread.
+Not doing so can make the `StreamSystem`, `Producer`, `Consumer` instances sluggish or even block them.
+Any long processing should be done in a separate thread (e.g. with an asynchronous `Task.Run(...)`).
 ====
 
 The following table sums up the main settings to create a `Consumer` with `ConsumerConfig`:
@@ -708,7 +679,7 @@ The following table sums up the main settings to create a `Consumer` with `Consu
 |Default
 
 |`StreamSystem`
-|The StreamSystem to use. 
+|The StreamSystem to use.
 |No default, mandatory setting.
 
 |`Stream`
@@ -753,9 +724,8 @@ The following table sums up the main settings to create a `Consumer` with `Consu
 ====
 A consumer starts consuming at the very end of a stream by default (`next` offset).
 This means the consumer will receive messages as soon as a producer publishes to the stream.
-_This also means that if no producers are currently publishing to the stream, the
-consumer will stay idle, waiting for new messages to come in_. See the <<specifying-an-offset,offset section>> to find out more about the different
-types of offset specification.
+_This also means that if no producers are currently publishing to the stream, the consumer will stay idle, waiting for new messages to come in_.
+See the <<specifying-an-offset,offset section>> to find out more about the different types of offset specification.
 ====
 
 [[specifying-an-offset]]
@@ -764,21 +734,16 @@ types of offset specification.
 The offset is the place in the stream where the consumer starts consuming from.
 The possible values for the offset parameter are the following:
 
-* `OffsetTypeFirst()`: starting from the first available offset. If
-the stream has not been <<limiting-the-size-of-a-stream,truncated>>, this
-means the beginning of the stream (offset 0).
-* `OffsetTypeLast()`: starting from the end of the stream and returning
-the last <<chunk-definition,chunk>> of messages immediately (if the stream is not empty).
-* `OffsetTypeNext()`: starting from the next offset to be written. Contrary
-to `OffsetSpecification.last()`, consuming with `OffsetSpecification.next()`
-will not return anything if no-one is publishing to the stream. The broker will start
-sending messages to the consumer when messages are published to the stream.
-* `OffsetTypeOffset(offset)`: starting from the specified offset. 0 means consuming
-from the beginning of the stream (first messages). The client
-can also specify any number, for example the offset where it left off
-in a previous incarnation of the application.
-* `OffsetTypeTimestamp(timestamp)`: starting from the messages stored
-after the specified timestamp.
+* `OffsetTypeFirst()`: starting from the first available offset.
+If the stream has not been <<limiting-the-size-of-a-stream,truncated>>, this means the beginning of the stream (offset 0).
+* `OffsetTypeLast()`: starting from the end of the stream and returning the last <<chunk-definition,chunk>> of messages immediately (if the stream is not empty).
+* `OffsetTypeNext()`: starting from the next offset to be written.
+Contrary to `OffsetTypeLat()`, consuming with `OffsetTypeNext()`
+will not return anything if no-one is publishing to the stream.
+The broker will start sending messages to the consumer when messages are published to the stream.
+* `OffsetTypeOffset(offset)`: starting from the specified offset. 0 means consuming from the beginning of the stream (first messages).
+The client can also specify any number, for example the offset where it left off in a previous incarnation of the application.
+* `OffsetTypeTimestamp(timestamp)`: starting from the messages stored after the specified timestamp.
 Note consumers can receive messages published a bit before the specified timestamp.
 Application code can filter out those messages if necessary.
 
@@ -786,14 +751,12 @@ Application code can filter out those messages if necessary.
 [NOTE]
 .What is a chunk of messages?
 ====
-A chunk is simply a batch of messages. This is the storage and transportation
-unit used in RabbitMQ Stream, that is messages are stored contiguously in a chunk
-and they are delivered as part of a chunk. A chunk can be made of one to several
-thousands of messages, depending on the ingress.
+A chunk is simply a batch of messages.
+This is the storage and transportation unit used in RabbitMQ Stream, that is messages are stored contiguously in a chunk and they are delivered as part of a chunk.
+A chunk can be made of one to several thousands of messages, depending on the ingress.
 ====
 
-The following figure shows the different offset specifications in a stream
-made of 2 chunks:
+The following figure shows the different offset specifications in a stream made of 2 chunks:
 
 .Offset specifications in a stream made of 2 chunks
 [ditaa]
@@ -822,175 +785,51 @@ All of this without an extra datastore, as the broker stores the offset tracking
 
 Offset tracking works in 2 steps:
 
-* the consumer must have a *name*. The name is set with `ConsumerBuilder#name(String)`. The name
-can be any value (under 256 characters) and is expected to be unique (from the application
-point of view). Note neither the client library, nor the broker
-enforces uniqueness of the name: if 2 `Consumer` Java instances share the same name, their
-offset tracking will likely be interleaved, which applications usually do not expect.
-* the consumer must periodically *store the offset* it has reached so far. The way
-offsets are stored depends on the tracking strategy: automatic or manual.
+* the consumer must have a *name*.
+The name is set with `ConsumerConfig#Reference`.
+The name can be any value (under 256 characters) and is expected to be unique (from the application point of view).
+Note neither the client library, nor the broker enforces uniqueness of the name: if 2 `Consumer` .NET instances share the same name, their offset tracking will likely be interleaved, which applications usually do not expect.
+* the consumer must periodically *store the offset* it has reached so far.
 
-Whatever tracking strategy you use, *a consumer must have a name to be able to store offsets*.
-
-[[consumer-automatic-offset-tracking]]
-====== Automatic Offset Tracking
-
-The following snippet shows how to enable automatic tracking with the defaults:
-
-.Using automatic tracking strategy with the defaults
-[source,java,indent=0]
---------
-include::{test-examples}/ConsumerUsage.cs[tag=auto-tracking-defaults]
---------
-<1> Set the consumer name (mandatory for offset tracking)
-<2> Use automatic tracking strategy with defaults
-
-The automatic tracking strategy has the following available settings:
-
-* *message count before storage*: the client will store the offset
-after the specified number of messages, right after the execution
-of the message handler. _The default is every 10,000 messages_.
-* *flush interval*: the client will make sure to store the last received offset
-at the specified interval. This avoids having pending, not stored offsets in
-case of inactivity. _The default is 5 seconds_.
-
-Those settings are configurable, as shown in the following snippet:
-
-.Configuring the automatic tracking strategy
-[source,java,indent=0]
---------
-include::{test-examples}/ConsumerUsage.cs[tag=auto-tracking-with-settings]
---------
-<1> Set the consumer name (mandatory for offset tracking)
-<2> Use automatic tracking strategy
-<3> Store every 50,000 messages
-<4> Make sure to store offset at least every 10 seconds
-
-Note the automatic tracking is the default tracking strategy, so if you are fine
-with its defaults, it is enabled as soon as you specify a name
-for the consumer:
-
-.Setting only the consumer name to enable automatic tracking
-[source,java,indent=0]
---------
-include::{test-examples}/ConsumerUsage.cs[tag=auto-tracking-only-with-name]
---------
-<1> Set only the consumer name to enable automatic tracking with defaults
-
-Automatic tracking is simple and provides good guarantees. It is nevertheless
-possible to have more fine-grained control over offset tracking by using
-manual tracking.
+Whatever tracking strategy you use, *a consumer must have a `Reference` to be able to store offsets*.
 
 [[consumer-manual-offset-tracking]]
 ====== Manual Offset Tracking
 
-The manual tracking strategy lets the developer in charge of storing offsets
-whenever they want, not only after a given number of messages has been received
-and supposedly processed, like automatic tracking does.
+The manual tracking strategy lets the developer in charge of storing offsets whenever they want, not only after a given number of messages has been received and supposedly processed, like automatic tracking does.
 
-The following snippet shows how to enable manual tracking and how to store
-the offset at some point:
+The following snippet shows how to enable manual tracking and how to store the offset at some point:
 
 .Using manual tracking with defaults
 [source,java,indent=0]
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=manual-tracking-defaults]
 --------
-<1> Set the consumer name (mandatory for offset tracking)
-<2> Use manual tracking with defaults
-<3> Store the current offset on some condition
 
-Manual tracking has only one setting: the *check interval*. The client checks
-that the last requested stored offset has been actually stored at the
-specified interval. _The default check interval is 5 seconds_.
+<1> Set the consumer Reference (mandatory for offset tracking)
+<2> Store the current offset on some condition
 
-The following snippet shows the configuration of manual tracking:
-
-.Configuring manual tracking strategy
-[source,java,indent=0]
---------
-include::{test-examples}/ConsumerUsage.cs[tag=manual-tracking-with-settings]
---------
-<1> Set the consumer name (mandatory for offset tracking)
-<2> Use manual tracking with defaults
-<3> Check last requested offset every 10 seconds
-<4> Store the current offset on some condition
-
-The snippet above uses `MessageHandler.Context#storeOffset()` to store at the
-offset of the current message, but it is possible to store anywhere
-in the stream with `MessageHandler.Context#consumer()#store(long)` or
-simply `Consumer#store(long)`.
+The snippet above uses `consumer.StoreOffset(context.Offset)` to store at the offset of the current message.
 
 ====== Considerations On Offset Tracking
 
 _When to store offsets?_ Avoid storing offsets too often or, worse, for each message.
-Even though offset tracking is a small and fast operation, it will
-make the stream grow unnecessarily, as the broker persists offset
-tracking entries in the stream itself.
+Even though offset tracking is a small and fast operation, it will make the stream grow unnecessarily, as the broker persists offset tracking entries in the stream itself.
 
-A good rule of thumb is to store the offset every few thousands
-of messages. Of course, when the consumer will restart consuming in a new incarnation, the
-last tracked offset may be a little behind the very last message the previous incarnation
-actually processed, so the consumer may see some messages that have been already processed.
+A good rule of thumb is to store the offset every few thousands of messages.
+Of course, when the consumer will restart consuming in a new incarnation, the last tracked offset may be a little behind the very last message the previous incarnation actually processed, so the consumer may see some messages that have been already processed.
 
-A solution to this problem is to make sure processing is idempotent or filter out the
-last duplicated messages.
+A solution to this problem is to make sure processing is idempotent or filter out the last duplicated messages.
 
 '''
 
 _Is the offset a reliable absolute value?_ Message offsets may not be contiguous.
-This implies that the message at offset 500 in a stream may
-not be the 501 message in the stream (offsets start at 0).
-There can be different types of entries in a stream storage, a message is
-just one of them. For example, storing an offset creates an offset tracking
-entry, which has its own offset.
+This implies that the message at offset 500 in a stream may not be the 501 message in the stream (offsets start at 0).
+There can be different types of entries in a stream storage, a message is just one of them.
+For example, storing an offset creates an offset tracking entry, which has its own offset.
 
-This means one must be careful when basing some decision on offset values, like
-a modulo to perform an operation every X messages. As the message offsets have
-no guarantee to be contiguous, the operation may not happen exactly every X messages.
-
-[[consumer-subscription-listener]]
-====== Subscription Listener
-
-The client provides a `SubscriptionListener` interface callback to add behavior before a subscription is created.
-This callback can be used to customize the offset the client library computed for the subscription.
-The callback is called when the consumer is first created and when the client has to re-subscribe (e.g. after a disconnection or a topology change).
-
-WARNING: This API is *experimental*, it is subject to change.
-
-It is possible to use the callback to get the last processed offset from an external store, that is not using the server-side offset tracking feature RabbitMQ Stream provides.
-The following code snippet shows how this can be done (note the interaction with the external store is not detailed):
-
-.Using an external store for offset tracking with a subscription listener
-[source,java,indent=0]
---------
-include::{test-examples}/ConsumerUsage.cs[tag=subscription-listener]
---------
-<1> Set subscription listener
-<2> Get offset from external store
-<3> Set offset to use for the subscription
-<4> Store the offset in the external store after processing
-
-When using an external store for offset tracking, it is no longer necessary to set a name and an offset strategy, as these only apply when server-side offset tracking is in use.
-
-Using a subscription listener can also be useful to have more accurate offset tracking on re-subscription, at the cost of making the application code slightly more complex.
-This requires a good understanding on how and when subscription occurs in the client, and so when the subscription listener is called:
-
-* for a consumer with no name (server-side offset tracking _disabled_)
-** on the first subscription (when the consumer is created): the offset specification is the one specified with `ConsumerBuilder#offset(OffsetSpecification)`, the default being `OffsetSpecification#next()`
-** on re-subscription (after a disconnection or topology change): the offset specification is the offset of the last dispatched message
-* for a consumer with a name (server-side offset tracking _enabled_)
-** on the first subscription (when the consumer is created): the server-side stored offset (if any) overrides the value specified with `ConsumerBuilder#offset(OffsetSpecification)`
-** on re-subscription (after a disconnection or topology change): the server-side stored offset is used
-
-The subscription listener comes in handy on re-subscription.
-The application can track the last processed offset in-memory, with an `AtomicLong` for example.
-The application knows exactly when a message is processed and updates its in-memory tracking accordingly, whereas the value computed by the client may not be perfectly appropriate on re-subscription.
-
-Let's take the example of a named consumer with an offset tracking strategy that is lagging because of bad timing and a long flush interval.
-When a glitch happens and triggers the re-subscription, the server-side stored offset can be quite behind what the application actually processed.
-Using this server-side stored offset can lead to duplicates, whereas using the in-memory, application-specific offset tracking variable is more accurate.
-A custom `SubscriptionListener` lets the application developer uses what's best for the application if the computed value is not optimal.
+This means one must be careful when basing some decision on offset values, like a modulo to perform an operation every X messages.
+As the message offsets have no guarantee to be contiguous, the operation may not happen exactly every X messages.
 
 [[single-active-consumer]]
 ===== Single Active Consumer
@@ -1053,7 +892,6 @@ The broker rolls over to another consumer when the active one stops or crashes:
                     +----------+
 ....
 
-
 Note there can be several groups of single active consumers on the same stream.
 What makes them different from each other is the name used by the consumers.
 The broker deals with them independently.
@@ -1073,20 +911,16 @@ Use the `ConsumerBuilder#singleActiveConsumer()` method to enable the feature:
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=enabling-single-active-consumer]
 --------
-<1> Set the consumer name (mandatory to enable single active consumer)
+<1> Set the `Reference` name (mandatory to enable single active consumer)
 <2> Enable single active consumer
 
 With the configuration above, the consumer will take part in the `application-1` group on the `my-stream` stream.
-If the consumer instance is the first in a group, it will get messages as soon as there are some available. If it is not the first in the group, it will remain idle until it is its turn to be active (likely when all the instances registered before it are gone).
+If the consumer instance is the first in a group, it will get messages as soon as there are some available.
+If it is not the first in the group, it will remain idle until it is its turn to be active (likely when all the instances registered before it are gone).
 
 ====== Offset Tracking
 
-Single active consumer and offset tracking work together: when the active consumer goes away, another consumer takes over and resumes when the former active left off.
-Well, this is how things should work and luckily this is what happens when using <<consumer-offset-tracking, server-side offset tracking>>.
-So as long as you use <<consumer-automatic-offset-tracking, automatic offset tracking>> or <<consumer-manual-offset-tracking, manual offset tracking>>, the handoff between a former active consumer and the new one will go well.
-
-The story is different is you are using an external store for offset tracking.
-In this case you need to tell the client library where to resume from and you can do this by implementing the `ConsumerUpdateListener` API.
+Single active consumer and offset tracking work together: when the active consumer goes away, another consumer takes over and you need to tell the client library where to resume from and you can do this by implementing the `ConsumerUpdateListener` API.
 
 [[consumer-update-listener]]
 ====== Reacting to Consumer State Change
@@ -1096,16 +930,15 @@ The broker expects a response from the consumer and this response contains the o
 So this is the consumer's responsibility to compute the appropriate offset, not the broker's.
 The default behavior is to look up the last stored offset for the consumer on the stream.
 This works when server-side offset tracking is in use, but it does not when the application chose to use an external store for offset tracking.
-In this case, it is possible to use the `ConsumerBuilder#consumerUpdateListener(ConsumerUpdateListener)` method like demonstrated in the following snippet:
+In this case, it is possible to use the `ConsumerConfig#ConsumerUpdateListener()` method like demonstrated in the following snippet:
 
 .Fetching the last stored offset from an external store in the consumer update listener callback
 [source,java,indent=0]
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=sac-consumer-update-listener]
 --------
-<1> Set the consumer name (mandatory to enable single active consumer)
+
+<1> Set the `Reference` name (mandatory to enable single active consumer)
 <2> Enable single active consumer
-<3> Disable server-side offset tracking
-<4> Set the consumer update listener
-<5> Fetch last offset from external store
-<6> Return the offset to resume consuming from to the broker
+<3> Handle `ConsumerUpdateListener` callback
+

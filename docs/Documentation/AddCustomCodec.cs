@@ -14,21 +14,10 @@ namespace Documentation;
 // tag::lz4-i-compression-codec[]
 class StreamLz4Codec : ICompressionCodec // <1>
 {
+
+
+
     private ReadOnlySequence<byte> _compressedReadOnlySequence;
-
-// end::lz4-i-compression-codec[]
-    private static int WriteUInt32(Span<byte> span, uint value)
-    {
-        BinaryPrimitives.WriteUInt32BigEndian(span, value);
-        return 4;
-    }
-
-    private static int Write(Span<byte> span, ReadOnlySequence<byte> msg)
-    {
-        msg.CopyTo(span);
-        return (int)msg.Length;
-    }
-
     public void Compress(List<Message> messages)
     {
         MessagesCount = messages.Count;
@@ -52,6 +41,30 @@ class StreamLz4Codec : ICompressionCodec // <1>
         _compressedReadOnlySequence = new ReadOnlySequence<byte>(destination.ToArray());
     }
 
+    public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
+    {
+        using var target = new MemoryStream();
+        using (var sourceDecode = LZ4Stream.Decode(new MemoryStream(source.ToArray())))
+        {
+            sourceDecode.CopyTo(target);
+        }
+        return new ReadOnlySequence<byte>(target.ToArray());
+    }
+
+// end::lz4-i-compression-codec[]
+    private static int WriteUInt32(Span<byte> span, uint value)
+    {
+        BinaryPrimitives.WriteUInt32BigEndian(span, value);
+        return 4;
+    }
+
+    private static int Write(Span<byte> span, ReadOnlySequence<byte> msg)
+    {
+        msg.CopyTo(span);
+        return (int)msg.Length;
+    }
+
+    
     public int Write(Span<byte> span)
     {
         return Write(span, _compressedReadOnlySequence);
@@ -64,16 +77,7 @@ class StreamLz4Codec : ICompressionCodec // <1>
 
     public CompressionType CompressionType => CompressionType.Lz4;
 
-    public ReadOnlySequence<byte> UnCompress(ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize)
-    {
-        using var target = new MemoryStream();
-        using (var sourceDecode = LZ4Stream.Decode(new MemoryStream(source.ToArray())))
-        {
-            sourceDecode.CopyTo(target);
-        }
-
-        return new ReadOnlySequence<byte>(target.ToArray());
-    }
+  
 }
 
 public class AddCustomCodec

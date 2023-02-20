@@ -78,21 +78,3 @@ The client contains 2 sets of programming interfaces whose stability are of inte
 
 * Application Programming Interfaces (API): those are the ones used to write application logic. They include the interfaces and classes in the `RabbitMQ.Stream.Client.Reliable` package (e.g. `Producer`, `Consumer`, `Message`). These API constitute the main programming model of the client and will be kept as stable as possible.
 
-
-
-[[low-high-level-classes]]
-== Low Level and High Level classes
-
-.NET stream client provides  two types of classes:
-
-* Low-level classes
-* High-level classes
-
-High-level classes (`Producer` and `Consumer`) are a wrapper around the Low-Level classes (`Raw*Producer` and `Raw*Consumer`)
-
-`Producer` and `Consumer` classes handle auto-reconnection, metadata updates, super-stream and some low-level client behaviour.
-
-It would be best to use `Producer` and `Consumer` classes unless you need to handle the low-level details.  
-
-
-
