@@ -17,7 +17,7 @@ public class Start
         switch (arguments[0])
         {
             case "--producer":
-                await SuperStreamProducer.Start();
+                await SuperStreamProducer.Start().ConfigureAwait(false);
                 break;
             case "--consumer":
                 if (arguments.Length == 1)
@@ -26,7 +26,7 @@ public class Start
                     return;
                 }
 
-                await SuperStreamConsumer.Start(arguments[1]);
+                await SuperStreamConsumer.Start(arguments[1]).ConfigureAwait(false);
                 break;
             default:
                 Console.WriteLine("Unknown command: {0} (values: --producer / --consumer)", arguments[0]);

@@ -199,7 +199,9 @@ namespace RabbitMQ.Stream.Client
         {
             var client = new Client(parameters, logger);
 
-            client.connection = await Connection.Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl).ConfigureAwait(false);
+            client.connection = await Connection
+                .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl)
+                .ConfigureAwait(false);
 
             // exchange properties
             await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
@@ -208,12 +210,16 @@ namespace RabbitMQ.Stream.Client
 
             //auth
             var saslHandshakeResponse =
-                await client.Request<SaslHandshakeRequest, SaslHandshakeResponse>(corr => new SaslHandshakeRequest(corr)).ConfigureAwait(false);
+                await client
+                    .Request<SaslHandshakeRequest, SaslHandshakeResponse>(corr => new SaslHandshakeRequest(corr))
+                    .ConfigureAwait(false);
             logger?.LogDebug("Sasl mechanism: {Mechanisms}", saslHandshakeResponse.Mechanisms);
 
             var saslData = Encoding.UTF8.GetBytes($"\0{parameters.UserName}\0{parameters.Password}");
             var authResponse =
-                await client.Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr => new SaslAuthenticateRequest(corr, "PLAIN", saslData)).ConfigureAwait(false);
+                await client
+                    .Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
+                        new SaslAuthenticateRequest(corr, "PLAIN", saslData)).ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
             //tune
@@ -222,7 +228,9 @@ namespace RabbitMQ.Stream.Client
                 (uint)client.Parameters.Heartbeat.TotalSeconds)).ConfigureAwait(false);
 
             // open 
-            var open = await client.Request<OpenRequest, OpenResponse>(corr => new OpenRequest(corr, parameters.VirtualHost)).ConfigureAwait(false);
+            var open = await client
+                .Request<OpenRequest, OpenResponse>(corr => new OpenRequest(corr, parameters.VirtualHost))
+                .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(open.ResponseCode, parameters.VirtualHost);
             logger?.LogDebug("Open: ConnectionProperties: {ConnectionProperties}", open.ConnectionProperties);
             client.ConnectionProperties = open.ConnectionProperties;
@@ -244,7 +252,15 @@ namespace RabbitMQ.Stream.Client
 
         public ValueTask<bool> Publish<T>(T msg) where T : struct, ICommand
         {
-            return connection.Write(msg);
+            try
+            {
+                return connection.Write(msg);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "An error occurred while writing the buffer to the socket");
+                throw;
+            }
         }
 
         public async Task<(byte, DeclarePublisherResponse)> DeclarePublisher(string publisherRef,
@@ -406,9 +422,19 @@ namespace RabbitMQ.Stream.Client
                     ConsumerUpdateQueryResponse.Read(frame, out var consumerUpdateQueryResponse);
                     HandleCorrelatedResponse(consumerUpdateQueryResponse);
                     var consumerEventsUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
+                    var off = await consumerEventsUpd.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive)
+                        .ConfigureAwait(false);
+                    if (off == null)
+                    {
+                        _logger.LogWarning(
+                            "ConsumerUpdateHandler can't returned null, a default offsetType (OffsetTypeNext) will be used");
+                        off = new OffsetTypeNext();
+                    }
+                    // event the consumer is not active, we need to send a ConsumerUpdateResponse
+                    // by protocol definition. the offsetType can't be null so we use OffsetTypeNext as default
                     await ConsumerUpdateResponse(
                         consumerUpdateQueryResponse.CorrelationId,
-                        await consumerEventsUpd.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive).ConfigureAwait(false)).ConfigureAwait(false);
+                        off).ConfigureAwait(false);
                     break;
                 case CreditResponse.Key:
                     CreditResponse.Read(frame, out var creditResponse);
@@ -564,7 +590,6 @@ namespace RabbitMQ.Stream.Client
             }
 
             return new CloseResponse(0, ResponseCode.Ok);
-
         }
 
         // Safe close 
@@ -594,7 +619,8 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask<MetaDataResponse> QueryMetadata(string[] streams)
         {
-            return await Request<MetaDataQuery, MetaDataResponse>(corr => new MetaDataQuery(corr, streams.ToList())).ConfigureAwait(false);
+            return await Request<MetaDataQuery, MetaDataResponse>(corr => new MetaDataQuery(corr, streams.ToList()))
+                .ConfigureAwait(false);
         }
 
         public async Task<bool> StreamExists(string stream)
@@ -613,12 +639,14 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask<CreateResponse> CreateStream(string stream, IDictionary<string, string> args)
         {
-            return await Request<CreateRequest, CreateResponse>(corr => new CreateRequest(corr, stream, args)).ConfigureAwait(false);
+            return await Request<CreateRequest, CreateResponse>(corr => new CreateRequest(corr, stream, args))
+                .ConfigureAwait(false);
         }
 
         public async ValueTask<DeleteResponse> DeleteStream(string stream)
         {
-            return await Request<DeleteRequest, DeleteResponse>(corr => new DeleteRequest(corr, stream)).ConfigureAwait(false);
+            return await Request<DeleteRequest, DeleteResponse>(corr => new DeleteRequest(corr, stream))
+                .ConfigureAwait(false);
         }
 
         public async ValueTask<bool> Credit(byte subscriptionId, ushort credit)
