@@ -29,10 +29,10 @@ The library requires .NET 6 or .NET 6.
 
 ### Documentation
 
-- A Simple Getting started: https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/docs/Documentation/
-- Examples: https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/Examples/
-- HTML documentation: https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html
-- PDF documentation: https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/documentation.pdf
+- [A Simple Getting started](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/docs/Documentation/)
+- [Examples](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/Examples/)
+- [HTML documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html)
+- [PDF documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/documentation.pdf)
 
 
 
