@@ -72,7 +72,7 @@ public class StreamSystemUsage
             {
                 UserName = "guest",
                 Password = "guest",
-                Ssl = new SslOption() // <1>
+                Ssl = new SslOption() 
                 {
                     Enabled = true,
                     AcceptablePolicyErrors = SslPolicyErrors.RemoteCertificateNotAvailable | // <1>
@@ -81,7 +81,7 @@ public class StreamSystemUsage
                 }
             }
         ).ConfigureAwait(false);
-        await streamSystem.Close().ConfigureAwait(false); // <2>
+        await streamSystem.Close().ConfigureAwait(false); 
     }
     // end::create-tls-trust[]
 
@@ -102,7 +102,7 @@ public class StreamSystemUsage
         ).ConfigureAwait(false);
 
 
-        await streamSystem.Close().ConfigureAwait(false); // <2>
+        await streamSystem.Close().ConfigureAwait(false);
     }
     // end::create-address-resolver[]
 
@@ -128,7 +128,7 @@ public class StreamSystemUsage
         ).ConfigureAwait(false);
 
         await streamSystem.DeleteStream("my-stream").ConfigureAwait(false); // <1>
-        await streamSystem.Close().ConfigureAwait(false); // <2>
+        await streamSystem.Close().ConfigureAwait(false);
     }
     // end::stream-deletion[]
     

@@ -310,7 +310,8 @@ Once a `Producer` has been created, it is possible to send a message with:
 * `Producer#send(Message)`, 
 * `Producer#send(List<Message>)`
 * `Producer#send(List<Message> messages, CompressionType compressionType)`.
-snippet shows how to publish a message with a byte array payload:
+
+The following snippet shows how to publish a message with a byte array payload:
 
 .Sending a message
 [source,java,indent=0]
@@ -789,7 +790,7 @@ All of this without an extra datastore, as the broker stores the offset tracking
 
 Offset tracking works in 2 steps:
 
-* the consumer must have a *name*.
+* the consumer must have a *reference*.
 The name is set with `ConsumerConfig#Reference`.
 The name can be any value (under 256 characters) and is expected to be unique (from the application point of view).
 Note neither the client library, nor the broker enforces uniqueness of the name: if 2 `Consumer` .NET instances share the same name, their offset tracking will likely be interleaved, which applications usually do not expect.
@@ -805,7 +806,7 @@ The manual tracking strategy lets the developer in charge of storing offsets whe
 The following snippet shows how to enable manual tracking and how to store the offset at some point:
 
 .Using manual tracking with defaults
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=manual-tracking-defaults]
 --------
@@ -911,7 +912,7 @@ Let's see now the API for single active consumer.
 Use the `ConsumerBuilder#singleActiveConsumer()` method to enable the feature:
 
 .Enabling single active consumer
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=enabling-single-active-consumer]
 --------
@@ -937,7 +938,7 @@ This works when server-side offset tracking is in use, but it does not when the 
 In this case, it is possible to use the `ConsumerConfig#ConsumerUpdateListener()` method like demonstrated in the following snippet:
 
 .Fetching the last stored offset from an external store in the consumer update listener callback
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=sac-consumer-update-listener]
 --------
@@ -968,7 +969,7 @@ The Classes are used to interact with the stream server in a low level way. They
 * `Metadata update`
 
 .Creating a Raw Producer
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/RawClasses.cs[tag=raw-producer-creation]
 --------

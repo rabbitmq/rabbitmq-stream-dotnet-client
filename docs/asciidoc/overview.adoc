@@ -78,3 +78,6 @@ The client contains 2 sets of programming interfaces whose stability are of inte
 
 * Application Programming Interfaces (API): those are the ones used to write application logic. They include the interfaces and classes in the `RabbitMQ.Stream.Client.Reliable` package (e.g. `Producer`, `Consumer`, `Message`). These API constitute the main programming model of the client and will be kept as stable as possible.
 
+* Stream compression interface: `RabbitMQ.Stream.Client.ICompressionCodec`  and `RabbitMQ.Stream.Client.StreamCompressionCodecs` are used to implement custom compression codecs. 
+
+[[stream-client-usage]]

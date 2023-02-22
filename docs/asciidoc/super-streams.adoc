@@ -269,7 +269,7 @@ The application developer can use the <<api.adoc#consumer-update-listener, `Cons
 The following snippet illustrates the use of the `ConsumerUpdateListener` callback:
 
 .Using manual offset tracking for a super stream single active consumer
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/SuperStreamConsumer.cs[tag=sac-manual-offset-tracking]
 --------
@@ -290,6 +290,9 @@ Note the `ConsumerUpdateListener` is called for a _partition_, that is an indivi
 RabbitMQ Stream provides server-side offset tracking, but it is possible to use an external store to track offsets for streams.
 The `ConsumerUpdateListener` callback is still your friend in this case.
 
-You can follow the README on the :test-examples: ../SuperStream[link] to run the Super Stream example with the single active consumer feature.
+[[super-stream-sac-full-example]]
+==== Super Stream with Single Active Consumer Example
+
+You can follow the README on the https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/documentation_website/docs/SuperStream[link] to run the Super Stream example with the single active consumer feature.
 
 

@@ -22,7 +22,6 @@ public class ConsumerUsage
                 streamSystem,
                 "my-stream")
             {
-                // Reference = 
                 OffsetSpec = new OffsetTypeTimestamp(), // <3>
                 MessageHandler = async (stream, consumer, context, message) => // <4>
                 {
@@ -65,7 +64,7 @@ public class ConsumerUsage
             }
         ).ConfigureAwait(false);
 
-        await consumer.Close().ConfigureAwait(false); // <5>
+        await consumer.Close().ConfigureAwait(false);
         await streamSystem.Close().ConfigureAwait(false);
         // end::manual-tracking-defaults[]
     }

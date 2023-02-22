@@ -20,6 +20,9 @@ The sample class starts with a few imports:
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-imports]
 --------
+<1>  `Microsoft.Extensions.Logging` is used to log the events. ( not shipped with the client)
+<2> `RabbitMQ.Stream.Client` is the main package to use the client
+<3> `RabbitMQ.Stream.Client.Reliable` contains the `Producer` and `Consumer` implementations
 
 The next step is to create the `StreamSystem`. It is a management object
 used to manage streams and create producers as well as consumers. The
@@ -27,7 +30,7 @@ next snippet shows how to create an `StreamSystem` instance and
 create the stream used in the application:
 
 .Creating the environment
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-system]
 --------
@@ -42,7 +45,7 @@ a `Producer`, send messages, and handle publishing confirmations, to
 make sure the broker has taken outbound messages into account.
 
 .Publishing messages
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-producer]
 --------
@@ -61,7 +64,7 @@ The next snippet does this to calculate a sum and output it once all the message
 have been received:
 
 .Consuming messages
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-consumer]
 --------
@@ -73,7 +76,7 @@ include::{test-examples}/GettingStarted.cs[tag=sample-consumer]
 <6> Close the consumer
 
 .Cleaning before terminating
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-close]
 --------
@@ -82,7 +85,7 @@ include::{test-examples}/GettingStarted.cs[tag=sample-close]
 
 
 .About logging
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/GettingStarted.cs[tag=sample-logging]
 --------
@@ -90,8 +93,10 @@ include::{test-examples}/GettingStarted.cs[tag=sample-logging]
 <2> Define the logger for the consumer
 <3> Define the logger for the stream system
 
+The client is shipped with only with `Microsoft.Extensions.Logging.Abstractions` and you can use any logger you want.
+
 The logger is not mandatory but it is highly recommended to configure it to understand what is happening.
-In this example, we are using `Microsoft.Extensions.Logging.Console` to log to the console, but you can use any logger you want.
+In this example, we are using `Microsoft.Extensions.Logging.Console` to log to the console.
 `Microsoft.Extensions.Logging.Console` is not shipped with the client.
 
 .Run the sample application

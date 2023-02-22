@@ -13,6 +13,9 @@
 
 The RabbitMQ Stream .NET Client is a .NET library to communicate with the [RabbitMQ Stream Plugin](https://rabbitmq.com/stream.html). It allows to create and delete streams, as well as to publish to and consume from these streams.
 
+
+The client is distributed via [NuGet](https://www.nuget.org/packages/RabbitMQ.Stream.Client/).
+
 Please refer to the [documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html) ([PDF](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/documentation.pdf)) to find out more.
 
 
@@ -29,10 +32,13 @@ The library requires .NET 6 or .NET 7.
 
 ### Documentation
 
-- [A Simple Getting started](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/docs/Documentation/)
-- [Examples](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/Examples/)
+
 - [HTML documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html)
-- [PDF documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/documentation.pdf)
+- [PDF documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/dotnet-stream-client.pdf)
+
+- [A Simple Getting started](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/docs/Documentation/)
+- [Super Stream example](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/docs/SuperStream)
+- [Stream Performance Test](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/RabbitMQ.Stream.Client.PerfTest)
 
 
 
