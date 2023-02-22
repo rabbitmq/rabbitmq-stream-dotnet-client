@@ -518,7 +518,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_guarantees">Guarantees</a></li>
 <li><a href="#stream-client-overview">Stream Client Overview</a></li>
 <li><a href="#stability-of-programming-interfaces">Stability of Programming Interfaces</a></li>
-<li><a href="#_the_stream_net_client">The Stream .NET Client</a>
+<li><a href="#stream-client-usage">The Stream .NET Client</a>
 <ul class="sectlevel2">
 <li><a href="#_setting_up_rabbitmq">Setting up RabbitMQ</a>
 <ul class="sectlevel3">
@@ -546,7 +546,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_managing_streams">Managing Streams</a></li>
 </ul>
 </li>
-<li><a href="#_producer">Producer</a>
+<li><a href="#creating-a-producer">Producer</a>
 <ul class="sectlevel4">
 <li><a href="#_creating_a_producer">Creating a Producer</a></li>
 <li><a href="#_sending_messages">Sending Messages</a></li>
@@ -561,7 +561,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#sub-entry-batching-and-compression">Sub-Entry Batching and Compression</a></li>
 </ul>
 </li>
-<li><a href="#_consumer">Consumer</a>
+<li><a href="#creating-a-consumer">Consumer</a>
 <ul class="sectlevel4">
 <li><a href="#_creating_a_consumer">Creating a Consumer</a></li>
 <li><a href="#specifying-an-offset">Specifying an Offset</a></li>
@@ -580,11 +580,36 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 </ul>
 </li>
+<li><a href="#low-high-level-classes">Low Level and High Level classes</a>
+<ul class="sectlevel4">
+<li><a href="#_low_level_classes">Low-level classes</a></li>
+<li><a href="#_high_level_classes">High-level classes</a></li>
+</ul>
+</li>
+<li><a href="#super-streams">Super Streams (Partitioned Streams)</a>
+<ul class="sectlevel4">
+<li><a href="#_topology">Topology</a></li>
+<li><a href="#_super_stream_creation">Super Stream Creation</a></li>
+<li><a href="#super-stream-producer">Publishing to a Super Stream</a>
+<ul class="sectlevel5">
+<li><a href="#_deduplication">Deduplication</a></li>
+</ul>
+</li>
+<li><a href="#_consuming_from_a_super_stream">Consuming From a Super Stream</a>
+<ul class="sectlevel5">
+<li><a href="#super-stream-consumer-in-practice">Super Stream Consumer in Practice</a></li>
+<li><a href="#_declaring_a_super_stream_consumer">Declaring a Super Stream Consumer</a></li>
+<li><a href="#_offset_tracking_2">Offset Tracking</a></li>
+<li><a href="#super-stream-sac">Single Active Consumer Support</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#low-high-level-classes">Low Level and High Level classes</a></li>
+<li><a href="#super-stream-sac-full-example">Super Stream with Single Active Consumer Example</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -731,12 +756,15 @@ recovery and automatic re-subscription for consumers.</p>
 <li>
 <p>Application Programming Interfaces (API): those are the ones used to write application logic. They include the interfaces and classes in the <code>RabbitMQ.Stream.Client.Reliable</code> package (e.g. <code>Producer</code>, <code>Consumer</code>, <code>Message</code>). These API constitute the main programming model of the client and will be kept as stable as possible.</p>
 </li>
+<li>
+<p>Stream compression interface: <code>RabbitMQ.Stream.Client.ICompressionCodec</code>  and <code>RabbitMQ.Stream.Client.StreamCompressionCodecs</code> are used to implement custom compression codecs.</p>
+</li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_the_stream_net_client">The Stream .NET Client</h2>
+<h2 id="stream-client-usage">The Stream .NET Client</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The library requires .NET 6 or .NET 7.</p>
@@ -912,6 +940,19 @@ using RabbitMQ.Stream.Client; // <b class="conum">(2)</b>
 using RabbitMQ.Stream.Client.Reliable; // <b class="conum">(3)</b></code></pre>
 </div>
 </div>
+<div class="colist arabic">
+<ol>
+<li>
+<p><code>Microsoft.Extensions.Logging</code> is used to log the events. ( not shipped with the client)</p>
+</li>
+<li>
+<p><code>RabbitMQ.Stream.Client</code> is the main package to use the client</p>
+</li>
+<li>
+<p><code>RabbitMQ.Stream.Client.Reliable</code> contains the <code>Producer</code> and <code>Consumer</code> implementations</p>
+</li>
+</ol>
+</div>
 <div class="paragraph">
 <p>The next step is to create the <code>StreamSystem</code>. It is a management object
 used to manage streams and create producers as well as consumers. The
@@ -921,24 +962,24 @@ create the stream used in the application:</p>
 <div class="listingblock">
 <div class="title">Creating the environment</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create( // <b class="conum">(1)</b>
-    <span class="keyword">new</span> StreamSystemConfig() // <b class="conum">(2)</b>
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create( // <b class="conum">(1)</b>
+    new StreamSystemConfig() // <b class="conum">(2)</b>
     {
-        UserName = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-        Password = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-        Endpoints = <span class="keyword">new</span> <span class="predefined-type">List</span>&lt;EndPoint&gt;() {<span class="keyword">new</span> IPEndPoint(IPAddress.Loopback, <span class="integer">5552</span>)}
+        UserName = &quot;guest&quot;,
+        Password = &quot;guest&quot;,
+        Endpoints = new List&lt;EndPoint&gt;() {new IPEndPoint(IPAddress.Loopback, 5552)}
     },
     streamLogger // <b class="conum">(3)</b>
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+).ConfigureAwait(false);
 
-<span class="comment">// Create a stream</span>
+// Create a stream
 
-<span class="reserved">const</span> string StreamName = <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>;
+const string StreamName = &quot;my-stream&quot;;
 await streamSystem.CreateStream(
-    <span class="keyword">new</span> StreamSpec(StreamName) // <b class="conum">(4)</b>
+    new StreamSpec(StreamName) // <b class="conum">(4)</b>
     {
-        MaxSegmentSizeBytes = <span class="integer">20</span>_000_000 // <b class="conum">(5)</b>
-    }).ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+        MaxSegmentSizeBytes = 20_000_000 // <b class="conum">(5)</b>
+    }).ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -968,70 +1009,70 @@ make sure the broker has taken outbound messages into account.</p>
 <div class="listingblock">
 <div class="title">Publishing messages</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> confirmationTaskCompletionSource = <span class="keyword">new</span> TaskCompletionSource&lt;<span class="type">int</span>&gt;();
-<span class="type">var</span> confirmationCount = <span class="integer">0</span>;
-<span class="reserved">const</span> <span class="type">int</span> MessageCount = <span class="integer">100</span>;
-<span class="type">var</span> producer = await Producer.Create( // <b class="conum">(1)</b>
-        <span class="keyword">new</span> ProducerConfig(streamSystem, StreamName)
+<pre class="CodeRay highlight"><code data-lang="c#">var confirmationTaskCompletionSource = new TaskCompletionSource&lt;int&gt;();
+var confirmationCount = 0;
+const int MessageCount = 100;
+var producer = await Producer.Create( // <b class="conum">(1)</b>
+        new ProducerConfig(streamSystem, StreamName)
         {
             ConfirmationHandler = async confirmation =&gt; // <b class="conum">(2)</b>
             {
                 Interlocked.Increment(ref confirmationCount);
 
-                <span class="comment">// here you can handle the confirmation</span>
-                <span class="keyword">switch</span> (confirmation.Status)
+                // here you can handle the confirmation
+                switch (confirmation.Status)
                 {
-                    <span class="keyword">case</span> ConfirmationStatus.Confirmed: // <b class="conum">(3)</b>
-                        <span class="comment">// all the messages received here are confirmed</span>
-                        <span class="keyword">if</span> (confirmationCount == MessageCount)
+                    case ConfirmationStatus.Confirmed: // <b class="conum">(3)</b>
+                        // all the messages received here are confirmed
+                        if (confirmationCount == MessageCount)
                         {
-                            Console.WriteLine(<span class="string"><span class="delimiter">&quot;</span><span class="content">*********************************</span><span class="delimiter">&quot;</span></span>);
-                            Console.WriteLine(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">All the {MessageCount} messages are confirmed</span><span class="delimiter">&quot;</span></span>);
-                            Console.WriteLine(<span class="string"><span class="delimiter">&quot;</span><span class="content">*********************************</span><span class="delimiter">&quot;</span></span>);
+                            Console.WriteLine(&quot;*********************************&quot;);
+                            Console.WriteLine($&quot;All the {MessageCount} messages are confirmed&quot;);
+                            Console.WriteLine(&quot;*********************************&quot;);
                         }
 
-                        <span class="keyword">break</span>;
+                        break;
 
-                    <span class="keyword">case</span> ConfirmationStatus.StreamNotAvailable:
-                    <span class="keyword">case</span> ConfirmationStatus.InternalError:
-                    <span class="keyword">case</span> ConfirmationStatus.AccessRefused:
-                    <span class="keyword">case</span> ConfirmationStatus.PreconditionFailed:
-                    <span class="keyword">case</span> ConfirmationStatus.PublisherDoesNotExist:
-                    <span class="keyword">case</span> ConfirmationStatus.UndefinedError:
-                    <span class="keyword">case</span> ConfirmationStatus.ClientTimeoutError:
+                    case ConfirmationStatus.StreamNotAvailable:
+                    case ConfirmationStatus.InternalError:
+                    case ConfirmationStatus.AccessRefused:
+                    case ConfirmationStatus.PreconditionFailed:
+                    case ConfirmationStatus.PublisherDoesNotExist:
+                    case ConfirmationStatus.UndefinedError:
+                    case ConfirmationStatus.ClientTimeoutError:
                         // <b class="conum">(4)</b>
                         Console.WriteLine(
-                            <span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">Message {confirmation.PublishingId} failed with {confirmation.Status}</span><span class="delimiter">&quot;</span></span>);
-                        <span class="keyword">break</span>;
-                    <span class="keyword">default</span>:
-                        <span class="keyword">throw</span> <span class="keyword">new</span> ArgumentOutOfRangeException();
+                            $&quot;Message {confirmation.PublishingId} failed with {confirmation.Status}&quot;);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
 
-                <span class="keyword">if</span> (confirmationCount == MessageCount)
+                if (confirmationCount == MessageCount)
                 {
                     confirmationTaskCompletionSource.SetResult(MessageCount);
                 }
 
-                await Task.CompletedTask.ConfigureAwait(<span class="predefined-constant">false</span>);
+                await Task.CompletedTask.ConfigureAwait(false);
             }
         },
         producerLogger // <b class="conum">(5)</b>
     )
-    .ConfigureAwait(<span class="predefined-constant">false</span>);
+    .ConfigureAwait(false);
 
 
-<span class="comment">// Send 100 messages</span>
-Console.WriteLine(<span class="string"><span class="delimiter">&quot;</span><span class="content">Starting publishing...</span><span class="delimiter">&quot;</span></span>);
-<span class="keyword">for</span> (<span class="type">var</span> i = <span class="integer">0</span>; i &lt; MessageCount; i++)
+// Send 100 messages
+Console.WriteLine(&quot;Starting publishing...&quot;);
+for (var i = 0; i &lt; MessageCount; i++)
 {
     await producer.Send( // <b class="conum">(6)</b>
-        <span class="keyword">new</span> Message(Encoding.ASCII.GetBytes(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">{i}</span><span class="delimiter">&quot;</span></span>))
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
+        new Message(Encoding.ASCII.GetBytes($&quot;{i}&quot;))
+    ).ConfigureAwait(false);
 }
 
 
 confirmationTaskCompletionSource.Task.Wait(); // <b class="conum">(7)</b>
-await producer.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(8)</b></code></pre>
+await producer.Close().ConfigureAwait(false); // <b class="conum">(8)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1071,28 +1112,28 @@ have been received:</p>
 <div class="listingblock">
 <div class="title">Consuming messages</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">Console.WriteLine(<span class="string"><span class="delimiter">&quot;</span><span class="content">Starting consuming...</span><span class="delimiter">&quot;</span></span>);
-<span class="type">var</span> consumer = await Consumer.Create( // <b class="conum">(1)</b>
-        <span class="keyword">new</span> ConsumerConfig(streamSystem, StreamName)
+<pre class="CodeRay highlight"><code data-lang="c#">Console.WriteLine(&quot;Starting consuming...&quot;);
+var consumer = await Consumer.Create( // <b class="conum">(1)</b>
+        new ConsumerConfig(streamSystem, StreamName)
         {
-            OffsetSpec = <span class="keyword">new</span> OffsetTypeFirst(), // <b class="conum">(2)</b>
+            OffsetSpec = new OffsetTypeFirst(), // <b class="conum">(2)</b>
             MessageHandler = async (sourceStream, consumer, messageContext, message) =&gt; // <b class="conum">(3)</b>
             {
-                <span class="keyword">if</span> (Interlocked.Increment(ref consumerCount) == MessageCount)
+                if (Interlocked.Increment(ref consumerCount) == MessageCount)
                 {
-                    Console.WriteLine(<span class="string"><span class="delimiter">&quot;</span><span class="content">*********************************</span><span class="delimiter">&quot;</span></span>);
-                    Console.WriteLine(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">All the {MessageCount} messages are received</span><span class="delimiter">&quot;</span></span>);
-                    Console.WriteLine(<span class="string"><span class="delimiter">&quot;</span><span class="content">*********************************</span><span class="delimiter">&quot;</span></span>);
+                    Console.WriteLine(&quot;*********************************&quot;);
+                    Console.WriteLine($&quot;All the {MessageCount} messages are received&quot;);
+                    Console.WriteLine(&quot;*********************************&quot;);
                     consumerTaskCompletionSource.SetResult(MessageCount);
                 }
-                await Task.CompletedTask.ConfigureAwait(<span class="predefined-constant">false</span>);
+                await Task.CompletedTask.ConfigureAwait(false);
             }
         },
         consumerLogger // <b class="conum">(4)</b>
     )
-    .ConfigureAwait(<span class="predefined-constant">false</span>);
+    .ConfigureAwait(false);
 consumerTaskCompletionSource.Task.Wait(); // <b class="conum">(5)</b>
-await consumer.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(6)</b></code></pre>
+await consumer.Close().ConfigureAwait(false); // <b class="conum">(6)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1120,8 +1161,8 @@ await consumer.Close().ConfigureAwait(<span class="predefined-constant">false</s
 <div class="listingblock">
 <div class="title">Cleaning before terminating</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">await streamSystem.DeleteStream(StreamName).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(1)</b>
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b></code></pre>
+<pre class="CodeRay highlight"><code data-lang="c#">await streamSystem.DeleteStream(StreamName).ConfigureAwait(false); // <b class="conum">(1)</b>
+await streamSystem.Close().ConfigureAwait(false); // <b class="conum">(2)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1137,16 +1178,16 @@ await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">fals
 <div class="listingblock">
 <div class="title">About logging</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> factory = LoggerFactory.Create(builder =&gt;
+<pre class="CodeRay highlight"><code data-lang="c#">var factory = LoggerFactory.Create(builder =&gt;
 {
     builder.AddSimpleConsole();
-    builder.AddFilter(<span class="string"><span class="delimiter">&quot;</span><span class="content">RabbitMQ.Stream</span><span class="delimiter">&quot;</span></span>, LogLevel.Information);
+    builder.AddFilter(&quot;RabbitMQ.Stream&quot;, LogLevel.Information);
 });
 
-<span class="comment">// Define the logger for the StreamSystem and the Producer/Consumer</span>
-<span class="type">var</span> producerLogger = factory.CreateLogger&lt;Producer&gt;(); // <b class="conum">(1)</b>
-<span class="type">var</span> consumerLogger = factory.CreateLogger&lt;Consumer&gt;(); // <b class="conum">(2)</b>
-<span class="type">var</span> streamLogger = factory.CreateLogger&lt;StreamSystem&gt;(); // <b class="conum">(3)</b></code></pre>
+// Define the logger for the StreamSystem and the Producer/Consumer
+var producerLogger = factory.CreateLogger&lt;Producer&gt;(); // <b class="conum">(1)</b>
+var consumerLogger = factory.CreateLogger&lt;Consumer&gt;(); // <b class="conum">(2)</b>
+var streamLogger = factory.CreateLogger&lt;StreamSystem&gt;(); // <b class="conum">(3)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1163,8 +1204,11 @@ await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">fals
 </ol>
 </div>
 <div class="paragraph">
+<p>The client is shipped with only with <code>Microsoft.Extensions.Logging.Abstractions</code> and you can use any logger you want.</p>
+</div>
+<div class="paragraph">
 <p>The logger is not mandatory but it is highly recommended to configure it to understand what is happening.
-In this example, we are using <code>Microsoft.Extensions.Logging.Console</code> to log to the console, but you can use any logger you want.
+In this example, we are using <code>Microsoft.Extensions.Logging.Console</code> to log to the console.
 <code>Microsoft.Extensions.Logging.Console</code> is not shipped with the client.</p>
 </div>
 <div class="paragraph">
@@ -1343,7 +1387,7 @@ If you hit some connection problems at some point – like hostnames impossible 
         {
             UserName = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
             Password = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-            Ssl = <span class="keyword">new</span> SslOption() // <b class="conum">(1)</b>
+            Ssl = <span class="keyword">new</span> SslOption() 
             {
                 Enabled = <span class="predefined-constant">true</span>,
                 AcceptablePolicyErrors = SslPolicyErrors.RemoteCertificateNotAvailable | // <b class="conum">(1)</b>
@@ -1352,7 +1396,7 @@ If you hit some connection problems at some point – like hostnames impossible 
             }
         }
     ).ConfigureAwait(<span class="predefined-constant">false</span>);
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); 
 }</code></pre>
 </div>
 </div>
@@ -1454,7 +1498,7 @@ Applications can use this hook to ignore metadata hints and always use the load 
     ).ConfigureAwait(<span class="predefined-constant">false</span>);
 
 
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);
 }</code></pre>
 </div>
 </div>
@@ -1483,7 +1527,7 @@ It is nevertheless possible to create and delete stream with the <code>StreamSys
 This comes in handy for development and testing purposes.</p>
 </div>
 <div class="paragraph">
-<p>Streams are created with the <code>Environment#streamCreator()</code> method:</p>
+<p>Streams are created with the <code>StreamSystem.CreateStream(..)</code> method:</p>
 </div>
 <div class="listingblock">
 <div class="title">Creating a stream</div>
@@ -1527,7 +1571,7 @@ Such a request will result in an exception.</p>
     ).ConfigureAwait(<span class="predefined-constant">false</span>);
 
     await streamSystem.DeleteStream(<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(1)</b>
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);
 }</code></pre>
 </div>
 </div>
@@ -1654,7 +1698,7 @@ The following snippet illustrates how to set the time-based retention policy:</p
 </div>
 </div>
 <div class="sect3">
-<h4 id="_producer">Producer</h4>
+<h4 id="creating-a-producer">Producer</h4>
 <div class="sect4">
 <h5 id="_creating_a_producer">Creating a Producer</h5>
 <div class="paragraph">
@@ -1789,10 +1833,23 @@ This value is valid only for the <code>Send(Message)</code> method.</p></td>
 <div class="sect4">
 <h5 id="_sending_messages">Sending Messages</h5>
 <div class="paragraph">
-<p>Once a <code>Producer</code> has been created, it is possible to send a message with:
-- <code>Producer#send(Message)</code>, - <code>Producer#send(List&lt;Message&gt;)</code>
-- <code>Producer#send(List&lt;Message&gt; messages, CompressionType compressionType)</code>.
-snippet shows how to publish a message with a byte array payload:</p>
+<p>Once a <code>Producer</code> has been created, it is possible to send a message with:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Producer#send(Message)</code>,</p>
+</li>
+<li>
+<p><code>Producer#send(List&lt;Message&gt;)</code></p>
+</li>
+<li>
+<p><code>Producer#send(List&lt;Message&gt; messages, CompressionType compressionType)</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The following snippet shows how to publish a message with a byte array payload:</p>
 </div>
 <div class="listingblock">
 <div class="title">Sending a message</div>
@@ -2497,7 +2554,7 @@ await producer.Send(list, CompressionType.Lz4).ConfigureAwait(<span class="prede
 </div>
 </div>
 <div class="sect3">
-<h4 id="_consumer">Consumer</h4>
+<h4 id="creating-a-consumer">Consumer</h4>
 <div class="paragraph">
 <p><code>Consumer</code> is the API to consume messages from a stream.</p>
 </div>
@@ -2520,7 +2577,6 @@ The next snippet shows how to create a <code>Consumer</code>:</p>
         streamSystem,
         <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
     {
-        <span class="comment">// Reference = </span>
         OffsetSpec = <span class="keyword">new</span> OffsetTypeTimestamp(), // <b class="conum">(3)</b>
         MessageHandler = async (stream, consumer, context, message) =&gt; // <b class="conum">(4)</b>
         {
@@ -2741,7 +2797,7 @@ All of this without an extra datastore, as the broker stores the offset tracking
 <div class="ulist">
 <ul>
 <li>
-<p>the consumer must have a <strong>name</strong>.
+<p>the consumer must have a <strong>reference</strong>.
 The name is set with <code>ConsumerConfig#Reference</code>.
 The name can be any value (under 256 characters) and is expected to be unique (from the application point of view).
 Note neither the client library, nor the broker enforces uniqueness of the name: if 2 <code>Consumer</code> .NET instances share the same name, their offset tracking will likely be interleaved, which applications usually do not expect.</p>
@@ -2765,32 +2821,32 @@ Note neither the client library, nor the broker enforces uniqueness of the name:
 <div class="listingblock">
 <div class="title">Using manual tracking with defaults</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> consumed = <span class="integer">0</span>;
-<span class="type">var</span> consumer = await Consumer.Create(
-    <span class="keyword">new</span> ConsumerConfig(
+var consumed = 0;
+var consumer = await Consumer.Create(
+    new ConsumerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+        &quot;my-stream&quot;)
     {
-        <span class="predefined-type">Reference</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">my-reference</span><span class="delimiter">&quot;</span></span>, // <b class="conum">(1)</b>
+        Reference = &quot;my-reference&quot;, // <b class="conum">(1)</b>
         MessageHandler = async (stream, consumer, context, message) =&gt;
         {
-            <span class="keyword">if</span> (consumed++ % <span class="integer">10000</span> == <span class="integer">0</span>)
+            if (consumed++ % 10000 == 0)
             {
-                await consumer.StoreOffset(context.Offset).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+                await consumer.StoreOffset(context.Offset).ConfigureAwait(false); // <b class="conum">(2)</b>
             }
 
-            Console.WriteLine(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">Received message: {Encoding.UTF8.GetString(message.Data.Contents)}</span><span class="delimiter">&quot;</span></span>);
-            await Task.CompletedTask.ConfigureAwait(<span class="predefined-constant">false</span>);
+            Console.WriteLine($&quot;Received message: {Encoding.UTF8.GetString(message.Data.Contents)}&quot;);
+            await Task.CompletedTask.ConfigureAwait(false);
         }
     }
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+).ConfigureAwait(false);
 
-await consumer.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(5)</b>
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+await consumer.Close().ConfigureAwait(false);
+await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2952,17 +3008,17 @@ We end up with 3 <code>app-1</code> consumers and 3 <code>app-2</code> consumers
 <div class="listingblock">
 <div class="title">Enabling single active consumer</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> consumer = await Consumer.Create(
-    <span class="keyword">new</span> ConsumerConfig(
+var consumer = await Consumer.Create(
+    new ConsumerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+        &quot;my-stream&quot;)
     {
-        <span class="predefined-type">Reference</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">my-reference</span><span class="delimiter">&quot;</span></span>, // <b class="conum">(1)</b>
-        IsSingleActiveConsumer = <span class="predefined-constant">true</span>, // <b class="conum">(2)</b></code></pre>
+        Reference = &quot;my-reference&quot;, // <b class="conum">(1)</b>
+        IsSingleActiveConsumer = true, // <b class="conum">(2)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -3000,21 +3056,21 @@ In this case, it is possible to use the <code>ConsumerConfig#ConsumerUpdateListe
 <div class="listingblock">
 <div class="title">Fetching the last stored offset from an external store in the consumer update listener callback</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> consumer = await Consumer.Create(
-    <span class="keyword">new</span> ConsumerConfig(
+var consumer = await Consumer.Create(
+    new ConsumerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+        &quot;my-stream&quot;)
     {
-        <span class="predefined-type">Reference</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">my-reference</span><span class="delimiter">&quot;</span></span>, // <b class="conum">(1)</b>
-        IsSingleActiveConsumer = <span class="predefined-constant">true</span>, // <b class="conum">(2)</b>
+        Reference = &quot;my-reference&quot;, // <b class="conum">(1)</b>
+        IsSingleActiveConsumer = true, // <b class="conum">(2)</b>
         ConsumerUpdateListener = async (consumerRef, stream, isActive) =&gt; // <b class="conum">(3)</b>
         {
-           <span class="type">var</span> offset =  await streamSystem.QueryOffset(consumerRef, stream).ConfigureAwait(<span class="predefined-constant">false</span>);
-           <span class="keyword">return</span> <span class="keyword">new</span> OffsetTypeOffset(offset);
+           var offset =  await streamSystem.QueryOffset(consumerRef, stream).ConfigureAwait(false);
+           return new OffsetTypeOffset(offset);
         },</code></pre>
 </div>
 </div>
@@ -3034,12 +3090,8 @@ In this case, it is possible to use the <code>ConsumerConfig#ConsumerUpdateListe
 </div>
 </div>
 </div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="low-high-level-classes">Low Level and High Level classes</h2>
-<div class="sectionbody">
+<div class="sect3">
+<h4 id="low-high-level-classes">Low Level and High Level classes</h4>
 <div class="ulist">
 <div class="title">NET stream client provides  two types of classes:</div>
 <ul>
@@ -3051,21 +3103,621 @@ In this case, it is possible to use the <code>ConsumerConfig#ConsumerUpdateListe
 </li>
 </ul>
 </div>
+<div class="sect4">
+<h5 id="_low_level_classes">Low-level classes</h5>
+<div class="ulist">
+<ul>
+<li>
+<p><code>RabbitMQ.Stream.Client.RawProducer</code> - Low-level producer class</p>
+</li>
+<li>
+<p><code>RabbitMQ.Stream.Client.RawConsumer</code>  - Low-level consumer class</p>
+</li>
+<li>
+<p><code>RabbitMQ.Stream.Client.RawSuperStreamProducer</code> - Low-level super-stream producer class</p>
+</li>
+<li>
+<p><code>RabbitMQ.Stream.Client.RawSuperStreamConsumer</code> - Low-level super-stream consumer class</p>
+</li>
+</ul>
+</div>
 <div class="paragraph">
-<p>High-level classes (<code>Producer</code> and <code>Consumer</code>) are a wrapper around the Low-Level classes (<code>Raw*Producer</code> and <code>Raw*Consumer</code>)</p>
+<p>The Classes are used to interact with the stream server in a low level way. They are used to create streams, publish messages, consume messages, etc. They give you all the callbacks to manually handle events like:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>Disconnection</code></p>
+</li>
+<li>
+<p><code>Metadata update</code></p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">Creating a Raw Producer</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">var rawProducer = await streamSystem.CreateRawProducer( // <b class="conum">(1)</b>
+    new RawProducerConfig(&quot;my-stream&quot;)
+    {
+        ConnectionClosedHandler = async reason =&gt; // <b class="conum">(2)</b>
+        {
+            Console.WriteLine($&quot;Connection closed with reason: {reason}&quot;);
+            await Task.CompletedTask.ConfigureAwait(false);
+        },
+        MetadataHandler = update =&gt; // <b class="conum">(3)</b>
+        {
+            Console.WriteLine($&quot;Metadata Stream updated: {update.Stream}&quot;);
+        },
+        ConfirmHandler = confirmation =&gt; // <b class="conum">(4)</b>
+        {
+            Console.WriteLine(confirmation.Code == ResponseCode.Ok
+                ? $&quot;Message confirmed: {confirmation.PublishingId}&quot;
+                : $&quot;Message: {confirmation.PublishingId} not confirmed with error: {confirmation.Code}&quot;);
+        }
+    }</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Create a <code>RawProducer</code> instance</p>
+</li>
+<li>
+<p>Event in case of disconnection</p>
+</li>
+<li>
+<p>Event in case of MetadataHandler update. This event is triggered by the server when a stream changes topology like deleted or added/removed mirrors</p>
+</li>
+<li>
+<p>ConfirmHandler event. This event is triggered when a <code>PublishingId</code> message is confirmed by the server with or without an error.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Like the <code>RawProducer</code> class, the <code>Raw*</code> classes have the same events to handle the disconnection and metadata update.</p>
+</div>
+<div class="paragraph">
+<p>It is up to the user to handle the disconnection and metadata update events.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_high_level_classes">High-level classes</h5>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#creating-a-producer"><code>Producer</code></a> - High-level producer class</p>
+</li>
+<li>
+<p><a href="#creating-a-consumer"><code>Consumer</code></a> - High-level consumer class</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p><code>Producer</code> and <code>Consumer</code> classes handle auto-reconnection, metadata updates, super-stream and some low-level client behaviour.</p>
+</div>
+<div class="paragraph">
+<p>The <code>Producer</code> traces the sent and received messages to give back to the user the original message sent to the server and also handle the message timeout. See <a href="#confirmation-status">[confirmation-status]</a> for more details.</p>
 </div>
 <div class="paragraph">
 <p>It would be best to use <code>Producer</code> and <code>Consumer</code> classes unless you need to handle the low-level details.</p>
 </div>
 </div>
 </div>
+<div class="sect3">
+<h4 id="super-streams">Super Streams (Partitioned Streams)</h4>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Warning</div>
+</td>
+<td class="content">
+Super Streams require <strong>RabbitMQ 3.11</strong> or more.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A super stream is a logical stream made of several individual streams.
+In essence, a super stream is a partitioned stream that brings scalability compared to a single stream.</p>
+</div>
+<div class="paragraph">
+<p>The stream .NET client uses the same programming model for super streams as with individual streams, that is the <code>Producer</code>, <code>Consumer</code>, <code>Message</code>, etc API are still valid when super streams are in use.
+Application code should not be impacted whether it uses individual or super streams.</p>
+</div>
+<div class="paragraph">
+<p>Consuming applications can use super streams and <a href="#single-active-consumer">single active consumer</a> at the same time.
+The 2 features combined make sure only one consumer instance consumes from an individual stream at a time.
+In this configuration, super streams provide scalability and single active consumer provides the guarantee that messages of an individual stream are processed in order.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Warning</div>
+</td>
+<td class="content">
+<div class="title">Super streams do not deprecate streams</div>
+<div class="paragraph">
+<p>Super streams are a <a href="https://en.wikipedia.org/wiki/Partition_(database)">partitioning</a> solution.
+They are not meant to replace individual streams, they sit on top of them to handle some use cases in a better way.
+If the stream data is likely to be large – hundreds of gigabytes or even terabytes, size remains relative – and even presents an obvious partition key (e.g. country), a super stream can be appropriate.
+It can help to cope with the data size and to take advantage of data locality for some processing use cases.
+Remember that partitioning always comes with complexity though, even if the implementation of super streams strives to make it as transparent as possible for the application developer.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="_topology">Topology</h5>
+<div class="paragraph">
+<p>A super stream is made of several individual streams, so it can be considered a logical entity rather than an actual physical entity.
+The topology of a super stream is based on the <a href="https://www.rabbitmq.com/tutorials/amqp-concepts.html">AMQP 0.9.1 model</a>, that is exchange, queues, and bindings between them.
+This does not mean AMQP resources are used to transport or store stream messages, it means that they are used to <em>describe</em> the super stream topology, that is the streams it is made of.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s take the example of an <code>invoices</code> super stream made of 3 streams (i.e. partitions):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>an <code>invoices</code> exchange represents the super stream</p>
+</li>
+<li>
+<p>the <code>invoices-0</code>, <code>invoices-1</code>, <code>invoices-2</code> streams are the partitions of the super stream (streams are also AMQP queues in RabbitMQ)</p>
+</li>
+<li>
+<p>3 bindings between the exchange and the streams link the super stream to its partitions and represent <em>routing rules</em></p>
+</li>
+</ul>
+</div>
+<div class="literalblock">
+<div class="title">The topology of a super stream is defined with bindings between an exchange and queues</div>
+<div class="content">
+<pre>                 0    +------------+
+               +-----&gt;+ invoices–0 |
+               |      +------------+
++----------+   |
+| invoices |   | 1    +------------+
+|          +---+-----&gt;+ invoices–1 |
+| exchange |   |      +------------+
++----------+   |
+               | 2    +------------+
+               +-----&gt;+ invoices–2 |
+                      +------------+</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When a super stream is in use, the stream NET client queries this information to find out about the partitions of a super stream and the routing rules.
+From the application code point of view, using a super stream is mostly configuration-based.
+Some logic must also be provided to extract routing information from messages.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_super_stream_creation">Super Stream Creation</h5>
+<div class="paragraph">
+<p>It is possible to create the topology of a super stream with any AMQP 0.9.1 library or with the <a href="https://www.rabbitmq.com/management.html">management plugin</a>, but the <code>rabbitmq-streams add_super_stream</code> command is a handy shortcut.
+Here is how to create an invoices super stream with 3 partitions:</p>
+</div>
+<div class="listingblock">
+<div class="title">Creating a super stream from the CLI</div>
+<div class="content">
+<pre>rabbitmq-streams add_super_stream invoices --partitions 3</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Use <code>rabbitmq-streams add_super_stream --help</code> to learn more about the command.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="super-stream-producer">Publishing to a Super Stream</h5>
+<div class="paragraph">
+<p>When the topology of a super stream like the one described above has been set, creating a producer for it is straightforward:</p>
+</div>
+<div class="listingblock">
+<div class="title">Creating a Producer for a Super Stream</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> producer = await Producer.Create(
+    <span class="keyword">new</span> ProducerConfig(system,
+            <span class="comment">// Costants.StreamName is the Exchange name</span>
+            <span class="comment">// invoices</span>
+            Costants.StreamName) // <b class="conum">(1)</b>
+        {
+            SuperStreamConfig = <span class="keyword">new</span> SuperStreamConfig() // <b class="conum">(2)</b>
+            {
+                <span class="comment">// The super stream is enable and we define the routing hashing algorithm</span>
+                Routing = msg =&gt; msg.Properties.MessageId.ToString() // <b class="conum">(3)</b>
+            }
+        }, logger).ConfigureAwait(<span class="predefined-constant">false</span>);
+<span class="reserved">const</span> <span class="type">int</span> NumberOfMessages = <span class="integer">1</span>_000_000;
+<span class="keyword">for</span> (<span class="type">var</span> i = <span class="integer">0</span>; i &lt; NumberOfMessages; i++)
+{
+    <span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.Default.GetBytes(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">hello{i}</span><span class="delimiter">&quot;</span></span>)) // <b class="conum">(4)</b>
+    {
+        <span class="predefined-type">Properties</span> = <span class="keyword">new</span> <span class="predefined-type">Properties</span>() {MessageId = <span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">hello{i}</span><span class="delimiter">&quot;</span></span>}
+    };
+    await producer.Send(message).ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Configure the <code>Producer</code> with the super stream name</p>
+</li>
+<li>
+<p>Enable the Super Stream mode</p>
+</li>
+<li>
+<p>Provide the logic to get the routing key from a message</p>
+</li>
+<li>
+<p>Send the messages to the super stream</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Note that even though the <code>invoices</code> super stream is not an actual stream, its name must be used to declare the producer.
+Internally the client will figure out the streams that compose the super stream.
+The application code must provide the logic to extract a routing key from a message as a <code>Function&lt;Message, String&gt;</code>.
+The client will hash the routing key to determine the stream to send the message to (using partition list and a modulo operation).</p>
+</div>
+<div class="paragraph">
+<p>The client uses 32-bit <a href="https://en.wikipedia.org/wiki/MurmurHash">MurmurHash3</a> by default to hash the routing key.
+This hash function provides good uniformity and it is compatible with the other clients.</p>
+</div>
+<div class="sect5">
+<h6 id="_deduplication">Deduplication</h6>
+<div class="paragraph">
+<p>Deduplication for a super stream producer works the same way as with a <a href="#outbound-message-deduplication">single stream producer</a>.
+The publishing ID values are spread across the streams but this does affect the mechanism.</p>
+</div>
+<div class="listingblock">
+<div class="title">Creating a DeduplicatingProducer for a Super Stream</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> producer = await DeduplicatingProducer.Create(
+    <span class="keyword">new</span> DeduplicatingProducerConfig(system,
+            <span class="comment">// Costants.StreamName is the Exchange name</span>
+            <span class="comment">// invoices</span>
+            Costants.StreamName,
+            <span class="string"><span class="delimiter">&quot;</span><span class="content">my-deduplication-producer</span><span class="delimiter">&quot;</span></span> // <b class="conum">(1)</b>
+        ) // <b class="conum">(1)</b>
+        {
+            SuperStreamConfig = <span class="keyword">new</span> SuperStreamConfig() // <b class="conum">(2)</b>
+            {
+                <span class="comment">// The super stream is enable and we define the routing hashing algorithm</span>
+                Routing = msg =&gt; msg.Properties.MessageId.ToString() // <b class="conum">(3)</b>
+            }
+        }).ConfigureAwait(<span class="predefined-constant">false</span>);
+<span class="reserved">const</span> <span class="type">int</span> NumberOfMessages = <span class="integer">1</span>_000_000;
+<span class="keyword">for</span> (<span class="type">var</span> i = <span class="integer">0</span>; i &lt; NumberOfMessages; i++)
+{
+    <span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.Default.GetBytes(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">hello{i}</span><span class="delimiter">&quot;</span></span>)) // <b class="conum">(4)</b>
+    {
+        <span class="predefined-type">Properties</span> = <span class="keyword">new</span> <span class="predefined-type">Properties</span>() {MessageId = <span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">hello{i}</span><span class="delimiter">&quot;</span></span>}
+    };
+    await producer.Send(<span class="integer">1</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Configure the <code>DeduplicatingProducer</code> with the super stream name and the reference.</p>
+</li>
+<li>
+<p>Enable the Super Stream mode</p>
+</li>
+<li>
+<p>Provide the logic to get the routing key from a message. Send the messages providing the publishing ID.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_consuming_from_a_super_stream">Consuming From a Super Stream</h5>
+<div class="paragraph">
+<p>A super stream consumer is a composite consumer: it will look up the super stream partitions and create a consumer for each or them.
+The programming model is the same as with regular consumers for the application developer: their main job is to provide the application code to process messages, that is a <code>MessageHandler</code> instance.
+The configuration is different though and this section covers its subtleties.
+But let&#8217;s focus on the behavior of a super stream consumer first.</p>
+</div>
+<div class="sect5">
+<h6 id="super-stream-consumer-in-practice">Super Stream Consumer in Practice</h6>
+<div class="paragraph">
+<p>Imagine you have a super stream made of 3 partitions (individual streams).
+You start an instance of your application, that itself creates a super stream consumer for this super stream.
+The super stream consumer will create 3 consumers internally, one for each partition, and messages will flow in your <code>MessageHandler</code>.</p>
+</div>
+<div class="paragraph">
+<p>Imagine now that you start another instance of your application.
+It will do the exact same thing as previously and the 2 instances will process the exact same messages in parallel.
+This may be not what you want: the messages will be processed twice!</p>
+</div>
+<div class="paragraph">
+<p>Having one instance of your application may be enough: the data are spread across several streams automatically and the messages from the different partitions are processed in parallel from a single OS process.</p>
+</div>
+<div class="paragraph">
+<p>But if you want to scale the processing across several OS processes (or bare-metal machines, or virtual machines) and you don&#8217;t want your messages to be processed several times as illustrated above, you&#8217;ll have to enable the <strong>single active consumer</strong> feature on your super stream consumer.</p>
+</div>
+<div class="paragraph">
+<p>The next subsections cover the basic settings of a super stream consumer and a <a href="#super-stream-sac">dedicated section</a> covers how super stream consumers and single active consumer play together.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_declaring_a_super_stream_consumer">Declaring a Super Stream Consumer</h6>
+<div class="paragraph">
+<p>Declaring a super stream consumer is not much different from declaring a single stream consumer.
+The <code>Consumer.Create(..)</code> must be used to set the super stream to consume from:</p>
+</div>
+<div class="listingblock">
+<div class="title">Declaring a super stream consumer</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> consumer = await Consumer.Create(<span class="keyword">new</span> ConsumerConfig(system, Costants.StreamName)
+{
+    IsSuperStream = <span class="predefined-constant">true</span>, <span class="comment">// Mandatory for enabling the super stream </span>// <b class="conum">(1)</b>
+    <span class="comment">// this is mandatory for super stream single active consumer</span>
+    <span class="comment">// must have the same ReferenceName for all the consumers</span>
+    <span class="predefined-type">Reference</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">MyApp</span><span class="delimiter">&quot;</span></span>,
+    OffsetSpec = <span class="keyword">new</span> OffsetTypeFirst(),
+    MessageHandler = async (stream, consumerSource, context, message) =&gt; // <b class="conum">(2)</b>
+    {
+        loggerMain.LogInformation(<span class="string"><span class="delimiter">&quot;</span><span class="content">Consumer Name {ConsumerName} </span><span class="delimiter">&quot;</span></span> +
+                                  <span class="string"><span class="delimiter">&quot;</span><span class="content">-Received message id: {PropertiesMessageId} body: {S}, Stream {Stream}, Offset {Offset}</span><span class="delimiter">&quot;</span></span>,
+            consumerName, message.Properties.MessageId, Encoding.UTF8.GetString(message.Data.Contents),
+            stream, context.Offset);</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Set the super stream name</p>
+</li>
+<li>
+<p>Close the consumer when it is no longer necessary</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>That&#8217;s all.
+The super stream consumer will take of the details (partitions lookup, coordination of the single consumers, etc).</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_offset_tracking_2">Offset Tracking</h6>
+<div class="paragraph">
+<p>The semantic of offset tracking for a super stream consumer are roughly the same as for an individual stream consumer.
+There are still some subtle differences, so a good understanding of <a href="#consumer-offset-tracking">offset tracking</a>.</p>
+</div>
+<div class="paragraph">
+<p>The offset tracking is per stream.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="super-stream-sac">Single Active Consumer Support</h6>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Warning</div>
+</td>
+<td class="content">
+Single Active Consumer requires <strong>RabbitMQ 3.11</strong> or more.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>As <a href="#super-stream-consumer-in-practice">stated previously</a>, super stream consumers and single active consumer provide scalability and the guarantee that messages of an individual stream are processed in order.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s take an example with a 3-partition super stream:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>You have an application that creates a super stream consumer instance with single active consumer enabled.</p>
+</li>
+<li>
+<p>You start 3 instances of this application. An instance in this case is a JVM process, which can be in a Docker container, a virtual machine, or a bare-metal server.</p>
+</li>
+<li>
+<p>As the super stream has 3 partitions, each application instance will create a super stream consumer that maintains internally 3 consumer instances.
+That is 9 Java instances of consumer overall.
+Such a super stream consumer is a <em>composite consumer</em>.</p>
+</li>
+<li>
+<p>The broker and the different application instances coordinate so that only 1 consumer instance for a given partition receives messages at a time.
+So among these 9 consumer instances, only 3 are actually <em>active</em>, the other ones are idle or <em>inactive</em>.</p>
+</li>
+<li>
+<p>If one of the application instances stops, the broker will <em>rebalance</em> its active consumer to one of the other instances.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The following figure illustrates how the client library supports the combination of the super stream and single active consumer features.
+It uses a composite consumer that creates an individual consumer for each partition of the super stream.
+If there is only one single active consumer instance with a given name for a super stream, each individual consumer is active.</p>
+</div>
+<div class="literalblock">
+<div class="title">A single active consumer on a super stream is a composite consumer that creates an individual consumer for each partition</div>
+<div class="content">
+<pre>              +--------------------+
+              |                    |
+              |cGRE invoices–0     |
+              |                    |    +-------------------+
+              +--------------------+    |+-----------------+|
+                                        |+cGRE consumer    ||Active
+                                        |+-----------------+|
+  invoices    +--------------------+    |                   |
+              |                    |    |+-----------------+|
+              |cPNK invoices–1     |    |+cPNK consumer    ||Active
+              |                    |    |+-----------------+|
+super stream  +--------------------+    |                   |
+                                        |+-----------------+|
+                                        |+cBLU consumer    ||Active
+              +--------------------+    |+-----------------+|
+              |                    |    +-------------------+
+              |cBLU invoices–2     |     Composite Consumer
+              |                    |
+              +--------------------+</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Imagine now we start 3 instances of the consuming application to scale out the processing.
+The individual consumer instances spread out across the super stream partitions and only one is active for each partition, as illustrated in the following figure:</p>
+</div>
+<div class="literalblock">
+<div class="title">Consumer instances spread across the super stream partitions and are activated accordingly</div>
+<div class="content">
+<pre>                                        +-------------------+
+                                        |+-----------------+|
+                                        |+cGRE consumer    ||Active
+                                        |+-----------------+|
+                                        |                   |
+                                        |+-----------------+|
+                                        |+cPNK consumer    ||Inactive
+                                        |+-----------------+|
+                                        |                   |
+                                        |+-----------------+|
+                                        |+cBLU consumer    ||Inactive
+                                        |+-----------------+|
+              +--------------------+    +-------------------+
+              |                    |     Composite Consumer
+              |cGRE invoices–0     |
+              |                    |    +-------------------+
+              +--------------------+    |+-----------------+|
+                                        |+cGRE consumer    ||Inactive
+                                        |+-----------------+|
+  invoices    +--------------------+    |                   |
+              |                    |    |+-----------------+|
+              |cPNK invoices–1     |    |+cPNK consumer    ||Active
+              |                    |    |+-----------------+|
+super stream  +--------------------+    |                   |
+                                        |+-----------------+|
+                                        |+cBLU consumer    ||Inactive
+              +--------------------+    |+-----------------+|
+              |                    |    +-------------------+
+              |cBLU invoices–2     |     Composite Consumer
+              |                    |
+              +--------------------+    +-------------------+
+                                        |+-----------------+|
+                                        |+cGRE consumer    ||Inactive
+                                        |+-----------------+|
+                                        |                   |
+                                        |+-----------------+|
+                                        |+cPNK consumer    ||Inactive
+                                        |+-----------------+|
+                                        |                   |
+                                        |+-----------------+|
+                                        |+cBLU consumer    ||Active
+                                        |+-----------------+|
+                                        +-------------------+
+                                         Composite Consumer</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>After this overview, let&#8217;s see the API and the configuration details.</p>
+</div>
+<div class="paragraph">
+<p>Note it is mandatory to specify a Reference for the consumer.
+This name will be used to identify the <em>group</em> of consumer instances and make sure only one is active for each partition.
+The name is also the reference for offset tracking.</p>
+</div>
+<div class="paragraph">
+<p>The example above uses by default <a href="#consumer-manual-offset-tracking">manual offset tracking</a>.
+It looks up the latest stored offset when a consumer becomes active to start consuming at the appropriate offset and it stores the last dispatched offset when a consumer becomes inactive.</p>
+</div>
+<div class="paragraph">
+<p>The story is not the same with <a href="#consumer-manual-offset-tracking">manual offset tracking</a> as the client library does not know which offset it should store when a consumer becomes inactive.
+The application developer can use the <a href="#consumer-update-listener"><code>ConsumerUpdateListener)</code> callback</a> to react appropriately when a consumer changes state.
+The following snippet illustrates the use of the <code>ConsumerUpdateListener</code> callback:</p>
+</div>
+<div class="listingblock">
+<div class="title">Using manual offset tracking for a super stream single active consumer</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">    await consumerSource.StoreOffset(context.Offset).ConfigureAwait(false); // <b class="conum">(1)</b>
+    await Task.CompletedTask.ConfigureAwait(false);
+},
+IsSingleActiveConsumer = true, // mandatory for enabling the Single Active Consumer // <b class="conum">(2)</b>
+ConsumerUpdateListener = async (reference, stream, isActive) =&gt; // <b class="conum">(3)</b>
+{
+    loggerMain.LogInformation($&quot;******************************************************&quot;);
+    loggerMain.LogInformation(&quot;reference {Reference} stream {Stream} is active: {IsActive}&quot;, reference,
+        stream, isActive);
+
+    ulong offset = 0;
+    try
+    {
+        offset = await system.QueryOffset(reference, stream).ConfigureAwait(false);
+    }
+    catch (OffsetNotFoundException e)
+    {
+        loggerMain.LogInformation(&quot;OffsetNotFoundException {Message}, will use OffsetTypeNext&quot;, e.Message);
+        return new OffsetTypeNext();
+    }
+
+    if (isActive)
+    {
+        loggerMain.LogInformation(&quot;Restart Offset {Offset}&quot;, offset);
+    }
+
+    loggerMain.LogInformation($&quot;******************************************************&quot;);
+    await Task.CompletedTask.ConfigureAwait(false);
+    return new OffsetTypeOffset(offset + 1); // <b class="conum">(4)</b>
+},</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Store manually the offset</p>
+</li>
+<li>
+<p>Enable single active consumer</p>
+</li>
+<li>
+<p>Set <code>ConsumerUpdateListener</code></p>
+</li>
+<li>
+<p>Return stored offset + 1 or default when consumer becomes active</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The <code>ConsumerUpdateListener</code> callback must return the offset to start consuming from when a consumer becomes active.
+This is what the code above does: it checks if the consumer is active with <code>ConsumerUpdateListener#isActive()</code> and looks up the last stored offset.
+If there is no stored offset yet, it returns a default value, <code>OffsetTypeNext()</code> here.</p>
+</div>
+<div class="paragraph">
+<p>When a consumer becomes inactive, it should store the last processed offset, as another consumer instance will take over elsewhere.
+It is expected this other consumer runs the exact same code, so it will execute the same sequence when it becomes active (looking up the stored offset, returning the value + 1).</p>
+</div>
+<div class="paragraph">
+<p>Note the <code>ConsumerUpdateListener</code> is called for a <em>partition</em>, that is an individual stream.</p>
+</div>
+<div class="paragraph">
+<p>RabbitMQ Stream provides server-side offset tracking, but it is possible to use an external store to track offsets for streams.
+The <code>ConsumerUpdateListener</code> callback is still your friend in this case.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="super-stream-sac-full-example">Super Stream with Single Active Consumer Example</h4>
+<div class="paragraph">
+<p>You can follow the README on the <a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/documentation_website/docs/SuperStream">link</a> to run the Super Stream example with the single active consumer feature.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-02-20 14:06:42 UTC
+Last updated 2023-02-22 13:52:41 UTC
 </div>
 </div>
 </body>
