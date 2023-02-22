@@ -25,7 +25,7 @@ Please refer to the [documentation](https://rabbitmq.github.io/rabbitmq-stream-d
 
 ### Pre-requisites
 
-The library requires .NET 6 or .NET 6.
+The library requires .NET 6 or .NET 7.
 
 ### Documentation
 

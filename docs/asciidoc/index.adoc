@@ -29,7 +29,7 @@ include::sample-application.adoc[]
 
 include::api.adoc[]
 
-// include::super-streams.adoc[]
+include::super-streams.adoc[]
 
 // include::advanced-topics.adoc[]
 

@@ -46,6 +46,7 @@ public class DeduplicatingProducer
                         ConfirmationHandler = producerConfig.ConfirmationHandler,
                         ReconnectStrategy = producerConfig.ReconnectStrategy,
                         ClientProvidedName = producerConfig.ClientProvidedName,
+                        SuperStreamConfig = producerConfig.SuperStreamConfig,
                         MaxInFlight = producerConfig.MaxInFlight,
                         MessagesBufferSize = producerConfig.MessagesBufferSize,
                         TimeoutMessageAfter = producerConfig.TimeoutMessageAfter,

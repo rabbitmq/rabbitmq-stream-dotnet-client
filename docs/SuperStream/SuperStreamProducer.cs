@@ -18,22 +18,28 @@ public class SuperStreamProducer
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
         Console.WriteLine("Super Stream Producer connected to RabbitMQ");
         // We define a Producer with the SuperStream name (that is the Exchange name)
-        var producer = await Producer.Create(new ProducerConfig(system, Costants.StreamName)
+        // tag::super-stream-producer[]
+        var producer = await Producer.Create(
+            new ProducerConfig(system, 
+                    // Costants.StreamName is the Exchange name
+                    // invoices
+                Costants.StreamName) // <1>
         {
-            SuperStreamConfig = new SuperStreamConfig()
+            SuperStreamConfig = new SuperStreamConfig() // <2>
             {
                 // The super stream is enable and we define the routing hashing algorithm
-                Routing = msg => msg.Properties.MessageId.ToString()
+                Routing = msg => msg.Properties.MessageId.ToString() // <3>
             }
         }).ConfigureAwait(false);
         const int NumberOfMessages = 1_000_000;
         for (var i = 0; i < NumberOfMessages; i++)
         {
-            var message = new Message(Encoding.Default.GetBytes($"hello{i}"))
+            var message = new Message(Encoding.Default.GetBytes($"hello{i}")) // <4>
             {
                 Properties = new Properties() {MessageId = $"hello{i}"}
             };
             await producer.Send(message).ConfigureAwait(false);
+            // end::super-stream-producer[]
             Console.WriteLine("Super Stream Producer sent {0} messages to {1}", i, Costants.StreamName);
             Thread.Sleep(TimeSpan.FromSeconds(1));
         }
