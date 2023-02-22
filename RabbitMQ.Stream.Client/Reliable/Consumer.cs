@@ -23,7 +23,7 @@ public record ConsumerConfig : ReliableConfig
     /// The client name used to identify the Consumer. 
     /// You can see this value on the Management UI or in the connection details.
     /// </summary>
-    public string ClientProvidedName { get; set; } = "dotnet-stream-conusmer";
+    public string ClientProvidedName { get; set; } = "dotnet-stream-consumer";
 
     /// <summary>
     /// Callback function where the consumer receives the messages.
