@@ -3,8 +3,11 @@
 // Copyright (c) 2007-2023 VMware, Inc.
 
 using System;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
@@ -117,5 +120,57 @@ public class DeduplicationProducerTests
         Assert.False(p.IsOpen());
 
         await SystemUtils.CleanUpStreamSystem(system, stream);
+    }
+
+    [Fact]
+    public async Task DeduplicationInActionSuperStream()
+    {
+        // Test that deduplication works with super streams
+        // We send the same messages again with the same publishing id
+        // to see the deduplication in action
+        // the second loop will be skipped due to the deduplication
+        SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var testPassed = new TaskCompletionSource<int>();
+        const int TotalMessages = 20;
+        var confirmed = 0;
+        var deduplicatingProducer = await DeduplicatingProducer.Create(
+            new DeduplicatingProducerConfig(system, SystemUtils.InvoicesExchange, "my_producer_reference")
+            {
+                SuperStreamConfig = new SuperStreamConfig()
+                {
+                    Routing = message1 => message1.Properties.MessageId.ToString()
+                },
+                ConfirmationHandler = async confirmation =>
+                {
+                    if (Interlocked.Increment(ref confirmed) == TotalMessages * 2)
+                        testPassed.SetResult(TotalMessages);
+                    await Task.CompletedTask;
+                },
+            });
+
+        // send two time the same messages with the same publishing id
+        for (var z = 0; z < 2; z++)
+        {
+            // first time the messages are stored correctly
+            // second time the messages are skipped due to the deduplication
+            for (ulong i = 0; i < TotalMessages; i++)
+            {
+                var message = new Message(Encoding.Default.GetBytes("hello"))
+                {
+                    Properties = new Properties() { MessageId = $"hello{i}" }
+                };
+                await deduplicatingProducer.Send(i, message);
+            }
+
+            // so even if there are two sends the messages count won't change
+            SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
+            SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+            SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        }
+
+        new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        Assert.Equal(TotalMessages, testPassed.Task.Result);
+        await deduplicatingProducer.Close();
     }
 }

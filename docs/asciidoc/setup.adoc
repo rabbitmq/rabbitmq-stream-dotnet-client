@@ -1,0 +1,94 @@
+=== Setting up RabbitMQ
+
+A RabbitMQ 3.9+ node with the stream plugin enabled is required. The easiest way
+to get up and running is to use Docker.
+
+==== With Docker
+
+There are different ways to make the broker visible to the client application when running
+in Docker. The next sections show a couple of options suitable for local development.
+
+[NOTE]
+.Docker on macOS
+====
+Docker runs on a virtual machine when using macOS, so do not expect high performance
+when using RabbitMQ Stream inside Docker on a Mac.
+====
+
+===== With Docker Bridge Network Driver
+
+This section shows how to start a broker instance for local development
+(the broker Docker container and the client application are assumed to run on the
+same host).
+
+The following command creates a one-time Docker container to run RabbitMQ:
+
+.Running the stream plugin with Docker
+----
+docker run -it --rm --name rabbitmq -p 5552:5552 \
+    -e RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS='-rabbitmq_stream advertised_host localhost' \
+    rabbitmq:3.11
+----
+
+The previous command exposes only the stream port (5552), you can expose
+ports for other protocols:
+
+.Exposing the AMQP 0.9.1 and management ports:
+----
+docker run -it --rm --name rabbitmq -p 5552:5552 -p 5672:5672 -p 15672:15672 \
+    -e RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS='-rabbitmq_stream advertised_host localhost' \
+    rabbitmq:3.11-management
+----
+
+Refer to the official https://hub.docker.com/_/rabbitmq[RabbitMQ Docker image web page]
+to find out more about its usage.
+
+Once the container is started, **the stream plugin must be enabled**:
+
+.Enabling the stream plugin:
+----
+docker exec rabbitmq rabbitmq-plugins enable rabbitmq_stream
+----
+
+===== With Docker Host Network Driver
+
+This is the simplest way to run the broker locally.
+The container uses the https://docs.docker.com/network/host/[host network],
+this is perfect for experimenting locally.
+
+.Running RabbitMQ Stream with the host network driver
+----
+docker run -it --rm --name rabbitmq --network host rabbitmq:3.11
+----
+
+Once the container is started, **the stream plugin must be enabled**:
+
+.Enabling the stream plugin:
+----
+docker exec rabbitmq rabbitmq-plugins enable rabbitmq_stream
+----
+
+The container will use the following ports: 5552 (for stream) and 5672 (for AMQP.)
+
+[NOTE]
+.Docker Host Network Driver Support
+====
+The host networking driver *only works on Linux hosts*.
+====
+
+==== With a RabbitMQ Package Running on the Host
+
+Using a package implies installing Erlang.
+
+* Make sure to use https://github.com/rabbitmq/rabbitmq-server/releases[RabbitMQ 3.9 or more].
+* Follow the steps to
+https://rabbitmq.com/download.html[install Erlang and the appropriate package]
+* Enable the plugin `rabbitmq-plugins enable rabbitmq_stream`.
+* The stream plugin listens on port 5552.
+
+Refer to the https://rabbitmq.com/stream.html[stream plugin documentation] for more information on configuration.
+
+=== Dependencies
+
+The client is distributed via https://www.nuget.org/packages/RabbitMQ.Stream.Client/[NuGet].
+

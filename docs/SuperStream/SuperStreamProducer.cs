@@ -30,23 +30,30 @@ public class SuperStreamProducer
 
 
         // We define a Producer with the SuperStream name (that is the Exchange name)
-        var producer = await Producer.Create(new ProducerConfig(system, Costants.StreamName)
-        {
-            SuperStreamConfig = new SuperStreamConfig()
-            {
-                // The super stream is enable and we define the routing hashing algorithm
-                Routing = msg => msg.Properties.MessageId.ToString()
-            }
-        }, logger).ConfigureAwait(false);
+        // tag::super-stream-producer[]
+        var producer = await Producer.Create(
+            new ProducerConfig(system,
+                    // Costants.StreamName is the Exchange name
+                    // invoices
+                    Costants.StreamName) // <1>
+                {
+                    SuperStreamConfig = new SuperStreamConfig() // <2>
+                    {
+                        // The super stream is enable and we define the routing hashing algorithm
+                        Routing = msg => msg.Properties.MessageId.ToString() // <3>
+                    }
+                }, logger).ConfigureAwait(false);
         const int NumberOfMessages = 1_000_000;
         for (var i = 0; i < NumberOfMessages; i++)
         {
-            var message = new Message(Encoding.Default.GetBytes($"hello{i}"))
+            var message = new Message(Encoding.Default.GetBytes($"hello{i}")) // <4>
             {
                 Properties = new Properties() {MessageId = $"hello{i}"}
             };
             await producer.Send(message).ConfigureAwait(false);
-            loggerMain.LogInformation("Super Stream Producer sent {I} messages to {StreamName}", i, Costants.StreamName);
+            // end::super-stream-producer[]
+            loggerMain.LogInformation("Super Stream Producer sent {I} messages to {StreamName}", i,
+                Costants.StreamName);
             Thread.Sleep(TimeSpan.FromMilliseconds(1000));
         }
     }

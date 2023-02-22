@@ -1,0 +1,38 @@
+:stylesheet: asciidoctor.css
+:source-highlighter: coderay
+= RabbitMQ Stream .Net Client
+:toc: left
+:toclevels: 5
+// TODO:
+// :revnumber: {project-version}
+// :revremark: ({build-number})
+ifndef::imagesdir[:imagesdir: images]
+
+
+
+The RabbitMQ Stream .Net Client is a .Net library to communicate with
+the https://rabbitmq.com/stream.html[RabbitMQ Stream Plugin].
+It allows creating and deleting streams, as well as publishing to and consuming from
+these streams. Learn more in the <<overview.adoc#stream-client-overview,the client overview>>.
+
+include::overview.adoc[]
+
+
+
+== The Stream .NET Client
+
+The library requires .NET 6 or .NET 7.
+
+include::setup.adoc[]
+
+include::sample-application.adoc[]
+
+include::api.adoc[]
+
+include::super-streams.adoc[]
+
+// include::advanced-topics.adoc[]
+
+// include::building.adoc[]
+
+// include::performance-tool.adoc[]

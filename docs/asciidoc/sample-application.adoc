@@ -1,0 +1,116 @@
+:test-examples: ../Documentation
+=== Sample Application
+
+This section covers the basics of the RabbitMQ Stream .NET API by building
+a small publish/consume application. This is a good way to get
+an overview of the API. 
+
+// TODO
+// If you want a more comprehensive introduction,
+//you can go to the <<api.adoc#rabbitmq-stream-java-api,reference documentation section>>.
+
+The sample application publishes some messages and then registers
+a consumer to make some computations out of them. The
+https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/doc/Documentation/GettingStarted.cs[source code is available on GitHub].
+
+The sample class starts with a few imports:
+
+.Imports for the sample application
+[source,c#,indent=0]
+--------
+include::{test-examples}/GettingStarted.cs[tag=sample-imports]
+--------
+<1>  `Microsoft.Extensions.Logging` is used to log the events. ( not shipped with the client)
+<2> `RabbitMQ.Stream.Client` is the main package to use the client
+<3> `RabbitMQ.Stream.Client.Reliable` contains the `Producer` and `Consumer` implementations
+
+The next step is to create the `StreamSystem`. It is a management object
+used to manage streams and create producers as well as consumers. The
+next snippet shows how to create an `StreamSystem` instance and
+create the stream used in the application:
+
+.Creating the environment
+[source,c#,indent=0]
+--------
+include::{test-examples}/GettingStarted.cs[tag=sample-system]
+--------
+<1> Use `StreamSystem.Create(..)` to create the environment
+<2> Define the connection configuration
+<3> Add the logger. (Not mandatory it is very useful to understand what is going on)
+<4> Create the stream
+<5> Define the retention policy
+
+Then comes the publishing part. The next snippet shows how to create
+a `Producer`, send messages, and handle publishing confirmations, to
+make sure the broker has taken outbound messages into account.
+
+.Publishing messages
+[source,c#,indent=0]
+--------
+include::{test-examples}/GettingStarted.cs[tag=sample-producer]
+--------
+<1> Create the `Producer` with `Producer.Create`
+<2> Define the `ConfirmationHandler` where the messages are confirmed or not
+<3> Message is confirmed from the server
+<4> Message not confirmed
+<5> Add the logger. (Not mandatory it is very useful to understand what is going on)
+<6> Send messages with `producer.Send(Message)`
+<7> Wait for messages confirmation
+<8> Close the producer
+
+It is now time to consume the messages. The `Consumer.Create` lets us create a `Consumer`
+and provide some logic on each incoming message by implementing a `MessageHandler`.
+The next snippet does this to calculate a sum and output it once all the messages
+have been received:
+
+.Consuming messages
+[source,c#,indent=0]
+--------
+include::{test-examples}/GettingStarted.cs[tag=sample-consumer]
+--------
+<1> Create the `Consumer` with `Consumer.Create`
+<2> Start consuming from the beginning of the stream
+<3> Set up the logic to handle message
+<4> Add the logger. (Not mandatory it is very useful to understand what is going on)
+<5> Wait for all the messages are consumed
+<6> Close the consumer
+
+.Cleaning before terminating
+[source,c#,indent=0]
+--------
+include::{test-examples}/GettingStarted.cs[tag=sample-close]
+--------
+<1> Delete the stream
+<2> Close the stream system
+
+
+.About logging
+[source,c#,indent=0]
+--------
+include::{test-examples}/GettingStarted.cs[tag=sample-logging]
+--------
+<1> Define the logger for the producer
+<2> Define the logger for the consumer
+<3> Define the logger for the stream system
+
+The client is shipped with only with `Microsoft.Extensions.Logging.Abstractions` and you can use any logger you want.
+
+The logger is not mandatory but it is highly recommended to configure it to understand what is happening.
+In this example, we are using `Microsoft.Extensions.Logging.Console` to log to the console.
+`Microsoft.Extensions.Logging.Console` is not shipped with the client.
+
+.Run the sample application
+You can run the sample application from the root of the project (you need
+a running local RabbitMQ node with the stream plugin enabled):
+
+----
+$  dotnet run --gs
+Starting publishing...
+*********************************
+All the 100 messages are confirmed
+*********************************
+Starting consuming...
+*********************************
+All the 100 messages are received
+*********************************
+----

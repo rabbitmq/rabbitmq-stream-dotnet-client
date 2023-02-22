@@ -1,0 +1,298 @@
+:test-examples: ../SuperStream
+[[super-streams]]
+==== Super Streams (Partitioned Streams)
+
+WARNING: Super Streams require *RabbitMQ 3.11* or more.
+
+A super stream is a logical stream made of several individual streams.
+In essence, a super stream is a partitioned stream that brings scalability compared to a single stream.
+
+The stream .NET client uses the same programming model for super streams as with individual streams, that is the `Producer`, `Consumer`, `Message`, etc API are still valid when super streams are in use.
+Application code should not be impacted whether it uses individual or super streams.
+
+Consuming applications can use super streams and <<api.adoc#single-active-consumer, single active consumer>> at the same time.
+The 2 features combined make sure only one consumer instance consumes from an individual stream at a time.
+In this configuration, super streams provide scalability and single active consumer provides the guarantee that messages of an individual stream are processed in order.
+
+[WARNING]
+.Super streams do not deprecate streams
+====
+Super streams are a https://en.wikipedia.org/wiki/Partition_(database)[partitioning] solution.
+They are not meant to replace individual streams, they sit on top of them to handle some use cases in a better way.
+If the stream data is likely to be large – hundreds of gigabytes or even terabytes, size remains relative – and even presents an obvious partition key (e.g. country), a super stream can be appropriate.
+It can help to cope with the data size and to take advantage of data locality for some processing use cases.
+Remember that partitioning always comes with complexity though, even if the implementation of super streams strives to make it as transparent as possible for the application developer.
+====
+
+
+===== Topology
+
+A super stream is made of several individual streams, so it can be considered a logical entity rather than an actual physical entity.
+The topology of a super stream is based on the https://www.rabbitmq.com/tutorials/amqp-concepts.html[AMQP 0.9.1 model], that is exchange, queues, and bindings between them.
+This does not mean AMQP resources are used to transport or store stream messages, it means that they are used to _describe_ the super stream topology, that is the streams it is made of.
+
+Let's take the example of an `invoices` super stream made of 3 streams (i.e. partitions):
+
+* an `invoices` exchange represents the super stream
+* the `invoices-0`, `invoices-1`, `invoices-2` streams are the partitions of the super stream (streams are also AMQP queues in RabbitMQ)
+* 3 bindings between the exchange and the streams link the super stream to its partitions and represent _routing rules_
+
+.The topology of a super stream is defined with bindings between an exchange and queues
+[ditaa]
+....
+                 0    +------------+
+               +----->+ invoices–0 |
+               |      +------------+
++----------+   |
+| invoices |   | 1    +------------+
+|          +---+----->+ invoices–1 |
+| exchange |   |      +------------+
++----------+   |
+               | 2    +------------+
+               +----->+ invoices–2 |
+                      +------------+
+....
+
+When a super stream is in use, the stream NET client queries this information to find out about the partitions of a super stream and the routing rules.
+From the application code point of view, using a super stream is mostly configuration-based.
+Some logic must also be provided to extract routing information from messages.
+
+===== Super Stream Creation
+
+It is possible to create the topology of a super stream with any AMQP 0.9.1 library or with the https://www.rabbitmq.com/management.html[management plugin], but the `rabbitmq-streams add_super_stream` command is a handy shortcut.
+Here is how to create an invoices super stream with 3 partitions:
+
+.Creating a super stream from the CLI
+----
+rabbitmq-streams add_super_stream invoices --partitions 3
+----
+
+Use `rabbitmq-streams add_super_stream --help` to learn more about the command.
+
+[[super-stream-producer]]
+===== Publishing to a Super Stream
+
+When the topology of a super stream like the one described above has been set, creating a producer for it is straightforward:
+
+.Creating a Producer for a Super Stream
+[source,java,indent=0]
+--------
+include::{test-examples}/SuperStreamProducer.cs[tag=super-stream-producer]
+--------
+<1> Configure the `Producer` with the super stream name
+<2> Enable the Super Stream mode
+<3> Provide the logic to get the routing key from a message
+<4> Send the messages to the super stream
+
+Note that even though the `invoices` super stream is not an actual stream, its name must be used to declare the producer.
+Internally the client will figure out the streams that compose the super stream.
+The application code must provide the logic to extract a routing key from a message as a `Function<Message, String>`.
+The client will hash the routing key to determine the stream to send the message to (using partition list and a modulo operation).
+
+The client uses 32-bit https://en.wikipedia.org/wiki/MurmurHash[MurmurHash3] by default to hash the routing key.
+This hash function provides good uniformity and it is compatible with the other clients.
+
+
+====== Deduplication
+
+Deduplication for a super stream producer works the same way as with a <<api.adoc#outbound-message-deduplication, single stream producer>>.
+The publishing ID values are spread across the streams but this does affect the mechanism.
+
+.Creating a DeduplicatingProducer for a Super Stream
+[source,java,indent=0]
+--------
+include::{test-examples}/SuperStreamDeduplicatingProducer.cs[tag=super-ded-stream-producer]
+--------
+<1> Configure the `DeduplicatingProducer` with the super stream name and the reference.
+<2> Enable the Super Stream mode
+<3> Provide the logic to get the routing key from a message. Send the messages providing the publishing ID.
+
+
+===== Consuming From a Super Stream
+
+A super stream consumer is a composite consumer: it will look up the super stream partitions and create a consumer for each or them.
+The programming model is the same as with regular consumers for the application developer: their main job is to provide the application code to process messages, that is a `MessageHandler` instance.
+The configuration is different though and this section covers its subtleties.
+But let's focus on the behavior of a super stream consumer first.
+
+[[super-stream-consumer-in-practice]]
+====== Super Stream Consumer in Practice
+
+Imagine you have a super stream made of 3 partitions (individual streams).
+You start an instance of your application, that itself creates a super stream consumer for this super stream.
+The super stream consumer will create 3 consumers internally, one for each partition, and messages will flow in your `MessageHandler`.
+
+Imagine now that you start another instance of your application.
+It will do the exact same thing as previously and the 2 instances will process the exact same messages in parallel.
+This may be not what you want: the messages will be processed twice!
+
+Having one instance of your application may be enough: the data are spread across several streams automatically and the messages from the different partitions are processed in parallel from a single OS process.
+
+But if you want to scale the processing across several OS processes (or bare-metal machines, or virtual machines) and you don't want your messages to be processed several times as illustrated above, you'll have to enable the *single active consumer* feature on your super stream consumer.
+
+The next subsections cover the basic settings of a super stream consumer and a <<super-stream-sac, dedicated section>> covers how super stream consumers and single active consumer play together.
+
+====== Declaring a Super Stream Consumer
+
+Declaring a super stream consumer is not much different from declaring a single stream consumer.
+The `Consumer.Create(..)` must be used to set the super stream to consume from:
+
+.Declaring a super stream consumer
+[source,java,indent=0]
+--------
+include::{test-examples}/SuperStreamConsumer.cs[tag=consumer-simple]
+--------
+<1> Set the super stream name
+<2> Close the consumer when it is no longer necessary
+
+That's all.
+The super stream consumer will take of the details (partitions lookup, coordination of the single consumers, etc).
+
+====== Offset Tracking
+
+The semantic of offset tracking for a super stream consumer are roughly the same as for an individual stream consumer.
+There are still some subtle differences, so a good understanding of <<api.adoc#consumer-offset-tracking, offset tracking>>.
+
+The offset tracking is per stream.
+
+
+
+[[super-stream-sac]]
+====== Single Active Consumer Support
+
+WARNING: Single Active Consumer requires *RabbitMQ 3.11* or more.
+
+As <<super-stream-consumer-in-practice, stated previously>>, super stream consumers and single active consumer provide scalability and the guarantee that messages of an individual stream are processed in order.
+
+Let's take an example with a 3-partition super stream:
+
+* You have an application that creates a super stream consumer instance with single active consumer enabled.
+* You start 3 instances of this application. An instance in this case is a JVM process, which can be in a Docker container, a virtual machine, or a bare-metal server.
+* As the super stream has 3 partitions, each application instance will create a super stream consumer that maintains internally 3 consumer instances.
+That is 9 Java instances of consumer overall.
+Such a super stream consumer is a _composite consumer_.
+* The broker and the different application instances coordinate so that only 1 consumer instance for a given partition receives messages at a time.
+So among these 9 consumer instances, only 3 are actually _active_, the other ones are idle or _inactive_.
+* If one of the application instances stops, the broker will _rebalance_ its active consumer to one of the other instances.
+
+The following figure illustrates how the client library supports the combination of the super stream and single active consumer features.
+It uses a composite consumer that creates an individual consumer for each partition of the super stream.
+If there is only one single active consumer instance with a given name for a super stream, each individual consumer is active.
+
+.A single active consumer on a super stream is a composite consumer that creates an individual consumer for each partition
+[ditaa]
+....
+              +--------------------+
+              |                    |
+              |cGRE invoices–0     |
+              |                    |    +-------------------+
+              +--------------------+    |+-----------------+|
+                                        |+cGRE consumer    ||Active
+                                        |+-----------------+|
+  invoices    +--------------------+    |                   |
+              |                    |    |+-----------------+|
+              |cPNK invoices–1     |    |+cPNK consumer    ||Active
+              |                    |    |+-----------------+|
+super stream  +--------------------+    |                   |
+                                        |+-----------------+|
+                                        |+cBLU consumer    ||Active
+              +--------------------+    |+-----------------+|
+              |                    |    +-------------------+
+              |cBLU invoices–2     |     Composite Consumer
+              |                    |
+              +--------------------+
+....
+
+Imagine now we start 3 instances of the consuming application to scale out the processing.
+The individual consumer instances spread out across the super stream partitions and only one is active for each partition, as illustrated in the following figure:
+
+.Consumer instances spread across the super stream partitions and are activated accordingly
+[ditaa]
+....
+                                        +-------------------+
+                                        |+-----------------+|
+                                        |+cGRE consumer    ||Active
+                                        |+-----------------+|
+                                        |                   |
+                                        |+-----------------+|
+                                        |+cPNK consumer    ||Inactive
+                                        |+-----------------+|
+                                        |                   |
+                                        |+-----------------+|
+                                        |+cBLU consumer    ||Inactive
+                                        |+-----------------+|
+              +--------------------+    +-------------------+
+              |                    |     Composite Consumer
+              |cGRE invoices–0     |
+              |                    |    +-------------------+
+              +--------------------+    |+-----------------+|
+                                        |+cGRE consumer    ||Inactive
+                                        |+-----------------+|
+  invoices    +--------------------+    |                   |
+              |                    |    |+-----------------+|
+              |cPNK invoices–1     |    |+cPNK consumer    ||Active
+              |                    |    |+-----------------+|
+super stream  +--------------------+    |                   |
+                                        |+-----------------+|
+                                        |+cBLU consumer    ||Inactive
+              +--------------------+    |+-----------------+|
+              |                    |    +-------------------+
+              |cBLU invoices–2     |     Composite Consumer
+              |                    |
+              +--------------------+    +-------------------+
+                                        |+-----------------+|
+                                        |+cGRE consumer    ||Inactive
+                                        |+-----------------+|
+                                        |                   |
+                                        |+-----------------+|
+                                        |+cPNK consumer    ||Inactive
+                                        |+-----------------+|
+                                        |                   |
+                                        |+-----------------+|
+                                        |+cBLU consumer    ||Active
+                                        |+-----------------+|
+                                        +-------------------+
+                                         Composite Consumer
+....
+
+After this overview, let's see the API and the configuration details.
+
+Note it is mandatory to specify a Reference for the consumer.
+This name will be used to identify the _group_ of consumer instances and make sure only one is active for each partition.
+The name is also the reference for offset tracking.
+
+The example above uses by default <<api.adoc#consumer-manual-offset-tracking, manual offset tracking>>.
+It looks up the latest stored offset when a consumer becomes active to start consuming at the appropriate offset and it stores the last dispatched offset when a consumer becomes inactive.
+
+The story is not the same with <<api.adoc#consumer-manual-offset-tracking, manual offset tracking>> as the client library does not know which offset it should store when a consumer becomes inactive.
+The application developer can use the <<api.adoc#consumer-update-listener, `ConsumerUpdateListener)` callback>> to react appropriately when a consumer changes state.
+The following snippet illustrates the use of the `ConsumerUpdateListener` callback:
+
+.Using manual offset tracking for a super stream single active consumer
+[source,c#,indent=0]
+--------
+include::{test-examples}/SuperStreamConsumer.cs[tag=sac-manual-offset-tracking]
+--------
+<1> Store manually the offset
+<2> Enable single active consumer
+<3> Set `ConsumerUpdateListener`
+<4> Return stored offset + 1 or default when consumer becomes active
+
+The `ConsumerUpdateListener` callback must return the offset to start consuming from when a consumer becomes active.
+This is what the code above does: it checks if the consumer is active with `ConsumerUpdateListener#isActive()` and looks up the last stored offset.
+If there is no stored offset yet, it returns a default value, `OffsetTypeNext()` here.
+
+When a consumer becomes inactive, it should store the last processed offset, as another consumer instance will take over elsewhere.
+It is expected this other consumer runs the exact same code, so it will execute the same sequence when it becomes active (looking up the stored offset, returning the value + 1).
+
+Note the `ConsumerUpdateListener` is called for a _partition_, that is an individual stream.
+
+RabbitMQ Stream provides server-side offset tracking, but it is possible to use an external store to track offsets for streams.
+The `ConsumerUpdateListener` callback is still your friend in this case.
+
+[[super-stream-sac-full-example]]
+==== Super Stream with Single Active Consumer Example
+
+You can follow the README on the https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/SuperStream[link] to run the Super Stream example with the single active consumer feature.
+
+
