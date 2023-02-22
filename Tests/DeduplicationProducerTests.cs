@@ -149,7 +149,7 @@ public class DeduplicationProducerTests
                 },
             });
 
-         // send two time the same messages with the same publishing id
+        // send two time the same messages with the same publishing id
         for (var z = 0; z < 2; z++)
         {
             // first time the messages are stored correctly
@@ -158,7 +158,7 @@ public class DeduplicationProducerTests
             {
                 var message = new Message(Encoding.Default.GetBytes("hello"))
                 {
-                    Properties = new Properties() {MessageId = $"hello{i}"}
+                    Properties = new Properties() { MessageId = $"hello{i}" }
                 };
                 await deduplicatingProducer.Send(i, message);
             }
