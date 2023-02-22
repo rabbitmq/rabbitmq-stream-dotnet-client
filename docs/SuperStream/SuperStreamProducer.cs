@@ -3,6 +3,7 @@
 // Copyright (c) 2007-2020 VMware, Inc.
 
 using System.Text;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
@@ -13,24 +14,35 @@ public class SuperStreamProducer
 {
     public static async Task Start()
     {
-        Console.WriteLine("Starting SuperStream Producer");
+        var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.AddSimpleConsole();
+            builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
+        });
+
+        var logger = loggerFactory.CreateLogger<Producer>();
+        var loggerMain = loggerFactory.CreateLogger<SuperStreamProducer>();
+
+        loggerMain.LogInformation("Starting SuperStream Producer");
         var config = new StreamSystemConfig();
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
-        Console.WriteLine("Super Stream Producer connected to RabbitMQ");
+        loggerMain.LogInformation("Super Stream Producer connected to RabbitMQ");
+
+
         // We define a Producer with the SuperStream name (that is the Exchange name)
         // tag::super-stream-producer[]
         var producer = await Producer.Create(
-            new ProducerConfig(system, 
+            new ProducerConfig(system,
                     // Costants.StreamName is the Exchange name
                     // invoices
-                Costants.StreamName) // <1>
-        {
-            SuperStreamConfig = new SuperStreamConfig() // <2>
-            {
-                // The super stream is enable and we define the routing hashing algorithm
-                Routing = msg => msg.Properties.MessageId.ToString() // <3>
-            }
-        }).ConfigureAwait(false);
+                    Costants.StreamName) // <1>
+                {
+                    SuperStreamConfig = new SuperStreamConfig() // <2>
+                    {
+                        // The super stream is enable and we define the routing hashing algorithm
+                        Routing = msg => msg.Properties.MessageId.ToString() // <3>
+                    }
+                }, logger).ConfigureAwait(false);
         const int NumberOfMessages = 1_000_000;
         for (var i = 0; i < NumberOfMessages; i++)
         {
@@ -40,8 +52,9 @@ public class SuperStreamProducer
             };
             await producer.Send(message).ConfigureAwait(false);
             // end::super-stream-producer[]
-            Console.WriteLine("Super Stream Producer sent {0} messages to {1}", i, Costants.StreamName);
-            Thread.Sleep(TimeSpan.FromSeconds(1));
+            loggerMain.LogInformation("Super Stream Producer sent {I} messages to {StreamName}", i,
+                Costants.StreamName);
+            Thread.Sleep(TimeSpan.FromMilliseconds(1000));
         }
     }
 }

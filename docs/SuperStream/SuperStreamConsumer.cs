@@ -38,8 +38,10 @@ public class SuperStreamConsumer
             OffsetSpec = new OffsetTypeFirst(),
             MessageHandler = async (stream, consumerSource, context, message) => // <2>
             {
-                Console.WriteLine(
-                    $"Consumer Name {consumerName} -Received message id: {message.Properties.MessageId} body: {Encoding.UTF8.GetString(message.Data.Contents)}, Stream {stream}");
+                loggerMain.LogInformation("Consumer Name {ConsumerName} " +
+                                          "-Received message id: {PropertiesMessageId} body: {S}, Stream {Stream}, Offset {Offset}",
+                    consumerName, message.Properties.MessageId, Encoding.UTF8.GetString(message.Data.Contents),
+                    stream, context.Offset);
                 //end::consumer-simple[]
                 // tag::sac-manual-offset-tracking[]
                 await consumerSource.StoreOffset(context.Offset).ConfigureAwait(false); // <1>
@@ -51,24 +53,28 @@ public class SuperStreamConsumer
                 loggerMain.LogInformation($"******************************************************");
                 loggerMain.LogInformation("reference {Reference} stream {Stream} is active: {IsActive}", reference,
                     stream, isActive);
-               
+
                 ulong offset = 0;
                 try
                 {
-                    offset = await system.QueryOffset(reference, stream).ConfigureAwait(false); 
+                    offset = await system.QueryOffset(reference, stream).ConfigureAwait(false);
                 }
                 catch (OffsetNotFoundException e)
                 {
                     loggerMain.LogInformation("OffsetNotFoundException {Message}, will use OffsetTypeNext", e.Message);
                     return new OffsetTypeNext();
                 }
-                loggerMain.LogInformation("Restart Offset {Offset}", offset);
+
+                if (isActive)
+                {
+                    loggerMain.LogInformation("Restart Offset {Offset}", offset);
+                }
+
                 loggerMain.LogInformation($"******************************************************");
                 await Task.CompletedTask.ConfigureAwait(false);
-                return new OffsetTypeOffset(offset + 1);// <4>
+                return new OffsetTypeOffset(offset + 1); // <4>
             },
             //end::sac-manual-offset-tracking[]
-
         }, logger).ConfigureAwait(false);
         // 
     }
