@@ -122,4 +122,6 @@ projects/Unit*/TestResult.xml
 
 #tests
 Tests/coverage.*
+##
+docs/temp/
 

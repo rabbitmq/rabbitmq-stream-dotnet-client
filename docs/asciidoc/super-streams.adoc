@@ -75,7 +75,7 @@ Use `rabbitmq-streams add_super_stream --help` to learn more about the command.
 When the topology of a super stream like the one described above has been set, creating a producer for it is straightforward:
 
 .Creating a Producer for a Super Stream
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/SuperStreamProducer.cs[tag=super-stream-producer]
 --------
@@ -99,7 +99,7 @@ Deduplication for a super stream producer works the same way as with a <<api.ado
 The publishing ID values are spread across the streams but this does affect the mechanism.
 
 .Creating a DeduplicatingProducer for a Super Stream
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/SuperStreamDeduplicatingProducer.cs[tag=super-ded-stream-producer]
 --------
@@ -138,7 +138,7 @@ Declaring a super stream consumer is not much different from declaring a single 
 The `Consumer.Create(..)` must be used to set the super stream to consume from:
 
 .Declaring a super stream consumer
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/SuperStreamConsumer.cs[tag=consumer-simple]
 --------
@@ -169,7 +169,7 @@ Let's take an example with a 3-partition super stream:
 * You have an application that creates a super stream consumer instance with single active consumer enabled.
 * You start 3 instances of this application. An instance in this case is a JVM process, which can be in a Docker container, a virtual machine, or a bare-metal server.
 * As the super stream has 3 partitions, each application instance will create a super stream consumer that maintains internally 3 consumer instances.
-That is 9 Java instances of consumer overall.
+That is 9 NET instances of consumer overall.
 Such a super stream consumer is a _composite consumer_.
 * The broker and the different application instances coordinate so that only 1 consumer instance for a given partition receives messages at a time.
 So among these 9 consumer instances, only 3 are actually _active_, the other ones are idle or _inactive_.
