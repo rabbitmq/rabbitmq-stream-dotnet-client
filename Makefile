@@ -24,6 +24,8 @@ run-test-in-docker:
 	docker run -d --rm --name dotnet-test -v $(shell pwd):/source --cpuset-cpus="1" stream-dotnet-test && \
     docker exec -it dotnet-test /bin/sh -c "cd /source && make test" || true
 
+## publish the documentation on github pages
+## you should execute this command only on the `main` branch
 publish-github-pages:
 	## Create the PDF
 	docker run  -it -v $(shell pwd)/docs/:/client_doc/  asciidoctor/docker-asciidoctor /bin/bash -c "cd /client_doc/asciidoc &&  asciidoctor-pdf index.adoc"
@@ -36,7 +38,7 @@ publish-github-pages:
 	cp docs/asciidoc/index.html docs/temp/index.html
 	## check out the gh-pages branch
 	git checkout gh-pages
-   	## copy the PDF and HTML to the root folder
+	## copy the PDF and HTML to the root folder
 	mv docs/temp/dotnet-stream-client.pdf stable/dotnet-stream-client.pdf
 	mv docs/temp/index.html stable/htmlsingle/index.html
 	## commit and push
@@ -45,4 +47,4 @@ publish-github-pages:
 	git commit -m "Update the documentation"
 	git push origin gh-pages
 	## go back to the main branch
-	# git checkout main
+	git checkout main

@@ -64,6 +64,14 @@ To execute the tests you need a RabbitMQ `v3.11.9` running with the following pl
 - `rabbitmq_amqp1_0`
 
 
+## Publish the documentation to github pages:
+
+Make sure you are in the `main` branch
+
+```shell
+make publish-github-pages
+```
+
 
 ## Release Process
 
