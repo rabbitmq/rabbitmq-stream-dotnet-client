@@ -926,7 +926,7 @@ an overview of the API.</p>
 <div class="paragraph">
 <p>The sample application publishes some messages and then registers
 a consumer to make some computations out of them. The
-<a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/doc/Documentation/GettingStarted.cs">source code is available on GitHub</a>.</p>
+<a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/Documentation">source code is available on GitHub</a>.</p>
 </div>
 <div class="paragraph">
 <p>The sample class starts with a few imports:</p>
@@ -1264,14 +1264,14 @@ Here is the simplest way to create an <code>StreamSystem</code> instance:</p>
 <div class="listingblock">
 <div class="title">Creating an environment with all the defaults</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task CreateSimple()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateSimple()
 {
-    <span class="type">var</span> streamSystem = await StreamSystem.Create( // <b class="conum">(1)</b>
-        <span class="keyword">new</span> StreamSystemConfig()
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
+    var streamSystem = await StreamSystem.Create( // <b class="conum">(1)</b>
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);
 
 
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+    await streamSystem.Close().ConfigureAwait(false); // <b class="conum">(2)</b>
 }</code></pre>
 </div>
 </div>
@@ -1299,21 +1299,21 @@ The:</p>
 <div class="listingblock">
 <div class="title">Creating an streamSystem with multiple end-points</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task CreateMultiEndPoints()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateMultiEndPoints()
 {
-    <span class="type">var</span> streamSystem = await StreamSystem.Create(
-        <span class="keyword">new</span> StreamSystemConfig()
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
         {
-            UserName = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-            Password = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-            Endpoints = <span class="keyword">new</span> <span class="predefined-type">List</span>&lt;EndPoint&gt; // <b class="conum">(1)</b>
+            UserName = &quot;guest&quot;,
+            Password = &quot;guest&quot;,
+            Endpoints = new List&lt;EndPoint&gt; // <b class="conum">(1)</b>
             {
-                <span class="keyword">new</span> IPEndPoint(IPAddress.Parse(<span class="string"><span class="delimiter">&quot;</span><span class="content">192.168.5.12</span><span class="delimiter">&quot;</span></span>), <span class="integer">5552</span>),
-                <span class="keyword">new</span> IPEndPoint(IPAddress.Parse(<span class="string"><span class="delimiter">&quot;</span><span class="content">192.168.5.18</span><span class="delimiter">&quot;</span></span>), <span class="integer">5552</span>),
+                new IPEndPoint(IPAddress.Parse(&quot;192.168.5.12&quot;), 5552),
+                new IPEndPoint(IPAddress.Parse(&quot;192.168.5.18&quot;), 5552),
             }
         }
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); // <b class="conum">(2)</b>
 }</code></pre>
 </div>
 </div>
@@ -1347,23 +1347,23 @@ If you hit some connection problems at some point – like hostnames impossible 
 <div class="listingblock">
 <div class="title">Creating an StreamSystem that uses TLS</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task CreateTls()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateTls()
 {
-    <span class="type">var</span> streamSystem = await StreamSystem.Create(
-        <span class="keyword">new</span> StreamSystemConfig()
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
         {
-            UserName = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-            Password = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-            Ssl = <span class="keyword">new</span> SslOption() // <b class="conum">(1)</b>
+            UserName = &quot;guest&quot;,
+            Password = &quot;guest&quot;,
+            Ssl = new SslOption() // <b class="conum">(1)</b>
             {
-                Enabled = <span class="predefined-constant">true</span>,
-                ServerName = <span class="string"><span class="delimiter">&quot;</span><span class="content">rabbitmq-stream</span><span class="delimiter">&quot;</span></span>,
-                <span class="predefined-type">CertPath</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">/path/to/cert.pem</span><span class="delimiter">&quot;</span></span>, // <b class="conum">(2)</b>
-                CertPassphrase = <span class="string"><span class="delimiter">&quot;</span><span class="content">Password</span><span class="delimiter">&quot;</span></span>,
+                Enabled = true,
+                ServerName = &quot;rabbitmq-stream&quot;,
+                CertPath = &quot;/path/to/cert.pem&quot;, // <b class="conum">(2)</b>
+                CertPassphrase = &quot;Password&quot;,
             }
         }
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); // <b class="conum">(2)</b>
 }</code></pre>
 </div>
 </div>
@@ -1380,23 +1380,23 @@ If you hit some connection problems at some point – like hostnames impossible 
 <div class="listingblock">
 <div class="title">Creating a TLS environment that trusts all server certificates for development</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task CreateTlsTrust()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateTlsTrust()
 {
-    <span class="type">var</span> streamSystem = await StreamSystem.Create(
-        <span class="keyword">new</span> StreamSystemConfig()
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
         {
-            UserName = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-            Password = <span class="string"><span class="delimiter">&quot;</span><span class="content">guest</span><span class="delimiter">&quot;</span></span>,
-            Ssl = <span class="keyword">new</span> SslOption() 
+            UserName = &quot;guest&quot;,
+            Password = &quot;guest&quot;,
+            Ssl = new SslOption() 
             {
-                Enabled = <span class="predefined-constant">true</span>,
+                Enabled = true,
                 AcceptablePolicyErrors = SslPolicyErrors.RemoteCertificateNotAvailable | // <b class="conum">(1)</b>
                                          SslPolicyErrors.RemoteCertificateChainErrors |
                                          SslPolicyErrors.RemoteCertificateNameMismatch
             }
         }
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); 
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); 
 }</code></pre>
 </div>
 </div>
@@ -1483,22 +1483,22 @@ Applications can use this hook to ignore metadata hints and always use the load 
 <div class="listingblock">
 <div class="title">Using a custom address resolver to always use a load balancer</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task CreateAddressResolver()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateAddressResolver()
 {
-    <span class="type">var</span> addressResolver = <span class="keyword">new</span> AddressResolver(<span class="keyword">new</span> IPEndPoint(IPAddress.Parse(<span class="string"><span class="delimiter">&quot;</span><span class="content">xxx.xxx.xxx</span><span class="delimiter">&quot;</span></span>), <span class="integer">5552</span>)); // <b class="conum">(1)</b>
+    var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse(&quot;xxx.xxx.xxx&quot;), 5552)); // <b class="conum">(1)</b>
 
-    <span class="type">var</span> streamSystem = await StreamSystem.Create(
-        <span class="keyword">new</span> StreamSystemConfig()
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
         {
-            UserName = <span class="string"><span class="delimiter">&quot;</span><span class="content">myuser</span><span class="delimiter">&quot;</span></span>,
-            Password = <span class="string"><span class="delimiter">&quot;</span><span class="content">mypassword</span><span class="delimiter">&quot;</span></span>,
+            UserName = &quot;myuser&quot;,
+            Password = &quot;mypassword&quot;,
             AddressResolver = addressResolver, // <b class="conum">(2)</b>
-            Endpoints = <span class="keyword">new</span> <span class="predefined-type">List</span>&lt;EndPoint&gt; {addressResolver.EndPoint} // <b class="conum">(3)</b>
+            Endpoints = new List&lt;EndPoint&gt; {addressResolver.EndPoint} // <b class="conum">(3)</b>
         }
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
+    ).ConfigureAwait(false);
 
 
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);
+    await streamSystem.Close().ConfigureAwait(false);
 }</code></pre>
 </div>
 </div>
@@ -1532,16 +1532,16 @@ This comes in handy for development and testing purposes.</p>
 <div class="listingblock">
 <div class="title">Creating a stream</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task CreateStream()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateStream()
 {
-    <span class="type">var</span> streamSystem = await StreamSystem.Create(
-        <span class="keyword">new</span> StreamSystemConfig()
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);
 
     await streamSystem.CreateStream( // <b class="conum">(1)</b>
-        <span class="keyword">new</span> StreamSpec(<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+        new StreamSpec(&quot;my-stream&quot;)
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); // <b class="conum">(2)</b>
 }</code></pre>
 </div>
 </div>
@@ -1564,14 +1564,14 @@ Such a request will result in an exception.</p>
 <div class="listingblock">
 <div class="title">Deleting a stream</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task DeleteStream()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task DeleteStream()
 {
-    <span class="type">var</span> streamSystem = await StreamSystem.Create(
-        <span class="keyword">new</span> StreamSystemConfig()
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);
 
-    await streamSystem.DeleteStream(<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(1)</b>
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);
+    await streamSystem.DeleteStream(&quot;my-stream&quot;).ConfigureAwait(false); // <b class="conum">(1)</b>
+    await streamSystem.Close().ConfigureAwait(false);
 }</code></pre>
 </div>
 </div>
@@ -1613,20 +1613,20 @@ Keep in mind that this means some data will be erased!</p>
 <div class="listingblock">
 <div class="title">Setting the retention policy when creating a stream</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task CreateStreamRetentionLen()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateStreamRetentionLen()
 {
-    <span class="type">var</span> streamSystem = await StreamSystem.Create(
-        <span class="keyword">new</span> StreamSystemConfig()
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);
 
     await streamSystem.CreateStream( 
-        <span class="keyword">new</span> StreamSpec(<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+        new StreamSpec(&quot;my-stream&quot;)
         {
-            MaxLengthBytes = <span class="integer">10</span>_737_418_240, // <b class="conum">(1)</b>
-            MaxSegmentSizeBytes = <span class="integer">524</span>_288_000 // <b class="conum">(2)</b>
+            MaxLengthBytes = 10_737_418_240, // <b class="conum">(1)</b>
+            MaxSegmentSizeBytes = 524_288_000 // <b class="conum">(2)</b>
         }
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); 
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); 
 }</code></pre>
 </div>
 </div>
@@ -1668,20 +1668,20 @@ The following snippet illustrates how to set the time-based retention policy:</p
 <div class="listingblock">
 <div class="title">Setting a time-based retention policy when creating a stream</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">private</span> <span class="directive">static</span> async Task CreateStreamRetentionAge()
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateStreamRetentionAge()
 {
-    <span class="type">var</span> streamSystem = await StreamSystem.Create(
-        <span class="keyword">new</span> StreamSystemConfig()
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);
 
     await streamSystem.CreateStream( 
-        <span class="keyword">new</span> StreamSpec(<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+        new StreamSpec(&quot;my-stream&quot;)
         {
-            MaxAge = TimeSpan.FromHours(<span class="integer">6</span>),  // <b class="conum">(1)</b>
-            MaxSegmentSizeBytes = <span class="integer">524</span>_288_000 // <b class="conum">(2)</b>
+            MaxAge = TimeSpan.FromHours(6),  // <b class="conum">(1)</b>
+            MaxSegmentSizeBytes = 524_288_000 // <b class="conum">(2)</b>
         }
-    ).ConfigureAwait(<span class="predefined-constant">false</span>);
-    await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>); 
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); 
 }</code></pre>
 </div>
 </div>
@@ -1708,18 +1708,18 @@ The only mandatory setting to specify is the stream to publish to:</p>
 <div class="listingblock">
 <div class="title">Creating a producer from the environment</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> producer = await Producer.Create( // <b class="conum">(1)</b>
-    <span class="keyword">new</span> ProducerConfig(
+var producer = await Producer.Create( // <b class="conum">(1)</b>
+    new ProducerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>) // <b class="conum">(2)</b>
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+        &quot;my-stream&quot;) // <b class="conum">(2)</b>
+).ConfigureAwait(false);
 
-await producer.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(3)</b>
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+await producer.Close().ConfigureAwait(false); // <b class="conum">(3)</b>
+await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1854,50 +1854,50 @@ This value is valid only for the <code>Send(Message)</code> method.</p></td>
 <div class="listingblock">
 <div class="title">Sending a message</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> producer = await Producer.Create(
-    <span class="keyword">new</span> ProducerConfig(
+var producer = await Producer.Create(
+    new ProducerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+        &quot;my-stream&quot;)
     {
         ConfirmationHandler = async confirmation =&gt; // <b class="conum">(5)</b>
         {
-            <span class="keyword">switch</span> (confirmation.Status)
+            switch (confirmation.Status)
             {
-                <span class="keyword">case</span> ConfirmationStatus.Confirmed:
-                    Console.WriteLine(<span class="string"><span class="delimiter">&quot;</span><span class="content">Message confirmed</span><span class="delimiter">&quot;</span></span>);
-                    <span class="keyword">break</span>;
-                <span class="keyword">case</span> ConfirmationStatus.ClientTimeoutError:
-                <span class="keyword">case</span> ConfirmationStatus.StreamNotAvailable:
-                <span class="keyword">case</span> ConfirmationStatus.InternalError:
-                <span class="keyword">case</span> ConfirmationStatus.AccessRefused:
-                <span class="keyword">case</span> ConfirmationStatus.PreconditionFailed:
-                <span class="keyword">case</span> ConfirmationStatus.PublisherDoesNotExist:
-                <span class="keyword">case</span> ConfirmationStatus.UndefinedError:
-                    Console.WriteLine(<span class="string"><span class="delimiter">&quot;</span><span class="content">Message not confirmed with error: {0}</span><span class="delimiter">&quot;</span></span>, confirmation.Status);
-                    <span class="keyword">break</span>;
+                case ConfirmationStatus.Confirmed:
+                    Console.WriteLine(&quot;Message confirmed&quot;);
+                    break;
+                case ConfirmationStatus.ClientTimeoutError:
+                case ConfirmationStatus.StreamNotAvailable:
+                case ConfirmationStatus.InternalError:
+                case ConfirmationStatus.AccessRefused:
+                case ConfirmationStatus.PreconditionFailed:
+                case ConfirmationStatus.PublisherDoesNotExist:
+                case ConfirmationStatus.UndefinedError:
+                    Console.WriteLine(&quot;Message not confirmed with error: {0}&quot;, confirmation.Status);
+                    break;
 
-                <span class="keyword">default</span>:
-                    <span class="keyword">throw</span> <span class="keyword">new</span> ArgumentOutOfRangeException();
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
 
-            await Task.CompletedTask.ConfigureAwait(<span class="predefined-constant">false</span>);
+            await Task.CompletedTask.ConfigureAwait(false);
         }
     }
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+).ConfigureAwait(false);
 
-<span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.UTF8.GetBytes(<span class="string"><span class="delimiter">&quot;</span><span class="content">hello</span><span class="delimiter">&quot;</span></span>)); // <b class="conum">(1)</b>
-await producer.Send(message).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
-<span class="type">var</span> list = <span class="keyword">new</span> <span class="predefined-type">List</span>&lt;Message&gt; {message};
-await producer.Send(list).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(3)</b>
-await producer.Send(list, CompressionType.Gzip).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(4)</b>
+var message = new Message(Encoding.UTF8.GetBytes(&quot;hello&quot;)); // <b class="conum">(1)</b>
+await producer.Send(message).ConfigureAwait(false); // <b class="conum">(2)</b>
+var list = new List&lt;Message&gt; {message};
+await producer.Send(list).ConfigureAwait(false); // <b class="conum">(3)</b>
+await producer.Send(list, CompressionType.Gzip).ConfigureAwait(false); // <b class="conum">(4)</b>
 
-await producer.Close().ConfigureAwait(<span class="predefined-constant">false</span>);
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+await producer.Close().ConfigureAwait(false);
+await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2090,33 +2090,33 @@ Messages in RabbitMQ Stream can actually be more sophisticated, as they comply t
 <div class="listingblock">
 <div class="title">Creating a message with properties</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> producer = await Producer.Create(
-    <span class="keyword">new</span> ProducerConfig(
+var producer = await Producer.Create(
+    new ProducerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>) { }
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+        &quot;my-stream&quot;) { }
+).ConfigureAwait(false);
 
-<span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.UTF8.GetBytes(<span class="string"><span class="delimiter">&quot;</span><span class="content">hello</span><span class="delimiter">&quot;</span></span>)) // <b class="conum">(1)</b>
+var message = new Message(Encoding.UTF8.GetBytes(&quot;hello&quot;)) // <b class="conum">(1)</b>
 {
-    ApplicationProperties = <span class="keyword">new</span> ApplicationProperties() // <b class="conum">(2)</b>
+    ApplicationProperties = new ApplicationProperties() // <b class="conum">(2)</b>
     {
-        {<span class="string"><span class="delimiter">&quot;</span><span class="content">key1</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">value1</span><span class="delimiter">&quot;</span></span>}, {<span class="string"><span class="delimiter">&quot;</span><span class="content">key2</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">value2</span><span class="delimiter">&quot;</span></span>}
+        {&quot;key1&quot;, &quot;value1&quot;}, {&quot;key2&quot;, &quot;value2&quot;}
     },
-    <span class="predefined-type">Properties</span> = <span class="keyword">new</span> <span class="predefined-type">Properties</span>() // <b class="conum">(3)</b>
+    Properties = new Properties() // <b class="conum">(3)</b>
     {
-        MessageId = <span class="string"><span class="delimiter">&quot;</span><span class="content">message-id</span><span class="delimiter">&quot;</span></span>,
-        CorrelationId = <span class="string"><span class="delimiter">&quot;</span><span class="content">correlation-id</span><span class="delimiter">&quot;</span></span>,
-        ContentType = <span class="string"><span class="delimiter">&quot;</span><span class="content">application/json</span><span class="delimiter">&quot;</span></span>,
-        ContentEncoding = <span class="string"><span class="delimiter">&quot;</span><span class="content">utf-8</span><span class="delimiter">&quot;</span></span>,
+        MessageId = &quot;message-id&quot;,
+        CorrelationId = &quot;correlation-id&quot;,
+        ContentType = &quot;application/json&quot;,
+        ContentEncoding = &quot;utf-8&quot;,
     }
 };
 
-await producer.Send(message).ConfigureAwait(<span class="predefined-constant">false</span>);
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+await producer.Send(message).ConfigureAwait(false);
+await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2224,26 +2224,26 @@ This parameter enables deduplication:</p>
 <div class="listingblock">
 <div class="title">Naming a producer to enable message deduplication</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> deduplicatingProducer = await DeduplicatingProducer.Create( // <b class="conum">(1)</b>
-    <span class="keyword">new</span> DeduplicatingProducerConfig(
+var deduplicatingProducer = await DeduplicatingProducer.Create( // <b class="conum">(1)</b>
+    new DeduplicatingProducerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">my_producer_reference</span><span class="delimiter">&quot;</span></span>) { }
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+        &quot;my-stream&quot;, &quot;my_producer_reference&quot;) { }
+).ConfigureAwait(false);
 
-<span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.UTF8.GetBytes(<span class="string"><span class="delimiter">&quot;</span><span class="content">hello</span><span class="delimiter">&quot;</span></span>)); // <b class="conum">(2)</b>
-await deduplicatingProducer.Send(<span class="integer">1</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(3)</b>
-await deduplicatingProducer.Send(<span class="integer">2</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>);
-await deduplicatingProducer.Send(<span class="integer">3</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>);
+var message = new Message(Encoding.UTF8.GetBytes(&quot;hello&quot;)); // <b class="conum">(2)</b>
+await deduplicatingProducer.Send(1, message).ConfigureAwait(false); // <b class="conum">(3)</b>
+await deduplicatingProducer.Send(2, message).ConfigureAwait(false);
+await deduplicatingProducer.Send(3, message).ConfigureAwait(false);
 
-<span class="comment">// deduplication is enabled, so this message will be skipped</span>
-await deduplicatingProducer.Send(<span class="integer">1</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(4)</b>
+// deduplication is enabled, so this message will be skipped
+await deduplicatingProducer.Send(1, message).ConfigureAwait(false); // <b class="conum">(4)</b>
 
 
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2316,23 +2316,23 @@ As the publishing ID in this case is the line number, the application can easily
 <div class="listingblock">
 <div class="title">Setting a producer where it left off</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> deduplicatingProducer = await DeduplicatingProducer.Create( // <b class="conum">(1)</b>
-    <span class="keyword">new</span> DeduplicatingProducerConfig(
+var deduplicatingProducer = await DeduplicatingProducer.Create( // <b class="conum">(1)</b>
+    new DeduplicatingProducerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">my_producer_reference</span><span class="delimiter">&quot;</span></span>) { }
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+        &quot;my-stream&quot;, &quot;my_producer_reference&quot;) { }
+).ConfigureAwait(false);
 
-<span class="type">var</span> lastid = await deduplicatingProducer.GetLastPublishedId().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
-<span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.UTF8.GetBytes(<span class="string"><span class="delimiter">&quot;</span><span class="content">hello</span><span class="delimiter">&quot;</span></span>));
+var lastid = await deduplicatingProducer.GetLastPublishedId().ConfigureAwait(false); // <b class="conum">(2)</b>
+var message = new Message(Encoding.UTF8.GetBytes(&quot;hello&quot;));
 
-await deduplicatingProducer.Send(lastid + <span class="integer">1</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(3)</b>
-await deduplicatingProducer.Send(lastid + <span class="integer">2</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>);
-await deduplicatingProducer.Send(lastid + <span class="integer">3</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>);
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+await deduplicatingProducer.Send(lastid + 1, message).ConfigureAwait(false); // <b class="conum">(3)</b>
+await deduplicatingProducer.Send(lastid + 2, message).ConfigureAwait(false);
+await deduplicatingProducer.Send(lastid + 3, message).ConfigureAwait(false);
+await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2367,22 +2367,22 @@ This means outbound messages are not only batched in publishing frames, but in s
 <div class="listingblock">
 <div class="title">Enabling sub-entry batching</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> producer = await Producer.Create( // <b class="conum">(1)</b>
-    <span class="keyword">new</span> ProducerConfig(
+var producer = await Producer.Create( // <b class="conum">(1)</b>
+    new ProducerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>) // <b class="conum">(2)</b>
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+        &quot;my-stream&quot;) // <b class="conum">(2)</b>
+).ConfigureAwait(false);
 
-<span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.UTF8.GetBytes(<span class="string"><span class="delimiter">&quot;</span><span class="content">hello</span><span class="delimiter">&quot;</span></span>)); 
-<span class="type">var</span> list = <span class="keyword">new</span> <span class="predefined-type">List</span>&lt;Message&gt; {message, message, message}; // <b class="conum">(1)</b>
-await producer.Send(list, CompressionType.Gzip).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b>
+var message = new Message(Encoding.UTF8.GetBytes(&quot;hello&quot;)); 
+var list = new List&lt;Message&gt; {message, message, message}; // <b class="conum">(1)</b>
+await producer.Send(list, CompressionType.Gzip).ConfigureAwait(false); // <b class="conum">(2)</b>
 
-await producer.Close().ConfigureAwait(<span class="predefined-constant">false</span>);
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+await producer.Close().ConfigureAwait(false);
+await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2475,43 +2475,43 @@ So when you set up sub-entry batching and compression in your publishers, the co
 <div class="listingblock">
 <div class="title">Adding a compression algorithm</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">class</span> <span class="class">StreamLz4Codec</span> : ICompressionCodec // <b class="conum">(1)</b>
+<pre class="CodeRay highlight"><code data-lang="c#">class StreamLz4Codec : ICompressionCodec // <b class="conum">(1)</b>
 {
 
 
 
-    <span class="directive">private</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt; _compressedReadOnlySequence;
-    <span class="directive">public</span> <span class="type">void</span> Compress(<span class="predefined-type">List</span>&lt;Message&gt; messages)
+    private ReadOnlySequence&lt;byte&gt; _compressedReadOnlySequence;
+    public void Compress(List&lt;Message&gt; messages)
     {
         MessagesCount = messages.Count;
-        UnCompressedSize = messages.Sum(msg =&gt; <span class="integer">4</span> + msg.Size);
-        <span class="type">var</span> messagesSource = <span class="keyword">new</span> Span&lt;<span class="type">byte</span>&gt;(<span class="keyword">new</span> <span class="type">byte</span>[UnCompressedSize]);
-        <span class="type">var</span> offset = <span class="integer">0</span>;
-        foreach (<span class="type">var</span> msg in messages)
+        UnCompressedSize = messages.Sum(msg =&gt; 4 + msg.Size);
+        var messagesSource = new Span&lt;byte&gt;(new byte[UnCompressedSize]);
+        var offset = 0;
+        foreach (var msg in messages)
         {
             offset += WriteUInt32(messagesSource.Slice(offset), (uint)msg.Size);
             offset += msg.Write(messagesSource.Slice(offset));
         }
 
-        using <span class="type">var</span> source = <span class="keyword">new</span> MemoryStream(messagesSource.ToArray());
-        using <span class="type">var</span> destination = <span class="keyword">new</span> MemoryStream();
-        <span class="type">var</span> settings = <span class="keyword">new</span> LZ4EncoderSettings {ChainBlocks = <span class="predefined-constant">false</span>};
-        using (<span class="type">var</span> target = LZ4Stream.Encode(destination, settings, <span class="predefined-constant">false</span>))
+        using var source = new MemoryStream(messagesSource.ToArray());
+        using var destination = new MemoryStream();
+        var settings = new LZ4EncoderSettings {ChainBlocks = false};
+        using (var target = LZ4Stream.Encode(destination, settings, false))
         {
             source.CopyTo(target);
         }
 
-        _compressedReadOnlySequence = <span class="keyword">new</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt;(destination.ToArray());
+        _compressedReadOnlySequence = new ReadOnlySequence&lt;byte&gt;(destination.ToArray());
     }
 
-    <span class="directive">public</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt; UnCompress(ReadOnlySequence&lt;<span class="type">byte</span>&gt; source, uint dataLen, uint unCompressedDataSize)
+    public ReadOnlySequence&lt;byte&gt; UnCompress(ReadOnlySequence&lt;byte&gt; source, uint dataLen, uint unCompressedDataSize)
     {
-        using <span class="type">var</span> target = <span class="keyword">new</span> MemoryStream();
-        using (<span class="type">var</span> sourceDecode = LZ4Stream.Decode(<span class="keyword">new</span> MemoryStream(source.ToArray())))
+        using var target = new MemoryStream();
+        using (var sourceDecode = LZ4Stream.Decode(new MemoryStream(source.ToArray())))
         {
             sourceDecode.CopyTo(target);
         }
-        <span class="keyword">return</span> <span class="keyword">new</span> ReadOnlySequence&lt;<span class="type">byte</span>&gt;(target.ToArray());
+        return new ReadOnlySequence&lt;byte&gt;(target.ToArray());
     }</code></pre>
 </div>
 </div>
@@ -2528,17 +2528,17 @@ So when you set up sub-entry batching and compression in your publishers, the co
 <div class="listingblock">
 <div class="title">Registering a compression algorithm</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">StreamCompressionCodecs.RegisterCodec&lt;StreamLz4Codec&gt;(CompressionType.Lz4); // <b class="conum">(1)</b>
+<pre class="CodeRay highlight"><code data-lang="c#">StreamCompressionCodecs.RegisterCodec&lt;StreamLz4Codec&gt;(CompressionType.Lz4); // <b class="conum">(1)</b>
 
-<span class="type">var</span> producer = await Producer.Create(
-    <span class="keyword">new</span> ProducerConfig(
+var producer = await Producer.Create(
+    new ProducerConfig(
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>) { }
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+        &quot;my-stream&quot;) { }
+).ConfigureAwait(false);
 
-<span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.UTF8.GetBytes(<span class="string"><span class="delimiter">&quot;</span><span class="content">hello</span><span class="delimiter">&quot;</span></span>));
-<span class="type">var</span> list = <span class="keyword">new</span> <span class="predefined-type">List</span>&lt;Message&gt; {message, message, message}; 
-await producer.Send(list, CompressionType.Lz4).ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(2)</b></code></pre>
+var message = new Message(Encoding.UTF8.GetBytes(&quot;hello&quot;));
+var list = new List&lt;Message&gt; {message, message, message}; 
+await producer.Send(list, CompressionType.Lz4).ConfigureAwait(false); // <b class="conum">(2)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2568,26 +2568,26 @@ The next snippet shows how to create a <code>Consumer</code>:</p>
 <div class="listingblock">
 <div class="title">Creating a consumer</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> streamSystem = await StreamSystem.Create(
-    <span class="keyword">new</span> StreamSystemConfig()
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+<pre class="CodeRay highlight"><code data-lang="c#">var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig()
+).ConfigureAwait(false);
 
-<span class="type">var</span> consumer = await Consumer.Create( // <b class="conum">(1)</b>
-    <span class="keyword">new</span> ConsumerConfig( // <b class="conum">(2)</b>
+var consumer = await Consumer.Create( // <b class="conum">(1)</b>
+    new ConsumerConfig( // <b class="conum">(2)</b>
         streamSystem,
-        <span class="string"><span class="delimiter">&quot;</span><span class="content">my-stream</span><span class="delimiter">&quot;</span></span>)
+        &quot;my-stream&quot;)
     {
-        OffsetSpec = <span class="keyword">new</span> OffsetTypeTimestamp(), // <b class="conum">(3)</b>
+        OffsetSpec = new OffsetTypeTimestamp(), // <b class="conum">(3)</b>
         MessageHandler = async (stream, consumer, context, message) =&gt; // <b class="conum">(4)</b>
         {
-            Console.WriteLine(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">Received message: {Encoding.UTF8.GetString(message.Data.Contents)}</span><span class="delimiter">&quot;</span></span>);
-            await Task.CompletedTask.ConfigureAwait(<span class="predefined-constant">false</span>);
+            Console.WriteLine($&quot;Received message: {Encoding.UTF8.GetString(message.Data.Contents)}&quot;);
+            await Task.CompletedTask.ConfigureAwait(false);
         }
     }
-).ConfigureAwait(<span class="predefined-constant">false</span>);
+).ConfigureAwait(false);
 
-await consumer.Close().ConfigureAwait(<span class="predefined-constant">false</span>); // <b class="conum">(5)</b>
-await streamSystem.Close().ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+await consumer.Close().ConfigureAwait(false); // <b class="conum">(5)</b>
+await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -3319,26 +3319,26 @@ Here is how to create an invoices super stream with 3 partitions:</p>
 <div class="listingblock">
 <div class="title">Creating a Producer for a Super Stream</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> producer = await Producer.Create(
-    <span class="keyword">new</span> ProducerConfig(system,
-            <span class="comment">// Costants.StreamName is the Exchange name</span>
-            <span class="comment">// invoices</span>
+<pre class="CodeRay highlight"><code data-lang="c#">var producer = await Producer.Create(
+    new ProducerConfig(system,
+            // Costants.StreamName is the Exchange name
+            // invoices
             Costants.StreamName) // <b class="conum">(1)</b>
         {
-            SuperStreamConfig = <span class="keyword">new</span> SuperStreamConfig() // <b class="conum">(2)</b>
+            SuperStreamConfig = new SuperStreamConfig() // <b class="conum">(2)</b>
             {
-                <span class="comment">// The super stream is enable and we define the routing hashing algorithm</span>
+                // The super stream is enable and we define the routing hashing algorithm
                 Routing = msg =&gt; msg.Properties.MessageId.ToString() // <b class="conum">(3)</b>
             }
-        }, logger).ConfigureAwait(<span class="predefined-constant">false</span>);
-<span class="reserved">const</span> <span class="type">int</span> NumberOfMessages = <span class="integer">1</span>_000_000;
-<span class="keyword">for</span> (<span class="type">var</span> i = <span class="integer">0</span>; i &lt; NumberOfMessages; i++)
+        }, logger).ConfigureAwait(false);
+const int NumberOfMessages = 1_000_000;
+for (var i = 0; i &lt; NumberOfMessages; i++)
 {
-    <span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.Default.GetBytes(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">hello{i}</span><span class="delimiter">&quot;</span></span>)) // <b class="conum">(4)</b>
+    var message = new Message(Encoding.Default.GetBytes($&quot;hello{i}&quot;)) // <b class="conum">(4)</b>
     {
-        <span class="predefined-type">Properties</span> = <span class="keyword">new</span> <span class="predefined-type">Properties</span>() {MessageId = <span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">hello{i}</span><span class="delimiter">&quot;</span></span>}
+        Properties = new Properties() {MessageId = $&quot;hello{i}&quot;}
     };
-    await producer.Send(message).ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+    await producer.Send(message).ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -3376,28 +3376,28 @@ The publishing ID values are spread across the streams but this does affect the 
 <div class="listingblock">
 <div class="title">Creating a DeduplicatingProducer for a Super Stream</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> producer = await DeduplicatingProducer.Create(
-    <span class="keyword">new</span> DeduplicatingProducerConfig(system,
-            <span class="comment">// Costants.StreamName is the Exchange name</span>
-            <span class="comment">// invoices</span>
+<pre class="CodeRay highlight"><code data-lang="c#">var producer = await DeduplicatingProducer.Create(
+    new DeduplicatingProducerConfig(system,
+            // Costants.StreamName is the Exchange name
+            // invoices
             Costants.StreamName,
-            <span class="string"><span class="delimiter">&quot;</span><span class="content">my-deduplication-producer</span><span class="delimiter">&quot;</span></span> // <b class="conum">(1)</b>
+            &quot;my-deduplication-producer&quot; // <b class="conum">(1)</b>
         ) // <b class="conum">(1)</b>
         {
-            SuperStreamConfig = <span class="keyword">new</span> SuperStreamConfig() // <b class="conum">(2)</b>
+            SuperStreamConfig = new SuperStreamConfig() // <b class="conum">(2)</b>
             {
-                <span class="comment">// The super stream is enable and we define the routing hashing algorithm</span>
+                // The super stream is enable and we define the routing hashing algorithm
                 Routing = msg =&gt; msg.Properties.MessageId.ToString() // <b class="conum">(3)</b>
             }
-        }).ConfigureAwait(<span class="predefined-constant">false</span>);
-<span class="reserved">const</span> <span class="type">int</span> NumberOfMessages = <span class="integer">1</span>_000_000;
-<span class="keyword">for</span> (<span class="type">var</span> i = <span class="integer">0</span>; i &lt; NumberOfMessages; i++)
+        }).ConfigureAwait(false);
+const int NumberOfMessages = 1_000_000;
+for (var i = 0; i &lt; NumberOfMessages; i++)
 {
-    <span class="type">var</span> message = <span class="keyword">new</span> Message(Encoding.Default.GetBytes(<span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">hello{i}</span><span class="delimiter">&quot;</span></span>)) // <b class="conum">(4)</b>
+    var message = new Message(Encoding.Default.GetBytes($&quot;hello{i}&quot;)) // <b class="conum">(4)</b>
     {
-        <span class="predefined-type">Properties</span> = <span class="keyword">new</span> <span class="predefined-type">Properties</span>() {MessageId = <span class="error">$</span><span class="string"><span class="delimiter">&quot;</span><span class="content">hello{i}</span><span class="delimiter">&quot;</span></span>}
+        Properties = new Properties() {MessageId = $&quot;hello{i}&quot;}
     };
-    await producer.Send(<span class="integer">1</span>, message).ConfigureAwait(<span class="predefined-constant">false</span>);</code></pre>
+    await producer.Send(1, message).ConfigureAwait(false);</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -3454,17 +3454,17 @@ The <code>Consumer.Create(..)</code> must be used to set the super stream to con
 <div class="listingblock">
 <div class="title">Declaring a super stream consumer</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> consumer = await Consumer.Create(<span class="keyword">new</span> ConsumerConfig(system, Costants.StreamName)
+<pre class="CodeRay highlight"><code data-lang="c#">var consumer = await Consumer.Create(new ConsumerConfig(system, Costants.StreamName)
 {
-    IsSuperStream = <span class="predefined-constant">true</span>, <span class="comment">// Mandatory for enabling the super stream </span>// <b class="conum">(1)</b>
-    <span class="comment">// this is mandatory for super stream single active consumer</span>
-    <span class="comment">// must have the same ReferenceName for all the consumers</span>
-    <span class="predefined-type">Reference</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">MyApp</span><span class="delimiter">&quot;</span></span>,
-    OffsetSpec = <span class="keyword">new</span> OffsetTypeFirst(),
+    IsSuperStream = true, // Mandatory for enabling the super stream // <b class="conum">(1)</b>
+    // this is mandatory for super stream single active consumer
+    // must have the same ReferenceName for all the consumers
+    Reference = &quot;MyApp&quot;,
+    OffsetSpec = new OffsetTypeFirst(),
     MessageHandler = async (stream, consumerSource, context, message) =&gt; // <b class="conum">(2)</b>
     {
-        loggerMain.LogInformation(<span class="string"><span class="delimiter">&quot;</span><span class="content">Consumer Name {ConsumerName} </span><span class="delimiter">&quot;</span></span> +
-                                  <span class="string"><span class="delimiter">&quot;</span><span class="content">-Received message id: {PropertiesMessageId} body: {S}, Stream {Stream}, Offset {Offset}</span><span class="delimiter">&quot;</span></span>,
+        loggerMain.LogInformation(&quot;Consumer Name {ConsumerName} &quot; +
+                                  &quot;-Received message id: {PropertiesMessageId} body: {S}, Stream {Stream}, Offset {Offset}&quot;,
             consumerName, message.Properties.MessageId, Encoding.UTF8.GetString(message.Data.Contents),
             stream, context.Offset);</code></pre>
 </div>
@@ -3524,7 +3524,7 @@ Single Active Consumer requires <strong>RabbitMQ 3.11</strong> or more.
 </li>
 <li>
 <p>As the super stream has 3 partitions, each application instance will create a super stream consumer that maintains internally 3 consumer instances.
-That is 9 Java instances of consumer overall.
+That is 9 NET instances of consumer overall.
 Such a super stream consumer is a <em>composite consumer</em>.</p>
 </li>
 <li>
@@ -3708,7 +3708,7 @@ The <code>ConsumerUpdateListener</code> callback is still your friend in this ca
 <div class="sect3">
 <h4 id="super-stream-sac-full-example">Super Stream with Single Active Consumer Example</h4>
 <div class="paragraph">
-<p>You can follow the README on the <a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/documentation_website/docs/SuperStream">link</a> to run the Super Stream example with the single active consumer feature.</p>
+<p>You can follow the README on the <a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/SuperStream">link</a> to run the Super Stream example with the single active consumer feature.</p>
 </div>
 </div>
 </div>
@@ -3717,7 +3717,7 @@ The <code>ConsumerUpdateListener</code> callback is still your friend in this ca
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-02-22 13:52:41 UTC
+Last updated 2023-02-23 09:08:14 UTC
 </div>
 </div>
 </body>
