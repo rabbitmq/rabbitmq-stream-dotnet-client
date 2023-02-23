@@ -35,7 +35,7 @@ public class StreamStats
     /// <summary>
     /// The last offset in the stream.
     ///
-    /// return first offset in the stream
+    /// return last offset in the stream
     /// throws NoOffsetException if there is no first offset yet
     /// </summary>
     public long LastOffset
