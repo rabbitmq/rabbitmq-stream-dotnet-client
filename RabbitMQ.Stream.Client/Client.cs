@@ -90,7 +90,7 @@ namespace RabbitMQ.Stream.Client
             throw new NotImplementedException();
         }
     }
-    
+
     public class Client : IClient
     {
         private bool isClosed = true;
@@ -526,7 +526,6 @@ namespace RabbitMQ.Stream.Client
                     PartitionsQueryResponse.Read(frame, out var partitionsQueryResponse);
                     HandleCorrelatedResponse(partitionsQueryResponse);
                     break;
-                
 
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
@@ -658,8 +657,7 @@ namespace RabbitMQ.Stream.Client
         {
             return await Publish(new CreditRequest(subscriptionId, credit)).ConfigureAwait(false);
         }
-        
-        
+
         public async ValueTask<StreamStatsResponse> StreamStats(string stream)
         {
             return await Request<StreamStatsRequest, StreamStatsResponse>(corr =>

@@ -102,7 +102,7 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
-            var spec = new StreamSpec(stream) {MaxLengthBytes = ulong.MaxValue};
+            var spec = new StreamSpec(stream) { MaxLengthBytes = ulong.MaxValue };
             await system.CreateStream(spec);
             Assert.Equal(ulong.MaxValue.ToString(), spec.Args["max-length-bytes"]);
             await system.DeleteStream(stream);
@@ -121,7 +121,7 @@ namespace Tests
         [Fact]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
-            var config = new StreamSystemConfig {VirtualHost = "DOES_NOT_EXIST"};
+            var config = new StreamSystemConfig { VirtualHost = "DOES_NOT_EXIST" };
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
                 async () => { await StreamSystem.Create(config); }
             );
@@ -130,7 +130,7 @@ namespace Tests
         [Fact]
         public async void CreateSystemThrowsWhenAuthenticationAccess()
         {
-            var config = new StreamSystemConfig {UserName = "user_does_not_exist"};
+            var config = new StreamSystemConfig { UserName = "user_does_not_exist" };
             await Assert.ThrowsAsync<AuthenticationFailureException>(
                 async () => { await StreamSystem.Create(config); }
             );
@@ -162,10 +162,10 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
-            await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 20,});
+            await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 20, });
 
             await Assert.ThrowsAsync<CreateStreamException>(
-                async () => { await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 10000,}); }
+                async () => { await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 10000, }); }
             );
             await system.DeleteStream(stream);
             await system.Close();
@@ -235,10 +235,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer =
-                await system.CreateRawProducer(new RawProducerConfig(stream) {ClientProvidedName = clientProvidedName});
+                await system.CreateRawProducer(new RawProducerConfig(stream) { ClientProvidedName = clientProvidedName });
             SystemUtils.Wait();
             var consumer = await system.CreateRawConsumer(
-                new RawConsumerConfig(stream) {ClientProvidedName = clientProvidedName});
+                new RawConsumerConfig(stream) { ClientProvidedName = clientProvidedName });
             SystemUtils.Wait();
 
             // Here we have to wait the management stats refresh time before killing the connections.
@@ -262,7 +262,7 @@ namespace Tests
         {
             // Just test the heartbeat setting
             // TODO find a smarter way to test the heartbeat disconnection
-            var config = new StreamSystemConfig() {Heartbeat = TimeSpan.FromMinutes(1),};
+            var config = new StreamSystemConfig() { Heartbeat = TimeSpan.FromMinutes(1), };
             var system = await StreamSystem.Create(config);
             var stream = Guid.NewGuid().ToString();
             await system.CreateStream(new StreamSpec(stream));
