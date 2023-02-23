@@ -11,7 +11,7 @@ an overview of the API.
 
 The sample application publishes some messages and then registers
 a consumer to make some computations out of them. The
-https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/doc/Documentation/GettingStarted.cs[source code is available on GitHub].
+https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/Documentation[source code is available on GitHub].
 
 The sample class starts with a few imports:
 

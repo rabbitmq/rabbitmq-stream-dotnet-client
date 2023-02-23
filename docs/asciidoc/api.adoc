@@ -20,7 +20,7 @@ The environment is the main entry point to a node or a cluster of nodes. `Produc
 Here is the simplest way to create an `StreamSystem` instance:
 
 .Creating an environment with all the defaults
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-simple]
 --------
@@ -37,7 +37,7 @@ It is possible to use a multiple end-points to connect to a cluster of nodes.
 The:
 
 .Creating an streamSystem with multiple end-points
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-multi-endpoints]
 --------
@@ -60,7 +60,7 @@ If you hit some connection problems at some point – like hostnames impossible 
 The default TLS port is 5551.
 
 .Creating an StreamSystem that uses TLS
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-tls]
 --------
@@ -69,7 +69,7 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-tls]
 <2> Load certificate authority (CA) certificate from PEM file
 
 .Creating a TLS environment that trusts all server certificates for development
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-tls-trust]
 --------
@@ -130,7 +130,7 @@ The `StreamSystemConfig#AddressResolver(AddressResolver)` method allows intercep
 Applications can use this hook to ignore metadata hints and always use the load balancer, as illustrated in the following snippet:
 
 .Using a custom address resolver to always use a load balancer
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=create-address-resolver]
 --------
@@ -150,7 +150,7 @@ This comes in handy for development and testing purposes.
 Streams are created with the `StreamSystem.CreateStream(..)` method:
 
 .Creating a stream
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation]
 --------
@@ -165,7 +165,7 @@ Such a request will result in an exception.
 Streams can be deleted with the `StreamSystem#Delete(String)` method:
 
 .Deleting a stream
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=stream-deletion]
 --------
@@ -190,7 +190,7 @@ Keep in mind that this means some data will be erased!
 It is possible to set up the retention policy when creating the stream:
 
 .Setting the retention policy when creating a stream
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-retention]
 --------
@@ -213,7 +213,7 @@ RabbitMQ Stream also supports a time-based retention policy: segments get trunca
 The following snippet illustrates how to set the time-based retention policy:
 
 .Setting a time-based retention policy when creating a stream
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-time-based-retention]
 --------
@@ -230,7 +230,7 @@ A `Producer` instance is created with `Producer.Create`.
 The only mandatory setting to specify is the stream to publish to:
 
 .Creating a producer from the environment
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ProducerUsage.cs[tag=producer-creation]
 --------
@@ -314,7 +314,7 @@ Once a `Producer` has been created, it is possible to send a message with:
 The following snippet shows how to publish a message with a byte array payload:
 
 .Sending a message
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ProducerUsage.cs[tag=producer-publish]
 --------
@@ -434,7 +434,7 @@ In a nutshell, a message in RabbitMQ Stream has the following structure:
 The RabbitMQ Stream NET client uses the `Message` class to represent a message.
 
 .Creating a message with properties
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ProducerUsage.cs[tag=producer-publish-complex-message]
 --------
@@ -498,7 +498,7 @@ The `DeduplicationProducer` requires the `Reference` as mandatory parameter.
 This parameter enables deduplication:
 
 .Naming a producer to enable message deduplication
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ProducerUsage.cs[tag=deduplication-producer]
 --------
@@ -542,7 +542,7 @@ As the publishing ID in this case is the line number, the application can easily
 The next snippet illustrates the use of `DeduplicatingProducer#GetLastPublishedId()`:
 
 .Setting a producer where it left off
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ProducerUsage.cs[tag=deduplication-queries-last-publishing-id]
 --------
@@ -564,7 +564,7 @@ This means outbound messages are not only batched in publishing frames, but in s
 The following snippet shows how to enable sub-entry batching:
 
 .Enabling sub-entry batching
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ProducerUsage.cs[tag=producer-sub-entry-batching]
 --------
@@ -624,7 +624,7 @@ You can add a compression algorithm to the client library by implementing the `I
 The following snippet shows how to add a compression algorithm to the client library:
 
 .Adding a compression algorithm
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/AddCustomCodec.cs[tag=lz4-i-compression-codec]
 --------
@@ -634,7 +634,7 @@ include::{test-examples}/AddCustomCodec.cs[tag=lz4-i-compression-codec]
 The following snippet shows how to register the compression algorithm with the `StreamCompressionCodecs` class:
 
 .Registering a compression algorithm
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/AddCustomCodec.cs[tag=lz4-register-codec]
 --------
@@ -654,7 +654,7 @@ The main settings are the stream to consume from, the place in the stream to sta
 The next snippet shows how to create a `Consumer`:
 
 .Creating a consumer
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=consumer-creation]
 --------
