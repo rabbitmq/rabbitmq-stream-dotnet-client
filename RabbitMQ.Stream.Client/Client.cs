@@ -90,7 +90,7 @@ namespace RabbitMQ.Stream.Client
             throw new NotImplementedException();
         }
     }
-
+    
     public class Client : IClient
     {
         private bool isClosed = true;
@@ -478,6 +478,10 @@ namespace RabbitMQ.Stream.Client
                     QueryOffsetResponse.Read(frame, out var queryOffsetResponse);
                     HandleCorrelatedResponse(queryOffsetResponse);
                     break;
+                case StreamStatsResponse.Key:
+                    StreamStatsResponse.Read(frame, out var streamStatsResponse);
+                    HandleCorrelatedResponse(streamStatsResponse);
+                    break;
                 case UnsubscribeResponse.Key:
                     UnsubscribeResponse.Read(frame, out var unsubscribeResponse);
                     HandleCorrelatedResponse(unsubscribeResponse);
@@ -522,6 +526,7 @@ namespace RabbitMQ.Stream.Client
                     PartitionsQueryResponse.Read(frame, out var partitionsQueryResponse);
                     HandleCorrelatedResponse(partitionsQueryResponse);
                     break;
+                
 
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
@@ -652,6 +657,13 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<bool> Credit(byte subscriptionId, ushort credit)
         {
             return await Publish(new CreditRequest(subscriptionId, credit)).ConfigureAwait(false);
+        }
+        
+        
+        public async ValueTask<StreamStatsResponse> StreamStats(string stream)
+        {
+            return await Request<StreamStatsRequest, StreamStatsResponse>(corr =>
+                new StreamStatsRequest(corr, stream)).ConfigureAwait(false);
         }
     }
 
