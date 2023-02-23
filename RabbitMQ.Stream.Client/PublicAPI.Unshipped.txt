@@ -11,6 +11,10 @@ RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Send(ulong publishing, Rab
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig.DeduplicatingProducerConfig(RabbitMQ.Stream.Client.StreamSystem streamSystem, string stream, string reference) -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
+RabbitMQ.Stream.Client.StreamStats
+RabbitMQ.Stream.Client.StreamStats.CommittedChunkId.get -> long
+RabbitMQ.Stream.Client.StreamStats.FirstOffset.get -> long
+RabbitMQ.Stream.Client.StreamStats.LastOffset.get -> long
 RabbitMQ.Stream.Client.StreamStatsResponse
 RabbitMQ.Stream.Client.StreamStatsResponse.CorrelationId.get -> uint
 RabbitMQ.Stream.Client.StreamStatsResponse.ResponseCode.get -> RabbitMQ.Stream.Client.ResponseCode
@@ -19,5 +23,5 @@ RabbitMQ.Stream.Client.StreamStatsResponse.Statistic.get -> System.Collections.G
 RabbitMQ.Stream.Client.StreamStatsResponse.StreamStatsResponse() -> void
 RabbitMQ.Stream.Client.StreamStatsResponse.StreamStatsResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode, System.Collections.Generic.IDictionary<string, long> statistic) -> void
 RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Span<byte> span) -> int
-RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, long>>
+RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
 static RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Create(RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig producerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.Reliable.Producer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer>

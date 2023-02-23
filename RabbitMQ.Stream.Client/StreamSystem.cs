@@ -328,13 +328,13 @@ namespace RabbitMQ.Stream.Client
             throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
         }
 
-        public async Task<IDictionary<string, long>> StreamStats(string stream)
+        public async Task<StreamStats> StreamStats(string stream)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
             var response = await _client.StreamStats(stream).ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(response.ResponseCode,
                 $"StreamStats stream: {stream}");
-            return response.Statistic;
+            return new StreamStats(response.Statistic, stream);
         }
 
         public async Task<IConsumer> CreateRawConsumer(RawConsumerConfig rawConsumerConfig,

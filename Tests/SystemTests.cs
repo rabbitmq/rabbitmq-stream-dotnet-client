@@ -10,6 +10,7 @@ using System.Net.Security;
 using System.Text;
 using RabbitMQ.Stream.Client;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Tests
 {
@@ -23,6 +24,13 @@ namespace Tests
 
     public class SystemTests
     {
+        private readonly ITestOutputHelper _testOutputHelper;
+
+        public SystemTests(ITestOutputHelper testOutputHelper)
+        {
+            _testOutputHelper = testOutputHelper;
+        }
+
         [Fact]
         public async void CreateSystem()
         {
@@ -110,11 +118,26 @@ namespace Tests
         }
 
         [Fact]
-        public async void QueryStreamStatus()
+        public async void StreamStatus()
         {
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             var stats = await system.StreamStats(stream);
-            Assert.True(stats.Count > 0);
+
+            Assert.Throws<OffsetNotFoundException>(() => { _ = stats.FirstOffset; }
+            );
+
+            Assert.Throws<OffsetNotFoundException>(() => { _ = stats.LastOffset; }
+            );
+
+            Assert.Throws<OffsetNotFoundException>(() => { _ = stats.CommittedChunkId; }
+            );
+
+            await SystemUtils.PublishMessages(system, stream, 500, _testOutputHelper);
+            SystemUtils.Wait();
+            var statAfter = await system.StreamStats(stream);
+            Assert.Equal(0, statAfter.FirstOffset);
+            Assert.True(statAfter.LastOffset > 0);
+            Assert.True(statAfter.CommittedChunkId > 0);
             await SystemUtils.CleanUpStreamSystem(system, stream);
         }
 
