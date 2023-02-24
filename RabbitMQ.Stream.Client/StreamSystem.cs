@@ -173,6 +173,9 @@ namespace RabbitMQ.Stream.Client
             return r;
         }
 
+        /// <summary>
+        /// Returns the list of partitions for a given super stream
+        /// </summary>
         public async Task<string[]> QueryPartition(string superStream)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
@@ -300,7 +303,7 @@ namespace RabbitMQ.Stream.Client
         }
 
         /// <summary>
-        /// QuerySequence retrieves the last producer sequence
+        /// QuerySequence retrieves the last publishing ID
         /// given a producer name and stream 
         /// </summary>
         /// <param name="reference">Producer name</param>
