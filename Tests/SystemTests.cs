@@ -10,6 +10,7 @@ using System.Net.Security;
 using System.Text;
 using RabbitMQ.Stream.Client;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Tests
 {
@@ -23,6 +24,13 @@ namespace Tests
 
     public class SystemTests
     {
+        private readonly ITestOutputHelper _testOutputHelper;
+
+        public SystemTests(ITestOutputHelper testOutputHelper)
+        {
+            _testOutputHelper = testOutputHelper;
+        }
+
         [Fact]
         public async void CreateSystem()
         {
@@ -110,6 +118,30 @@ namespace Tests
         }
 
         [Fact]
+        public async void StreamStatus()
+        {
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var stats = await system.StreamStats(stream);
+
+            Assert.Throws<OffsetNotFoundException>(() => { stats.FirstOffset(); }
+            );
+
+            Assert.Throws<OffsetNotFoundException>(() => { stats.LastOffset(); }
+            );
+
+            Assert.Throws<OffsetNotFoundException>(() => { stats.CommittedChunkId(); }
+            );
+
+            await SystemUtils.PublishMessages(system, stream, 500, _testOutputHelper);
+            SystemUtils.Wait();
+            var statAfter = await system.StreamStats(stream);
+            Assert.Equal(0, statAfter.FirstOffset());
+            Assert.True(statAfter.LastOffset() > 0);
+            Assert.True(statAfter.CommittedChunkId() > 0);
+            await SystemUtils.CleanUpStreamSystem(system, stream);
+        }
+
+        [Fact]
         public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
             var config = new StreamSystemConfig { VirtualHost = "DOES_NOT_EXIST" };
@@ -156,10 +188,7 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 20, });
 
             await Assert.ThrowsAsync<CreateStreamException>(
-                async () =>
-                {
-                    await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 10000, });
-                }
+                async () => { await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 10000, }); }
             );
             await system.DeleteStream(stream);
             await system.Close();
@@ -176,31 +205,19 @@ namespace Tests
             var system = await StreamSystem.Create(config);
 
             await Assert.ThrowsAsync<ArgumentException>(
-                async () =>
-                {
-                    await system.QueryOffset(string.Empty, "stream_we_don_t_care");
-                }
+                async () => { await system.QueryOffset(string.Empty, "stream_we_don_t_care"); }
             );
 
             await Assert.ThrowsAsync<ArgumentException>(
-                async () =>
-                {
-                    await system.QueryOffset("reference_we_don_care", string.Empty);
-                }
+                async () => { await system.QueryOffset("reference_we_don_care", string.Empty); }
             );
 
             await Assert.ThrowsAsync<ArgumentException>(
-                async () =>
-                {
-                    await system.QueryOffset(string.Empty, string.Empty);
-                }
+                async () => { await system.QueryOffset(string.Empty, string.Empty); }
             );
 
             await Assert.ThrowsAsync<QueryException>(
-                async () =>
-                {
-                    await system.QueryPartition("stream_does_not_exist");
-                }
+                async () => { await system.QueryPartition("stream_does_not_exist"); }
             );
             await system.Close();
         }
@@ -215,24 +232,15 @@ namespace Tests
             var system = await StreamSystem.Create(config);
 
             await Assert.ThrowsAsync<ArgumentException>(
-                async () =>
-                {
-                    await system.QuerySequence(string.Empty, "stream_we_don_t_care");
-                }
+                async () => { await system.QuerySequence(string.Empty, "stream_we_don_t_care"); }
             );
 
             await Assert.ThrowsAsync<ArgumentException>(
-                async () =>
-                {
-                    await system.QuerySequence("reference_we_don_care", string.Empty);
-                }
+                async () => { await system.QuerySequence("reference_we_don_care", string.Empty); }
             );
 
             await Assert.ThrowsAsync<ArgumentException>(
-                async () =>
-                {
-                    await system.QuerySequence(string.Empty, string.Empty);
-                }
+                async () => { await system.QuerySequence(string.Empty, string.Empty); }
             );
             await system.Close();
         }

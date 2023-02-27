@@ -63,7 +63,8 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with { Endpoint = endPoint }, logger).ConfigureAwait(false);
+                    var client = await Client.Create(clientParams with { Endpoint = endPoint }, logger)
+                        .ConfigureAwait(false);
                     if (!client.IsClosed)
                     {
                         logger?.LogDebug("Client connected to {@EndPoint}", endPoint);
@@ -148,7 +149,8 @@ namespace RabbitMQ.Stream.Client
 
             rawSuperStreamProducerConfig.Client = _client;
 
-            var partitions = await _client.QueryPartition(rawSuperStreamProducerConfig.SuperStream).ConfigureAwait(false);
+            var partitions = await _client.QueryPartition(rawSuperStreamProducerConfig.SuperStream)
+                .ConfigureAwait(false);
             if (partitions.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateProducerException($"producer could not be created code: {partitions.ResponseCode}");
@@ -171,6 +173,9 @@ namespace RabbitMQ.Stream.Client
             return r;
         }
 
+        /// <summary>
+        /// Returns the list of partitions for a given super stream
+        /// </summary>
         public async Task<string[]> QueryPartition(string superStream)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
@@ -183,7 +188,8 @@ namespace RabbitMQ.Stream.Client
             return partitions.Streams;
         }
 
-        public async Task<IConsumer> CreateSuperStreamConsumer(RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig,
+        public async Task<IConsumer> CreateSuperStreamConsumer(
+            RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig,
             ILogger logger = null)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
@@ -194,7 +200,8 @@ namespace RabbitMQ.Stream.Client
 
             rawSuperStreamConsumerConfig.Client = _client;
 
-            var partitions = await _client.QueryPartition(rawSuperStreamConsumerConfig.SuperStream).ConfigureAwait(false);
+            var partitions = await _client.QueryPartition(rawSuperStreamConsumerConfig.SuperStream)
+                .ConfigureAwait(false);
             if (partitions.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateConsumerException($"consumer could not be created code: {partitions.ResponseCode}");
@@ -296,7 +303,7 @@ namespace RabbitMQ.Stream.Client
         }
 
         /// <summary>
-        /// QuerySequence retrieves the last producer sequence
+        /// QuerySequence retrieves the last publishing ID
         /// given a producer name and stream 
         /// </summary>
         /// <param name="reference">Producer name</param>
@@ -322,6 +329,15 @@ namespace RabbitMQ.Stream.Client
             }
 
             throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
+        }
+
+        public async Task<StreamStats> StreamStats(string stream)
+        {
+            await MayBeReconnectLocator().ConfigureAwait(false);
+            var response = await _client.StreamStats(stream).ConfigureAwait(false);
+            ClientExceptions.MaybeThrowException(response.ResponseCode,
+                $"StreamStats stream: {stream}");
+            return new StreamStats(response.Statistic, stream);
         }
 
         public async Task<IConsumer> CreateRawConsumer(RawConsumerConfig rawConsumerConfig,
