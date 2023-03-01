@@ -118,6 +118,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task ProcessIncomingFrames()
         {
+            Exception caught = null;
             try
             {
                 while (true)
@@ -150,13 +151,10 @@ namespace RabbitMQ.Stream.Client
 
                     reader.AdvanceTo(buffer.Start, buffer.End);
                 }
-
-                // Mark the PipeReader as complete
-
-                await reader.CompleteAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
+                caught = e;
                 // The exception is needed mostly to raise the 
                 // closedCallback event.
                 // It is useful to trace the error, but at this point
@@ -166,6 +164,8 @@ namespace RabbitMQ.Stream.Client
             finally
             {
                 isClosed = true;
+                // Mark the PipeReader as complete
+                await reader.CompleteAsync(caught).ConfigureAwait(false);
                 var t = closedCallback?.Invoke("TCP Connection Closed")!;
                 await t.ConfigureAwait(false);
                 Debug.WriteLine("TCP Connection Closed");
