@@ -157,7 +157,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case FormatCode.Timestamp:
                     offset += WireFormatting.ReadInt64(ref reader, out var ms);
                     var dateTimeOffset = DateTimeOffset.FromUnixTimeMilliseconds(ms);
-                    value = dateTimeOffset.DateTime;
+                    value = dateTimeOffset.UtcDateTime;
                     return offset;
             }
 
