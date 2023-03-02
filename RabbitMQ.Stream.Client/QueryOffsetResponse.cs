@@ -28,7 +28,7 @@ namespace RabbitMQ.Stream.Client
         public ResponseCode ResponseCode => responseCode;
         public ulong Offset => offsetValue;
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }

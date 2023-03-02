@@ -34,20 +34,22 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
+            var span = writer.GetSpan(SizeNeeded);
             var command = (ICommand)this;
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), command.Version);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
+            offset += WireFormatting.WriteUInt16(span[offset..], command.Version);
+            offset += WireFormatting.WriteUInt32(span[offset..], correlationId);
             // map
-            offset += WireFormatting.WriteInt32(span.Slice(offset), properties.Count);
+            offset += WireFormatting.WriteInt32(span[offset..], properties.Count);
             foreach (var (k, v) in properties)
             {
-                offset += WireFormatting.WriteString(span.Slice(offset), k);
-                offset += WireFormatting.WriteString(span.Slice(offset), v);
+                offset += WireFormatting.WriteString(span[offset..], k);
+                offset += WireFormatting.WriteString(span[offset..], v);
             }
 
+            writer.Advance(offset);
             return offset;
         }
     }
@@ -94,7 +96,7 @@ namespace RabbitMQ.Stream.Client
             return offset;
         }
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }

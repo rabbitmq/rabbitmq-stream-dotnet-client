@@ -2,7 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
-using System;
+using System.Buffers;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -10,7 +10,7 @@ namespace RabbitMQ.Stream.Client
     {
         ushort Version => 1;
         uint CorrelationId => uint.MaxValue;
-        public int SizeNeeded { get; }
-        int Write(Span<byte> span);
+        int SizeNeeded { get; }
+        int Write(IBufferWriter<byte> writer);
     }
 }

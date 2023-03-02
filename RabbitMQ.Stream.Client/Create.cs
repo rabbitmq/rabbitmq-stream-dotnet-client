@@ -35,20 +35,23 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
+            var span = writer.GetSpan(SizeNeeded);
+
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand)this).Version);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
-            offset += WireFormatting.WriteString(span.Slice(offset), stream);
-            offset += WireFormatting.WriteInt32(span.Slice(offset), arguments.Count);
+            offset += WireFormatting.WriteUInt16(span[offset..], ((ICommand)this).Version);
+            offset += WireFormatting.WriteUInt32(span[offset..], correlationId);
+            offset += WireFormatting.WriteString(span[offset..], stream);
+            offset += WireFormatting.WriteInt32(span[offset..], arguments.Count);
 
             foreach (var (key, value) in arguments)
             {
-                offset += WireFormatting.WriteString(span.Slice(offset), key);
-                offset += WireFormatting.WriteString(span.Slice(offset), value);
+                offset += WireFormatting.WriteString(span[offset..], key);
+                offset += WireFormatting.WriteString(span[offset..], value);
             }
 
+            writer.Advance(offset);
             return offset;
         }
     }
@@ -71,10 +74,11 @@ namespace RabbitMQ.Stream.Client
 
         public ResponseCode ResponseCode => (ResponseCode)responseCode;
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }
+
         internal static int Read(ReadOnlySequence<byte> frame, out CreateResponse command)
         {
             var offset = WireFormatting.ReadUInt16(frame, out _);

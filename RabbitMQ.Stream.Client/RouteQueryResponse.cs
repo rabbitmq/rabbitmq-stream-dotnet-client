@@ -21,7 +21,7 @@ public struct RouteQueryResponse : ICommand
 
     public List<string> Streams { get; }
     public int SizeNeeded => throw new NotImplementedException();
-    public int Write(Span<byte> span) => throw new NotImplementedException();
+    public int Write(IBufferWriter<byte> writer) => throw new NotImplementedException();
 
     public uint CorrelationId { get; }
     public ResponseCode ResponseCode { get; }

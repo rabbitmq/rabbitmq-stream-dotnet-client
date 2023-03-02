@@ -26,7 +26,7 @@ public struct PartitionsQueryResponse : ICommand
     public string[] Streams { get; }
     public int SizeNeeded { get; }
 
-    public int Write(Span<byte> span)
+    public int Write(IBufferWriter<byte> writer)
     {
         throw new NotImplementedException();
     }
