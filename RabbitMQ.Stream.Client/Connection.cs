@@ -18,20 +18,17 @@ namespace RabbitMQ.Stream.Client
         private readonly Socket socket;
         private readonly PipeWriter writer;
         private readonly PipeReader reader;
-        private Func<Memory<byte>, Task> commandCallback;
+        private readonly Task _incomingFramesTask;
+        private readonly Func<Memory<byte>, Task> commandCallback;
         private readonly Func<string, Task> closedCallback;
-        private int numFrames;
         private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
-        internal int NumFrames => numFrames;
+        private int numFrames;
         private bool isClosed = false;
+        private bool _disposedValue;
+
+        internal int NumFrames => numFrames;
 
         public bool IsClosed => isClosed;
-
-        internal Func<Memory<byte>, Task> CommandCallback
-        {
-            get => commandCallback;
-            set => commandCallback = value;
-        }
 
         private static System.IO.Stream MaybeTcpUpgrade(NetworkStream networkStream, SslOption sslOption)
         {
@@ -50,7 +47,7 @@ namespace RabbitMQ.Stream.Client
             reader = PipeReader.Create(stream);
             // ProcessIncomingFrames is dropped as soon as the connection is closed
             // no need to stop it manually when the connection is closed
-            Task.Run(ProcessIncomingFrames);
+            _incomingFramesTask = Task.Run(ProcessIncomingFrames);
         }
 
         public static async Task<Connection> Create(EndPoint endpoint, Func<Memory<byte>, Task> commandCallback,
@@ -121,7 +118,7 @@ namespace RabbitMQ.Stream.Client
             Exception caught = null;
             try
             {
-                while (true)
+                while (!isClosed)
                 {
                     if (!reader.TryRead(out var result))
                     {
@@ -197,9 +194,26 @@ namespace RabbitMQ.Stream.Client
 
         public void Dispose()
         {
-            writer.Complete();
-            reader.Complete();
-            socket.Dispose();
+            if (!_disposedValue)
+            {
+                try
+                {
+                    isClosed = true;
+                    writer.Complete();
+                    reader.Complete();
+                    socket.Dispose();
+                    if (!_incomingFramesTask.Wait(Consts.ShortWait))
+                    {
+                        Debug.WriteLine($"frame reader task did not exit in {Consts.ShortWait}");
+                    }
+                }
+                finally
+                {
+                    _disposedValue = true;
+                }
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

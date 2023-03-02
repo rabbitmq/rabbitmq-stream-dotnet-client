@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -345,7 +346,10 @@ namespace RabbitMQ.Stream.Client
             }
 
             var closeProducer = Close();
-            closeProducer.Wait(TimeSpan.FromSeconds(1));
+            if (!closeProducer.Wait(Consts.ShortWait))
+            {
+                Debug.WriteLine($"producer did not close within {Consts.ShortWait}");
+            }
             ClientExceptions.MaybeThrowException(closeProducer.Result,
                 $"Error during remove producer. Producer: {_publisherId}");
             _disposed = true;

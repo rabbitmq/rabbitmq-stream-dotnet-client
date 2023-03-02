@@ -5,6 +5,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -309,7 +310,7 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the consumer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                var unsubscribeResponse = await _client.Unsubscribe(_subscriberId).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                var unsubscribeResponse = await _client.Unsubscribe(_subscriberId).WaitAsync(Consts.MidWait).ConfigureAwait(false);
                 result = unsubscribeResponse.ResponseCode;
             }
             catch (Exception e)
@@ -338,7 +339,10 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 var closeConsumer = Close();
-                closeConsumer.Wait(TimeSpan.FromSeconds(1));
+                if (!closeConsumer.Wait(Consts.ShortWait))
+                {
+                    Debug.WriteLine($"consumer did not close within {Consts.ShortWait}");
+                }
                 ClientExceptions.MaybeThrowException(closeConsumer.Result,
                     $"Error during remove producer. Subscriber: {_subscriberId}");
             }
