@@ -343,6 +343,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     Debug.WriteLine($"consumer did not close within {Consts.ShortWait}");
                 }
+
                 ClientExceptions.MaybeThrowException(closeConsumer.Result,
                     $"Error during remove producer. Subscriber: {_subscriberId}");
             }

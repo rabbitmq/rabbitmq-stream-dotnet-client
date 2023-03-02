@@ -350,6 +350,7 @@ namespace RabbitMQ.Stream.Client
             {
                 Debug.WriteLine($"producer did not close within {Consts.ShortWait}");
             }
+
             ClientExceptions.MaybeThrowException(closeProducer.Result,
                 $"Error during remove producer. Producer: {_publisherId}");
             _disposed = true;
