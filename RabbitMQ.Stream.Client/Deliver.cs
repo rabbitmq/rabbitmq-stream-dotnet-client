@@ -27,7 +27,7 @@ namespace RabbitMQ.Stream.Client
 
         public byte SubscriptionId => subscriptionId;
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }

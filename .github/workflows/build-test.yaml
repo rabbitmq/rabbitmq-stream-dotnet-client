@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       rabbitmq:
-        image: rabbitmq:3.13-management
+        image: rabbitmq:3-management
         env:
           RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_stream advertised_host localhost -rabbit collect_statistics_interval 4
         ports:
@@ -60,6 +60,7 @@ jobs:
           dotnet-version: |
             6.x
             7.x
+            8.x
       - uses: actions/cache@v4
         with:
           path: |

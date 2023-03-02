@@ -21,12 +21,14 @@ internal readonly struct DeleteSuperStreamRequest : ICommand
 
     public int SizeNeeded => 8 + WireFormatting.StringSize(_superStream);
 
-    public int Write(Span<byte> span)
+    public int Write(IBufferWriter<byte> writer)
     {
+        var span = writer.GetSpan(SizeNeeded);
         var offset = WireFormatting.WriteUInt16(span, Key);
         offset += WireFormatting.WriteUInt16(span[offset..], ((ICommand)this).Version);
         offset += WireFormatting.WriteUInt32(span[offset..], _correlationId);
         offset += WireFormatting.WriteString(span[offset..], _superStream);
+        writer.Advance(offset);
         return offset;
     }
 }
@@ -49,7 +51,7 @@ public readonly struct DeleteSuperStreamResponse : ICommand
 
     public ResponseCode ResponseCode => (ResponseCode)_responseCode;
 
-    public int Write(Span<byte> span)
+    public int Write(IBufferWriter<byte> writer)
     {
         throw new NotImplementedException();
     }
