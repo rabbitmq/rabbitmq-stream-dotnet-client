@@ -150,7 +150,7 @@ public class Consumer : ConsumerFactory
     // just close the consumer. See base/metadataupdate
     protected override async Task CloseEntity()
     {
-        await SemaphoreSlim.WaitAsync(10).ConfigureAwait(false);
+        await SemaphoreSlim.WaitAsync(Consts.LongWait).ConfigureAwait(false);
         try
         {
             if (_consumer != null)

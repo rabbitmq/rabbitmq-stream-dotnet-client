@@ -5,7 +5,9 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -95,9 +97,20 @@ namespace RabbitMQ.Stream.Client
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
         private readonly ILogger _logger;
+        private readonly Channel<Chunk> _messageBuffer;
+        private const int InitialCredit = 2;
 
         private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
+            _messageBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(InitialCredit)
+            {
+                AllowSynchronousContinuations = false,
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.Wait
+            });
+            Consume();
+
             _client = client;
             _config = config;
             _logger = logger ?? NullLogger.Instance;
@@ -129,22 +142,21 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger).ConfigureAwait(false);
+            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger)
+                .ConfigureAwait(false);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);
             return consumer;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ParseChunk(Chunk chunk)
+        private async Task ParseChunk(Chunk chunk)
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            void DispatchMessage(ref SequenceReader<byte> sequenceReader, ulong i)
+            async Task DispatchMessage(Message message, ulong i)
             {
-                WireFormatting.ReadUInt32(ref sequenceReader, out var len);
                 try
                 {
-                    var message = Message.From(ref sequenceReader, len);
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
                     {
@@ -153,9 +165,9 @@ namespace RabbitMQ.Stream.Client
                             return;
                         }
 
-                        _config.MessageHandler(this,
+                        await _config.MessageHandler(this,
                             new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                            message).Wait(Token);
+                            message).ConfigureAwait(false);
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
@@ -176,9 +188,11 @@ namespace RabbitMQ.Stream.Client
                 }
             }
 
-            var reader = new SequenceReader<byte>(chunk.Data);
+            // var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(chunk.Data));
+            var buffer = new ReadOnlySequence<byte>(chunk.Data);
 
             var numRecords = chunk.NumRecords;
+            var offset = 0;
             ulong messageOffset = 0; // it is used to calculate the message offset.
             while (numRecords != 0)
             {
@@ -186,23 +200,31 @@ namespace RabbitMQ.Stream.Client
                 // (entryType & 0x80) != 0 is compress entry (used for subEntry)
                 // In Case of subEntry the entryType is the compression type
                 // In case of standard entry the entryType si part of the message
-                WireFormatting.ReadByte(ref reader, out var entryType);
+                var slice = buffer.Slice(offset, 1);
+                offset += WireFormatting.ReadByte(ref slice, out var entryType);
                 var isSubEntryBatch = (entryType & 0x80) != 0;
                 if (isSubEntryBatch)
                 {
                     // it means that it is a subentry batch 
                     // We continue to read from the stream to decode the subEntryChunk values
-                    SubEntryChunk.Read(ref reader, entryType, out var subEntryChunk);
+                    slice = buffer.Slice(offset, 1);
+
+                    offset += SubEntryChunk.Read(ref slice, entryType, out var subEntryChunk);
                     var unCompressedData = CompressionHelper.UnCompress(
                         subEntryChunk.CompressionType,
                         subEntryChunk.Data,
                         subEntryChunk.DataLen,
                         subEntryChunk.UnCompressedDataSize);
-                    var readerUnCompressed = new SequenceReader<byte>(unCompressedData);
 
+                    var compressOffset = 0;
                     for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
                     {
-                        DispatchMessage(ref readerUnCompressed, messageOffset++);
+                        slice = unCompressedData.Slice(compressOffset, 4);
+                        compressOffset += WireFormatting.ReadUInt32(ref slice, out var len);
+                        slice = unCompressedData.Slice(compressOffset, len);
+                        compressOffset += (int)len;
+                        var message = Message.From(ref slice, len);
+                        await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
                     }
 
                     numRecords -= subEntryChunk.NumRecordsInBatch;
@@ -211,11 +233,38 @@ namespace RabbitMQ.Stream.Client
                 {
                     // Ok the entry is a standard entry
                     // we need to rewind the stream to one byte to decode the messages
-                    reader.Rewind(1);
-                    DispatchMessage(ref reader, messageOffset++);
+                    offset--;
+                    slice = buffer.Slice(offset, 4);
+                    offset += WireFormatting.ReadUInt32(ref slice, out var len);
+                    slice = buffer.Slice(offset, len);
+                    var message = Message.From(ref slice, len);
+                    offset += (int)len;
+                    await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
                     numRecords--;
                 }
             }
+        }
+
+        private void Consume()
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    while (await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+                    {
+                        while (_messageBuffer.Reader.TryRead(out var chunk))
+                        {
+                            await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
+                            await ParseChunk(chunk).ConfigureAwait(false);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "Error while consuming messages");
+                }
+            }, Token);
         }
 
         private async Task Init()
@@ -253,7 +302,6 @@ namespace RabbitMQ.Stream.Client
 
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
-            const ushort InitialCredit = 10;
 
             var (consumerId, response) = await _client.Subscribe(
                 _config,
@@ -261,13 +309,15 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
+                    await _messageBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
+
                     // receive the chunk from the deliver
                     // before parse the chunk, we ask for more credits
                     // in thi way we keep the network busy
-                    await _client.Credit(deliver.SubscriptionId, 1).ConfigureAwait(false);
+                    // await _client.Credit(deliver.SubscriptionId, 1).ConfigureAwait(false);
                     // parse the chunk, we have another function because the sequence reader
                     // can't be used in async context
-                    ParseChunk(deliver.Chunk);
+                    // await ParseChunk(deliver.Chunk).ConfigureAwait(false);
                 }, async b =>
                 {
                     if (_config.ConsumerUpdateListener != null)
@@ -309,7 +359,8 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the consumer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                var unsubscribeResponse = await _client.Unsubscribe(_subscriberId).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                var unsubscribeResponse =
+                    await _client.Unsubscribe(_subscriberId).WaitAsync(Consts.MidWait).ConfigureAwait(false);
                 result = unsubscribeResponse.ResponseCode;
             }
             catch (Exception e)
@@ -338,7 +389,11 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 var closeConsumer = Close();
-                closeConsumer.Wait(TimeSpan.FromSeconds(1));
+                if (!closeConsumer.Wait(Consts.ShortWait))
+                {
+                    Debug.WriteLine($"consumer did not close within {Consts.ShortWait}");
+                }
+
                 ClientExceptions.MaybeThrowException(closeConsumer.Result,
                     $"Error during remove producer. Subscriber: {_subscriberId}");
             }

@@ -72,6 +72,12 @@ namespace RabbitMQ.Stream.Client
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Message From(ref ReadOnlySequence<byte> seq, uint len)
+        {
+            var reader = new SequenceReader<byte>(seq);
+            return From(ref reader, len);
+        }
+
         public static Message From(ref SequenceReader<byte> reader, uint len)
         {
             //                                                         Bare Message

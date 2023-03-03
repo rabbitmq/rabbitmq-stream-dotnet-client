@@ -159,7 +159,6 @@ RabbitMQ.Stream.Client.Chunk
 RabbitMQ.Stream.Client.Chunk.Chunk() -> void
 RabbitMQ.Stream.Client.Chunk.ChunkId.get -> ulong
 RabbitMQ.Stream.Client.Chunk.Crc.get -> int
-RabbitMQ.Stream.Client.Chunk.Data.get -> System.Buffers.ReadOnlySequence<byte>
 RabbitMQ.Stream.Client.Chunk.Epoch.get -> ulong
 RabbitMQ.Stream.Client.Chunk.NumEntries.get -> ushort
 RabbitMQ.Stream.Client.Chunk.NumRecords.get -> uint
