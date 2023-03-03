@@ -95,6 +95,11 @@ namespace RabbitMQ.Stream.Client
             return 4;
         }
 
+        internal static int ReadUInt32(ref ReadOnlySequence<byte> seq, out uint value)
+        {
+            return ReadUInt32(seq, out value);
+
+        }
         internal static int ReadUInt32(ReadOnlySequence<byte> seq, out uint value)
         {
             if (seq.FirstSpan.Length >= 4)
@@ -208,6 +213,11 @@ namespace RabbitMQ.Stream.Client
             return 1;
         }
 
+        internal static int ReadByte(ref ReadOnlySequence<byte> seq, out byte b)
+        {
+            b = seq.FirstSpan[0];
+            return 1;
+        }
         internal static int ReadByte(ReadOnlySequence<byte> seq, out byte b)
         {
             b = seq.FirstSpan[0];

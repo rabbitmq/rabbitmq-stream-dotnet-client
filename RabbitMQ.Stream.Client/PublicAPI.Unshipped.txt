@@ -1,6 +1,7 @@
 const RabbitMQ.Stream.Client.StreamStatsResponse.Key = 28 -> ushort
 RabbitMQ.Stream.Client.AbstractEntity.MaybeCancelToken() -> void
 RabbitMQ.Stream.Client.AbstractEntity.Token.get -> System.Threading.CancellationToken
+RabbitMQ.Stream.Client.Chunk.Data.get -> System.Memory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
 RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.StreamStatsResponse>
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer
@@ -24,4 +25,5 @@ RabbitMQ.Stream.Client.StreamStatsResponse.StreamStatsResponse() -> void
 RabbitMQ.Stream.Client.StreamStatsResponse.StreamStatsResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode, System.Collections.Generic.IDictionary<string, long> statistic) -> void
 RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
+static RabbitMQ.Stream.Client.Message.From(ref System.Buffers.ReadOnlySequence<byte> seq, uint len) -> RabbitMQ.Stream.Client.Message
 static RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Create(RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig producerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.Reliable.Producer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer>
