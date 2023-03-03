@@ -2,6 +2,8 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
+using System;
+
 namespace RabbitMQ.Stream.Client
 {
     internal static class Consts
@@ -9,5 +11,8 @@ namespace RabbitMQ.Stream.Client
         internal const int MaxBatchSize = 10000;
         internal const int MinBatchSize = 1;
         internal const string RabbitMQClientRepo = "https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/issues";
+        internal static readonly TimeSpan ShortWait = TimeSpan.FromSeconds(1);
+        internal static readonly TimeSpan MidWait = TimeSpan.FromSeconds(3);
+        internal static readonly TimeSpan LongWait = TimeSpan.FromSeconds(10);
     }
 }

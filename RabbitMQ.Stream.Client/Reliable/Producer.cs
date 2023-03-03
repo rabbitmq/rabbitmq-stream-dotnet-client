@@ -182,7 +182,7 @@ public class Producer : ProducerFactory
 
     protected override async Task CloseEntity()
     {
-        await SemaphoreSlim.WaitAsync(10).ConfigureAwait(false);
+        await SemaphoreSlim.WaitAsync(Consts.LongWait).ConfigureAwait(false);
         try
         {
             if (_producer != null)
@@ -198,7 +198,7 @@ public class Producer : ProducerFactory
 
     public override async Task Close()
     {
-        await SemaphoreSlim.WaitAsync(TimeSpan.FromMilliseconds(10)).ConfigureAwait(false);
+        await SemaphoreSlim.WaitAsync(Consts.ShortWait).ConfigureAwait(false);
         try
         {
             _isOpen = false;
