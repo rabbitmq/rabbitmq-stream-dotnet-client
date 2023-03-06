@@ -39,5 +39,7 @@ public record IConsumerConfig : INamedEntity
 
     public string Reference { get; set; }
 
+    public bool AsyncHandler { get; set; } = true;
+
     public Func<string, Task> ConnectionClosedHandler { get; set; }
 }

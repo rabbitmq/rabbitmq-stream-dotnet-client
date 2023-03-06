@@ -3,6 +3,17 @@ RabbitMQ.Stream.Client.AbstractEntity.MaybeCancelToken() -> void
 RabbitMQ.Stream.Client.AbstractEntity.Token.get -> System.Threading.CancellationToken
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
 RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.StreamStatsResponse>
+RabbitMQ.Stream.Client.ConsumerIdEventArgs
+RabbitMQ.Stream.Client.ConsumerIdEventArgs.ConsumerId.get -> byte
+RabbitMQ.Stream.Client.ConsumerIdEventArgs.ConsumerIdEventArgs(byte consumerId) -> void
+RabbitMQ.Stream.Client.IConsumerConfig.AsyncHandler.get -> bool
+RabbitMQ.Stream.Client.IConsumerConfig.AsyncHandler.set -> void
+RabbitMQ.Stream.Client.RawConsumerAsyncHandler
+RabbitMQ.Stream.Client.RawConsumerAsyncHandler.AddChunk(RabbitMQ.Stream.Client.Chunk chunk) -> void
+RabbitMQ.Stream.Client.RawConsumerAsyncHandler.Finished -> System.EventHandler
+RabbitMQ.Stream.Client.RawConsumerAsyncHandler.RawConsumerAsyncHandler(System.Action<RabbitMQ.Stream.Client.Chunk> handler, System.Threading.CancellationToken cancellationToken, byte consumerId) -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.AsyncMessageHandler.get -> bool
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.AsyncMessageHandler.set -> void
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Close() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.GetLastPublishedId() -> System.Threading.Tasks.Task<ulong>

@@ -87,6 +87,7 @@ namespace RabbitMQ.Stream.Client
         public Func<RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
     }
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
@@ -129,7 +130,8 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger).ConfigureAwait(false);
+            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger)
+                .ConfigureAwait(false);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);
             return consumer;
@@ -253,7 +255,16 @@ namespace RabbitMQ.Stream.Client
 
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
-            const ushort InitialCredit = 10;
+            const ushort InitialCredit = 1;
+            RawConsumerAsyncHandler rawAsync = null;
+            if (_config.AsyncHandler)
+            {
+                rawAsync = new RawConsumerAsyncHandler(ParseChunk, Token, _subscriberId);
+                rawAsync.Finished += async (sender, args) =>
+                {
+                    await _client.Credit(((ConsumerIdEventArgs)args).ConsumerId, 1).ConfigureAwait(false);
+                };
+            }
 
             var (consumerId, response) = await _client.Subscribe(
                 _config,
@@ -261,13 +272,21 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
-                    // receive the chunk from the deliver
-                    // before parse the chunk, we ask for more credits
-                    // in thi way we keep the network busy
-                    await _client.Credit(deliver.SubscriptionId, 1).ConfigureAwait(false);
-                    // parse the chunk, we have another function because the sequence reader
-                    // can't be used in async context
-                    ParseChunk(deliver.Chunk);
+                    if (_config.AsyncHandler)
+                    {
+                        _logger.LogInformation("Async handler enabled");
+                        rawAsync?.AddChunk(deliver.Chunk);
+                    }
+                    else
+                    {
+                        // receive the chunk from the deliver
+                        // before parse the chunk, we ask for more credits
+                        // in thi way we keep the network busy
+                        await _client.Credit(deliver.SubscriptionId, 1).ConfigureAwait(false);
+                        // parse the chunk, we have another function because the sequence reader
+                        // can't be used in async context
+                        ParseChunk(deliver.Chunk);
+                    }
                 }, async b =>
                 {
                     if (_config.ConsumerUpdateListener != null)
@@ -309,7 +328,8 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the consumer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                var unsubscribeResponse = await _client.Unsubscribe(_subscriberId).WaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                var unsubscribeResponse = await _client.Unsubscribe(_subscriberId).WaitAsync(TimeSpan.FromSeconds(3))
+                    .ConfigureAwait(false);
                 result = unsubscribeResponse.ResponseCode;
             }
             catch (Exception e)

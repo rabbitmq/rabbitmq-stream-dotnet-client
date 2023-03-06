@@ -10,6 +10,7 @@ metadata:
   namespace: stream-clients-test
 spec:
   replicas: 1
+  image: rabbitmq:3.11-management
   service:
     type: LoadBalancer
   resources:

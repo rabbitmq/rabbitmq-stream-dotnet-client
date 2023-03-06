@@ -49,6 +49,7 @@ public abstract class ConsumerFactory : ReliableBase
             Reference = _consumerConfig.Reference,
             ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
             IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
+            AsyncHandler = _consumerConfig.AsyncMessageHandler,
             OffsetSpec = offsetSpec,
             ConnectionClosedHandler = async _ =>
             {
@@ -106,6 +107,7 @@ public abstract class ConsumerFactory : ReliableBase
                 Reference = _consumerConfig.Reference,
                 ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
                 IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
+                AsyncHandler = _consumerConfig.AsyncMessageHandler,
                 OffsetSpec = offsetSpecs,
                 MessageHandler = async (stream, consumer, ctx, message) =>
                 {

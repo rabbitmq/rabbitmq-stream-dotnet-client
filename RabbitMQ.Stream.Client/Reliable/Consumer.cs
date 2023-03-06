@@ -94,6 +94,8 @@ public record ConsumerConfig : ReliableConfig
     /// </summary>
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; }
 
+    public bool AsyncMessageHandler { get; set; }
+
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {
     }

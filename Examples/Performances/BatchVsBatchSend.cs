@@ -22,11 +22,11 @@ public class BatchVsBatchSend
 
 
         var config = new StreamSystemConfig() {Heartbeat = TimeSpan.Zero};
-        var system = await StreamSystem.Create(config);
-        await BatchSend(system, await RecreateStream(system, "StandardBatchSend"));
-        await StandardProducerSend(await RecreateStream(system, "StandardProducerSendNoBatch"), system);
-        await RProducerBatchSend(await RecreateStream(system, "ReliableProducerBatch"), system);
-        await RProducerSend(await RecreateStream(system, "ReliableProducerSendNoBatch"), system);
+        var system = await StreamSystem.Create(config).ConfigureAwait(false);
+        await BatchSend(system, await RecreateStream(system, "StandardBatchSend").ConfigureAwait(false)).ConfigureAwait(false);
+        await StandardProducerSend(await RecreateStream(system, "StandardProducerSendNoBatch").ConfigureAwait(false), system).ConfigureAwait(false);
+        await RProducerBatchSend(await RecreateStream(system, "ReliableProducerBatch").ConfigureAwait(false), system).ConfigureAwait(false);
+        await RProducerSend(await RecreateStream(system, "ReliableProducerSendNoBatch").ConfigureAwait(false), system).ConfigureAwait(false);
     }
 
     private static async Task RProducerSend(string stream, StreamSystem system)
@@ -55,15 +55,15 @@ public class BatchVsBatchSend
                         $"*****Reliable Producer Send No Batch Confirmed: {confirmed} Error: {error}*****");
                 }
 
-                await Task.CompletedTask;
+                await Task.CompletedTask.ConfigureAwait(false);
             }
-        });
+        }).ConfigureAwait(false);
 
         var start = DateTime.Now;
         for (ulong i = 1; i <= TotalMessages; i++)
         {
             var array = new byte[MessageSize];
-            await reliableProducer.Send(new Message(array));
+            await reliableProducer.Send(new Message(array)).ConfigureAwait(false);
 
             if (i % ModPrintMessages == 0)
             {
@@ -75,7 +75,7 @@ public class BatchVsBatchSend
             $"*****Reliable Producer Send No Batch***** send time: {DateTime.Now - start}, messages sent: {TotalMessages}");
 
         Thread.Sleep(1000);
-        await reliableProducer.Close();
+        await reliableProducer.Close().ConfigureAwait(false);
     }
 
 
@@ -104,9 +104,9 @@ public class BatchVsBatchSend
                     Console.WriteLine($"*****Reliable Producer Batch Confirmed: {confirmed}, Error: {error}*****");
                 }
 
-                await Task.CompletedTask;
+                await Task.CompletedTask.ConfigureAwait(false);
             }
-        });
+        }).ConfigureAwait(false);
 
         var messages = new List<Message>();
 
@@ -118,7 +118,7 @@ public class BatchVsBatchSend
             messages.Add(new Message(array));
             if (i % AggregateBatchSize == 0)
             {
-                await producer.Send(messages);
+                await producer.Send(messages).ConfigureAwait(false);
                 messages.Clear();
             }
 
@@ -128,13 +128,13 @@ public class BatchVsBatchSend
             }
         }
 
-        await producer.Send(messages);
+        await producer.Send(messages).ConfigureAwait(false);
         messages.Clear();
 
         Console.WriteLine(
             $"*****Reliable Producer Batch Send***** time: {DateTime.Now - start}, messages sent: {TotalMessages}");
         Thread.Sleep(1000);
-        await producer.Close();
+        await producer.Close().ConfigureAwait(false);
     }
 
 
@@ -152,14 +152,14 @@ public class BatchVsBatchSend
                     Console.WriteLine($"*****Standard Producer Send Confirmed: {confirmed}");
                 }
             }
-        });
+        }).ConfigureAwait(false);
 
         var start = DateTime.Now;
         for (ulong i = 1; i <= TotalMessages; i++)
         {
             var array = new byte[MessageSize];
 
-            await producer.Send(i, new Message(array));
+            await producer.Send(i, new Message(array)).ConfigureAwait(false);
 
             if (i % ModPrintMessages == 0)
             {
@@ -170,7 +170,7 @@ public class BatchVsBatchSend
         Console.WriteLine(
             $"*****Standard Producer Send***** send time: {DateTime.Now - start}, messages sent: {TotalMessages}");
         Thread.Sleep(1000);
-        await producer.Close();
+        await producer.Close().ConfigureAwait(false);
     }
 
     private static async Task BatchSend(StreamSystem system, string stream)
@@ -187,7 +187,7 @@ public class BatchVsBatchSend
                     Console.WriteLine($"*****Standard Batch Confirmed: {confirmed}");
                 }
             }
-        });
+        }).ConfigureAwait(false);
         var messages = new List<(ulong, Message)>();
         var start = DateTime.Now;
         for (ulong i = 1; i <= TotalMessages; i++)
@@ -196,7 +196,7 @@ public class BatchVsBatchSend
             messages.Add((i, new Message(array)));
             if (i % AggregateBatchSize == 0)
             {
-                await producer.Send(messages);
+                await producer.Send(messages).ConfigureAwait(false);
                 messages.Clear();
             }
 
@@ -206,13 +206,13 @@ public class BatchVsBatchSend
             }
         }
 
-        await producer.Send(messages);
+        await producer.Send(messages).ConfigureAwait(false);
         messages.Clear();
 
         Console.WriteLine(
             $"*****Standard Batch Send***** send time: {DateTime.Now - start}, messages sent: {TotalMessages}");
         Thread.Sleep(1000);
-        await producer.Close();
+        await producer.Close().ConfigureAwait(false);
     }
 
     private static async Task<string> RecreateStream(StreamSystem system, string stream)
@@ -222,7 +222,7 @@ public class BatchVsBatchSend
         Thread.Sleep(5000);
         try
         {
-            await system.DeleteStream(stream);
+            await system.DeleteStream(stream).ConfigureAwait(false);
         }
         catch (Exception)
         {
@@ -231,7 +231,7 @@ public class BatchVsBatchSend
 
         Thread.Sleep(5000);
 
-        await system.CreateStream(new StreamSpec(stream) { });
+        await system.CreateStream(new StreamSpec(stream) { }).ConfigureAwait(false);
         Thread.Sleep(1000);
         Console.WriteLine($"Stream: {stream} created");
         return stream;
