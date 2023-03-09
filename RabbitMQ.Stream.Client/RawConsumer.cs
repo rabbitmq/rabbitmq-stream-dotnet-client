@@ -207,7 +207,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     // it means that it is a subentry batch 
                     // We continue to read from the stream to decode the subEntryChunk values
-                    slice = buffer.Slice(offset, 1);
+                    slice = buffer.Slice(offset);
 
                     offset += SubEntryChunk.Read(ref slice, entryType, out var subEntryChunk);
                     var unCompressedData = CompressionHelper.UnCompress(
