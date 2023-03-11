@@ -185,26 +185,18 @@ namespace RabbitMQ.Stream.Client
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             async Task DispatchMessage(Message message, ulong i)
             {
-
-                /* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-                Before:
-                                    numRecords -= subEntryChunk.NumRecordsInBatch;
-                After:
-                                    numRecords -= subEntryChunk.NumRecordsInBatch;
-                */
                 try
                 {
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
                     {
-                        if (Token.IsCancellationRequested)
+                        if (!Token.IsCancellationRequested)
                         {
-                            return;
+                            await _config.MessageHandler(this,
+                                new MessageContext(message.MessageOffset,
+                                    TimeSpan.FromMilliseconds(chunk.Timestamp)),
+                                message).ConfigureAwait(false);
                         }
-
-                        await _config.MessageHandler(this,
-                            new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                            message).ConfigureAwait(false);
                     }
                 }
 
@@ -223,8 +215,8 @@ namespace RabbitMQ.Stream.Client
             var chunkBuffer = new ReadOnlySequence<byte>(chunk.Data);
 
             var numRecords = chunk.NumRecords;
-            var offset = 0;
-            ulong messageOffset = 0; // it is used to calculate the message offset.
+            var offset = 0; // it is used to calculate the offset in the chunk.
+            ulong messageOffset = 0; // it is used to calculate the message offset. It is the chunkId + messageOffset
             while (numRecords != 0)
             {
                 // (entryType & 0x80) == 0 is standard entry
@@ -236,7 +228,7 @@ namespace RabbitMQ.Stream.Client
                 var isSubEntryBatch = (entryType & 0x80) != 0;
                 if (isSubEntryBatch)
                 {
-                    // it means that it is a subentry batch 
+                    // it means that it is a sub-entry batch 
                     // We continue to read from the stream to decode the subEntryChunk values
                     slice = chunkBuffer.Slice(offset);
 
@@ -279,6 +271,8 @@ namespace RabbitMQ.Stream.Client
                     {
                         while (_chunksBuffer.Reader.TryRead(out var chunk))
                         {
+                            // We send the credit to the server to allow the server to send more messages
+                            // we request the credit before process the check to keep the network busy
                             await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
                             await ParseChunk(chunk).ConfigureAwait(false);
                         }
@@ -338,6 +332,7 @@ namespace RabbitMQ.Stream.Client
                     // Send the chunk to the _chunksBuffer
                     // in this way the chunks are processed in a separate thread
                     // this wont' block the socket thread
+                    // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
                     await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
                 }, async b =>
                 {

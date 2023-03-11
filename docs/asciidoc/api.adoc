@@ -667,13 +667,9 @@ include::{test-examples}/ConsumerUsage.cs[tag=consumer-creation]
 
 The broker start sending messages as soon as the `Consumer` instance is created.
 
-[WARNING]
-.Keep the message processing callback as short as possible
-====
-The message processing callback should be kept as short as possible to avoid blocking the connection thread.
-Not doing so can make the `StreamSystem`, `Producer`, `Consumer` instances sluggish or even block them.
-Any long processing should be done in a separate thread (e.g. with an asynchronous `Task.Run(...)`).
-====
+
+Staring from the 1.3.0 version, the `Consumer#MessageHandler` API runs in a separated `Task` and it is possible to use `async`/`await` in the handler.
+
 
 The following table sums up the main settings to create a `Consumer` with `ConsumerConfig`:
 
