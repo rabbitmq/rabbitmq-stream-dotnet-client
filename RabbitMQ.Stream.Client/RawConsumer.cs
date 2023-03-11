@@ -97,23 +97,25 @@ namespace RabbitMQ.Stream.Client
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
         private readonly ILogger _logger;
-        private readonly Channel<Chunk> _messageBuffer;
+        private readonly Channel<Chunk> _chunksBuffer;
         private const int InitialCredit = 2;
 
         private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
-            _messageBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(InitialCredit)
+            // _chunksBuffer is a channel that is used to buffer the chunks
+            _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(InitialCredit)
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
                 SingleWriter = true,
                 FullMode = BoundedChannelFullMode.Wait
             });
-            Consume();
 
             _client = client;
             _config = config;
             _logger = logger ?? NullLogger.Instance;
+
+            ProcessChunks();
         }
 
         // if a user specify a custom offset 
@@ -153,9 +155,44 @@ namespace RabbitMQ.Stream.Client
         private async Task ParseChunk(Chunk chunk)
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            async Task DispatchMessage(Message message, ulong i)
+            Message MessageFromSequence(ref ReadOnlySequence<byte> unCompressedData, ref int compressOffset)
             {
                 try
+                {
+                    var slice = unCompressedData.Slice(compressOffset, 4);
+                    compressOffset += WireFormatting.ReadUInt32(ref slice, out var len);
+                    slice = unCompressedData.Slice(compressOffset, len);
+                    compressOffset += (int)len;
+
+                    // Here we use the Message.From(ref ReadOnlySequence<byte> seq ..) method to parse the message
+                    // instead of the Message From(ref SequenceReader<byte> reader ..) method
+                    // Since the ParseChunk is async and we cannot use the ref SequenceReader<byte> reader
+                    // See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250 for more details
+
+                    var message = Message.From(ref slice, len);
+                    return message;
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "Error while parsing message. Message will be skipped. " +
+                                        "Please report this issue to the RabbitMQ team on GitHub {Repo}",
+                        Consts.RabbitMQClientRepo);
+                }
+
+                return null;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            async Task DispatchMessage(Message message, ulong i)
+            {
+                
+/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
+Before:
+                    numRecords -= subEntryChunk.NumRecordsInBatch;
+After:
+                    numRecords -= subEntryChunk.NumRecordsInBatch;
+*/
+try
                 {
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
@@ -170,12 +207,7 @@ namespace RabbitMQ.Stream.Client
                             message).ConfigureAwait(false);
                     }
                 }
-                catch (ArgumentOutOfRangeException e)
-                {
-                    _logger.LogError(e, "Unexpected error while parsing message. Message will be skipped. " +
-                                        "Please report this issue to the RabbitMQ team on GitHub {Repo}",
-                        Consts.RabbitMQClientRepo);
-                }
+
                 catch (OperationCanceledException)
                 {
                     _logger.LogWarning(
@@ -188,8 +220,7 @@ namespace RabbitMQ.Stream.Client
                 }
             }
 
-            // var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(chunk.Data));
-            var buffer = new ReadOnlySequence<byte>(chunk.Data);
+            var chunkBuffer = new ReadOnlySequence<byte>(chunk.Data);
 
             var numRecords = chunk.NumRecords;
             var offset = 0;
@@ -200,30 +231,26 @@ namespace RabbitMQ.Stream.Client
                 // (entryType & 0x80) != 0 is compress entry (used for subEntry)
                 // In Case of subEntry the entryType is the compression type
                 // In case of standard entry the entryType si part of the message
-                var slice = buffer.Slice(offset, 1);
+                var slice = chunkBuffer.Slice(offset, 1);
                 offset += WireFormatting.ReadByte(ref slice, out var entryType);
                 var isSubEntryBatch = (entryType & 0x80) != 0;
                 if (isSubEntryBatch)
                 {
                     // it means that it is a subentry batch 
                     // We continue to read from the stream to decode the subEntryChunk values
-                    slice = buffer.Slice(offset);
+                    slice = chunkBuffer.Slice(offset);
 
                     offset += SubEntryChunk.Read(ref slice, entryType, out var subEntryChunk);
                     var unCompressedData = CompressionHelper.UnCompress(
                         subEntryChunk.CompressionType,
-                        subEntryChunk.Data,
+                        new ReadOnlySequence<byte>(subEntryChunk.Data),
                         subEntryChunk.DataLen,
                         subEntryChunk.UnCompressedDataSize);
 
                     var compressOffset = 0;
                     for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
                     {
-                        slice = unCompressedData.Slice(compressOffset, 4);
-                        compressOffset += WireFormatting.ReadUInt32(ref slice, out var len);
-                        slice = unCompressedData.Slice(compressOffset, len);
-                        compressOffset += (int)len;
-                        var message = Message.From(ref slice, len);
+                        var message = MessageFromSequence(ref unCompressedData, ref compressOffset);
                         await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
                     }
 
@@ -232,28 +259,25 @@ namespace RabbitMQ.Stream.Client
                 else
                 {
                     // Ok the entry is a standard entry
-                    // we need to rewind the stream to one byte to decode the messages
+                    // we need to rewind the offset to -1 to one byte to decode the messages
                     offset--;
-                    slice = buffer.Slice(offset, 4);
-                    offset += WireFormatting.ReadUInt32(ref slice, out var len);
-                    slice = buffer.Slice(offset, len);
-                    var message = Message.From(ref slice, len);
-                    offset += (int)len;
+                    var message = MessageFromSequence(ref chunkBuffer, ref offset);
                     await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
                     numRecords--;
                 }
             }
         }
 
-        private void Consume()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ProcessChunks()
         {
             Task.Run(async () =>
             {
                 try
                 {
-                    while (await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+                    while (await _chunksBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
                     {
-                        while (_messageBuffer.Reader.TryRead(out var chunk))
+                        while (_chunksBuffer.Reader.TryRead(out var chunk))
                         {
                             await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
                             await ParseChunk(chunk).ConfigureAwait(false);
@@ -262,6 +286,8 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
+                    if (Token.IsCancellationRequested)
+                        return;
                     _logger.LogError(e, "Error while consuming messages");
                 }
             }, Token);
@@ -309,15 +335,10 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
-                    await _messageBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
-
-                    // receive the chunk from the deliver
-                    // before parse the chunk, we ask for more credits
-                    // in thi way we keep the network busy
-                    // await _client.Credit(deliver.SubscriptionId, 1).ConfigureAwait(false);
-                    // parse the chunk, we have another function because the sequence reader
-                    // can't be used in async context
-                    // await ParseChunk(deliver.Chunk).ConfigureAwait(false);
+                    // Send the chunk to the _chunksBuffer
+                    // in this way the chunks are processed in a separate thread
+                    // this wont' block the socket thread
+                    await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
                 }, async b =>
                 {
                     if (_config.ConsumerUpdateListener != null)
