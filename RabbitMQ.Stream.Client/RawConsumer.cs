@@ -185,14 +185,14 @@ namespace RabbitMQ.Stream.Client
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             async Task DispatchMessage(Message message, ulong i)
             {
-                
-/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-Before:
-                    numRecords -= subEntryChunk.NumRecordsInBatch;
-After:
-                    numRecords -= subEntryChunk.NumRecordsInBatch;
-*/
-try
+
+                /* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
+                Before:
+                                    numRecords -= subEntryChunk.NumRecordsInBatch;
+                After:
+                                    numRecords -= subEntryChunk.NumRecordsInBatch;
+                */
+                try
                 {
                     message.MessageOffset = chunk.ChunkId + i;
                     if (MaybeDispatch(message.MessageOffset))
