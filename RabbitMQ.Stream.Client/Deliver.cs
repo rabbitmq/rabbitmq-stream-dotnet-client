@@ -51,7 +51,7 @@ namespace RabbitMQ.Stream.Client
         private SubEntryChunk(byte compress,
             ushort numRecordsInBatch,
             uint unCompressedDataSize, uint dataLen,
-            ReadOnlySequence<byte> data)
+            Memory<byte> data)
         {
             compressValue = compress;
             NumRecordsInBatch = numRecordsInBatch;
@@ -67,8 +67,13 @@ namespace RabbitMQ.Stream.Client
         public uint UnCompressedDataSize { get; }
 
         public uint DataLen { get; }
-        public ReadOnlySequence<byte> Data { get; }
+        public Memory<byte> Data { get; }
 
+        // This wrapper was added to be used in async methods
+        // where the SequenceReader is not available
+        // see RawConsumer:ParseChunk for more details
+        // at some point we could remove this wrapper
+        // and use system.io.pipeline instead of SequenceReader
         internal static int Read(ref ReadOnlySequence<byte> seq, byte entryType, out SubEntryChunk subEntryChunk)
         {
             var reader = new SequenceReader<byte>(seq);
@@ -83,14 +88,18 @@ namespace RabbitMQ.Stream.Client
             // Determinate what kind of the compression it is using
             // See Compress:CompressMode
             var compress = (byte)((byte)(entryType & 0x70) >> 4);
-            offset++;
 
             // Data contains the subEntryChunk information
             // We need to pass it to the subEntryChunk that will decode the information
+            var memory =
+                ArrayPool<byte>.Shared.Rent((int)dataLen).AsMemory(0, (int)dataLen);
             var data = reader.Sequence.Slice(reader.Consumed, dataLen);
+            data.CopyTo(memory.Span);
+
             subEntryChunk =
-                new SubEntryChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, data);
-            offset += (int)dataLen;
+                new SubEntryChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, memory);
+            offset += memory.Length;
+
             // Here we need to advance the reader to the datalen
             // Since Data is passed to the subEntryChunk.
             reader.Advance(dataLen);
