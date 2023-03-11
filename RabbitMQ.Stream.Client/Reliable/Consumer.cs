@@ -27,6 +27,7 @@ public record ConsumerConfig : ReliableConfig
 
     /// <summary>
     /// Callback function where the consumer receives the messages.
+    /// The callback runs in a different Task respect to the socket thread.
     /// Parameters that will be received by this function:
     /// <list type="bullet">
     /// <item>
