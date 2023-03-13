@@ -4,41 +4,26 @@
     <AssemblyName>RabbitMQ.Stream.Client</AssemblyName>
     <AssemblyOriginatorKeyFile>../rabbit.snk</AssemblyOriginatorKeyFile>
     <AssemblyTitle>RabbitMQ Stream Client Library for .NET</AssemblyTitle>
-    <Authors>VMware</Authors>
-    <Company>VMware, Inc. or its affiliates.</Company>
-    <Copyright>Copyright © 2007-2022 VMware, Inc. or its affiliates.</Copyright>
     <Description>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</Description>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <IncludeSymbols>true</IncludeSymbols>
+    <IsPackable>true</IsPackable>
     <MinVerTagPrefix>v</MinVerTagPrefix>
     <MinVerVerbosity>normal</MinVerVerbosity>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
     <PackageDescription>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</PackageDescription>
     <PackageIcon>icon.png</PackageIcon>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageOutputPath>..\packages</PackageOutputPath>
-    <PackageProjectUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</PackageProjectUrl>
-    <PackageTags>rabbitmq, stream</PackageTags>
-    <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</RepositoryUrl>
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
     <Title>RabbitMQ Stream Client Library for .NET</Title>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(CI)' == 'true'">
-    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-    <Deterministic>true</Deterministic>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="icon.png" />
-    <Content Include="icon.png" PackagePath="" />
-    <None Include="..\LICENSE" Pack="true" PackagePath="" />
+    <Content Include="icon.png" PackagePath="icon.png" />
+    <None Include="$(MSBuildThisFileDirectory)..\LICENSE" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,20 +33,20 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.3">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+    <PackageReference Include="Microsoft.SourceLink.GitHub">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="MinVer" Version="3.1.0">
+    <PackageReference Include="MinVer">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
+    <PackageReference Include="System.IO.Pipelines" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
 </Project>
