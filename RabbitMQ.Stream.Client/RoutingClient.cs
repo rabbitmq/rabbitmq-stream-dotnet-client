@@ -65,14 +65,16 @@ namespace RabbitMQ.Stream.Client
                 // In this case we just return the node (leader for producer, random for consumer)
                 // since there is not load balancer configuration
 
-                return await routing.CreateClient(clientParameters with { Endpoint = endPointNoLb }, logger).ConfigureAwait(false);
+                return await routing.CreateClient(clientParameters with { Endpoint = endPointNoLb }, logger)
+                    .ConfigureAwait(false);
             }
 
             // here it means that there is a AddressResolver configuration
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
             var endPoint = clientParameters.AddressResolver.EndPoint;
-            var client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, logger).ConfigureAwait(false);
+            var client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, logger)
+                .ConfigureAwait(false);
 
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
             var advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
@@ -83,7 +85,8 @@ namespace RabbitMQ.Stream.Client
                 attemptNo++;
                 await client.Close("advertised_host or advertised_port doesn't match").ConfigureAwait(false);
 
-                client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, logger).ConfigureAwait(false);
+                client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, logger)
+                    .ConfigureAwait(false);
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
                 advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
@@ -93,7 +96,7 @@ namespace RabbitMQ.Stream.Client
                         $"Could not find broker ({broker.Host}:{broker.Port}) after {maxAttempts} attempts");
                 }
 
-                await Task.Delay(TimeSpan.FromMilliseconds(200)).ConfigureAwait(false);
+                await Task.Delay(Consts.RandomShort()).ConfigureAwait(false);
             }
 
             return client;
@@ -148,7 +151,8 @@ namespace RabbitMQ.Stream.Client
         public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo, ILogger logger = null)
         {
-            return await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger).ConfigureAwait(false);
+            return await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger)
+                .ConfigureAwait(false);
         }
 
         /// <summary>
@@ -165,7 +169,8 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    return await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo), logger).ConfigureAwait(false);
+                    return await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo), logger)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

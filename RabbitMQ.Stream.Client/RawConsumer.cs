@@ -154,109 +154,117 @@ namespace RabbitMQ.Stream.Client
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private async Task ParseChunk(Chunk chunk)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            Message MessageFromSequence(ref ReadOnlySequence<byte> unCompressedData, ref int compressOffset)
+            try
             {
-                try
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                Message MessageFromSequence(ref ReadOnlySequence<byte> unCompressedData, ref int compressOffset)
                 {
-                    var slice = unCompressedData.Slice(compressOffset, 4);
-                    compressOffset += WireFormatting.ReadUInt32(ref slice, out var len);
-                    slice = unCompressedData.Slice(compressOffset, len);
-                    compressOffset += (int)len;
-
-                    // Here we use the Message.From(ref ReadOnlySequence<byte> seq ..) method to parse the message
-                    // instead of the Message From(ref SequenceReader<byte> reader ..) method
-                    // Since the ParseChunk is async and we cannot use the ref SequenceReader<byte> reader
-                    // See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250 for more details
-
-                    var message = Message.From(ref slice, len);
-                    return message;
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Error while parsing message. Message will be skipped. " +
-                                        "Please report this issue to the RabbitMQ team on GitHub {Repo}",
-                        Consts.RabbitMQClientRepo);
-                }
-
-                return null;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            async Task DispatchMessage(Message message, ulong i)
-            {
-                try
-                {
-                    message.MessageOffset = chunk.ChunkId + i;
-                    if (MaybeDispatch(message.MessageOffset))
+                    try
                     {
-                        if (!Token.IsCancellationRequested)
+                        var slice = unCompressedData.Slice(compressOffset, 4);
+                        compressOffset += WireFormatting.ReadUInt32(ref slice, out var len);
+                        slice = unCompressedData.Slice(compressOffset, len);
+                        compressOffset += (int)len;
+
+                        // Here we use the Message.From(ref ReadOnlySequence<byte> seq ..) method to parse the message
+                        // instead of the Message From(ref SequenceReader<byte> reader ..) method
+                        // Since the ParseChunk is async and we cannot use the ref SequenceReader<byte> reader
+                        // See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250 for more details
+
+                        var message = Message.From(ref slice, len);
+                        return message;
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error while parsing message. Message will be skipped. " +
+                                            "Please report this issue to the RabbitMQ team on GitHub {Repo}",
+                            Consts.RabbitMQClientRepo);
+                    }
+
+                    return null;
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                async Task DispatchMessage(Message message, ulong i)
+                {
+                    try
+                    {
+                        message.MessageOffset = chunk.ChunkId + i;
+                        if (MaybeDispatch(message.MessageOffset))
                         {
-                            await _config.MessageHandler(this,
-                                new MessageContext(message.MessageOffset,
-                                    TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                                message).ConfigureAwait(false);
+                            if (!Token.IsCancellationRequested)
+                            {
+                                await _config.MessageHandler(this,
+                                    new MessageContext(message.MessageOffset,
+                                        TimeSpan.FromMilliseconds(chunk.Timestamp)),
+                                    message).ConfigureAwait(false);
+                            }
                         }
                     }
+
+                    catch (OperationCanceledException)
+                    {
+                        _logger.LogWarning(
+                            "OperationCanceledException. The consumer id: {SubscriberId} reference: {Reference} has been closed while consuming messages",
+                            _subscriberId, _config.Reference);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error while processing chunk: {ChunkId}", chunk.ChunkId);
+                    }
                 }
 
-                catch (OperationCanceledException)
+                var chunkBuffer = new ReadOnlySequence<byte>(chunk.Data);
+
+                var numRecords = chunk.NumRecords;
+                var offset = 0; // it is used to calculate the offset in the chunk.
+                ulong
+                    messageOffset = 0; // it is used to calculate the message offset. It is the chunkId + messageOffset
+                while (numRecords != 0)
                 {
-                    _logger.LogWarning(
-                        "OperationCanceledException. The consumer id: {SubscriberId} reference: {Reference} has been closed while consuming messages",
-                        _subscriberId, _config.Reference);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Error while processing chunk: {ChunkId}", chunk.ChunkId);
+                    // (entryType & 0x80) == 0 is standard entry
+                    // (entryType & 0x80) != 0 is compress entry (used for subEntry)
+                    // In Case of subEntry the entryType is the compression type
+                    // In case of standard entry the entryType si part of the message
+                    var slice = chunkBuffer.Slice(offset, 1);
+                    offset += WireFormatting.ReadByte(ref slice, out var entryType);
+                    var isSubEntryBatch = (entryType & 0x80) != 0;
+                    if (isSubEntryBatch)
+                    {
+                        // it means that it is a sub-entry batch 
+                        // We continue to read from the stream to decode the subEntryChunk values
+                        slice = chunkBuffer.Slice(offset);
+
+                        offset += SubEntryChunk.Read(ref slice, entryType, out var subEntryChunk);
+                        var unCompressedData = CompressionHelper.UnCompress(
+                            subEntryChunk.CompressionType,
+                            new ReadOnlySequence<byte>(subEntryChunk.Data),
+                            subEntryChunk.DataLen,
+                            subEntryChunk.UnCompressedDataSize);
+
+                        var compressOffset = 0;
+                        for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
+                        {
+                            var message = MessageFromSequence(ref unCompressedData, ref compressOffset);
+                            await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
+                        }
+
+                        numRecords -= subEntryChunk.NumRecordsInBatch;
+                    }
+                    else
+                    {
+                        // Ok the entry is a standard entry
+                        // we need to rewind the offset to -1 to one byte to decode the messages
+                        offset--;
+                        var message = MessageFromSequence(ref chunkBuffer, ref offset);
+                        await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
+                        numRecords--;
+                    }
                 }
             }
-
-            var chunkBuffer = new ReadOnlySequence<byte>(chunk.Data);
-
-            var numRecords = chunk.NumRecords;
-            var offset = 0; // it is used to calculate the offset in the chunk.
-            ulong messageOffset = 0; // it is used to calculate the message offset. It is the chunkId + messageOffset
-            while (numRecords != 0)
+            catch (Exception e)
             {
-                // (entryType & 0x80) == 0 is standard entry
-                // (entryType & 0x80) != 0 is compress entry (used for subEntry)
-                // In Case of subEntry the entryType is the compression type
-                // In case of standard entry the entryType si part of the message
-                var slice = chunkBuffer.Slice(offset, 1);
-                offset += WireFormatting.ReadByte(ref slice, out var entryType);
-                var isSubEntryBatch = (entryType & 0x80) != 0;
-                if (isSubEntryBatch)
-                {
-                    // it means that it is a sub-entry batch 
-                    // We continue to read from the stream to decode the subEntryChunk values
-                    slice = chunkBuffer.Slice(offset);
-
-                    offset += SubEntryChunk.Read(ref slice, entryType, out var subEntryChunk);
-                    var unCompressedData = CompressionHelper.UnCompress(
-                        subEntryChunk.CompressionType,
-                        new ReadOnlySequence<byte>(subEntryChunk.Data),
-                        subEntryChunk.DataLen,
-                        subEntryChunk.UnCompressedDataSize);
-
-                    var compressOffset = 0;
-                    for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
-                    {
-                        var message = MessageFromSequence(ref unCompressedData, ref compressOffset);
-                        await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
-                    }
-
-                    numRecords -= subEntryChunk.NumRecordsInBatch;
-                }
-                else
-                {
-                    // Ok the entry is a standard entry
-                    // we need to rewind the offset to -1 to one byte to decode the messages
-                    offset--;
-                    var message = MessageFromSequence(ref chunkBuffer, ref offset);
-                    await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
-                    numRecords--;
-                }
+                _logger?.LogError(e, "Error while parsing chunk: {ChunkId}", chunk.ChunkId);
             }
         }
 
@@ -267,12 +275,13 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    while (await _chunksBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
+                    while (await _chunksBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
                     {
                         while (_chunksBuffer.Reader.TryRead(out var chunk))
                         {
                             // We send the credit to the server to allow the server to send more messages
                             // we request the credit before process the check to keep the network busy
+
                             await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
                             await ParseChunk(chunk).ConfigureAwait(false);
                         }
@@ -280,9 +289,10 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
-                    if (Token.IsCancellationRequested)
-                        return;
-                    _logger.LogError(e, "Error while consuming messages");
+                    // if (Token.IsCancellationRequested)
+                    //     return;
+                    _logger.LogError(e, "Error while consuming messages {TokenIsCancellationRequested}",
+                        Token.IsCancellationRequested);
                 }
             }, Token);
         }
@@ -344,6 +354,7 @@ namespace RabbitMQ.Stream.Client
                             _config.Reference,
                             _config.Stream,
                             b).ConfigureAwait(false);
+
                     }
 
                     return _config.StoredOffsetSpec;
