@@ -8,6 +8,8 @@ namespace RabbitMQ.Stream.Client
 {
     internal static class Consts
     {
+        private static readonly Random s_random = new();
+
         internal const int MaxBatchSize = 10000;
         internal const int MinBatchSize = 1;
         internal const string RabbitMQClientRepo = "https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/issues";
@@ -17,12 +19,12 @@ namespace RabbitMQ.Stream.Client
 
         internal static int RandomShort()
         {
-            return new Random().Next(500, 1500);
+            return s_random.Next(500, 1500);
         }
 
         internal static int RandomMid()
         {
-            return new Random().Next(1000, 2500);
+            return s_random.Next(1000, 2500);
         }
     }
 }
