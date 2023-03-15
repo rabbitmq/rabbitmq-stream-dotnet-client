@@ -173,7 +173,7 @@ namespace RabbitMQ.Stream.Client
                 var t = closedCallback?.Invoke("TCP Connection Closed")!;
                 if (t != null)
                     await t.ConfigureAwait(false);
-                _logger?.LogInformation("TCP Connection Closed");
+                _logger?.LogDebug("TCP Connection Closed");
             }
         }
 

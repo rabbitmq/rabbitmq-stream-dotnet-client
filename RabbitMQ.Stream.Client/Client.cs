@@ -435,10 +435,14 @@ namespace RabbitMQ.Stream.Client
                     await ConsumerUpdateResponse(
                         consumerUpdateQueryResponse.CorrelationId,
                         off).ConfigureAwait(false);
+
                     _ = Task.Run(async () =>
                     {
-                        await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
-                        await Credit(consumerUpdateQueryResponse.SubscriptionId, 2).ConfigureAwait(false);
+                        if (consumerUpdateQueryResponse.IsActive)
+                        {
+                            await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
+                            await Credit(consumerUpdateQueryResponse.SubscriptionId, 2).ConfigureAwait(false);
+                        }
                     });
                     break;
                 case CreditResponse.Key:

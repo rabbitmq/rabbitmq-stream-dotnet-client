@@ -110,7 +110,7 @@ namespace RabbitMQ.Stream.Client
                 SingleWriter = true,
                 FullMode = BoundedChannelFullMode.Wait
             });
-
+            IsPromotedAsActive = true;
             _client = client;
             _config = config;
             _logger = logger ?? NullLogger.Instance;
@@ -136,6 +136,15 @@ namespace RabbitMQ.Stream.Client
         {
             await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
         }
+
+        // It is needed to understand if the consumer is active or not
+        // by default is active
+        // in case of single active consumer can be not active
+        // it is important to skip the messages in the chuck that 
+        // it is in progress. In this way the promotion will be faster
+        // avoiding to block the consumer handler if the user put some
+        // long task
+        private bool IsPromotedAsActive { get; set; }
 
         public static async Task<IConsumer> Create(
             ClientParameters clientParameters,
@@ -194,10 +203,21 @@ namespace RabbitMQ.Stream.Client
                         {
                             if (!Token.IsCancellationRequested)
                             {
-                                await _config.MessageHandler(this,
-                                    new MessageContext(message.MessageOffset,
-                                        TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                                    message).ConfigureAwait(false);
+                                // it is usually active
+                                // it is useful only in single active consumer
+                                if (IsPromotedAsActive)
+                                {
+                                    await _config.MessageHandler(this,
+                                        new MessageContext(message.MessageOffset,
+                                            TimeSpan.FromMilliseconds(chunk.Timestamp)),
+                                        message).ConfigureAwait(false);
+                                }
+                                else
+                                {
+                                    _logger?.LogDebug(
+                                        "The consumer is not active for the stream {ConfigStream}. message won't dispatched",
+                                        _config.Stream);
+                                }
                             }
                         }
                     }
@@ -281,7 +301,6 @@ namespace RabbitMQ.Stream.Client
                         {
                             // We send the credit to the server to allow the server to send more messages
                             // we request the credit before process the check to keep the network busy
-
                             await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
                             await ParseChunk(chunk).ConfigureAwait(false);
                         }
@@ -344,7 +363,7 @@ namespace RabbitMQ.Stream.Client
                     // this wont' block the socket thread
                     // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
                     await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
-                }, async b =>
+                }, async promotedAsActive =>
                 {
                     if (_config.ConsumerUpdateListener != null)
                     {
@@ -353,10 +372,15 @@ namespace RabbitMQ.Stream.Client
                         _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
                             _config.Reference,
                             _config.Stream,
-                            b).ConfigureAwait(false);
-
+                            promotedAsActive).ConfigureAwait(false);
                     }
 
+                    // Here we set the promotion status
+                    // important for the dispatcher messages 
+                    IsPromotedAsActive = promotedAsActive;
+                    _logger?.LogDebug("The consumer active status is: {IsActive} for the stream: {Stream}  ",
+                        IsPromotedAsActive,
+                        _config.Stream);
                     return _config.StoredOffsetSpec;
                 }
             ).ConfigureAwait(false);
