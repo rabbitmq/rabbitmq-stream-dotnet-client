@@ -1,0 +1,6 @@
+<!-- vim: set ft=xml: -->
+<Project>
+  <ItemGroup>
+    <EmbeddedFiles Include="$(GeneratedAssemblyInfoFile)"/>
+  </ItemGroup>
+</Project>

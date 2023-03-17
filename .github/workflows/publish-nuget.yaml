@@ -25,6 +25,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-v2-nuget-
       - name: Build (Release)
-        run: dotnet build --configuration=Release --verbosity=normal
+        run: dotnet build ./Build.csproj --verbosity=normal --configuration=Release /p:CI=true
       - name: Publish to NuGet
         run: dotnet nuget push --skip-duplicate --api-key ${{secrets.NUGET_API_KEY}} --source 'https://api.nuget.org/v3/index.json' ${{github.workspace}}/packages/RabbitMQ.Stream.Client.*.nupkg
