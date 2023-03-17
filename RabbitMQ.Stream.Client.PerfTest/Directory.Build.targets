@@ -1,0 +1,12 @@
+<Project>
+  <ItemGroup Condition=" '$(EnableCentralPackageVersions)' != 'false' ">
+    <!--
+      https://github.com/NuGet/Home/issues/11949#issuecomment-1184772230
+      Workaround the issue where FSharp SDK adds implicit PackageReference items but doesn't mark them as such
+      https://github.com/microsoft/MSBuildSdks/issues/90
+    -->
+    <PackageReference Update="FSharp.Core"
+      Condition="'$(MSBuildProjectExtension)' == '.fsproj' And '$(DisableImplicitFSharpCoreReference)' != 'true' And '$(UpdateImplicitFSharpCoreReference)' != 'false'"
+      IsImplicitlyDefined="true" />
+  </ItemGroup>
+</Project>

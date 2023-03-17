@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.Build.Traversal/3.2.0">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <MinVerSkip>true</MinVerSkip>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="docs/Documentation/Documentation.csproj" />
+    <ProjectReference Include="docs/SuperStream/SuperStream.csproj" />
+    <ProjectReference Include="Examples/Performances/Performances.csproj" />
+    <ProjectReference Include="RabbitMQ.Stream.Client.PerfTest/RabbitMQ.Stream.Client.PerfTest.fsproj" />
+    <ProjectReference Include="RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj" />
+    <ProjectReference Include="Tests/Tests.csproj" />
+  </ItemGroup>
+
+</Project>
