@@ -425,7 +425,7 @@ namespace RabbitMQ.Stream.Client
                         .ConfigureAwait(false);
                     if (off == null)
                     {
-                        _logger.LogWarning(
+                        _logger?.LogWarning(
                             "ConsumerUpdateHandler can't returned null, a default offsetType (OffsetTypeNext) will be used");
                         off = new OffsetTypeNext();
                     }
@@ -435,7 +435,6 @@ namespace RabbitMQ.Stream.Client
                     await ConsumerUpdateResponse(
                         consumerUpdateQueryResponse.CorrelationId,
                         off).ConfigureAwait(false);
-
                     _ = Task.Run(async () =>
                     {
                         if (consumerUpdateQueryResponse.IsActive)

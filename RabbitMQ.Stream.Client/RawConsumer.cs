@@ -224,13 +224,13 @@ namespace RabbitMQ.Stream.Client
 
                     catch (OperationCanceledException)
                     {
-                        _logger.LogWarning(
+                        _logger?.LogWarning(
                             "OperationCanceledException. The consumer id: {SubscriberId} reference: {Reference} has been closed while consuming messages",
                             _subscriberId, _config.Reference);
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e, "Error while processing chunk: {ChunkId}", chunk.ChunkId);
+                        _logger?.LogError(e, "Error while processing chunk: {ChunkId}", chunk.ChunkId);
                     }
                 }
 
@@ -308,10 +308,14 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
-                    // if (Token.IsCancellationRequested)
-                    //     return;
-                    _logger.LogError(e, "Error while consuming messages {TokenIsCancellationRequested}",
-                        Token.IsCancellationRequested);
+                    // We need to check the cancellation token status because the exception can be thrown
+                    // because the cancellation token has been cancelled
+                    // In this case we don't want to log the error
+                    if (Token.IsCancellationRequested)
+                        return;
+
+                    _logger.LogError(e,
+                        "Error while process chunks. The ProcessChunks task will be closed");
                 }
             }, Token);
         }
