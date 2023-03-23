@@ -295,16 +295,42 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    while (await _chunksBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+                    while (await _chunksBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
                     {
                         while (_chunksBuffer.Reader.TryRead(out var chunk))
                         {
                             // We send the credit to the server to allow the server to send more messages
                             // we request the credit before process the check to keep the network busy
-                            await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
+                            try
+                            {
+                                await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
+                            }
+                            catch (InvalidOperationException)
+                            {
+                                // The client has been closed
+                                // Suppose a scenario where the client is closed and the ProcessChunks task is still running
+                                // we remove the the subscriber from the client and we close the client
+                                // The ProcessChunks task will try to send the credit to the server
+                                // The client will throw an InvalidOperationException
+                                // since the connection is closed
+                                // In this case we don't want to log the error to avoid log noise
+                                _logger?.LogDebug("Can't send the credit: The TCP client has been closed");
+                                break;
+                            }
+
+                            // We need to check the cancellation token status because the exception can be thrown
+                            // because the cancellation token has been cancelled
+                            // the consumer could take time to handle a single 
+                            // this check is a bit redundant but it is useful to avoid to process the chunk
+                            // and close the task
+                            if (Token.IsCancellationRequested)
+                                break;
+
                             await ParseChunk(chunk).ConfigureAwait(false);
                         }
                     }
+
+                    _logger?.LogDebug("The ProcessChunks task has been closed");
                 }
                 catch (Exception e)
                 {
@@ -312,9 +338,12 @@ namespace RabbitMQ.Stream.Client
                     // because the cancellation token has been cancelled
                     // In this case we don't want to log the error
                     if (Token.IsCancellationRequested)
+                    {
+                        _logger?.LogDebug("The ProcessChunks task has been closed due to cancellation");
                         return;
+                    }
 
-                    _logger.LogError(e,
+                    _logger?.LogError(e,
                         "Error while process chunks. The ProcessChunks task will be closed");
                 }
             }, Token);
@@ -366,6 +395,8 @@ namespace RabbitMQ.Stream.Client
                     // in this way the chunks are processed in a separate thread
                     // this wont' block the socket thread
                     // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
+                    if (Token.IsCancellationRequested)
+                        return;
                     await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
                 }, async promotedAsActive =>
                 {
@@ -402,6 +433,7 @@ namespace RabbitMQ.Stream.Client
             // this unlock the consumer if it is waiting for a message
             // see DispatchMessage method where the token is used
             MaybeCancelToken();
+
             if (_client.IsClosed)
             {
                 return ResponseCode.Ok;
@@ -426,6 +458,7 @@ namespace RabbitMQ.Stream.Client
             var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}").ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
+
             return result;
         }
 

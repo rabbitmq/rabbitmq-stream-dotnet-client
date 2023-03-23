@@ -98,6 +98,10 @@ namespace RabbitMQ.Stream.Client
 
         private async Task WriteCommand<T>(T command) where T : struct, ICommand
         {
+            if (isClosed)
+            {
+                throw new InvalidOperationException("Connection is closed");
+            }
             // Only one thread should be able to write to the output pipeline at a time.
             await _writeLock.WaitAsync().ConfigureAwait(false);
             try
@@ -152,6 +156,15 @@ namespace RabbitMQ.Stream.Client
                     reader.AdvanceTo(buffer.Start, buffer.End);
                 }
             }
+            catch (OperationCanceledException e)
+            {
+                caught = e;
+                // We don't need to log as error this exception
+                // It is raised when the socket is closed due of cancellation token 
+                // from the producer or consumer class
+                // we leave it as debug to avoid noise in the logs
+                _logger?.LogDebug("Operation Canceled Exception. TCP Connection Closed");
+            }
             catch (Exception e)
             {
                 caught = e;
@@ -159,7 +172,6 @@ namespace RabbitMQ.Stream.Client
                 // closedCallback event.
                 // It is useful to trace the error, but at this point
                 // the socket is closed maybe not in the correct way
-                // Debug.WriteLine($"Error reading the socket, error: {e}");
                 if (!isClosed)
                 {
                     _logger?.LogError(e, "Error reading the socket");
