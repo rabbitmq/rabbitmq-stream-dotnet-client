@@ -31,13 +31,13 @@ jobs:
       - name: Install and start RabbitMQ
         run: ./.ci/install.ps1
       - name: Restore
-        run: dotnet restore --verbosity=normal
+        run: dotnet restore ./Build.csproj --verbosity=normal
       - name: Build
-        run: dotnet build --no-restore --verbosity=normal
+        run: dotnet build ./Build.csproj --no-restore --verbosity=normal
       - name: Verify
-        run: dotnet format --no-restore --verbosity=diagnostic --verify-no-changes
+        run: dotnet format ./rabbitmq-stream-dotnet-client.sln --no-restore --verbosity=diagnostic --verify-no-changes
       - name: Test
-        run: dotnet test --no-build --logger "console;verbosity=detailed"
+        run: dotnet test ./Build.csproj --no-build --logger "console;verbosity=detailed"
   build:
     name: build/test on ubuntu-latest
     runs-on: ubuntu-latest
@@ -70,12 +70,12 @@ jobs:
       - name: Enable RabbitMQ Plugins
         run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_stream rabbitmq_stream_management rabbitmq_amqp1_0
       - name: Restore
-        run: dotnet restore --verbosity=normal
+        run: dotnet restore ./Build.csproj --verbosity=normal
       - name: Build
-        run: dotnet build --no-restore --verbosity=normal
+        run: dotnet build ./Build.csproj --no-restore --verbosity=normal
       - name: Verify
-        run: dotnet format --no-restore --verbosity=diagnostic --verify-no-changes
+        run: dotnet format ./rabbitmq-stream-dotnet-client.sln --no-restore --verbosity=diagnostic --verify-no-changes
       - name: Test
-        run: dotnet test --no-build --logger "console;verbosity=detailed" /p:AltCover=true
+        run: dotnet test ./Build.csproj --no-build --logger "console;verbosity=detailed" /p:AltCover=true
       - name: Upload code coverage to Codecov
         run: bash <(curl -s https://codecov.io/bash)
