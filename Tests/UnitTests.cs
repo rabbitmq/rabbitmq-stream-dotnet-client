@@ -39,8 +39,7 @@ namespace Tests
 
         public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
-            var rnd = new Random();
-            var advId = rnd.Next(0, advertisedHosts.Count);
+            var advId = Random.Shared.Next(0, advertisedHosts.Count);
 
             var fake = new FakeClient(clientParameters)
             {
@@ -50,6 +49,7 @@ namespace Tests
                     ["advertised_port"] = "5552"
                 }
             };
+
             return Task.FromResult<IClient>(fake);
         }
 
