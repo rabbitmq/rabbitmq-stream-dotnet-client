@@ -134,7 +134,7 @@ public class SuperStreamProducerTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
-        Assert.Equal(await streamProducer.GetLastPublishingId(), (ulong)10);
+        Assert.Equal((ulong)10, await streamProducer.GetLastPublishingId());
 
         Assert.True(streamProducer.MessagesSent == 20);
         SystemUtils.WaitUntil(() => streamProducer.ConfirmFrames > 0);
@@ -214,7 +214,7 @@ public class SuperStreamProducerTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
-        Assert.Equal(await streamProducer.GetLastPublishingId(), (ulong)1);
+        Assert.Equal((ulong)1, await streamProducer.GetLastPublishingId());
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
