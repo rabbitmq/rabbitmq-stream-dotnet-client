@@ -72,6 +72,18 @@ namespace RabbitMQ.Stream.Client
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // This wrapper was added to be used in async methods
+        // where the SequenceReader is not available
+        // see RawConsumer:ParseChunk for more details
+        // at some point we could remove this wrapper
+        // and use system.io.pipeline instead of SequenceReader
+        public static Message From(ref ReadOnlySequence<byte> seq, uint len)
+        {
+            var reader = new SequenceReader<byte>(seq);
+            return From(ref reader, len);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Message From(ref SequenceReader<byte> reader, uint len)
         {
             //                                                         Bare Message

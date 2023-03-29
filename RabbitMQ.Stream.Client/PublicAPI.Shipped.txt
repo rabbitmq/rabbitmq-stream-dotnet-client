@@ -159,7 +159,6 @@ RabbitMQ.Stream.Client.Chunk
 RabbitMQ.Stream.Client.Chunk.Chunk() -> void
 RabbitMQ.Stream.Client.Chunk.ChunkId.get -> ulong
 RabbitMQ.Stream.Client.Chunk.Crc.get -> int
-RabbitMQ.Stream.Client.Chunk.Data.get -> System.Buffers.ReadOnlySequence<byte>
 RabbitMQ.Stream.Client.Chunk.Epoch.get -> ulong
 RabbitMQ.Stream.Client.Chunk.NumEntries.get -> ushort
 RabbitMQ.Stream.Client.Chunk.NumRecords.get -> uint
@@ -803,7 +802,6 @@ static RabbitMQ.Stream.Client.AMQP.DescribedFormatCode.Write(System.Span<byte> s
 static RabbitMQ.Stream.Client.Client.Create(RabbitMQ.Stream.Client.ClientParameters parameters, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Client>
 static RabbitMQ.Stream.Client.CompressionHelper.Compress(System.Collections.Generic.List<RabbitMQ.Stream.Client.Message> messages, RabbitMQ.Stream.Client.CompressionType compressionType) -> RabbitMQ.Stream.Client.ICompressionCodec
 static RabbitMQ.Stream.Client.CompressionHelper.UnCompress(RabbitMQ.Stream.Client.CompressionType compressionType, System.Buffers.ReadOnlySequence<byte> source, uint dataLen, uint unCompressedDataSize) -> System.Buffers.ReadOnlySequence<byte>
-static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>
 static RabbitMQ.Stream.Client.LeaderLocator.ClientLocal.get -> RabbitMQ.Stream.Client.LeaderLocator
 static RabbitMQ.Stream.Client.LeaderLocator.LeastLeaders.get -> RabbitMQ.Stream.Client.LeaderLocator
 static RabbitMQ.Stream.Client.LeaderLocator.Random.get -> RabbitMQ.Stream.Client.LeaderLocator

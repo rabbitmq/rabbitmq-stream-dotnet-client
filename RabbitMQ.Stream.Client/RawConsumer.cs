@@ -7,6 +7,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -96,12 +97,25 @@ namespace RabbitMQ.Stream.Client
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
         private readonly ILogger _logger;
+        private readonly Channel<Chunk> _chunksBuffer;
+        private const int InitialCredit = 2;
 
         private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
+            // _chunksBuffer is a channel that is used to buffer the chunks
+            _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(InitialCredit)
+            {
+                AllowSynchronousContinuations = false,
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.Wait
+            });
+            IsPromotedAsActive = true;
             _client = client;
             _config = config;
             _logger = logger ?? NullLogger.Instance;
+
+            ProcessChunks();
         }
 
         // if a user specify a custom offset 
@@ -123,6 +137,15 @@ namespace RabbitMQ.Stream.Client
             await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
         }
 
+        // It is needed to understand if the consumer is active or not
+        // by default is active
+        // in case of single active consumer can be not active
+        // it is important to skip the messages in the chuck that 
+        // it is in progress. In this way the promotion will be faster
+        // avoiding to block the consumer handler if the user put some
+        // long task
+        private bool IsPromotedAsActive { get; set; }
+
         public static async Task<IConsumer> Create(
             ClientParameters clientParameters,
             RawConsumerConfig config,
@@ -130,93 +153,200 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger).ConfigureAwait(false);
+            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger)
+                .ConfigureAwait(false);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);
             return consumer;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ParseChunk(Chunk chunk)
+        private async Task ParseChunk(Chunk chunk)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            void DispatchMessage(ref SequenceReader<byte> sequenceReader, ulong i)
+            try
             {
-                WireFormatting.ReadUInt32(ref sequenceReader, out var len);
-                try
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                Message MessageFromSequence(ref ReadOnlySequence<byte> unCompressedData, ref int compressOffset)
                 {
-                    var message = Message.From(ref sequenceReader, len);
-                    message.MessageOffset = chunk.ChunkId + i;
-                    if (MaybeDispatch(message.MessageOffset))
+                    try
                     {
-                        if (Token.IsCancellationRequested)
-                        {
-                            return;
-                        }
+                        var slice = unCompressedData.Slice(compressOffset, 4);
+                        compressOffset += WireFormatting.ReadUInt32(ref slice, out var len);
+                        slice = unCompressedData.Slice(compressOffset, len);
+                        compressOffset += (int)len;
 
-                        _config.MessageHandler(this,
-                            new MessageContext(message.MessageOffset, TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                            message).Wait(Token);
+                        // Here we use the Message.From(ref ReadOnlySequence<byte> seq ..) method to parse the message
+                        // instead of the Message From(ref SequenceReader<byte> reader ..) method
+                        // Since the ParseChunk is async and we cannot use the ref SequenceReader<byte> reader
+                        // See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250 for more details
+
+                        var message = Message.From(ref slice, len);
+                        return message;
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error while parsing message. Message will be skipped. " +
+                                            "Please report this issue to the RabbitMQ team on GitHub {Repo}",
+                            Consts.RabbitMQClientRepo);
+                    }
+
+                    return null;
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                async Task DispatchMessage(Message message, ulong i)
+                {
+                    try
+                    {
+                        message.MessageOffset = chunk.ChunkId + i;
+                        if (MaybeDispatch(message.MessageOffset))
+                        {
+                            if (!Token.IsCancellationRequested)
+                            {
+                                // it is usually active
+                                // it is useful only in single active consumer
+                                if (IsPromotedAsActive)
+                                {
+                                    await _config.MessageHandler(this,
+                                        new MessageContext(message.MessageOffset,
+                                            TimeSpan.FromMilliseconds(chunk.Timestamp)),
+                                        message).ConfigureAwait(false);
+                                }
+                                else
+                                {
+                                    _logger?.LogDebug(
+                                        "The consumer is not active for the stream {ConfigStream}. message won't dispatched",
+                                        _config.Stream);
+                                }
+                            }
+                        }
+                    }
+
+                    catch (OperationCanceledException)
+                    {
+                        _logger?.LogWarning(
+                            "OperationCanceledException. The consumer id: {SubscriberId} reference: {Reference} has been closed while consuming messages",
+                            _subscriberId, _config.Reference);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger?.LogError(e, "Error while processing chunk: {ChunkId}", chunk.ChunkId);
                     }
                 }
-                catch (ArgumentOutOfRangeException e)
+
+                var chunkBuffer = new ReadOnlySequence<byte>(chunk.Data);
+
+                var numRecords = chunk.NumRecords;
+                var offset = 0; // it is used to calculate the offset in the chunk.
+                ulong
+                    messageOffset = 0; // it is used to calculate the message offset. It is the chunkId + messageOffset
+                while (numRecords != 0)
                 {
-                    _logger.LogError(e, "Unexpected error while parsing message. Message will be skipped. " +
-                                        "Please report this issue to the RabbitMQ team on GitHub {Repo}",
-                        Consts.RabbitMQClientRepo);
+                    // (entryType & 0x80) == 0 is standard entry
+                    // (entryType & 0x80) != 0 is compress entry (used for subEntry)
+                    // In Case of subEntry the entryType is the compression type
+                    // In case of standard entry the entryType si part of the message
+                    var slice = chunkBuffer.Slice(offset, 1);
+                    offset += WireFormatting.ReadByte(ref slice, out var entryType);
+                    var isSubEntryBatch = (entryType & 0x80) != 0;
+                    if (isSubEntryBatch)
+                    {
+                        // it means that it is a sub-entry batch 
+                        // We continue to read from the stream to decode the subEntryChunk values
+                        slice = chunkBuffer.Slice(offset);
+
+                        offset += SubEntryChunk.Read(ref slice, entryType, out var subEntryChunk);
+                        var unCompressedData = CompressionHelper.UnCompress(
+                            subEntryChunk.CompressionType,
+                            new ReadOnlySequence<byte>(subEntryChunk.Data),
+                            subEntryChunk.DataLen,
+                            subEntryChunk.UnCompressedDataSize);
+
+                        var compressOffset = 0;
+                        for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
+                        {
+                            var message = MessageFromSequence(ref unCompressedData, ref compressOffset);
+                            await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
+                        }
+
+                        numRecords -= subEntryChunk.NumRecordsInBatch;
+                    }
+                    else
+                    {
+                        // Ok the entry is a standard entry
+                        // we need to rewind the offset to -1 to one byte to decode the messages
+                        offset--;
+                        var message = MessageFromSequence(ref chunkBuffer, ref offset);
+                        await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
+                        numRecords--;
+                    }
                 }
-                catch (OperationCanceledException)
+            }
+            catch (Exception e)
+            {
+                _logger?.LogError(e, "Error while parsing chunk: {ChunkId}", chunk.ChunkId);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ProcessChunks()
+        {
+            Task.Run(async () =>
+            {
+                try
                 {
-                    _logger.LogWarning(
-                        "OperationCanceledException. The consumer id: {SubscriberId} reference: {Reference} has been closed while consuming messages",
-                        _subscriberId, _config.Reference);
+                    while (await _chunksBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
+                    {
+                        while (_chunksBuffer.Reader.TryRead(out var chunk))
+                        {
+                            // We send the credit to the server to allow the server to send more messages
+                            // we request the credit before process the check to keep the network busy
+                            try
+                            {
+                                await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
+                            }
+                            catch (InvalidOperationException)
+                            {
+                                // The client has been closed
+                                // Suppose a scenario where the client is closed and the ProcessChunks task is still running
+                                // we remove the the subscriber from the client and we close the client
+                                // The ProcessChunks task will try to send the credit to the server
+                                // The client will throw an InvalidOperationException
+                                // since the connection is closed
+                                // In this case we don't want to log the error to avoid log noise
+                                _logger?.LogDebug("Can't send the credit: The TCP client has been closed");
+                                break;
+                            }
+
+                            // We need to check the cancellation token status because the exception can be thrown
+                            // because the cancellation token has been cancelled
+                            // the consumer could take time to handle a single 
+                            // this check is a bit redundant but it is useful to avoid to process the chunk
+                            // and close the task
+                            if (Token.IsCancellationRequested)
+                                break;
+
+                            await ParseChunk(chunk).ConfigureAwait(false);
+                        }
+                    }
+
+                    _logger?.LogDebug("The ProcessChunks task has been closed");
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "Error while processing chunk: {ChunkId}", chunk.ChunkId);
-                }
-            }
-
-            var reader = new SequenceReader<byte>(chunk.Data);
-
-            var numRecords = chunk.NumRecords;
-            ulong messageOffset = 0; // it is used to calculate the message offset.
-            while (numRecords != 0)
-            {
-                // (entryType & 0x80) == 0 is standard entry
-                // (entryType & 0x80) != 0 is compress entry (used for subEntry)
-                // In Case of subEntry the entryType is the compression type
-                // In case of standard entry the entryType si part of the message
-                WireFormatting.ReadByte(ref reader, out var entryType);
-                var isSubEntryBatch = (entryType & 0x80) != 0;
-                if (isSubEntryBatch)
-                {
-                    // it means that it is a subentry batch 
-                    // We continue to read from the stream to decode the subEntryChunk values
-                    SubEntryChunk.Read(ref reader, entryType, out var subEntryChunk);
-                    var unCompressedData = CompressionHelper.UnCompress(
-                        subEntryChunk.CompressionType,
-                        subEntryChunk.Data,
-                        subEntryChunk.DataLen,
-                        subEntryChunk.UnCompressedDataSize);
-                    var readerUnCompressed = new SequenceReader<byte>(unCompressedData);
-
-                    for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
+                    // We need to check the cancellation token status because the exception can be thrown
+                    // because the cancellation token has been cancelled
+                    // In this case we don't want to log the error
+                    if (Token.IsCancellationRequested)
                     {
-                        DispatchMessage(ref readerUnCompressed, messageOffset++);
+                        _logger?.LogDebug("The ProcessChunks task has been closed due to cancellation");
+                        return;
                     }
 
-                    numRecords -= subEntryChunk.NumRecordsInBatch;
+                    _logger?.LogError(e,
+                        "Error while process chunks. The ProcessChunks task will be closed");
                 }
-                else
-                {
-                    // Ok the entry is a standard entry
-                    // we need to rewind the stream to one byte to decode the messages
-                    reader.Rewind(1);
-                    DispatchMessage(ref reader, messageOffset++);
-                    numRecords--;
-                }
-            }
+            }, Token);
         }
 
         private async Task Init()
@@ -254,7 +384,6 @@ namespace RabbitMQ.Stream.Client
 
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
-            const ushort InitialCredit = 10;
 
             var (consumerId, response) = await _client.Subscribe(
                 _config,
@@ -262,14 +391,14 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
-                    // receive the chunk from the deliver
-                    // before parse the chunk, we ask for more credits
-                    // in thi way we keep the network busy
-                    await _client.Credit(deliver.SubscriptionId, 1).ConfigureAwait(false);
-                    // parse the chunk, we have another function because the sequence reader
-                    // can't be used in async context
-                    ParseChunk(deliver.Chunk);
-                }, async b =>
+                    // Send the chunk to the _chunksBuffer
+                    // in this way the chunks are processed in a separate thread
+                    // this wont' block the socket thread
+                    // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
+                    if (Token.IsCancellationRequested)
+                        return;
+                    await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
+                }, async promotedAsActive =>
                 {
                     if (_config.ConsumerUpdateListener != null)
                     {
@@ -278,9 +407,15 @@ namespace RabbitMQ.Stream.Client
                         _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
                             _config.Reference,
                             _config.Stream,
-                            b).ConfigureAwait(false);
+                            promotedAsActive).ConfigureAwait(false);
                     }
 
+                    // Here we set the promotion status
+                    // important for the dispatcher messages 
+                    IsPromotedAsActive = promotedAsActive;
+                    _logger?.LogDebug("The consumer active status is: {IsActive} for the stream: {Stream}  ",
+                        IsPromotedAsActive,
+                        _config.Stream);
                     return _config.StoredOffsetSpec;
                 }
             ).ConfigureAwait(false);
@@ -298,6 +433,7 @@ namespace RabbitMQ.Stream.Client
             // this unlock the consumer if it is waiting for a message
             // see DispatchMessage method where the token is used
             MaybeCancelToken();
+
             if (_client.IsClosed)
             {
                 return ResponseCode.Ok;
@@ -310,7 +446,8 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the consumer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                var unsubscribeResponse = await _client.Unsubscribe(_subscriberId).WaitAsync(Consts.MidWait).ConfigureAwait(false);
+                var unsubscribeResponse =
+                    await _client.Unsubscribe(_subscriberId).WaitAsync(Consts.MidWait).ConfigureAwait(false);
                 result = unsubscribeResponse.ResponseCode;
             }
             catch (Exception e)
@@ -321,6 +458,7 @@ namespace RabbitMQ.Stream.Client
             var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}").ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
+
             return result;
         }
 

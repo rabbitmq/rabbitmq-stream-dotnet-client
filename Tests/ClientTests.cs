@@ -211,7 +211,7 @@ namespace Tests
 
             Task DeliverHandler(Deliver deliver)
             {
-                var sequenceReader = new SequenceReader<byte>(deliver.Chunk.Data);
+                var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(deliver.Chunk.Data));
 
                 for (var i = 0; i < deliver.Chunk.NumEntries; i++)
                 {
@@ -265,7 +265,7 @@ namespace Tests
             var offsetType = new OffsetTypeFirst();
             var deliverHandler = new Func<Deliver, Task>((Deliver deliver) =>
             {
-                var sequenceReader = new SequenceReader<byte>(deliver.Chunk.Data);
+                var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(deliver.Chunk.Data));
                 for (ulong i = 0; i < deliver.Chunk.NumEntries; i++)
                 {
                     WireFormatting.ReadUInt32(ref sequenceReader, out var len);

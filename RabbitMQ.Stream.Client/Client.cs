@@ -198,9 +198,8 @@ namespace RabbitMQ.Stream.Client
         public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
         {
             var client = new Client(parameters, logger);
-
             client.connection = await Connection
-                .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl)
+                .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl, logger)
                 .ConfigureAwait(false);
 
             // exchange properties
@@ -426,10 +425,11 @@ namespace RabbitMQ.Stream.Client
                         .ConfigureAwait(false);
                     if (off == null)
                     {
-                        _logger.LogWarning(
+                        _logger?.LogWarning(
                             "ConsumerUpdateHandler can't returned null, a default offsetType (OffsetTypeNext) will be used");
                         off = new OffsetTypeNext();
                     }
+
                     // event the consumer is not active, we need to send a ConsumerUpdateResponse
                     // by protocol definition. the offsetType can't be null so we use OffsetTypeNext as default
                     await ConsumerUpdateResponse(
