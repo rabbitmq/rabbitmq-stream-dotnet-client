@@ -173,7 +173,7 @@ public class SacTests
 
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(testPassedConsumer1);
         // Here the consumer1 is still active, so the consumers should be blocked.
-        Assert.Equal(testPassedConsumer1.Task.Result, TotalMessages);
+        Assert.Equal(TotalMessages, testPassedConsumer1.Task.Result);
         // Just to be sure that testPassedConsumer2 is not called.
         SystemUtils.Wait();
         // so the testPassedConsumer2 should stay in WaitingForActivation state.
