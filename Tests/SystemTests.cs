@@ -135,7 +135,7 @@ namespace Tests
             await SystemUtils.PublishMessages(system, stream, 500, _testOutputHelper);
             SystemUtils.Wait();
             var statAfter = await system.StreamStats(stream);
-            Assert.Equal(0, statAfter.FirstOffset());
+            Assert.Equal((ulong)0, statAfter.FirstOffset());
             Assert.True(statAfter.LastOffset() > 0);
             Assert.True(statAfter.CommittedChunkId() > 0);
             await SystemUtils.CleanUpStreamSystem(system, stream);
