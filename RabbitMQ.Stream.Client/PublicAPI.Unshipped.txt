@@ -13,9 +13,9 @@ RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig.DeduplicatingProducerConfig(RabbitMQ.Stream.Client.StreamSystem streamSystem, string stream, string reference) -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.StreamStats
-RabbitMQ.Stream.Client.StreamStats.CommittedChunkId() -> long
-RabbitMQ.Stream.Client.StreamStats.FirstOffset() -> long
-RabbitMQ.Stream.Client.StreamStats.LastOffset() -> long
+RabbitMQ.Stream.Client.StreamStats.CommittedChunkId() -> ulong
+RabbitMQ.Stream.Client.StreamStats.FirstOffset() -> ulong
+RabbitMQ.Stream.Client.StreamStats.LastOffset() -> ulong
 RabbitMQ.Stream.Client.StreamStatsResponse
 RabbitMQ.Stream.Client.StreamStatsResponse.CorrelationId.get -> uint
 RabbitMQ.Stream.Client.StreamStatsResponse.ResponseCode.get -> RabbitMQ.Stream.Client.ResponseCode

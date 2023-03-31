@@ -22,11 +22,11 @@ public class StreamStats
     /// return first offset in the stream
     /// throws NoOffsetException if there is no first offset yet
     /// </summary>
-    public long FirstOffset()
+    public ulong FirstOffset()
     {
         var r = _statistics.TryGetValue("first_chunk_id", out var value) ? value : -1;
         MaybeOffsetNotFound(value, "FirstOffset");
-        return r;
+        return (ulong)r;
     }
 
     /// <summary>
@@ -35,11 +35,11 @@ public class StreamStats
     /// return last offset in the stream
     /// throws NoOffsetException if there is no first offset yet
     /// </summary>
-    public long LastOffset()
+    public ulong LastOffset()
     {
         var r = _statistics.TryGetValue("last_chunk_id", out var value) ? value : -1;
         MaybeOffsetNotFound(value, "LastOffset");
-        return r;
+        return (ulong)r;
     }
 
     /// <summary>
@@ -56,11 +56,11 @@ public class StreamStats
     /// throws NoOffsetException if there is no committed chunk yet
     ///
     /// </summary>
-    public long CommittedChunkId()
+    public ulong CommittedChunkId()
     {
         var r = _statistics.TryGetValue("committed_chunk_id", out var value) ? value : -1;
         MaybeOffsetNotFound(value, "CommittedChunkId");
-        return r;
+        return (ulong)r;
     }
 
     private readonly IDictionary<string, long> _statistics;
