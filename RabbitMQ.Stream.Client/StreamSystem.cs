@@ -97,8 +97,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task MayBeReconnectLocator()
         {
-            var rnd = new Random();
-            var advId = rnd.Next(0, _clientParameters.Endpoints.Count);
+            var advId = Random.Shared.Next(0, _clientParameters.Endpoints.Count);
 
             try
             {
