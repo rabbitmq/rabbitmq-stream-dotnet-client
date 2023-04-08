@@ -3,7 +3,6 @@
 // Copyright (c) 2007-2023 VMware, Inc.
 
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -80,13 +79,12 @@ public abstract class ConsumerFactory : ReliableBase
     {
         ConcurrentDictionary<string, IOffsetType> offsetSpecs = new();
         // if is not the boot time and at least one message was consumed
-        // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume fro the next)
+        // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume from the next)
         if (!boot && _consumedFirstTime)
         {
-            for (var i = 0; i < _lastOffsetConsumed.Count; i++)
+            foreach (var (stream, offset) in _lastOffsetConsumed)
             {
-                offsetSpecs[_lastOffsetConsumed.Keys.ElementAt(i)] =
-                    new OffsetTypeOffset(_lastOffsetConsumed.Values.ElementAt(i) + 1);
+                offsetSpecs[stream] = new OffsetTypeOffset(offset + 1);
             }
         }
         else
