@@ -586,6 +586,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_high_level_classes">High-level classes</a></li>
 </ul>
 </li>
+<li><a href="#_query_streamsuperstream">Query Stream/SuperStream</a></li>
 <li><a href="#super-streams">Super Streams (Partitioned Streams)</a>
 <ul class="sectlevel4">
 <li><a href="#_topology">Topology</a></li>
@@ -2612,22 +2613,8 @@ await streamSystem.Close().ConfigureAwait(false);</code></pre>
 <div class="paragraph">
 <p>The broker start sending messages as soon as the <code>Consumer</code> instance is created.</p>
 </div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Warning</div>
-</td>
-<td class="content">
-<div class="title">Keep the message processing callback as short as possible</div>
 <div class="paragraph">
-<p>The message processing callback should be kept as short as possible to avoid blocking the connection thread.
-Not doing so can make the <code>StreamSystem</code>, <code>Producer</code>, <code>Consumer</code> instances sluggish or even block them.
-Any long processing should be done in a separate thread (e.g. with an asynchronous <code>Task.Run(&#8230;&#8203;)</code>).</p>
-</div>
-</td>
-</tr>
-</table>
+<p>Staring from the 1.3.0 version, the <code>Consumer#MessageHandler</code> API runs in a separated <code>Task</code> and it is possible to use <code>async</code>/<code>await</code> in the handler.</p>
 </div>
 <div class="paragraph">
 <p>The following table sums up the main settings to create a <code>Consumer</code> with <code>ConsumerConfig</code>:</p>
@@ -3205,6 +3192,57 @@ var consumer = await Consumer.Create(
 </div>
 </div>
 <div class="sect3">
+<h4 id="_query_streamsuperstream">Query Stream/SuperStream</h4>
+<div class="paragraph">
+<p>The <code>StreamSytem</code> class expose methods to query a stream or super stream.
+The following methods are available:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Method</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Valid for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>QuerySequence(string reference, string stream)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Retrieves the last publishing id for given a producer Reference and stream. Useful for a producer wants to know the last published id.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stream</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>QueryOffset(string reference, string stream)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Retrieves retrieves the last consumer offset stored for a given consumer Reference and stream. Useful for as consumer wants to know the last stored offset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stream</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>QueryPartition(string superStream)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns the list of stream partitions for a given super stream.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SuperStream</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StreamStats(string stream)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns the stream statistics:</p>
+<p class="tableblock">- <code>FirstOffset()</code>: first offset in the stream</p>
+<p class="tableblock">- <code>LastOffset()</code>:  last offset in the stream</p>
+<p class="tableblock">- <code>CommittedChunkId()</code>: the ID (offset) of the committed chunk (block of messages) in the stream.</p>
+<p class="tableblock">It is the offset of the first message in the last chunk confirmed by a quorum of the stream cluster members (leader and replicas).</p>
+<p class="tableblock">The committed chunk ID is a good indication of what the last offset of a stream can be at a
+given time. The value can be stale as soon as the application reads it though, as the committed
+chunk ID for a stream that is published to changes all the time.</p>
+<p class="tableblock">return committed offset in this stream</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stream</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
 <h4 id="super-streams">Super Streams (Partitioned Streams)</h4>
 <div class="admonitionblock warning">
 <table>
@@ -3717,7 +3755,7 @@ The <code>ConsumerUpdateListener</code> callback is still your friend in this ca
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-02-23 09:08:14 UTC
+Last updated 2023-03-02 11:54:30 UTC
 </div>
 </div>
 </body>
