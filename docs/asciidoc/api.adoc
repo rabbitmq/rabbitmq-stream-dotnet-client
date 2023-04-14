@@ -978,6 +978,15 @@ Like the `RawProducer` class, the `Raw*` classes have the same events to handle 
 
 It is up to the user to handle the disconnection and metadata update events.
 
+[WARNING]
+.Be careful when using the `Raw*` classes.
+====
+They are low-level classes and you need to handle the disconnection and metadata update events. If you don't handle them, you will end up with a disconnected client and you will not be able to reconnect to the server.
+
+"RawProducer:send" is not thread-safe. You need to synchronize access to it.
+"RawProducer" does not handle the timeout/error confirmation messages. You need to handle it yourself.
+====
+
 ===== High-level classes
 
 ** <<creating-a-producer, `Producer`>> - High-level producer class 

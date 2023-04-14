@@ -133,7 +133,7 @@ public class Producer : ProducerFactory
 
     protected override ILogger BaseLogger => _logger;
 
-    private protected Producer(ProducerConfig producerConfig, ILogger<Producer> logger = null)
+    private Producer(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
         _producerConfig = producerConfig;
         _confirmationPipe = new ConfirmationPipe(

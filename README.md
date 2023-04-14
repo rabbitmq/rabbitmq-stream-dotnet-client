@@ -16,7 +16,7 @@ The RabbitMQ Stream .NET Client is a .NET library to communicate with the [Rabbi
 
 The client is distributed via [NuGet](https://www.nuget.org/packages/RabbitMQ.Stream.Client/).
 
-Please refer to the [documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html) ([PDF](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/documentation.pdf)) to find out more.
+Please refer to the [documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html) ([PDF](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/dotnet-stream-client.pdf)) to find out more.
 
 
 ### Support
