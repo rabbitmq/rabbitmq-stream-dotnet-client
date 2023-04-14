@@ -3167,6 +3167,25 @@ var consumer = await Consumer.Create(
 <div class="paragraph">
 <p>It is up to the user to handle the disconnection and metadata update events.</p>
 </div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Warning</div>
+</td>
+<td class="content">
+<div class="title">Be careful when using the <code>Raw*</code> classes.</div>
+<div class="paragraph">
+<p>They are low-level classes and you need to handle the disconnection and metadata update events. If you don&#8217;t handle them, you will end up with a disconnected client and you will not be able to reconnect to the server.</p>
+</div>
+<div class="paragraph">
+<p>"RawProducer:send" is not thread-safe. You need to synchronize access to it.
+"RawProducer" does not handle the timeout/error confirmation messages. You need to handle it yourself.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect4">
 <h5 id="_high_level_classes">High-level classes</h5>
@@ -3755,7 +3774,7 @@ The <code>ConsumerUpdateListener</code> callback is still your friend in this ca
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-03-02 11:54:30 UTC
+Last updated 2023-04-11 14:59:06 UTC
 </div>
 </div>
 </body>
