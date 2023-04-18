@@ -48,6 +48,7 @@ public abstract class ConsumerFactory : ReliableBase
             Reference = _consumerConfig.Reference,
             ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
             IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
+            InitialCredits = _consumerConfig.InitialCredits,
             OffsetSpec = offsetSpec,
             ConnectionClosedHandler = async _ =>
             {
@@ -69,7 +70,8 @@ public abstract class ConsumerFactory : ReliableBase
                 _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
                 if (_consumerConfig.MessageHandler != null)
                 {
-                    await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message).ConfigureAwait(false);
+                    await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message)
+                        .ConfigureAwait(false);
                 }
             },
         }, BaseLogger).ConfigureAwait(false);
@@ -89,7 +91,8 @@ public abstract class ConsumerFactory : ReliableBase
         }
         else
         {
-            var partitions = await _consumerConfig.StreamSystem.QueryPartition(_consumerConfig.Stream).ConfigureAwait(false);
+            var partitions = await _consumerConfig.StreamSystem.QueryPartition(_consumerConfig.Stream)
+                .ConfigureAwait(false);
             foreach (var partition in partitions)
             {
                 offsetSpecs[partition] =
@@ -104,6 +107,7 @@ public abstract class ConsumerFactory : ReliableBase
                 Reference = _consumerConfig.Reference,
                 ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
                 IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
+                InitialCredits = _consumerConfig.InitialCredits,
                 OffsetSpec = offsetSpecs,
                 MessageHandler = async (stream, consumer, ctx, message) =>
                 {
