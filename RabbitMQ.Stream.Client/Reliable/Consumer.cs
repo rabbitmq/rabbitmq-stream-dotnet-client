@@ -98,10 +98,10 @@ public record ConsumerConfig : ReliableConfig
     // InitialCredits is the initial credits to be used for the consumer.
     // if the InitialCredits is not set, the default value will be 2.
     // It is the number of the chunks that the consumer will receive at beginning.
-    // A high value can increase the throughput but can increase the memory usage and server-side CPU usage.
+    // A high value can increase the throughput but could increase the memory usage and server-side CPU usage.
     // The RawConsumer uses this value to create the Channel buffer so all the chunks will be stored in the buffer memory.
     // The default value it is usually a good value.
-    public ushort InitialCredits { get; set; } = 2;
+    public ushort InitialCredits { get; set; } = Consts.ConsumerInitialCredits;
 
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {
