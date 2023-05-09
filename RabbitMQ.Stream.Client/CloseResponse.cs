@@ -25,10 +25,11 @@ namespace RabbitMQ.Stream.Client
 
         public ResponseCode ResponseCode => responseCode;
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }
+
         internal static int Read(ReadOnlySequence<byte> frame, out CloseResponse command)
         {
             var offset = WireFormatting.ReadUInt16(frame, out _);

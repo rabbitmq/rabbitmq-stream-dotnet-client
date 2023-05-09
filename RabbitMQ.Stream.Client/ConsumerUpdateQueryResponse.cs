@@ -28,7 +28,7 @@ public readonly struct ConsumerUpdateQueryResponse : ICommand
     public bool IsActive => active == 1;
     public int SizeNeeded => throw new NotImplementedException();
 
-    public int Write(Span<byte> span)
+    public int Write(IBufferWriter<byte> writer)
     {
         throw new NotImplementedException();
     }

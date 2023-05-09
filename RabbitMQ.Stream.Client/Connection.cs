@@ -86,17 +86,50 @@ namespace RabbitMQ.Stream.Client
             return new Connection(socket, commandCallback, closedCallBack, sslOption, logger);
         }
 
-        public async ValueTask<bool> Write<T>(T command) where T : struct, ICommand
+        public ValueTask<bool> Write<T>(T command) where T : struct, ICommand
         {
-            await WriteCommand(command).ConfigureAwait(false);
-            // we return true to indicate that the command was written
-            // In this PR https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/220
-            // we made all WriteCommand async so await is enough to indicate that the command was written
-            // We decided to keep the return value to avoid a breaking change
-            return true;
+            if (!_writeLock.Wait(0))
+            {
+                // https://blog.marcgravell.com/2018/07/pipe-dreams-part-3.html
+                var writeSlowPath = WriteCommandAsyncSlowPath(command);
+                writeSlowPath.ConfigureAwait(false);
+                return writeSlowPath;
+            }
+            else
+            {
+                var release = true;
+                try
+                {
+                    var payloadSize = WriteCommandPayloadSize(command);
+                    var written = command.Write(writer);
+                    Debug.Assert(payloadSize == written);
+                    var flush = writer.FlushAsync();
+                    flush.ConfigureAwait(false);
+                    if (flush.IsCompletedSuccessfully)
+                    {
+                        // we return true to indicate that the command was written
+                        // In this PR https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/220
+                        // we made all WriteCommand async so await is enough to indicate that the command was written
+                        // We decided to keep the return value to avoid a breaking change
+                        return ValueTask.FromResult(true);
+                    }
+                    else
+                    {
+                        release = false;
+                        return AwaitFlushThenRelease(flush);
+                    }
+                }
+                finally
+                {
+                    if (release)
+                    {
+                        _writeLock.Release();
+                    }
+                }
+            }
         }
 
-        private async Task WriteCommand<T>(T command) where T : struct, ICommand
+        private async ValueTask<bool> WriteCommandAsyncSlowPath<T>(T command) where T : struct, ICommand
         {
             if (isClosed)
             {
@@ -106,18 +139,45 @@ namespace RabbitMQ.Stream.Client
             await _writeLock.WaitAsync().ConfigureAwait(false);
             try
             {
-                var size = command.SizeNeeded;
-                var mem = new byte[4 + size]; // + 4 to write the size
-                WireFormatting.WriteUInt32(mem, (uint)size);
-                var written = command.Write(mem.AsSpan()[4..]);
-                await writer.WriteAsync(new ReadOnlyMemory<byte>(mem)).ConfigureAwait(false);
-                Debug.Assert(size == written);
+                var payloadSize = WriteCommandPayloadSize(command);
+                var written = command.Write(writer);
+                Debug.Assert(payloadSize == written);
                 await writer.FlushAsync().ConfigureAwait(false);
             }
             finally
             {
                 _writeLock.Release();
             }
+
+            return true;
+        }
+
+        private async ValueTask<bool> AwaitFlushThenRelease(ValueTask<FlushResult> task)
+        {
+            try
+            {
+                await task.ConfigureAwait(false);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
+
+            return true;
+        }
+
+        private int WriteCommandPayloadSize<T>(T command) where T : struct, ICommand
+        {
+            /*
+             * TODO FUTURE
+             * This code could be moved into a common base class for all outgoing
+             * commands
+             */
+            var payloadSize = command.SizeNeeded;
+            var mem = writer.GetSpan(WireFormatting.SizeofUInt32);
+            var written = WireFormatting.WriteUInt32(mem, (uint)payloadSize);
+            writer.Advance(written);
+            return payloadSize;
         }
 
         private async Task ProcessIncomingFrames()
@@ -145,7 +205,6 @@ namespace RabbitMQ.Stream.Client
                     while (TryReadFrame(ref buffer, out var frame))
                     {
                         // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
-
                         var memory =
                             ArrayPool<byte>.Shared.Rent((int)frame.Length).AsMemory(0, (int)frame.Length);
                         frame.CopyTo(memory.Span);

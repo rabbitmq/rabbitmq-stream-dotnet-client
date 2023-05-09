@@ -47,7 +47,8 @@ namespace RabbitMQ.Stream.Client
             command = new SaslHandshakeResponse(correlation, mechs);
             return offset;
         }
-        public int Write(Span<byte> span)
+
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }

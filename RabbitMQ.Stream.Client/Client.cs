@@ -85,7 +85,7 @@ namespace RabbitMQ.Stream.Client
         public Message Data => data;
         public int SizeNeeded => 0;
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }

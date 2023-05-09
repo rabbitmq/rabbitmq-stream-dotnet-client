@@ -2,7 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
-using System;
+using System.Buffers;
 using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
@@ -37,8 +37,9 @@ namespace RabbitMQ.Stream.Client
             MessageCount = messages.Count;
         }
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
+            var span = writer.GetSpan(SizeNeeded);
             var offset = WireFormatting.WriteUInt16(span, Key);
             offset += WireFormatting.WriteUInt16(span[offset..], Version);
             offset += WireFormatting.WriteByte(span[offset..], publisherId);
@@ -53,6 +54,7 @@ namespace RabbitMQ.Stream.Client
                 offset += msg.Write(span[offset..]);
             }
 
+            writer.Advance(offset);
             return offset;
         }
     }
