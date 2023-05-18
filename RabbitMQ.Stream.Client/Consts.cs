@@ -14,6 +14,7 @@ namespace RabbitMQ.Stream.Client
         internal static readonly TimeSpan ShortWait = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan MidWait = TimeSpan.FromSeconds(3);
         internal static readonly TimeSpan LongWait = TimeSpan.FromSeconds(10);
+        internal const ushort ConsumerInitialCredits = 2;
 
         internal static int RandomShort()
         {

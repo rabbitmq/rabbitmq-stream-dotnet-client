@@ -16,6 +16,8 @@ public interface IConsumer
 
 public record IConsumerConfig : INamedEntity
 {
+    private ushort _initialCredits = Consts.ConsumerInitialCredits;
+
     // StoredOffsetSpec configuration it is needed to keep the offset spec.
     // since the offset can be decided from the ConsumerConfig.OffsetSpec.
     // and from ConsumerConfig.ConsumerUpdateListener.
@@ -40,4 +42,25 @@ public record IConsumerConfig : INamedEntity
     public string Reference { get; set; }
 
     public Func<string, Task> ConnectionClosedHandler { get; set; }
+
+    // InitialCredits is the initial credits to be used for the consumer.
+    // if the InitialCredits is not set, the default value will be 2.
+    // It is the number of the chunks that the consumer will receive at beginning.
+    // A high value can increase the throughput but could increase the memory usage and server-side CPU usage.
+    // The RawConsumer uses this value to create the Channel buffer so all the chunks will be stored in the buffer memory.
+    // The default value it is usually a good value.
+    public ushort InitialCredits
+    {
+        get => _initialCredits;
+        set
+        {
+            if (value < 1)
+            {
+                throw new ArgumentException(
+                    $"InitialCredits must be greater than 0. Default value is {Consts.ConsumerInitialCredits}.");
+            }
+
+            _initialCredits = value;
+        }
+    }
 }

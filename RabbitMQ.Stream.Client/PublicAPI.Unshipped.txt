@@ -4,6 +4,10 @@ RabbitMQ.Stream.Client.AbstractEntity.Token.get -> System.Threading.Cancellation
 RabbitMQ.Stream.Client.Chunk.Data.get -> System.Memory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
 RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.StreamStatsResponse>
+RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.get -> ushort
+RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.get -> ushort
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Close() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.GetLastPublishedId() -> System.Threading.Tasks.Task<ulong>

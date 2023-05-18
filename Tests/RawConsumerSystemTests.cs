@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
+using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -615,6 +616,17 @@ namespace Tests
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await rawConsumer.Close();
             await system.Close();
+        }
+
+        [Fact]
+        public async void ValidateInitialCredits()
+        {
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                await Consumer.Create(new ConsumerConfig(system, stream) { InitialCredits = 0, }));
+
+            await SystemUtils.CleanUpStreamSystem(system, stream);
         }
 
         [Fact]

@@ -98,12 +98,20 @@ namespace RabbitMQ.Stream.Client
         private byte _subscriberId;
         private readonly ILogger _logger;
         private readonly Channel<Chunk> _chunksBuffer;
-        private const int InitialCredit = 2;
+        private readonly ushort _initialCredits;
 
         private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
+            _logger = logger ?? NullLogger.Instance;
+            _initialCredits = config.InitialCredits;
+            _logger.LogDebug("creating consumer {Consumer} with initial credits {InitialCredits}, " +
+                             "offset {OffsetSpec}, is single active consumer {IsSingleActiveConsumer}, super stream {SuperStream}, client provided name {ClientProvidedName}, " +
+                             config.Reference,
+                _initialCredits, config.OffsetSpec, config.SuperStream, config.IsSingleActiveConsumer,
+                config.ClientProvidedName);
+
             // _chunksBuffer is a channel that is used to buffer the chunks
-            _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(InitialCredit)
+            _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
@@ -113,7 +121,6 @@ namespace RabbitMQ.Stream.Client
             IsPromotedAsActive = true;
             _client = client;
             _config = config;
-            _logger = logger ?? NullLogger.Instance;
 
             ProcessChunks();
         }
@@ -387,7 +394,7 @@ namespace RabbitMQ.Stream.Client
 
             var (consumerId, response) = await _client.Subscribe(
                 _config,
-                InitialCredit,
+                _initialCredits,
                 consumerProperties,
                 async deliver =>
                 {
