@@ -21,7 +21,7 @@ public abstract class ProducerFactory : ReliableBase
 
     protected async Task<IProducer> CreateProducer()
     {
-        if (_producerConfig.SuperStreamConfig is {Enabled: true})
+        if (_producerConfig.SuperStreamConfig is { Enabled: true })
         {
             return await SuperStreamProducer().ConfigureAwait(false);
         }

@@ -157,7 +157,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         var routes = await _defaultRoutingConfiguration.RoutingStrategy.Route(message,
             _streamInfos.Keys.ToList()).ConfigureAwait(false);
 
-        if (routes is not {Count: > 0})
+        if (routes is not { Count: > 0 })
         {
             throw new RouteNotFoundException("No route found for the message to any stream");
         }
@@ -188,7 +188,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             }
             else
             {
-                aggregate.Add((p, new List<(ulong, Message)>() {(subMessage.Item1, subMessage.Item2)}));
+                aggregate.Add((p, new List<(ulong, Message)>() { (subMessage.Item1, subMessage.Item2) }));
             }
         }
 
@@ -214,7 +214,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             }
             else
             {
-                aggregate.Add((p, new List<Message>() {subMessage}));
+                aggregate.Add((p, new List<Message>() { subMessage }));
             }
         }
 
@@ -348,7 +348,7 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
         var index = BitConverter.ToUInt32(hash, 0) % (uint)partitions.Count;
-        var r = new List<string>() {partitions[(int)index]};
+        var r = new List<string>() { partitions[(int)index] };
         return Task.FromResult(r);
     }
 
@@ -379,8 +379,8 @@ public class KeyRoutingStrategy : IRoutingStrategy
         var c = await _routingKeyQFunc(_superStream, key).ConfigureAwait(false);
         _cacheStream[key] = c.Streams;
         return (from resultStream in c.Streams
-            where partitions.Contains(resultStream)
-            select new List<string>() {resultStream}).FirstOrDefault();
+                where partitions.Contains(resultStream)
+                select new List<string>() { resultStream }).FirstOrDefault();
     }
 
     public KeyRoutingStrategy(Func<Message, string> routingKeyExtractor,

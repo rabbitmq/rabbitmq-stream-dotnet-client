@@ -26,7 +26,6 @@ public struct RouteQueryResponse : ICommand
     public uint CorrelationId { get; }
     public ResponseCode ResponseCode { get; }
 
-
     internal static int Read(ReadOnlySequence<byte> frame, out RouteQueryResponse command)
     {
         var offset = WireFormatting.ReadUInt16(frame, out _);
@@ -34,7 +33,6 @@ public struct RouteQueryResponse : ICommand
         offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlationId);
         offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
         offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var numOfStreams);
-
 
         var streams = new List<string>();
         for (var i = 0; i < numOfStreams; i++)

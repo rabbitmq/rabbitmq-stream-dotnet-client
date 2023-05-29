@@ -302,7 +302,7 @@ public class Producer : ProducerFactory
         {
             throw;
         }
-        
+
         catch (Exception e)
         {
             _logger?.LogError(e, "Error sending sub-batch messages. " +
@@ -362,7 +362,7 @@ public class Producer : ProducerFactory
         {
             throw;
         }
-        
+
         catch (Exception e)
         {
             _logger?.LogError(e, "Error sending messages. " +
