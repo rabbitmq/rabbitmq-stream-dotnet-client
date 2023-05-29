@@ -16,6 +16,8 @@ public record SuperStreamConfig
 {
     public bool Enabled { get; init; } = true;
     public Func<Message, string> Routing { get; set; }
+
+    public RoutingStrategyType RoutingStrategyType { get; set; } = RoutingStrategyType.Hash;
 }
 
 [AttributeUsage(AttributeTargets.Method)]
@@ -257,6 +259,11 @@ public class Producer : ProducerFactory
             }
         }
 
+        catch (RouteNotFoundException)
+        {
+            throw;
+        }
+
         catch (Exception e)
         {
             _logger?.LogError(e, "Error sending message. " +
@@ -291,6 +298,11 @@ public class Producer : ProducerFactory
             }
         }
 
+        catch (RouteNotFoundException)
+        {
+            throw;
+        }
+        
         catch (Exception e)
         {
             _logger?.LogError(e, "Error sending sub-batch messages. " +
@@ -346,6 +358,11 @@ public class Producer : ProducerFactory
             }
         }
 
+        catch (RouteNotFoundException)
+        {
+            throw;
+        }
+        
         catch (Exception e)
         {
             _logger?.LogError(e, "Error sending messages. " +

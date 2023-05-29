@@ -86,7 +86,7 @@ public class SuperStreamProducerTests
 
     [Theory]
     [ClassData(typeof(MessageIdToStreamTestCases))]
-    public void ValidateHashRoutingStrategy(MessageIdToStream @msg)
+    public async void ValidateHashRoutingStrategy(MessageIdToStream @msg)
     {
         // this test validates that the hash routing strategy is working as expected
         var murmurStrategy = new HashRoutingMurmurStrategy(message => message.Properties.MessageId.ToString());
@@ -95,7 +95,7 @@ public class SuperStreamProducerTests
             Properties = new Properties() { MessageId = msg.MessageId }
         };
         var routes =
-            murmurStrategy.Route(messageTest, new List<string>() { "invoices-01", "invoices-02", "invoices-03" });
+           await murmurStrategy.Route(messageTest, new List<string>() { "invoices-01", "invoices-02", "invoices-03" });
 
         Assert.Single(routes);
         Assert.Equal(msg.StreamExpected, routes[0]);

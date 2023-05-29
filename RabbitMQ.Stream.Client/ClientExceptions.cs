@@ -82,4 +82,12 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
+    
+    public class RouteNotFoundException : ProtocolException
+    {
+        public RouteNotFoundException(string s)
+            : base(s)
+        {
+        }
+    }
 }
