@@ -83,6 +83,10 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
+    // This is the only exception is for super stream publish
+    // All the other exceptions are handled internally
+    // In case of routingType is Key the routing could be not valid and the message is not sent
+    // to any stream. In this case the user will receive a timeout error and this exception is raised
     public class RouteNotFoundException : ProtocolException
     {
         public RouteNotFoundException(string s)

@@ -259,6 +259,7 @@ public class Producer : ProducerFactory
             }
         }
 
+        // see the RouteNotFoundException comment
         catch (RouteNotFoundException)
         {
             throw;
@@ -298,6 +299,7 @@ public class Producer : ProducerFactory
             }
         }
 
+        // see the RouteNotFoundException comment
         catch (RouteNotFoundException)
         {
             throw;
@@ -358,6 +360,7 @@ public class Producer : ProducerFactory
             }
         }
 
+        // see the RouteNotFoundException comment
         catch (RouteNotFoundException)
         {
             throw;

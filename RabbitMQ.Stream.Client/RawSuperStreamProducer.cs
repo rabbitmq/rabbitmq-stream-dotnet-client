@@ -157,6 +157,8 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         var routes = await _defaultRoutingConfiguration.RoutingStrategy.Route(message,
             _streamInfos.Keys.ToList()).ConfigureAwait(false);
 
+        // we should always have a route
+        // but in case of stream KEY the routing could not exist
         if (routes is not { Count: > 0 })
         {
             throw new RouteNotFoundException("No route found for the message to any stream");
@@ -371,6 +373,8 @@ public class KeyRoutingStrategy : IRoutingStrategy
     public async Task<List<string>> Route(Message message, List<string> partitions)
     {
         var key = _routingKeyExtractor(message);
+        // If the stream is already in the cache we return it
+        // to avoid a query to the server for each send
         if (_cacheStream.TryGetValue(key, out var value))
         {
             return value;
