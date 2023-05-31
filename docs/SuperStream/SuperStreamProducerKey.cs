@@ -46,7 +46,7 @@ public class SuperStreamProducerKey
                 }, logger).ConfigureAwait(false);
         const int NumberOfMessages = 1_000_000;
         
-        var keys = new [] {"italy", "france", "germany"};
+        var keys = new [] {"apac", "emea", "amer"};
 
         for (var i = 0; i < NumberOfMessages; i++)
         {
