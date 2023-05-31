@@ -125,7 +125,7 @@ rabbitmq-streams add_super_stream invoices  --routing-keys apac,emea,amer
 In such a case, the routing key will be a property of the message that represents the region:
 
 .Enabling the "key" routing strategy
-[source,java,indent=0]
+[source,c#,indent=0]
 --------
 include::{test-examples}/SuperStreamProducerKey.cs[tag=super-stream-producer-key]
 --------
