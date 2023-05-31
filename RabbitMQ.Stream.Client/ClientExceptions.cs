@@ -82,4 +82,15 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
+
+    // RouteNotFoundException the exception for super stream publish
+    // RouteNotFoundException is raised when the message can't be routed to any stream.
+    // In this case the user will receive a timeout error and this exception is raised
+    public class RouteNotFoundException : ProtocolException
+    {
+        public RouteNotFoundException(string s)
+            : base(s)
+        {
+        }
+    }
 }

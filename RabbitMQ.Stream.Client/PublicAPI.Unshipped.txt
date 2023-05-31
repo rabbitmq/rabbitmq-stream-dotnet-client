@@ -1,11 +1,20 @@
+const RabbitMQ.Stream.Client.RouteQueryResponse.Key = 24 -> ushort
 const RabbitMQ.Stream.Client.StreamStatsResponse.Key = 28 -> ushort
 RabbitMQ.Stream.Client.AbstractEntity.MaybeCancelToken() -> void
 RabbitMQ.Stream.Client.AbstractEntity.Token.get -> System.Threading.CancellationToken
 RabbitMQ.Stream.Client.Chunk.Data.get -> System.Memory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
+RabbitMQ.Stream.Client.Client.QueryRoute(string superStream, string routingKey) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.RouteQueryResponse>
 RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.StreamStatsResponse>
+RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
+RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
+RabbitMQ.Stream.Client.KeyRoutingStrategy
+RabbitMQ.Stream.Client.KeyRoutingStrategy.KeyRoutingStrategy(System.Func<RabbitMQ.Stream.Client.Message, string> routingKeyExtractor, System.Func<string, string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.RouteQueryResponse>> routingKeyQFunc, string superStream) -> void
+RabbitMQ.Stream.Client.KeyRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
+RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
+RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer
@@ -16,6 +25,21 @@ RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Send(ulong publishing, Rab
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig.DeduplicatingProducerConfig(RabbitMQ.Stream.Client.StreamSystem streamSystem, string stream, string reference) -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
+RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
+RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.RoutingStrategyType.set -> void
+RabbitMQ.Stream.Client.RouteNotFoundException
+RabbitMQ.Stream.Client.RouteNotFoundException.RouteNotFoundException(string s) -> void
+RabbitMQ.Stream.Client.RouteQueryResponse
+RabbitMQ.Stream.Client.RouteQueryResponse.CorrelationId.get -> uint
+RabbitMQ.Stream.Client.RouteQueryResponse.ResponseCode.get -> RabbitMQ.Stream.Client.ResponseCode
+RabbitMQ.Stream.Client.RouteQueryResponse.RouteQueryResponse() -> void
+RabbitMQ.Stream.Client.RouteQueryResponse.RouteQueryResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode, System.Collections.Generic.List<string> streams) -> void
+RabbitMQ.Stream.Client.RouteQueryResponse.SizeNeeded.get -> int
+RabbitMQ.Stream.Client.RouteQueryResponse.Streams.get -> System.Collections.Generic.List<string>
+RabbitMQ.Stream.Client.RouteQueryResponse.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.RoutingStrategyType
+RabbitMQ.Stream.Client.RoutingStrategyType.Hash = 0 -> RabbitMQ.Stream.Client.RoutingStrategyType
+RabbitMQ.Stream.Client.RoutingStrategyType.Key = 1 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.StreamStats
 RabbitMQ.Stream.Client.StreamStats.CommittedChunkId() -> ulong
 RabbitMQ.Stream.Client.StreamStats.FirstOffset() -> ulong

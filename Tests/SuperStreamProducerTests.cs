@@ -86,7 +86,7 @@ public class SuperStreamProducerTests
 
     [Theory]
     [ClassData(typeof(MessageIdToStreamTestCases))]
-    public void ValidateHashRoutingStrategy(MessageIdToStream @msg)
+    public async void ValidateHashRoutingStrategy(MessageIdToStream @msg)
     {
         // this test validates that the hash routing strategy is working as expected
         var murmurStrategy = new HashRoutingMurmurStrategy(message => message.Properties.MessageId.ToString());
@@ -95,10 +95,39 @@ public class SuperStreamProducerTests
             Properties = new Properties() { MessageId = msg.MessageId }
         };
         var routes =
-            murmurStrategy.Route(messageTest, new List<string>() { "invoices-01", "invoices-02", "invoices-03" });
+            await murmurStrategy.Route(messageTest, new List<string>() { "invoices-01", "invoices-02", "invoices-03" });
 
         Assert.Single(routes);
         Assert.Equal(msg.StreamExpected, routes[0]);
+    }
+
+    // ValidateKeyRouting is a test that validates that the key routing strategy is working as expected
+    // The key routing strategy is used when the routing key is known before hand
+    [Fact]
+    public async void ValidateKeyRouting()
+    {
+        var messageTest = new Message(Encoding.Default.GetBytes("hello"))
+        {
+            Properties = new Properties() { MessageId = "italy" }
+        };
+        // this test validates that the key routing strategy is working as expected
+        var keyRoutingStrategy = new KeyRoutingStrategy(message => message.Properties.MessageId.ToString(),
+            (superStream, key) =>
+            {
+                if (key == "italy")
+                {
+                    return Task.FromResult(new RouteQueryResponse(1, ResponseCode.Ok, new List<string>() { "italy" }));
+                }
+
+                var response = new RouteQueryResponse(1, ResponseCode.Ok, new List<string>() { "" });
+                return Task.FromResult(response);
+            }, "orders");
+
+        var routes =
+            await keyRoutingStrategy.Route(messageTest,
+                new List<string>() { "italy", "france", "spain" });
+
+        Assert.Equal("italy", routes[0]);
     }
 
     [Fact]
@@ -141,6 +170,172 @@ public class SuperStreamProducerTests
         SystemUtils.WaitUntil(() => streamProducer.PublishCommandsSent > 0);
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.Close();
+    }
+
+    // SendMessageToSuperStreamWithKeyStrategy is a test that validates that the key routing strategy is working as expected
+
+    [Fact]
+    public async void SendMessageToSuperStreamWithKeyStrategy()
+    {
+        SystemUtils.ResetSuperStreams();
+        // Simple send message to super stream
+
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var streamProducer =
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            {
+                Routing = message1 => message1.Properties.MessageId.ToString(),
+                Reference = "reference",
+                RoutingStrategyType = RoutingStrategyType.Key // this is the key routing strategy
+            });
+        Assert.True(streamProducer.MessagesSent == 0);
+        Assert.True(streamProducer.ConfirmFrames == 0);
+        Assert.True(streamProducer.PublishCommandsSent == 0);
+        Assert.True(streamProducer.PendingCount == 0);
+        var messages = new List<Message>();
+        for (ulong i = 0; i < 20; i++)
+        {
+            // We should not have any errors and according to the routing strategy
+            // based on the key the message should be routed to the correct stream
+            // the routing keys are:
+            // 0,1,2
+            var idx = i % 3;
+            var message = new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() { MessageId = $"{idx}" }
+            };
+            messages.Add(message);
+        }
+
+        ulong id = 0;
+        foreach (var message in messages)
+        {
+            await streamProducer.Send(++id, message);
+        }
+
+        SystemUtils.Wait();
+        // Total messages must be 20
+        // according to the routing strategy hello{i} that must be the correct routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6);
+
+        Assert.True(streamProducer.MessagesSent == 20);
+        SystemUtils.WaitUntil(() => streamProducer.ConfirmFrames > 0);
+        SystemUtils.WaitUntil(() => streamProducer.PublishCommandsSent > 0);
+
+        var messageNotRouted = new Message(Encoding.Default.GetBytes("hello"))
+        {
+            Properties = new Properties() { MessageId = "this_is_key_does_not_exist" }
+        };
+        await Assert.ThrowsAsync<RouteNotFoundException>(async () => await streamProducer.Send(21, messageNotRouted));
+
+        var messagesWithId = messages.Select(message => (++id, message)).ToList();
+
+        await streamProducer.Send(messagesWithId);
+
+        // Total messages must be 20 * 2
+        // according to the routing strategy hello{i} that must be the correct routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 2);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 2);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 2);
+
+        Assert.True(streamProducer.MessagesSent == 20 * 2);
+
+        await Assert.ThrowsAsync<RouteNotFoundException>(async () => await streamProducer.Send(
+            new List<(ulong, Message)>() { (55, messageNotRouted) }));
+
+        await streamProducer.Send(++id, messages, CompressionType.Gzip);
+
+        // Total messages must be 20 * 3
+        // according to the routing strategy hello{i} that must be the correct routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 3);
+
+        await Assert.ThrowsAsync<RouteNotFoundException>(async () =>
+            await streamProducer.Send(++id,
+                new List<Message>() { messageNotRouted }, CompressionType.Gzip));
+
+        Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SendMessageWithProducerToSuperStreamWithKeyStrategy()
+    {
+        SystemUtils.ResetSuperStreams();
+        // Simple send message to super stream
+
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var producer =
+            await Producer.Create(new ProducerConfig(system, SystemUtils.InvoicesExchange)
+            {
+                SuperStreamConfig = new SuperStreamConfig()
+                {
+                    Routing = message1 => message1.Properties.MessageId.ToString(),
+                    RoutingStrategyType = RoutingStrategyType.Key // this is the key routing strategy
+                }
+            });
+        var messages = new List<Message>();
+        for (ulong i = 0; i < 20; i++)
+        {
+            // We should not have any errors and according to the routing strategy
+            // based on the key the message should be routed to the correct stream
+            // the routing keys are:
+            // 0,1,2
+            var idx = i % 3;
+            var message = new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() { MessageId = $"{idx}" }
+            };
+            messages.Add(message);
+        }
+
+        foreach (var message in messages)
+        {
+            await producer.Send(message);
+        }
+
+        SystemUtils.Wait();
+        // Total messages must be 20
+        // according to the routing strategy hello{i} that must be the correct routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6);
+
+        var messageNotRouted = new Message(Encoding.Default.GetBytes("hello"))
+        {
+            Properties = new Properties() { MessageId = "this_is_key_does_not_exist" }
+        };
+        await Assert.ThrowsAsync<RouteNotFoundException>(async () => await producer.Send(messageNotRouted));
+
+        var messagesWithId = messages.Select(message => (message)).ToList();
+
+        await producer.Send(messagesWithId);
+
+        // Total messages must be 20 * 2
+        // according to the routing strategy hello{i} that must be the correct routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 2);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 2);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 2);
+
+        await Assert.ThrowsAsync<RouteNotFoundException>(async () => await producer.Send(
+            new List<Message>() { messageNotRouted }));
+
+        await producer.Send(messages, CompressionType.Gzip);
+
+        // Total messages must be 20 * 3
+        // according to the routing strategy hello{i} that must be the correct routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 3);
+
+        await Assert.ThrowsAsync<RouteNotFoundException>(async () =>
+            await producer.Send(
+                new List<Message>() { messageNotRouted }, CompressionType.Gzip));
+
         await system.Close();
     }
 
@@ -213,7 +408,7 @@ public class SuperStreamProducerTests
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         Assert.Equal((ulong)1, await streamProducer.GetLastPublishingId());
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();

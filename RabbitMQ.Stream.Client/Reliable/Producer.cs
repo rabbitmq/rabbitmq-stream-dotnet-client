@@ -16,6 +16,8 @@ public record SuperStreamConfig
 {
     public bool Enabled { get; init; } = true;
     public Func<Message, string> Routing { get; set; }
+
+    public RoutingStrategyType RoutingStrategyType { get; set; } = RoutingStrategyType.Hash;
 }
 
 [AttributeUsage(AttributeTargets.Method)]
@@ -257,6 +259,12 @@ public class Producer : ProducerFactory
             }
         }
 
+        // see the RouteNotFoundException comment
+        catch (RouteNotFoundException)
+        {
+            throw;
+        }
+
         catch (Exception e)
         {
             _logger?.LogError(e, "Error sending message. " +
@@ -289,6 +297,12 @@ public class Producer : ProducerFactory
             {
                 await _producer.Send(_publishingId, messages, compressionType).ConfigureAwait(false);
             }
+        }
+
+        // see the RouteNotFoundException comment
+        catch (RouteNotFoundException)
+        {
+            throw;
         }
 
         catch (Exception e)
@@ -344,6 +358,12 @@ public class Producer : ProducerFactory
             {
                 await _producer.Send(messagesToSend).ConfigureAwait(false);
             }
+        }
+
+        // see the RouteNotFoundException comment
+        catch (RouteNotFoundException)
+        {
+            throw;
         }
 
         catch (Exception e)

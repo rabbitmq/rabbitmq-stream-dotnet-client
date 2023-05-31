@@ -92,6 +92,54 @@ The client will hash the routing key to determine the stream to send the message
 The client uses 32-bit https://en.wikipedia.org/wiki/MurmurHash[MurmurHash3] by default to hash the routing key.
 This hash function provides good uniformity and it is compatible with the other clients.
 
+====== Resolving Routes with Bindings
+
+Hashing the routing key to pick a partition is only one way to route messages to the appropriate streams.
+The stream .NET client provides another way to resolve streams, based on the routing key _and_ the bindings between the super stream exchange and the streams.
+
+This routing strategy makes sense when the partitioning has a business meaning, e.g. with a partition for a region in the world, like in the diagram below:
+
+.A super stream with a partition for a region in a world
+[ditaa]
+....
+                 amer  +---------------+
+               +------>+ invoices–amer |
+               |       +---------------+
++----------+   |
+| invoices |   | emea  +---------------+
+|          +---+------>+ invoices–emea |
+| exchange |   |       +---------------+
++----------+   |
+               | apac  +---------------+
+               +------>+ invoices–apac |
+                       +---------------+
+....
+
+To create this topology:
+
+[source]
+----
+rabbitmq-streams add_super_stream invoices  --routing-keys apac,emea,amer
+----
+
+In such a case, the routing key will be a property of the message that represents the region:
+
+.Enabling the "key" routing strategy
+[source,c#,indent=0]
+--------
+include::{test-examples}/SuperStreamProducerKey.cs[tag=super-stream-producer-key]
+--------
+<1> Extract the routing key
+<2> Enable the "key" routing strategy
+
+Internally the client will query the broker to resolve the destination streams for a given routing key, making the routing logic from any exchange type available to streams.
+
+If there is no binding for a routing key, the client will raise an exception `RouteNotFoundException`. 
+
+`RouteNotFoundException` the message is not routed to any stream.
+
+[[super-stream-deduplication]]
+
 
 ====== Deduplication
 

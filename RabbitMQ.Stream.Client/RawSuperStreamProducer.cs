@@ -63,7 +63,13 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         _config = config;
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
-        _defaultRoutingConfiguration.RoutingStrategy = new HashRoutingMurmurStrategy(_config.Routing);
+        _defaultRoutingConfiguration.RoutingStrategy = _config.RoutingStrategyType switch
+        {
+            RoutingStrategyType.Key => new KeyRoutingStrategy(_config.Routing,
+                _config.Client.QueryRoute, _config.SuperStream),
+            RoutingStrategyType.Hash => new HashRoutingMurmurStrategy(_config.Routing),
+            _ => new HashRoutingMurmurStrategy(_config.Routing)
+        };
         _logger = logger ?? NullLogger<RawSuperStreamProducer>.Instance;
     }
 
@@ -122,7 +128,8 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
+        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream], _logger)
+            .ConfigureAwait(false);
         _logger?.LogDebug("Producer {ProducerReference} created for Stream {StreamIdentifier}", _config.Reference,
             stream);
         return p;
@@ -147,8 +154,16 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             throw new ObjectDisposedException(nameof(RawSuperStreamProducer));
         }
 
-        var routes = _defaultRoutingConfiguration.RoutingStrategy.Route(message,
-            _streamInfos.Keys.ToList());
+        var routes = await _defaultRoutingConfiguration.RoutingStrategy.Route(message,
+            _streamInfos.Keys.ToList()).ConfigureAwait(false);
+
+        // we should always have a route
+        // but in case of stream KEY the routing could not exist
+        if (routes is not { Count: > 0 })
+        {
+            throw new RouteNotFoundException("No route found for the message to any stream");
+        }
+
         return await GetProducer(routes[0]).ConfigureAwait(false);
     }
 
@@ -263,6 +278,12 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     public int PendingCount => _producers.Sum(x => x.Value.PendingCount);
 }
 
+public enum RoutingStrategyType
+{
+    Hash,
+    Key,
+}
+
 public record RawSuperStreamProducerConfig : IProducerConfig
 {
     public RawSuperStreamProducerConfig(string superStream)
@@ -285,6 +306,8 @@ public record RawSuperStreamProducerConfig : IProducerConfig
     public Func<Message, string> Routing { get; set; } = null;
     public Action<(string, Confirmation)> ConfirmHandler { get; set; } = _ => { };
 
+    public RoutingStrategyType RoutingStrategyType { get; set; } = RoutingStrategyType.Hash;
+
     internal Client Client { get; set; }
 }
 
@@ -306,7 +329,7 @@ internal class DefaultRoutingConfiguration : IRoutingConfiguration
 /// </summary>
 public interface IRoutingStrategy
 {
-    List<string> Route(Message message, List<string> partitions);
+    Task<List<string>> Route(Message message, List<string> partitions);
 }
 
 /// <summary>
@@ -322,16 +345,53 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
     private const int Seed = 104729; //  must be the same to all the clients to be compatible
 
     // Routing based on the Murmur hash function
-    public List<string> Route(Message message, List<string> partitions)
+    public Task<List<string>> Route(Message message, List<string> partitions)
     {
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
         var index = BitConverter.ToUInt32(hash, 0) % (uint)partitions.Count;
-        return new List<string>() { partitions[(int)index] };
+        var r = new List<string>() { partitions[(int)index] };
+        return Task.FromResult(r);
     }
 
     public HashRoutingMurmurStrategy(Func<Message, string> routingKeyExtractor)
     {
         _routingKeyExtractor = routingKeyExtractor;
+    }
+}
+
+/// <summary>
+/// KeyRoutingStrategy is a routing strategy that uses the routing key to route messages to streams.
+/// </summary>
+public class KeyRoutingStrategy : IRoutingStrategy
+{
+    private readonly Func<Message, string> _routingKeyExtractor;
+    private readonly Func<string, string, Task<RouteQueryResponse>> _routingKeyQFunc;
+    private readonly string _superStream;
+    private readonly Dictionary<string, List<string>> _cacheStream = new();
+
+    public async Task<List<string>> Route(Message message, List<string> partitions)
+    {
+        var key = _routingKeyExtractor(message);
+        // If the stream is already in the cache we return it
+        // to avoid a query to the server for each send
+        if (_cacheStream.TryGetValue(key, out var value))
+        {
+            return value;
+        }
+
+        var c = await _routingKeyQFunc(_superStream, key).ConfigureAwait(false);
+        _cacheStream[key] = c.Streams;
+        return (from resultStream in c.Streams
+                where partitions.Contains(resultStream)
+                select new List<string>() { resultStream }).FirstOrDefault();
+    }
+
+    public KeyRoutingStrategy(Func<Message, string> routingKeyExtractor,
+        Func<string, string, Task<RouteQueryResponse>> routingKeyQFunc, string superStream)
+    {
+        _routingKeyExtractor = routingKeyExtractor;
+        _routingKeyQFunc = routingKeyQFunc;
+        _superStream = superStream;
     }
 }

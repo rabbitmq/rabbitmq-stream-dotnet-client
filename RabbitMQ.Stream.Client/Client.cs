@@ -341,6 +341,12 @@ namespace RabbitMQ.Stream.Client
                 new PartitionsQueryRequest(corr, superStream)).ConfigureAwait(false);
         }
 
+        public async Task<RouteQueryResponse> QueryRoute(string superStream, string routingKey)
+        {
+            return await Request<RouteQueryRequest, RouteQueryResponse>(corr =>
+                new RouteQueryRequest(corr, superStream, routingKey)).ConfigureAwait(false);
+        }
+
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
             where TIn : struct, ICommand where TOut : struct, ICommand
         {
@@ -526,7 +532,10 @@ namespace RabbitMQ.Stream.Client
                     PartitionsQueryResponse.Read(frame, out var partitionsQueryResponse);
                     HandleCorrelatedResponse(partitionsQueryResponse);
                     break;
-
+                case RouteQueryResponse.Key:
+                    RouteQueryResponse.Read(frame, out var routeQueryResponse);
+                    HandleCorrelatedResponse(routeQueryResponse);
+                    break;
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {

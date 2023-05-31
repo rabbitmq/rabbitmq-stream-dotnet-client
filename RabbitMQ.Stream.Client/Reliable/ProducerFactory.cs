@@ -39,6 +39,7 @@ public abstract class ProducerFactory : ReliableBase
                 MessagesBufferSize = _producerConfig.MessagesBufferSize,
                 MaxInFlight = _producerConfig.MaxInFlight,
                 Routing = _producerConfig.SuperStreamConfig.Routing,
+                RoutingStrategyType = _producerConfig.SuperStreamConfig.RoutingStrategyType,
                 ConfirmHandler = confirmationHandler =>
                 {
                     var (stream, confirmation) = confirmationHandler;
@@ -77,7 +78,10 @@ public abstract class ProducerFactory : ReliableBase
                         _producerConfig.StreamSystem).WaitAsync(CancellationToken.None);
                 });
             },
-            ConnectionClosedHandler = async _ => { await TryToReconnect(_producerConfig.ReconnectStrategy).ConfigureAwait(false); },
+            ConnectionClosedHandler = async _ =>
+            {
+                await TryToReconnect(_producerConfig.ReconnectStrategy).ConfigureAwait(false);
+            },
             ConfirmHandler = confirmation =>
             {
                 var confirmationStatus = confirmation.Code switch
