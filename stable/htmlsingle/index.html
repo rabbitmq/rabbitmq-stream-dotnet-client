@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.18">
+<meta name="generator" content="Asciidoctor 2.0.20">
 <title>RabbitMQ Stream .Net Client</title>
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -593,7 +593,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_super_stream_creation">Super Stream Creation</a></li>
 <li><a href="#super-stream-producer">Publishing to a Super Stream</a>
 <ul class="sectlevel5">
-<li><a href="#_deduplication">Deduplication</a></li>
+<li><a href="#_resolving_routes_with_bindings">Resolving Routes with Bindings</a></li>
+<li><a href="#super-stream-deduplication">Deduplication</a></li>
 </ul>
 </li>
 <li><a href="#_consuming_from_a_super_stream">Consuming From a Super Stream</a>
@@ -3425,7 +3426,94 @@ The client will hash the routing key to determine the stream to send the message
 This hash function provides good uniformity and it is compatible with the other clients.</p>
 </div>
 <div class="sect5">
-<h6 id="_deduplication">Deduplication</h6>
+<h6 id="_resolving_routes_with_bindings">Resolving Routes with Bindings</h6>
+<div class="paragraph">
+<p>Hashing the routing key to pick a partition is only one way to route messages to the appropriate streams.
+The stream .NET client provides another way to resolve streams, based on the routing key <em>and</em> the bindings between the super stream exchange and the streams.</p>
+</div>
+<div class="paragraph">
+<p>This routing strategy makes sense when the partitioning has a business meaning, e.g. with a partition for a region in the world, like in the diagram below:</p>
+</div>
+<div class="literalblock">
+<div class="title">A super stream with a partition for a region in a world</div>
+<div class="content">
+<pre>                 amer  +---------------+
+               +------&gt;+ invoices–amer |
+               |       +---------------+
++----------+   |
+| invoices |   | emea  +---------------+
+|          +---+------&gt;+ invoices–emea |
+| exchange |   |       +---------------+
++----------+   |
+               | apac  +---------------+
+               +------&gt;+ invoices–apac |
+                       +---------------+</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To create this topology:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>rabbitmq-streams add_super_stream invoices  --routing-keys apac,emea,amer</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In such a case, the routing key will be a property of the message that represents the region:</p>
+</div>
+<div class="listingblock">
+<div class="title">Enabling the "key" routing strategy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">var producer = await Producer.Create(
+    new ProducerConfig(system,
+            // Costants.StreamName is the Exchange name
+            // invoices
+            Costants.StreamName) 
+        {
+            SuperStreamConfig = new SuperStreamConfig() 
+            {
+                // The super stream is enable and we define the routing hashing algorithm
+                Routing = msg =&gt; msg.Properties.MessageId.ToString(), // <b class="conum">(1)</b>
+                RoutingStrategyType = RoutingStrategyType.Key // <b class="conum">(2)</b>
+            }
+        }, logger).ConfigureAwait(false);
+const int NumberOfMessages = 1_000_000;
+
+var keys = new [] {&quot;italy&quot;, &quot;france&quot;, &quot;germany&quot;};
+
+for (var i = 0; i &lt; NumberOfMessages; i++)
+{
+    var key = keys[i % 3];
+
+    var message = new Message(Encoding.Default.GetBytes($&quot;hello{i}&quot;)) 
+    {
+        Properties = new Properties() {MessageId = $&quot;{key}&quot;}
+    };
+    await producer.Send(message).ConfigureAwait(false);</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Extract the routing key</p>
+</li>
+<li>
+<p>Enable the "key" routing strategy</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Internally the client will query the broker to resolve the destination streams for a given routing key, making the routing logic from any exchange type available to streams.</p>
+</div>
+<div class="paragraph">
+<p>If there is no binding for a routing key, the client will raise an exception <code>RouteNotFoundException</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>RouteNotFoundException</code> the message is not routed to any stream.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="super-stream-deduplication">Deduplication</h6>
 <div class="paragraph">
 <p>Deduplication for a super stream producer works the same way as with a <a href="#outbound-message-deduplication">single stream producer</a>.
 The publishing ID values are spread across the streams but this does affect the mechanism.</p>
@@ -3774,7 +3862,7 @@ The <code>ConsumerUpdateListener</code> callback is still your friend in this ca
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-04-11 14:59:06 UTC
+Last updated 2023-04-14 08:57:52 UTC
 </div>
 </div>
 </body>
