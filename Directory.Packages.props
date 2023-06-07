@@ -7,8 +7,6 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" />
     <PackageVersion Include="MinVer" Version="4.3.0" />
-    <PackageVersion Include="System.IO.Pipelines" Version="7.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
     <!-- Tests -->
     <PackageVersion Include="AltCover" Version="8.6.45" />
     <PackageVersion Include="AmqpNetLite" Version="2.4.5" />
@@ -23,4 +21,16 @@
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="7.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
   </ItemGroup>
+
+  <ItemGroup Label=".NET 6 Specific" Condition="'$(TargetFramework)' == 'net6.0'">
+    <!-- RabbitMQ.Stream.Client -->
+    <PackageVersion Include="System.IO.Pipelines" Version="6.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label=".NET 7 Specific" Condition="'$(TargetFramework)' == 'net7.0'">
+    <!-- RabbitMQ.Stream.Client -->
+    <PackageVersion Include="System.IO.Pipelines" Version="7.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
+  </ItemGroup>  
 </Project>
