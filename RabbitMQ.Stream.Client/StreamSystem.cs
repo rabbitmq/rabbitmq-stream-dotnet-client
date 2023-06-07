@@ -24,10 +24,12 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new();
 
-        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
+        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
 
         public AddressResolver AddressResolver { get; set; }
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
+
+        public SaslConfiguration SaslConfiguration { get; set; } = SaslConfiguration.Plain;
     }
 
     public class StreamSystem
@@ -56,14 +58,15 @@ namespace RabbitMQ.Stream.Client
                 AddressResolver = config.AddressResolver,
                 ClientProvidedName = config.ClientProvidedName,
                 Heartbeat = config.Heartbeat,
-                Endpoints = config.Endpoints
+                Endpoints = config.Endpoints,
+                SaslConfiguration = config.SaslConfiguration
             };
             // create the metadata client connection
             foreach (var endPoint in clientParams.Endpoints)
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with { Endpoint = endPoint }, logger)
+                    var client = await Client.Create(clientParams with {Endpoint = endPoint}, logger)
                         .ConfigureAwait(false);
                     if (!client.IsClosed)
                     {
@@ -73,14 +76,19 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
-                    if (e is ProtocolException or SslException)
+                    switch (e)
                     {
-                        logger?.LogError(e, "ProtocolException or SslException to {@EndPoint}", endPoint);
-                        throw;
+                        case ProtocolException or SslException:
+                            logger?.LogError(e, "ProtocolException or SslException to {@EndPoint}", endPoint);
+                            throw;
+                        case SalsNotSupportedException:
+                            logger?.LogError(e, "SalsNotSupportedException to {@EndPoint}", endPoint);
+                            throw;
+                        default:
+                            // hopefully all implementations of endpoint have a nice ToString()
+                            logger?.LogError(e, "Error connecting to {@TargetEndpoint}. Trying next endpoint", endPoint);
+                            break;
                     }
-
-                    // hopefully all implementations of endpoint have a nice ToString()
-                    logger?.LogError(e, "Error connecting to {@TargetEndpoint}. Trying next endpoint", endPoint);
                 }
             }
 
@@ -158,13 +166,13 @@ namespace RabbitMQ.Stream.Client
             IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
             foreach (var partitionsStream in partitions.Streams)
             {
-                var metaDataResponse = await _client.QueryMetadata(new[] { partitionsStream }).ConfigureAwait(false);
+                var metaDataResponse = await _client.QueryMetadata(new[] {partitionsStream}).ConfigureAwait(false);
                 streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
             }
 
             var r = RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
                 streamInfos,
-                _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName },
+                _clientParameters with {ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName},
                 logger);
             _logger?.LogDebug("Raw Producer: {ProducerReference} created for SuperStream: {SuperStream}",
                 rawSuperStreamProducerConfig.Reference,
@@ -209,13 +217,13 @@ namespace RabbitMQ.Stream.Client
             IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
             foreach (var partitionsStream in partitions.Streams)
             {
-                var metaDataResponse = await _client.QueryMetadata(new[] { partitionsStream }).ConfigureAwait(false);
+                var metaDataResponse = await _client.QueryMetadata(new[] {partitionsStream}).ConfigureAwait(false);
                 streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
             }
 
             var s = RawSuperStreamConsumer.Create(rawSuperStreamConsumerConfig,
                 streamInfos,
-                _clientParameters with { ClientProvidedName = rawSuperStreamConsumerConfig.ClientProvidedName },
+                _clientParameters with {ClientProvidedName = rawSuperStreamConsumerConfig.ClientProvidedName},
                 logger);
             _logger?.LogDebug("Consumer: {Reference} created for SuperStream: {SuperStream}",
                 rawSuperStreamConsumerConfig.Reference, rawSuperStreamConsumerConfig.SuperStream);
@@ -232,7 +240,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             await MayBeReconnectLocator().ConfigureAwait(false);
-            var meta = await _client.QueryMetadata(new[] { rawProducerConfig.Stream }).ConfigureAwait(false);
+            var meta = await _client.QueryMetadata(new[] {rawProducerConfig.Stream}).ConfigureAwait(false);
 
             var metaStreamInfo = meta.StreamInfos[rawProducerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
@@ -247,7 +255,7 @@ namespace RabbitMQ.Stream.Client
                 await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
 
                 var p = await RawProducer.Create(
-                    _clientParameters with { ClientProvidedName = rawProducerConfig.ClientProvidedName },
+                    _clientParameters with {ClientProvidedName = rawProducerConfig.ClientProvidedName},
                     rawProducerConfig, metaStreamInfo, logger).ConfigureAwait(false);
                 _logger?.LogDebug("Raw Producer: {Reference} created for Stream: {Stream}",
                     rawProducerConfig.Reference, rawProducerConfig.Stream);
@@ -343,7 +351,7 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
-            var meta = await _client.QueryMetadata(new[] { rawConsumerConfig.Stream }).ConfigureAwait(false);
+            var meta = await _client.QueryMetadata(new[] {rawConsumerConfig.Stream}).ConfigureAwait(false);
             var metaStreamInfo = meta.StreamInfos[rawConsumerConfig.Stream];
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
@@ -355,7 +363,7 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
-                var s = _clientParameters with { ClientProvidedName = rawConsumerConfig.ClientProvidedName };
+                var s = _clientParameters with {ClientProvidedName = rawConsumerConfig.ClientProvidedName};
                 var c = await RawConsumer.Create(s,
                     rawConsumerConfig, metaStreamInfo, logger).ConfigureAwait(false);
                 _logger?.LogDebug("Raw Consumer: {Reference} created for Stream: {Stream}",

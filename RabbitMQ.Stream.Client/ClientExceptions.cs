@@ -93,4 +93,14 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
+    
+    
+    
+    public class SalsNotSupportedException : Exception
+    {
+        public SalsNotSupportedException(string s)
+            : base(s)
+        {
+        }
+    }
 }
