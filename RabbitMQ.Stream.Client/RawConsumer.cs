@@ -105,7 +105,7 @@ namespace RabbitMQ.Stream.Client
             _logger = logger ?? NullLogger.Instance;
             _initialCredits = config.InitialCredits;
             _logger.LogDebug("creating consumer {Consumer} with initial credits {InitialCredits}, " +
-                             "offset {OffsetSpec}, is single active consumer {IsSingleActiveConsumer}, super stream {SuperStream}, client provided name {ClientProvidedName}, " +
+                             "offset {OffsetSpec}, is single active consumer {IsSingleActiveConsumer}, super stream {SuperStream}, client provided name {ClientProvidedName}",
                              config.Reference,
                 _initialCredits, config.OffsetSpec, config.SuperStream, config.IsSingleActiveConsumer,
                 config.ClientProvidedName);
