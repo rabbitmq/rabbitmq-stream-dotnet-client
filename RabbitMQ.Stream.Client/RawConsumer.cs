@@ -105,10 +105,8 @@ namespace RabbitMQ.Stream.Client
             _logger = logger ?? NullLogger.Instance;
             _initialCredits = config.InitialCredits;
             _logger.LogDebug("creating consumer {Consumer} with initial credits {InitialCredits}, " +
-                             "offset {OffsetSpec}, is single active consumer {IsSingleActiveConsumer}, super stream {SuperStream}, client provided name {ClientProvidedName}, " +
-                             config.Reference,
-                _initialCredits, config.OffsetSpec, config.SuperStream, config.IsSingleActiveConsumer,
-                config.ClientProvidedName);
+                             "offset {OffsetSpec}, is single active consumer {IsSingleActiveConsumer}, super stream {SuperStream}, client provided name {ClientProvidedName}",
+                             config.Reference, _initialCredits, config.OffsetSpec, config.IsSingleActiveConsumer, config.SuperStream, config.ClientProvidedName);
 
             // _chunksBuffer is a channel that is used to buffer the chunks
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
