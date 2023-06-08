@@ -18,12 +18,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
-    public enum SaslConfiguration
+    public enum AuthMechanism
     {
         Plain,
         External,
     }
-
 
     public record ClientParameters
     {
@@ -71,7 +70,7 @@ namespace RabbitMQ.Stream.Client
 
         public AddressResolver AddressResolver { get; set; } = null;
 
-        public SaslConfiguration SaslConfiguration { get; set; } = SaslConfiguration.Plain;
+        public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
     }
 
     internal readonly struct OutgoingMsg : ICommand
@@ -223,20 +222,19 @@ namespace RabbitMQ.Stream.Client
                     .ConfigureAwait(false);
             logger?.LogDebug("Sasl mechanism: {Mechanisms}", saslHandshakeResponse.Mechanisms);
 
-
-            var isValid = saslHandshakeResponse.Mechanisms.Contains(parameters.SaslConfiguration.ToString().ToUpper(),
+            var isValid = saslHandshakeResponse.Mechanisms.Contains(parameters.AuthMechanism.ToString().ToUpper(),
                 StringComparer.OrdinalIgnoreCase);
             if (!isValid)
             {
-                throw new SalsNotSupportedException($"Sasl mechanism {parameters.SaslConfiguration} is not supported by the server");
+                throw new AuthMechanismNotSupportedException(
+                    $"Sasl mechanism {parameters.AuthMechanism} is not supported by the server");
             }
-
 
             var saslData = Encoding.UTF8.GetBytes($"\0{parameters.UserName}\0{parameters.Password}");
             var authResponse =
                 await client
                     .Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
-                        new SaslAuthenticateRequest(corr, parameters.SaslConfiguration.ToString().ToUpper(), saslData))
+                        new SaslAuthenticateRequest(corr, parameters.AuthMechanism.ToString().ToUpper(), saslData))
                     .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
@@ -313,7 +311,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
+            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -657,9 +655,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] {stream};
+            var streams = new[] { stream };
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is {Count: >= 1} &&
+            return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -706,7 +704,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
+                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
             }
         }
 
