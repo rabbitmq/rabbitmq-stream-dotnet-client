@@ -28,8 +28,9 @@ namespace RabbitMQ.Stream.Client
         public string Stream { get; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
-
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+        public Func<Message, string> FilterValueExtractor { get; set; } = _ => null;
 
         public RawProducerConfig(string stream)
         {
@@ -141,6 +142,8 @@ namespace RabbitMQ.Stream.Client
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 
+        private bool IsFilteringEnabled => _config.FilterValueExtractor != null;
+
         /// <summary>
         /// SubEntry Batch send: Aggregate more messages under the same publishingId.
         /// Relation is publishingId ->[]messages. 
@@ -181,7 +184,7 @@ namespace RabbitMQ.Stream.Client
             await InternalBatchSend(messages).ConfigureAwait(false);
         }
 
-        internal async Task InternalBatchSend(List<(ulong, Message)> messages)
+        private async Task InternalBatchSend(List<(ulong, Message)> messages)
         {
             for (var i = 0; i < messages.Count; i++)
             {
@@ -213,7 +216,17 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
-            await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
+            switch (IsFilteringEnabled)
+            {
+                case true:
+                    await _client.Publish(new PublishFilter(_publisherId, messages, _config.FilterValueExtractor))
+                        .ConfigureAwait(false);
+                    break;
+                case false:
+                    await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
+                    break;
+            }
+
             if (clearMessagesList)
             {
                 messages.Clear();

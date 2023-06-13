@@ -7,10 +7,11 @@ using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct Publish : ICommand
+    public readonly struct PublishFilter : ICommand
     {
         private const ushort Key = 2;
-        private static byte Version => Consts.Version1;
+        private readonly Func<Message, string> _filterValueExtractor;
+        private static byte Version => Consts.Version2;
 
         public int SizeNeeded
         {
@@ -19,7 +20,17 @@ namespace RabbitMQ.Stream.Client
                 var size = 9; // pre amble 
                 foreach (var (_, msg) in messages)
                 {
-                    size += 8 + 4 + msg.Size;
+                    int additionalSize;
+                    if (_filterValueExtractor?.Invoke(msg) is { } filterValue)
+                    {
+                        additionalSize = WireFormatting.StringSize(filterValue);
+                    }
+                    else
+                    {
+                        additionalSize = sizeof(short);
+                    }
+
+                    size += 8 + 4 + msg.Size + additionalSize;
                 }
 
                 return size;
@@ -28,12 +39,14 @@ namespace RabbitMQ.Stream.Client
 
         private readonly byte publisherId;
         private readonly List<(ulong, Message)> messages;
-        public int MessageCount { get; }
+        private int MessageCount { get; }
 
-        public Publish(byte publisherId, List<(ulong, Message)> messages)
+        public PublishFilter(byte publisherId, List<(ulong, Message)> messages,
+            Func<Message, string> filterValueExtractor)
         {
             this.publisherId = publisherId;
             this.messages = messages;
+            _filterValueExtractor = filterValueExtractor;
             MessageCount = messages.Count;
         }
 
@@ -46,6 +59,15 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteInt32(span[offset..], MessageCount);
             foreach (var (publishingId, msg) in messages)
             {
+                if (_filterValueExtractor?.Invoke(msg) is { } filterValue)
+                {
+                    offset += WireFormatting.WriteString(span[offset..], filterValue);
+                }
+                else
+                {
+                    offset += WireFormatting.WriteInt16(span[offset..], -1);
+                }
+
                 offset += WireFormatting.WriteUInt64(span[offset..], publishingId);
                 // this only write "simple" messages, we assume msg is just the binary body
                 // not stream encoded data
