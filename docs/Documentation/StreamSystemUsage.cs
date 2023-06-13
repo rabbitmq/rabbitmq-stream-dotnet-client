@@ -62,6 +62,39 @@ public class StreamSystemUsage
         await streamSystem.Close().ConfigureAwait(false); // <2>
     }
     // end::create-tls[]
+    
+    
+    // tag::create-tls-external-auth[]
+    private static async Task CreateTlsExternal()
+    {
+        var ssl = new SslOption() // <1>
+        {
+            Enabled = true,
+            ServerName = "server_name",
+            CertPath = "certs/client/keycert.p12",
+            CertPassphrase = null, // in case there is no password
+            CertificateValidationCallback = (sender, certificate, chain, errors) => true,
+        };
+
+        var config = new StreamSystemConfig()
+        {
+            UserName = "user_does_not_exist",
+            Password = "password_does_not_exist",
+            Ssl = ssl,
+            Endpoints = new List<EndPoint>(new List<EndPoint>()
+            {
+                new DnsEndPoint("server_name", 5551)
+            }),
+
+            AuthMechanism = AuthMechanism.External, // <2>
+        };
+        
+        var streamSystem = await StreamSystem.Create(config).ConfigureAwait(false);
+        
+        await streamSystem.Close().ConfigureAwait(false);
+        
+    }
+    // end::create-tls-external-auth[]
 
 
     // tag::create-tls-trust[]
