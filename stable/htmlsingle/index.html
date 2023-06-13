@@ -1375,9 +1375,57 @@ If you hit some connection problems at some point – like hostnames impossible 
 <p>Enable TLS</p>
 </li>
 <li>
-<p>Load certificate authority (CA) certificate from PEM file</p>
+<p>Load certificates from PEM files</p>
 </li>
 </ol>
+</div>
+<div class="listingblock">
+<div class="title">Creating an StreamSystem that uses TLS and external authentication</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateTlsExternal()
+{
+    var ssl = new SslOption() // <b class="conum">(1)</b>
+    {
+        Enabled = true,
+        ServerName = &quot;server_name&quot;,
+        CertPath = &quot;certs/client/keycert.p12&quot;,
+        CertPassphrase = null, // in case there is no password
+        CertificateValidationCallback = (sender, certificate, chain, errors) =&gt; true,
+    };
+
+    var config = new StreamSystemConfig()
+    {
+        UserName = &quot;user_does_not_exist&quot;,
+        Password = &quot;password_does_not_exist&quot;,
+        Ssl = ssl,
+        Endpoints = new List&lt;EndPoint&gt;(new List&lt;EndPoint&gt;()
+        {
+            new DnsEndPoint(&quot;server_name&quot;, 5551)
+        }),
+
+        AuthMechanism = AuthMechanism.External, // <b class="conum">(2)</b>
+    };
+    
+    var streamSystem = await StreamSystem.Create(config).ConfigureAwait(false);
+    
+    await streamSystem.Close().ConfigureAwait(false);
+    
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Enable TLS and configure the certificates</p>
+</li>
+<li>
+<p>Set the external authentication mechanism</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Note: you need the <code>rabbitmq_auth_mechanism_ssl</code> plugin enabled on the server side to use external authentication.
+<code>AuthMechanism.External</code> can be used from RabbitMQ server 3.11.19 and RabbitMQ 3.12.1 onwards.</p>
 </div>
 <div class="listingblock">
 <div class="title">Creating a TLS environment that trusts all server certificates for development</div>
@@ -3862,7 +3910,7 @@ The <code>ConsumerUpdateListener</code> callback is still your friend in this ca
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-05-31 12:54:02 UTC
+Last updated 2023-05-31 12:58:52 UTC
 </div>
 </div>
 </body>
