@@ -224,7 +224,7 @@ namespace RabbitMQ.Stream.Client
                     socket.Dispose();
                     if (!_incomingFramesTask.Wait(Consts.MidWait))
                     {
-                        _logger?.LogWarning("ProcessIncomingFrames reader task did not exit in {ShortWait}", Consts.MidWait);
+                        _logger?.LogWarning("ProcessIncomingFrames reader task did not exit in {MidWait}", Consts.MidWait);
                     }
                 }
                 finally
