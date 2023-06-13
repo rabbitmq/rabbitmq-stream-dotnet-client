@@ -28,6 +28,8 @@ namespace RabbitMQ.Stream.Client
 
         public AddressResolver AddressResolver { get; set; }
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
+
+        public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
     }
 
     public class StreamSystem
@@ -56,7 +58,8 @@ namespace RabbitMQ.Stream.Client
                 AddressResolver = config.AddressResolver,
                 ClientProvidedName = config.ClientProvidedName,
                 Heartbeat = config.Heartbeat,
-                Endpoints = config.Endpoints
+                Endpoints = config.Endpoints,
+                AuthMechanism = config.AuthMechanism
             };
             // create the metadata client connection
             foreach (var endPoint in clientParams.Endpoints)
@@ -73,14 +76,19 @@ namespace RabbitMQ.Stream.Client
                 }
                 catch (Exception e)
                 {
-                    if (e is ProtocolException or SslException)
+                    switch (e)
                     {
-                        logger?.LogError(e, "ProtocolException or SslException to {@EndPoint}", endPoint);
-                        throw;
+                        case ProtocolException or SslException:
+                            logger?.LogError(e, "ProtocolException or SslException to {@EndPoint}", endPoint);
+                            throw;
+                        case AuthMechanismNotSupportedException:
+                            logger?.LogError(e, "SalsNotSupportedException to {@EndPoint}", endPoint);
+                            throw;
+                        default:
+                            // hopefully all implementations of endpoint have a nice ToString()
+                            logger?.LogError(e, "Error connecting to {@TargetEndpoint}. Trying next endpoint", endPoint);
+                            break;
                     }
-
-                    // hopefully all implementations of endpoint have a nice ToString()
-                    logger?.LogError(e, "Error connecting to {@TargetEndpoint}. Trying next endpoint", endPoint);
                 }
             }
 

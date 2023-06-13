@@ -18,6 +18,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client
 {
+    public enum AuthMechanism
+    {
+        Plain,
+        External,
+    }
+
     public record ClientParameters
     {
         // internal list of endpoints where the client will try to connect
@@ -63,6 +69,8 @@ namespace RabbitMQ.Stream.Client
         public SslOption Ssl { get; set; } = new SslOption();
 
         public AddressResolver AddressResolver { get; set; } = null;
+
+        public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
     }
 
     internal readonly struct OutgoingMsg : ICommand
@@ -214,11 +222,20 @@ namespace RabbitMQ.Stream.Client
                     .ConfigureAwait(false);
             logger?.LogDebug("Sasl mechanism: {Mechanisms}", saslHandshakeResponse.Mechanisms);
 
+            var isValid = saslHandshakeResponse.Mechanisms.Contains(parameters.AuthMechanism.ToString().ToUpper(),
+                StringComparer.OrdinalIgnoreCase);
+            if (!isValid)
+            {
+                throw new AuthMechanismNotSupportedException(
+                    $"Sasl mechanism {parameters.AuthMechanism} is not supported by the server");
+            }
+
             var saslData = Encoding.UTF8.GetBytes($"\0{parameters.UserName}\0{parameters.Password}");
             var authResponse =
                 await client
                     .Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
-                        new SaslAuthenticateRequest(corr, "PLAIN", saslData)).ConfigureAwait(false);
+                        new SaslAuthenticateRequest(corr, parameters.AuthMechanism.ToString().ToUpper(), saslData))
+                    .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
             //tune

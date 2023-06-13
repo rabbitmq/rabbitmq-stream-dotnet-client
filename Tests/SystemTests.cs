@@ -246,6 +246,17 @@ namespace Tests
         }
 
         [Fact]
+        public async void ValidateSalsExternalConfiguration()
+        {
+            // the user can set the SALs configuration externally
+            // this test validates that the configuration is supported by the server
+            var config = new StreamSystemConfig() { AuthMechanism = AuthMechanism.External };
+            await Assert.ThrowsAsync<AuthMechanismNotSupportedException>(
+                async () => { await StreamSystem.Create(config); }
+            );
+        }
+
+        [Fact]
         public async void CloseProducerConsumerAfterForceCloseShouldNotRaiseError()
         {
             // This tests that the producers and consumers

@@ -93,4 +93,12 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
+
+    public class AuthMechanismNotSupportedException : Exception
+    {
+        public AuthMechanismNotSupportedException(string s)
+            : base(s)
+        {
+        }
+    }
 }

@@ -66,7 +66,19 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-tls]
 --------
 
 <1> Enable TLS
-<2> Load certificate authority (CA) certificate from PEM file
+<2> Load certificates from PEM files
+
+.Creating an StreamSystem that uses TLS and external authentication
+[source,c#,indent=0]
+--------
+include::{test-examples}/StreamSystemUsage.cs[tag=create-tls-external-auth]
+--------
+
+<1> Enable TLS and configure the certificates
+<2> Set the external authentication mechanism
+
+Note: you need the `rabbitmq_auth_mechanism_ssl` plugin enabled on the server side to use external authentication. 
+`AuthMechanism.External` can be used from RabbitMQ server 3.11.19 and RabbitMQ 3.12.1 onwards.
 
 .Creating a TLS environment that trusts all server certificates for development
 [source,c#,indent=0]
@@ -75,6 +87,9 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-tls-trust]
 --------
 
 <1> Trust all server certificates
+
+
+
 
 ===== Configuring the Stream System
 
