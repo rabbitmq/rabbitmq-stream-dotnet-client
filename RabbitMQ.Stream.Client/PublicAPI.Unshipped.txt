@@ -13,6 +13,13 @@ RabbitMQ.Stream.Client.Client.QueryRoute(string superStream, string routingKey) 
 RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.StreamStatsResponse>
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.set -> void
+RabbitMQ.Stream.Client.Filter
+RabbitMQ.Stream.Client.Filter.MatchUnfiltered.get -> bool
+RabbitMQ.Stream.Client.Filter.MatchUnfiltered.set -> void
+RabbitMQ.Stream.Client.Filter.PostFilter.get -> System.Func<RabbitMQ.Stream.Client.Message, bool>
+RabbitMQ.Stream.Client.Filter.PostFilter.set -> void
+RabbitMQ.Stream.Client.Filter.Values.get -> System.Collections.Generic.List<string>
+RabbitMQ.Stream.Client.Filter.Values.set -> void
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
@@ -25,8 +32,10 @@ RabbitMQ.Stream.Client.PublishFilter.PublishFilter() -> void
 RabbitMQ.Stream.Client.PublishFilter.PublishFilter(byte publisherId, System.Collections.Generic.List<(ulong, RabbitMQ.Stream.Client.Message)> messages, System.Func<RabbitMQ.Stream.Client.Message, string> filterValueExtractor) -> void
 RabbitMQ.Stream.Client.PublishFilter.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.PublishFilter.Write(System.Span<byte> span) -> int
-RabbitMQ.Stream.Client.RawProducerConfig.FilterValueExtractor.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
-RabbitMQ.Stream.Client.RawProducerConfig.FilterValueExtractor.set -> void
+RabbitMQ.Stream.Client.RawConsumerConfig.Filter.get -> RabbitMQ.Stream.Client.Filter
+RabbitMQ.Stream.Client.RawConsumerConfig.Filter.set -> void
+RabbitMQ.Stream.Client.RawProducerConfig.FilterValue.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
+RabbitMQ.Stream.Client.RawProducerConfig.FilterValue.set -> void
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.get -> ushort

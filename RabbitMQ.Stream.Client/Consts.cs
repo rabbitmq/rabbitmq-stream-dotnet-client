@@ -17,6 +17,8 @@ namespace RabbitMQ.Stream.Client
         internal const ushort ConsumerInitialCredits = 2;
         internal const byte Version1 = 1;
         internal const byte Version2 = 2;
+        internal const string SubscriptionPropertyFilterPrefix = "filter.";
+        internal const string SubscriptionPropertyMatchUnfiltered = "match-unfiltered";
 
         internal static int RandomShort()
         {

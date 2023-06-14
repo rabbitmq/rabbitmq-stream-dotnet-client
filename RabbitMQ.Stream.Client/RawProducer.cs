@@ -30,7 +30,7 @@ namespace RabbitMQ.Stream.Client
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
-        public Func<Message, string> FilterValueExtractor { get; set; } = _ => null;
+        public Func<Message, string> FilterValue { get; set; } = _ => null;
 
         public RawProducerConfig(string stream)
         {
@@ -142,7 +142,7 @@ namespace RabbitMQ.Stream.Client
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 
-        private bool IsFilteringEnabled => _config.FilterValueExtractor != null;
+        private bool IsFilteringEnabled => _config.FilterValue != null;
 
         /// <summary>
         /// SubEntry Batch send: Aggregate more messages under the same publishingId.
@@ -219,7 +219,7 @@ namespace RabbitMQ.Stream.Client
             switch (IsFilteringEnabled)
             {
                 case true:
-                    await _client.Publish(new PublishFilter(_publisherId, messages, _config.FilterValueExtractor))
+                    await _client.Publish(new PublishFilter(_publisherId, messages, _config.FilterValue))
                         .ConfigureAwait(false);
                     break;
                 case false:

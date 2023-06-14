@@ -54,6 +54,13 @@ namespace RabbitMQ.Stream.Client
         public Func<bool, Task<IOffsetType>> ConsumerUpdateHandler { get; }
     }
 
+    public record Filter
+    {
+        public List<string> Values { get; set; }
+        public bool MatchUnfiltered { get; set; }
+        public Func<Message, bool> PostFilter { get; set; }
+    }
+
     public record RawConsumerConfig : IConsumerConfig
     {
         public RawConsumerConfig(string stream)
@@ -74,6 +81,8 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        internal bool IsFiltering => Filter is { Values.Count: > 0 };
+
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
         // in this way the consumer is notified is something happens in the super stream
@@ -89,6 +98,8 @@ namespace RabbitMQ.Stream.Client
         public Func<RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+        public Filter Filter { get; set; } = null;
     }
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
@@ -106,7 +117,8 @@ namespace RabbitMQ.Stream.Client
             _initialCredits = config.InitialCredits;
             _logger.LogDebug("creating consumer {Consumer} with initial credits {InitialCredits}, " +
                              "offset {OffsetSpec}, is single active consumer {IsSingleActiveConsumer}, super stream {SuperStream}, client provided name {ClientProvidedName}",
-                             config.Reference, _initialCredits, config.OffsetSpec, config.IsSingleActiveConsumer, config.SuperStream, config.ClientProvidedName);
+                config.Reference, _initialCredits, config.OffsetSpec, config.IsSingleActiveConsumer, config.SuperStream,
+                config.ClientProvidedName);
 
             // _chunksBuffer is a channel that is used to buffer the chunks
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
@@ -212,10 +224,17 @@ namespace RabbitMQ.Stream.Client
                                 // it is useful only in single active consumer
                                 if (IsPromotedAsActive)
                                 {
-                                    await _config.MessageHandler(this,
-                                        new MessageContext(message.MessageOffset,
-                                            TimeSpan.FromMilliseconds(chunk.Timestamp)),
-                                        message).ConfigureAwait(false);
+                                    var canDispatch = true;
+                                    if (_config.IsFiltering)
+                                        canDispatch = _config.Filter.PostFilter(message);
+
+                                    if (canDispatch)
+                                    {
+                                        await _config.MessageHandler(this,
+                                            new MessageContext(message.MessageOffset,
+                                                TimeSpan.FromMilliseconds(chunk.Timestamp)),
+                                            message).ConfigureAwait(false);
+                                    }
                                 }
                                 else
                                 {
@@ -376,6 +395,19 @@ namespace RabbitMQ.Stream.Client
             if (!string.IsNullOrEmpty(_config.Reference))
             {
                 consumerProperties["name"] = _config.Reference;
+            }
+
+            if (_config.IsFiltering)
+            {
+                var i = 0;
+                foreach (var filterValue in _config.Filter.Values)
+                {
+                    var k = Consts.SubscriptionPropertyFilterPrefix + i++;
+                    consumerProperties[k] = filterValue;
+                }
+
+                consumerProperties[Consts.SubscriptionPropertyMatchUnfiltered] =
+                    _config.Filter.MatchUnfiltered.ToString();
             }
 
             if (_config.IsSingleActiveConsumer)

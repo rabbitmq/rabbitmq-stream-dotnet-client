@@ -59,10 +59,9 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteInt32(span[offset..], MessageCount);
             foreach (var (publishingId, msg) in messages)
             {
-                
 
                 offset += WireFormatting.WriteUInt64(span[offset..], publishingId);
-                
+
                 if (_filterValueExtractor?.Invoke(msg) is { } filterValue)
                 {
                     offset += WireFormatting.WriteString(span[offset..], filterValue);
@@ -71,7 +70,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     offset += WireFormatting.WriteInt16(span[offset..], -1);
                 }
-                
+
                 // this only write "simple" messages, we assume msg is just the binary body
                 // not stream encoded data
                 offset += WireFormatting.WriteUInt32(span[offset..], (uint)msg.Size);
