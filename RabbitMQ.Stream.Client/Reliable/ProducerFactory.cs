@@ -21,7 +21,7 @@ public abstract class ProducerFactory : ReliableBase
 
     protected async Task<IProducer> CreateProducer()
     {
-        if (_producerConfig.SuperStreamConfig is { Enabled: true })
+        if (_producerConfig.SuperStreamConfig is {Enabled: true})
         {
             return await SuperStreamProducer().ConfigureAwait(false);
         }
@@ -66,6 +66,7 @@ public abstract class ProducerFactory : ReliableBase
             ClientProvidedName = _producerConfig.ClientProvidedName,
             Reference = _producerConfig.Reference,
             MaxInFlight = _producerConfig.MaxInFlight,
+            FilterValue = _producerConfig.FilterValue,
             MetadataHandler = update =>
             {
                 // This is Async since the MetadataHandler is called from the Socket connection thread
