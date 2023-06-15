@@ -40,7 +40,7 @@ public class FilterProducer
 
         var messagesSent = 0;
 
-        // Send the first 100 messages with state "New York"
+        // Send the first 200 messages with state "New York"
         // then we wait a bit to be sure that all the messages will go in a chuck
         for (var i = 0; i < 200; i++)
         {
@@ -58,9 +58,9 @@ public class FilterProducer
         }
 
         // Wait a bit to be sure that all the messages will go in a chuck
-        await Task.Delay(1000).ConfigureAwait(false);
+        await Task.Delay(2000).ConfigureAwait(false);
 
-        // Send the second 100 messages with the Alabama state
+        // Send the second 200 messages with the Alabama state
         for (var i = 0; i < 200; i++)
         {
             const string State = "Alabama";

@@ -51,7 +51,7 @@ public class FilterConsumer
             // end::consumer-filter[]
         }).ConfigureAwait(false);
         
-        await Task.Delay(1500).ConfigureAwait(false);
+        await Task.Delay(2000).ConfigureAwait(false);
         await consumer.Close().ConfigureAwait(false);
         await system.Close().ConfigureAwait(false);
     }
