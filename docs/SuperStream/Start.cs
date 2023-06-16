@@ -25,7 +25,6 @@ public class Start
                     Console.WriteLine("Missing Consumer name");
                     return;
                 }
-
                 await SuperStreamConsumer.Start(arguments[1]).ConfigureAwait(false);
                 break;
             default:

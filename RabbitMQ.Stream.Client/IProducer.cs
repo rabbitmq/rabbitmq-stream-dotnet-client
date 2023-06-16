@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -83,4 +84,7 @@ public record IProducerConfig : INamedEntity
     /// Default value is 100.
     /// </summary>
     public int MessagesBufferSize { get; set; } = 100;
+    
+    
+    public Func<Message, string> FilterValue { get; set; } = _ => null;
 }

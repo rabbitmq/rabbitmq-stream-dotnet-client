@@ -30,7 +30,7 @@ namespace RabbitMQ.Stream.Client
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
-        public Func<Message, string> FilterValue { get; set; } = _ => null;
+
 
         public RawProducerConfig(string stream)
         {

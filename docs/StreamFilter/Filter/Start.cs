@@ -19,10 +19,15 @@ public class Start
         {
             case "--producer":
                 await FilterProducer.Start(SteamName).ConfigureAwait(false);
-                await Task.Delay(1).ConfigureAwait(false);
+                break;
+            case "--super-stream-producer":
+                await FilterSuperStreamProducer.Start(SteamName).ConfigureAwait(false);
                 break;
             case "--consumer":
                 await FilterConsumer.Start(SteamName).ConfigureAwait(false);
+                break;
+            case "--super-stream-consumer":
+                await FilterSuperStreamConsumer.Start(SteamName).ConfigureAwait(false);
                 break;
             default:
                 Console.WriteLine("Unknown command: {0} (values: --producer / --consumer)", arguments[0]);

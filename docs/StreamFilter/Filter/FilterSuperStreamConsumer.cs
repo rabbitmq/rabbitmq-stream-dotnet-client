@@ -8,24 +8,23 @@ using RabbitMQ.Stream.Client.Reliable;
 
 namespace Filter;
 
-public class FilterConsumer
+public class FilterSuperStreamConsumer
 {
     public static async Task Start(string streamName)
     {
         var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddSimpleConsole();
-            builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
+            builder.AddFilter("RabbitMQ.Stream", LogLevel.Debug);
         });
 
         var logger = loggerFactory.CreateLogger<Consumer>();
-        var loggerMain = loggerFactory.CreateLogger<FilterConsumer>();
+        var loggerMain = loggerFactory.CreateLogger<FilterSuperStreamConsumer>();
 
 
         var config = new StreamSystemConfig();
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
-        await system.CreateStream(new StreamSpec(streamName)).ConfigureAwait(false);
-        loggerMain.LogInformation("FilterConsumer connected to RabbitMQ. StreamName {StreamName}", streamName);
+        loggerMain.LogInformation("FilterSuperStreamConsumer connected to RabbitMQ. StreamName {StreamName}", streamName);
 
 
         // tag::consumer-filter[]
@@ -34,6 +33,7 @@ public class FilterConsumer
         var consumer = await Consumer.Create(new ConsumerConfig(system, streamName)
         {
             OffsetSpec = new OffsetTypeFirst(),
+            IsSuperStream = true,
 
             // This is mandatory for enabling the filter
             Filter = new RabbitMQ.Stream.Client.Filter()
@@ -50,8 +50,8 @@ public class FilterConsumer
                 return Task.CompletedTask;
             }
             // end::consumer-filter[]
-        }).ConfigureAwait(false);
-        
+        }, logger).ConfigureAwait(false);
+
         await Task.Delay(2000).ConfigureAwait(false);
         await consumer.Close().ConfigureAwait(false);
         await system.Close().ConfigureAwait(false);

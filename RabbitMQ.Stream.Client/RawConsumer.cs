@@ -407,7 +407,7 @@ namespace RabbitMQ.Stream.Client
                 }
 
                 consumerProperties[Consts.SubscriptionPropertyMatchUnfiltered] =
-                    _config.Filter.MatchUnfiltered.ToString();
+                    _config.Filter.MatchUnfiltered.ToString().ToLower();
             }
 
             if (_config.IsSingleActiveConsumer)

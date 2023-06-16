@@ -40,6 +40,7 @@ public abstract class ProducerFactory : ReliableBase
                 MaxInFlight = _producerConfig.MaxInFlight,
                 Routing = _producerConfig.SuperStreamConfig.Routing,
                 RoutingStrategyType = _producerConfig.SuperStreamConfig.RoutingStrategyType,
+                FilterValue = _producerConfig.FilterValue,
                 ConfirmHandler = confirmationHandler =>
                 {
                     var (stream, confirmation) = confirmationHandler;
