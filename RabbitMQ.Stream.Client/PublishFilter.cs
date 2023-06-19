@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -20,17 +21,24 @@ namespace RabbitMQ.Stream.Client
                 var size = 9; // pre amble 
                 foreach (var (_, msg) in messages)
                 {
-                    int additionalSize;
-                    if (_filterValueExtractor?.Invoke(msg) is { } filterValue)
+                    try
                     {
-                        additionalSize = WireFormatting.StringSize(filterValue);
-                    }
-                    else
-                    {
-                        additionalSize = sizeof(short);
-                    }
+                        var filterValue = "";
+                        if (IsFilterSet())
+                        {
+                            filterValue = _filterValueExtractor(msg);
+                        }
 
-                    size += 8 + 4 + msg.Size + additionalSize;
+                        var additionalSize = IsFilterSet() ? WireFormatting.StringSize(filterValue) : sizeof(short);
+
+
+                        size += 8 + 4 + msg.Size + additionalSize;
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error calculate size for the filter message. Message won't be sent"
+                                            + "Check the filter value function");
+                    }
                 }
 
                 return size;
@@ -39,14 +47,23 @@ namespace RabbitMQ.Stream.Client
 
         private readonly byte publisherId;
         private readonly List<(ulong, Message)> messages;
+        private readonly ILogger _logger;
+
+
+        private bool IsFilterSet()
+        {
+            return _filterValueExtractor != null;
+        }
+
         private int MessageCount { get; }
 
         public PublishFilter(byte publisherId, List<(ulong, Message)> messages,
-            Func<Message, string> filterValueExtractor)
+            Func<Message, string> filterValueExtractor, ILogger logger)
         {
             this.publisherId = publisherId;
             this.messages = messages;
             _filterValueExtractor = filterValueExtractor;
+            _logger = logger;
             MessageCount = messages.Count;
         }
 
@@ -59,22 +76,41 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.WriteInt32(span[offset..], MessageCount);
             foreach (var (publishingId, msg) in messages)
             {
-
-                offset += WireFormatting.WriteUInt64(span[offset..], publishingId);
-
-                if (_filterValueExtractor?.Invoke(msg) is { } filterValue)
+                try
                 {
-                    offset += WireFormatting.WriteString(span[offset..], filterValue);
-                }
-                else
-                {
-                    offset += WireFormatting.WriteInt16(span[offset..], -1);
-                }
+                    var filterValue = "";
+                    if (IsFilterSet())
+                    {
+                        // The try catch is mostly for the case where the filterValueExtractor
+                        // throws an exception. 
+                        // The user should be aware of this and make sure the function is safe
+                        // but in case of fail we have to skip the message
+                        filterValue = _filterValueExtractor(msg);
+                    }
 
-                // this only write "simple" messages, we assume msg is just the binary body
-                // not stream encoded data
-                offset += WireFormatting.WriteUInt32(span[offset..], (uint)msg.Size);
-                offset += msg.Write(span[offset..]);
+                    offset += WireFormatting.WriteUInt64(span[offset..], publishingId);
+                    if (IsFilterSet())
+                    {
+                        offset += WireFormatting.WriteString(span[offset..], filterValue);
+                    }
+                    else
+                    {
+                        offset += WireFormatting.WriteInt16(span[offset..], -1);
+                    }
+
+                    // this only write "simple" messages, we assume msg is just the binary body
+                    // not stream encoded data
+                    offset += WireFormatting.WriteUInt32(span[offset..], (uint)msg.Size);
+                    offset += msg.Write(span[offset..]);
+                }
+                catch (Exception e)
+                {
+                    // If there is an error on _filterValueExtractor we skip the message.
+                    // If there is an error on _filterValueExtractor the buffer here is still consistent.
+                    // so we can skip and continue
+                    _logger.LogError(e, "Error writing the filter message. Message won't be sent"
+                                        + "Check the filter value function");
+                }
             }
 
             return offset;

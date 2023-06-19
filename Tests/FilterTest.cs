@@ -16,6 +16,39 @@ namespace Tests;
 
 public class FilterTest
 {
+    // When the Filter is set also Values must be set and PostFilter must be set
+    // Values must be a list of string and must contain at least one element
+    [Fact]
+    public async void ValidateFilter()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
+            new ConsumerConfig(system, stream) {Filter = new Filter()}
+        ));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
+            new ConsumerConfig(system, stream) {Filter = new Filter() {Values = new List<string>()}}
+        ));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(new ConsumerConfig(system, stream)
+            {
+                Filter = new Filter() {Values = new List<string>() {"test"}, PostFilter = null}
+            }
+        ));
+
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
+            new ConsumerConfig(system, stream)
+            {
+                Filter = new Filter() {Values = new List<string>(), PostFilter = _ => true}
+            }
+        ));
+
+        await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
+    }
+
+
     [Fact]
     public async void FilterShouldReturnOnlyOneChuck()
     {
@@ -24,6 +57,7 @@ public class FilterTest
         var producer = await Producer.Create(
             new ProducerConfig(system, stream)
             {
+                // define the producer filter 
                 FilterValue = message => message.ApplicationProperties["state"].ToString(),
             }
         );
@@ -37,8 +71,8 @@ public class FilterTest
             {
                 var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {state}"))
                 {
-                    ApplicationProperties = new ApplicationProperties() { ["state"] = state },
-                    Properties = new Properties() { GroupId = $"group_{i}" }
+                    ApplicationProperties = new ApplicationProperties() {["state"] = state},
+                    Properties = new Properties() {GroupId = $"group_{i}"}
                 };
                 await producer.Send(message).ConfigureAwait(false);
                 messages.Add(message);
@@ -61,7 +95,7 @@ public class FilterTest
             // This is mandatory for enabling the filter
             Filter = new Filter()
             {
-                Values = new List<string>() { "Alabama" },
+                Values = new List<string>() {"Alabama"},
                 PostFilter =
                     _ =>
                         true, // we don't apply any post filter here to be sure that the server is doing the filtering 
@@ -99,11 +133,12 @@ public class FilterTest
             // This is mandatory for enabling the filter
             Filter = new Filter()
             {
-                Values = new List<string>() { "New York" },
+                Values = new List<string>() {"New York"},
                 PostFilter =
-                    message => message.Properties.GroupId.ToString()!.Equals("group_25"), // we only want the message with  group_25 ignoring the rest
-                                                                                          // this filter is client side. We should have two messages with group_25
-                                                                                          // One for the standard send and one for the batch send
+                    message => message.Properties.GroupId.ToString()!
+                        .Equals("group_25"), // we only want the message with  group_25 ignoring the rest
+                // this filter is client side. We should have two messages with group_25
+                // One for the standard send and one for the batch send
                 MatchUnfiltered = true
             },
             MessageHandler = (_, _, _, message) =>
@@ -118,6 +153,98 @@ public class FilterTest
         Assert.Equal("group_25", consumedNY[0].Properties.GroupId!);
         Assert.Equal("group_25", consumedNY[1].Properties.GroupId!);
         await consumerNY.Close().ConfigureAwait(false);
+        await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
+    }
+
+    [Fact]
+    public async void ErrorFiltersFunctionWontDeliverTheMessage()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var messagesConfirmed = 0;
+        var messagesError = 0;
+        var testPassed = new TaskCompletionSource<int>();
+        const int ToSend = 10;
+
+        var producer = await Producer.Create(
+            new ProducerConfig(system, stream)
+            {
+                TimeoutMessageAfter = TimeSpan.FromSeconds(2),
+                ConfirmationHandler = async confirmation =>
+                {
+                    if (confirmation.Status == ConfirmationStatus.Confirmed)
+                        messagesConfirmed++;
+                    else
+                        messagesError++;
+
+                    if (messagesConfirmed + messagesError == ToSend)
+                    {
+                        testPassed.SetResult(ToSend);
+                    }
+
+                    await Task.CompletedTask.ConfigureAwait(false);
+                },
+                // define the producer filter 
+                FilterValue = message =>
+                {
+                    if (message.Properties.MessageId!.Equals("id_8"))
+                    {
+                        throw new Exception("Simulate an error");
+                    }
+
+                    return message.Properties.MessageId.ToString();
+                }
+            }
+        );
+
+
+        for (var i = 0; i < ToSend; i++)
+        {
+            await producer.Send(new Message(Encoding.UTF8.GetBytes("Message: " + i))
+            {
+                Properties = new Properties() {MessageId = $"id_{i}"}
+            }).ConfigureAwait(false);
+        }
+
+        Assert.True(testPassed.Task.Wait(TimeSpan.FromSeconds(5)));
+        // we should have 9 messages confirmed and 1 error
+        // since we are filtering the message with id_8 and throwing an exception
+        Assert.Equal(ToSend - 1, messagesConfirmed);
+        Assert.Equal(1, messagesError);
+
+        var consumed = new List<Message>();
+        var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+        {
+            OffsetSpec = new OffsetTypeFirst(),
+
+            // This is mandatory for enabling the filter
+            Filter = new Filter()
+            {
+                Values = new List<string>() {"id_7"},
+                PostFilter =
+                    message =>
+                    {
+                        if (message.Properties.MessageId!.Equals("id_7"))
+                            throw new Exception("Simulate an error");
+
+                        return true;
+                    },
+                MatchUnfiltered = true
+            },
+            MessageHandler = (_, _, _, message) =>
+            {
+                consumed.Add(message);
+
+                return Task.CompletedTask;
+            }
+        }).ConfigureAwait(false);
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(3));
+        // we should have 8 messages since there is an error in the PostFilter
+        // function for the message with id_7
+        // So we sent 10 messages. 1 error was thrown in the producer filter and 1 error in the consumer Postfilter
+        Assert.Equal(8, consumed.Count);
+        await producer.Close().ConfigureAwait(false);
+        await consumer.Close().ConfigureAwait(false);
         await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
     }
 }

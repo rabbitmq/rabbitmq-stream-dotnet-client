@@ -217,7 +217,7 @@ namespace RabbitMQ.Stream.Client
             switch (IsFilteringEnabled)
             {
                 case true:
-                    await _client.Publish(new PublishFilter(_publisherId, messages, _config.FilterValue))
+                    await _client.Publish(new PublishFilter(_publisherId, messages, _config.FilterValue, _logger))
                         .ConfigureAwait(false);
                     break;
                 case false:

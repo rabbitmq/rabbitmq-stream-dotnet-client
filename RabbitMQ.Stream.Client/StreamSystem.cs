@@ -360,6 +360,8 @@ namespace RabbitMQ.Stream.Client
 
             CheckLeader(metaStreamInfo);
 
+
+
             try
             {
                 await _semClientProvidedName.WaitAsync().ConfigureAwait(false);

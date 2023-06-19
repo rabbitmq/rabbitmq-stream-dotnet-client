@@ -79,9 +79,19 @@ namespace RabbitMQ.Stream.Client
             {
                 throw new ArgumentException("With single active consumer, the reference must be set.");
             }
+
+            if (Filter is {PostFilter: null})
+            {
+                throw new ArgumentException("PostFilter must be provided when Filter is set");
+            }
+
+            if (Filter is {Values: null} || Filter.Values.Count == 0)
+            {
+                throw new ArgumentException("Values must be provided when Filter is set");
+            }
         }
 
-        internal bool IsFiltering => Filter is { Values.Count: > 0 };
+        internal bool IsFiltering => Filter is {Values.Count: > 0};
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -98,7 +108,6 @@ namespace RabbitMQ.Stream.Client
         public Func<RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
-
     }
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
@@ -224,9 +233,26 @@ namespace RabbitMQ.Stream.Client
                                 if (IsPromotedAsActive)
                                 {
                                     var canDispatch = true;
-                                    if (_config.IsFiltering)
-                                        canDispatch = _config.Filter.PostFilter(message);
 
+
+                                    if (_config.IsFiltering)
+                                    {
+                                        try
+                                        {
+                                            // post filter is defined by the user
+                                            // and can go in error for several reasons
+                                            // here we decided to catch the exception and
+                                            // log it. The message won't be dispatched
+                                            canDispatch = _config.Filter.PostFilter(message);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            _logger.LogError(e, "Error while filtering message. Message won't be dispatched." 
+                                                                + "Check the filter function implementation");
+                                            canDispatch = false;
+                                        }
+                                    }
+                                    
                                     if (canDispatch)
                                     {
                                         await _config.MessageHandler(this,
