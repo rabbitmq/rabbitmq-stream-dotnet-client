@@ -65,7 +65,6 @@ public record ProducerConfig : ReliableConfig
 
     public string ClientProvidedName { get; set; } = "dotnet-stream-producer";
 
-
     /// <summary>
     /// Function used to set the value of the filter<br/>
     /// The filter enable the server to filter the messages sent to the consumer.<br/>

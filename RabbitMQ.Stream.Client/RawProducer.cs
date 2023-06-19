@@ -30,8 +30,6 @@ namespace RabbitMQ.Stream.Client
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
-
-
         public RawProducerConfig(string stream)
         {
             if (string.IsNullOrWhiteSpace(stream))

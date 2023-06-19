@@ -84,7 +84,6 @@ public record IProducerConfig : INamedEntity
     /// Default value is 100.
     /// </summary>
     public int MessagesBufferSize { get; set; } = 100;
-    
-    
+
     public Func<Message, string> FilterValue { get; set; } = _ => null;
 }

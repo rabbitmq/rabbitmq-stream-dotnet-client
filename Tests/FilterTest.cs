@@ -37,8 +37,8 @@ public class FilterTest
             {
                 var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {state}"))
                 {
-                    ApplicationProperties = new ApplicationProperties() {["state"] = state},
-                    Properties = new Properties() {GroupId = $"group_{i}"}
+                    ApplicationProperties = new ApplicationProperties() { ["state"] = state },
+                    Properties = new Properties() { GroupId = $"group_{i}" }
                 };
                 await producer.Send(message).ConfigureAwait(false);
                 messages.Add(message);
@@ -61,7 +61,7 @@ public class FilterTest
             // This is mandatory for enabling the filter
             Filter = new Filter()
             {
-                Values = new List<string>() {"Alabama"},
+                Values = new List<string>() { "Alabama" },
                 PostFilter =
                     _ =>
                         true, // we don't apply any post filter here to be sure that the server is doing the filtering 
@@ -91,7 +91,7 @@ public class FilterTest
         await consumerAlabama.Close().ConfigureAwait(false);
         // let's reset 
         var consumedNY = new List<Message>();
-        
+
         var consumerNY = await Consumer.Create(new ConsumerConfig(system, stream)
         {
             OffsetSpec = new OffsetTypeFirst(),
@@ -99,11 +99,11 @@ public class FilterTest
             // This is mandatory for enabling the filter
             Filter = new Filter()
             {
-                Values = new List<string>() {"New York"},
+                Values = new List<string>() { "New York" },
                 PostFilter =
                     message => message.Properties.GroupId.ToString()!.Equals("group_25"), // we only want the message with  group_25 ignoring the rest
-                                                                                      // this filter is client side. We should have two messages with group_25
-                                                                                      // One for the standard send and one for the batch send
+                                                                                          // this filter is client side. We should have two messages with group_25
+                                                                                          // One for the standard send and one for the batch send
                 MatchUnfiltered = true
             },
             MessageHandler = (_, _, _, message) =>
@@ -112,7 +112,7 @@ public class FilterTest
                 return Task.CompletedTask;
             }
         }).ConfigureAwait(false);
-        
+
         SystemUtils.Wait(TimeSpan.FromSeconds(1));
         Assert.Equal(2, consumedNY.Count);
         Assert.Equal("group_25", consumedNY[0].Properties.GroupId!);

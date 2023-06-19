@@ -99,7 +99,6 @@ namespace RabbitMQ.Stream.Client
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
-    
     }
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable

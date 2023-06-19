@@ -102,8 +102,7 @@ public record ConsumerConfig : ReliableConfig
     // The RawConsumer uses this value to create the Channel buffer so all the chunks will be stored in the buffer memory.
     // The default value it is usually a good value.
     public ushort InitialCredits { get; set; } = Consts.ConsumerInitialCredits;
-    
-    
+
     public Filter Filter { get; set; } = null;
 
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
