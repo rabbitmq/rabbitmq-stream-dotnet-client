@@ -41,50 +41,45 @@ public class FilterSuperStreamProducer
             // end::producer-filter[]
         }).ConfigureAwait(false);
 
-        var messagesSent = 0;
 
+        const int ToSend = 100;
+        async Task SendTo(string state, string groupId)
+        {
+            var messages = new List<Message>();
+            for (var i = 0; i < ToSend; i++)
+            {
+                var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {state}"))
+                {
+                    Properties = new Properties()
+                    {
+                        GroupId = groupId,
+                    },
+                    
+                    ApplicationProperties = new ApplicationProperties()
+                    {
+                        ["state"] = state 
+                    }
+                };
+                await producer.Send(message).ConfigureAwait(false);
+                messages.Add(message);
+            }
+
+            await producer.Send(messages).ConfigureAwait(false);
+        }
+        
+        
         // Send the first 200 messages with state "New York"
         // then we wait a bit to be sure that all the messages will go in a chuck
-        for (var i = 0; i < 200; i++)
-        {
-            const string State = "New York";
-            var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {State}"))
-            {
-                Properties = new Properties()
-                {
-                    GroupId = "NewYorkGroup",
-                },
-                ApplicationProperties = new ApplicationProperties()
-                {
-                    ["state"] = State // <2>
-                }
-            };
-            await producer.Send(message).ConfigureAwait(false);
-            
-            logger.LogInformation("Published message with state {State} messages sent {Sent}", message.ApplicationProperties["state"], ++messagesSent);
-        }
-
+        await SendTo("New York", "NewYorkGroup").ConfigureAwait(false);
+        loggerMain.LogInformation("Sent: {MessagesSent} - filter value: {FilerValue}", ToSend * 2, "New York");
+        
         // Wait a bit to be sure that all the messages will go in a chuck
         await Task.Delay(2000).ConfigureAwait(false);
 
         // Send the second 200 messages with the Alabama state
-        for (var i = 0; i < 200; i++)
-        {
-            const string State = "Alabama";
-            var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {State}"))
-            {
-                Properties = new Properties()
-                {
-                    GroupId = "AlabamaGroup",
-                },
-                ApplicationProperties = new ApplicationProperties()
-                {
-                    ["state"] = State
-                }
-            };
-            await producer.Send(message).ConfigureAwait(false);
-            logger.LogInformation("Published message with state {State} messages sent {Sent}", message.ApplicationProperties["state"], ++messagesSent);
-        }
+        await SendTo("Alabama", "AlabamaGroup").ConfigureAwait(false);
+        loggerMain.LogInformation("Sent: {MessagesSent} - filter value: {FilerValue}", ToSend * 2, "Alabama");
+
 
         await Task.Delay(1000).ConfigureAwait(false);
         await producer.Close().ConfigureAwait(false);

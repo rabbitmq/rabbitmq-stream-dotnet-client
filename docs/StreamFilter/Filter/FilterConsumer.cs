@@ -39,8 +39,7 @@ public class FilterConsumer
             Filter = new RabbitMQ.Stream.Client.Filter()
             {
                 Values = new List<string>() {"Alabama"},
-                // PostFilter = message => message.ApplicationProperties["state"].Equals("Alabama"), // <1>
-                PostFilter = message => true, // <1>
+                PostFilter = message => message.ApplicationProperties["state"].Equals("Alabama"), // <1>
                 MatchUnfiltered = true // <2>
             },
             MessageHandler = (_, _, _, message) =>
