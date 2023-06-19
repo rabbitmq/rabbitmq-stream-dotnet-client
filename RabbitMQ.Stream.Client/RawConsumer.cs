@@ -80,18 +80,18 @@ namespace RabbitMQ.Stream.Client
                 throw new ArgumentException("With single active consumer, the reference must be set.");
             }
 
-            if (Filter is {PostFilter: null})
+            if (Filter is { PostFilter: null })
             {
                 throw new ArgumentException("PostFilter must be provided when Filter is set");
             }
 
-            if (Filter is {Values: null} || Filter.Values.Count == 0)
+            if (Filter is { Values: null } || Filter.Values.Count == 0)
             {
                 throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => Filter is {Values.Count: > 0};
+        internal bool IsFiltering => Filter is { Values.Count: > 0 };
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -234,7 +234,6 @@ namespace RabbitMQ.Stream.Client
                                 {
                                     var canDispatch = true;
 
-
                                     if (_config.IsFiltering)
                                     {
                                         try
@@ -247,12 +246,12 @@ namespace RabbitMQ.Stream.Client
                                         }
                                         catch (Exception e)
                                         {
-                                            _logger.LogError(e, "Error while filtering message. Message won't be dispatched." 
+                                            _logger.LogError(e, "Error while filtering message. Message won't be dispatched."
                                                                 + "Check the filter function implementation");
                                             canDispatch = false;
                                         }
                                     }
-                                    
+
                                     if (canDispatch)
                                     {
                                         await _config.MessageHandler(this,

@@ -24,31 +24,33 @@ public class FilterTest
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
-            new ConsumerConfig(system, stream) {Filter = new Filter()}
+            new ConsumerConfig(system, stream) { Filter = new Filter() }
         ));
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
-            new ConsumerConfig(system, stream) {Filter = new Filter() {Values = new List<string>()}}
+            new ConsumerConfig(system, stream) { Filter = new Filter() { Values = new List<string>() } }
         ));
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(new ConsumerConfig(system, stream)
-            {
-                Filter = new Filter() {Values = new List<string>() {"test"}, PostFilter = null}
-            }
+        {
+            Filter = new Filter() { Values = new List<string>() { "test" }, PostFilter = null }
+        }
         ));
-
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
             new ConsumerConfig(system, stream)
             {
-                Filter = new Filter() {Values = new List<string>(), PostFilter = _ => true}
+                Filter = new Filter() { Values = new List<string>(), PostFilter = _ => true }
             }
         ));
 
         await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
     }
 
-
+    // This test is checking that the filter is working as expected
+    // We send 100 messages with two different states (Alabama and New York)
+    // By using the filter we should be able to consume only the messages from Alabama 
+    // and the server has to send only one chunk with all the messages from Alabama
     [Fact]
     public async void FilterShouldReturnOnlyOneChuck()
     {
@@ -71,8 +73,8 @@ public class FilterTest
             {
                 var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {state}"))
                 {
-                    ApplicationProperties = new ApplicationProperties() {["state"] = state},
-                    Properties = new Properties() {GroupId = $"group_{i}"}
+                    ApplicationProperties = new ApplicationProperties() { ["state"] = state },
+                    Properties = new Properties() { GroupId = $"group_{i}" }
                 };
                 await producer.Send(message).ConfigureAwait(false);
                 messages.Add(message);
@@ -95,7 +97,7 @@ public class FilterTest
             // This is mandatory for enabling the filter
             Filter = new Filter()
             {
-                Values = new List<string>() {"Alabama"},
+                Values = new List<string>() { "Alabama" },
                 PostFilter =
                     _ =>
                         true, // we don't apply any post filter here to be sure that the server is doing the filtering 
@@ -133,7 +135,7 @@ public class FilterTest
             // This is mandatory for enabling the filter
             Filter = new Filter()
             {
-                Values = new List<string>() {"New York"},
+                Values = new List<string>() { "New York" },
                 PostFilter =
                     message => message.Properties.GroupId.ToString()!
                         .Equals("group_25"), // we only want the message with  group_25 ignoring the rest
@@ -156,6 +158,13 @@ public class FilterTest
         await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
     }
 
+    // This test is to test when there are errors on the filter functions
+    // producer side and consumer side. 
+    // FilterValue and PostFilter are user's functions and can throw exceptions
+    // The client must handle those exceptions and report them to the user
+    // For the producer side we have the ConfirmationHandler the messages with errors 
+    // will be reported as not confirmed and the user can handle them.
+    // for the consumer the messages will be skipped and logged with the standard logger
     [Fact]
     public async void ErrorFiltersFunctionWontDeliverTheMessage()
     {
@@ -174,7 +183,7 @@ public class FilterTest
                     if (confirmation.Status == ConfirmationStatus.Confirmed)
                         messagesConfirmed++;
                     else
-                        messagesError++;
+                        messagesError++; // we should have only one error caused by the message with id_8 On FilterValue function
 
                     if (messagesConfirmed + messagesError == ToSend)
                     {
@@ -188,6 +197,8 @@ public class FilterTest
                 {
                     if (message.Properties.MessageId!.Equals("id_8"))
                     {
+                        // we simulate an error on the filter function
+                        // the message with id_8 will be reported as not confirmed
                         throw new Exception("Simulate an error");
                     }
 
@@ -196,17 +207,16 @@ public class FilterTest
             }
         );
 
-
         for (var i = 0; i < ToSend; i++)
         {
             await producer.Send(new Message(Encoding.UTF8.GetBytes("Message: " + i))
             {
-                Properties = new Properties() {MessageId = $"id_{i}"}
+                Properties = new Properties() { MessageId = $"id_{i}" }
             }).ConfigureAwait(false);
         }
 
         Assert.True(testPassed.Task.Wait(TimeSpan.FromSeconds(5)));
-        // we should have 9 messages confirmed and 1 error
+        // we should have 9 messages confirmed and 1 error == 10
         // since we are filtering the message with id_8 and throwing an exception
         Assert.Equal(ToSend - 1, messagesConfirmed);
         Assert.Equal(1, messagesError);
@@ -216,13 +226,13 @@ public class FilterTest
         {
             OffsetSpec = new OffsetTypeFirst(),
 
-            // This is mandatory for enabling the filter
             Filter = new Filter()
             {
-                Values = new List<string>() {"id_7"},
+                Values = new List<string>() { "id_7" },
                 PostFilter =
                     message =>
                     {
+                        // We simulate an error on the post filter function
                         if (message.Properties.MessageId!.Equals("id_7"))
                             throw new Exception("Simulate an error");
 
@@ -233,7 +243,7 @@ public class FilterTest
             MessageHandler = (_, _, _, message) =>
             {
                 consumed.Add(message);
-
+                // the message message.Properties.MessageId!.Equals("id_7") will be skipped
                 return Task.CompletedTask;
             }
         }).ConfigureAwait(false);
@@ -243,6 +253,9 @@ public class FilterTest
         // function for the message with id_7
         // So we sent 10 messages. 1 error was thrown in the producer filter and 1 error in the consumer Postfilter
         Assert.Equal(8, consumed.Count);
+        
+        // No message with id_7 should be consumed
+        Assert.Empty(consumed.Where(message => message.Properties.MessageId!.Equals("id_7")).ToList());
         await producer.Close().ConfigureAwait(false);
         await consumer.Close().ConfigureAwait(false);
         await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);

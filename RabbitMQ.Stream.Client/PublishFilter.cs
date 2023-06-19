@@ -31,7 +31,6 @@ namespace RabbitMQ.Stream.Client
 
                         var additionalSize = IsFilterSet() ? WireFormatting.StringSize(filterValue) : sizeof(short);
 
-
                         size += 8 + 4 + msg.Size + additionalSize;
                     }
                     catch (Exception e)
@@ -48,7 +47,6 @@ namespace RabbitMQ.Stream.Client
         private readonly byte publisherId;
         private readonly List<(ulong, Message)> messages;
         private readonly ILogger _logger;
-
 
         private bool IsFilterSet()
         {
