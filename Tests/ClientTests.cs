@@ -414,7 +414,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ExchangeVersionEmpty()
+        public async void ExchangeVersionCommandsShouldNotBeEmpty()
         {
             var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
