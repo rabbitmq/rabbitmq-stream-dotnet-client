@@ -311,7 +311,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
+            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -665,9 +665,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] {stream};
+            var streams = new[] { stream };
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is {Count: >= 1} &&
+            return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -714,7 +714,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
+                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
             }
         }
 

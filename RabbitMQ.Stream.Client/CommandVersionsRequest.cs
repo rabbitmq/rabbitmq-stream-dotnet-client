@@ -17,12 +17,11 @@ public readonly struct CommandVersionsRequest : ICommand
         _correlationId = correlationId;
     }
 
-
     public int SizeNeeded
     {
         get
         {
-            var size = 2 + 2 + 4 
+            var size = 2 + 2 + 4
                        + 4 + // _commands.Length
                           _commands.Length * (2 + 2 + 2);
             return size;
