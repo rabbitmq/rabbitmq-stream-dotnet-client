@@ -51,7 +51,7 @@ namespace Tests
             var client = await Client.Create(clientParameters);
             var response = await client.CreateStream(stream, new Dictionary<string, string>());
             Assert.Equal(ResponseCode.Ok, response.ResponseCode);
-            var metaDataResponse = await client.QueryMetadata(new[] { stream });
+            var metaDataResponse = await client.QueryMetadata(new[] {stream});
             Assert.Equal(1, metaDataResponse.StreamInfos.Count);
             var streamInfoPair = metaDataResponse.StreamInfos.First();
             Assert.Equal(stream, streamInfoPair.Key);
@@ -62,7 +62,7 @@ namespace Tests
 
             // Test result when the Stream Does Not Exist
             const string streamNotExist = "StreamNotExist";
-            var metaDataResponseNo = await client.QueryMetadata(new[] { streamNotExist });
+            var metaDataResponseNo = await client.QueryMetadata(new[] {streamNotExist});
             Assert.Equal(1, metaDataResponseNo.StreamInfos.Count);
             var streamInfoPairNo = metaDataResponseNo.StreamInfos.First();
             Assert.Equal(streamNotExist, streamInfoPairNo.Key);
@@ -77,7 +77,7 @@ namespace Tests
         {
             var stream = Guid.NewGuid().ToString();
             var testPassed = new TaskCompletionSource<MetaDataUpdate>();
-            var clientParameters = new ClientParameters { MetadataHandler = m => testPassed.SetResult(m) };
+            var clientParameters = new ClientParameters {MetadataHandler = m => testPassed.SetResult(m)};
             var client = await Client.Create(clientParameters);
             await client.CreateStream(stream, new Dictionary<string, string>());
             Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) => { };
@@ -119,10 +119,7 @@ namespace Tests
             await client.CreateStream(stream, new Dictionary<string, string>());
             var testPassed = new TaskCompletionSource<bool>();
 
-            Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) =>
-            {
-                testPassed.SetResult(false);
-            };
+            Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) => { testPassed.SetResult(false); };
 
             Action<(ulong, ResponseCode)[]> errored = (errors) =>
             {
@@ -137,7 +134,7 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, delStream.ResponseCode);
 
             var msgData = new Message(Encoding.UTF8.GetBytes("hi"));
-            await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (100, msgData) }));
+            await client.Publish(new Publish(publisherId, new List<(ulong, Message)> {(100, msgData)}));
 
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
@@ -178,7 +175,7 @@ namespace Tests
             {
                 var msgData = new Message(Encoding.UTF8.GetBytes(
                     "asdfasdfasdfasdfljasdlfjasdlkfjalsdkfjlasdkjfalsdkjflaskdjflasdjkflkasdjflasdjflaksdjflsakdjflsakdjflasdkjflasdjflaksfdhi"));
-                await client.Publish(new Publish(publisherId, new List<(ulong, Message)> { (i, msgData) }));
+                await client.Publish(new Publish(publisherId, new List<(ulong, Message)> {(i, msgData)}));
                 if ((int)i - numConfirmed > 1000)
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(10));
@@ -298,7 +295,7 @@ namespace Tests
             for (ulong i = 0; i < 10; i++)
             {
                 await client.Publish(new Publish(publisherId,
-                    new List<(ulong, Message)> { (i, new Message(Encoding.UTF8.GetBytes("hi"))) }));
+                    new List<(ulong, Message)> {(i, new Message(Encoding.UTF8.GetBytes("hi")))}));
             }
 
             var deletePublisher = await client.DeletePublisher(publisherId);
@@ -361,7 +358,7 @@ namespace Tests
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, declarePubResp) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             await client.Publish(new Publish(publisherId,
-                new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
+                new List<(ulong, Message)> {(0, new Message(Array.Empty<byte>()))}));
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
 
             //We have not credited yet
@@ -400,7 +397,7 @@ namespace Tests
             var publisherRef = Guid.NewGuid().ToString();
             var (publisherId, _) = await client.DeclarePublisher(publisherRef, stream, _ => { }, _ => { });
             await client.Publish(new Publish(publisherId,
-                new List<(ulong, Message)> { (0, new Message(Array.Empty<byte>())) }));
+                new List<(ulong, Message)> {(0, new Message(Array.Empty<byte>()))}));
             // 1s should be enough to catch this at least some of the time
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed, false);
             await client.DeleteStream(stream);
@@ -410,10 +407,21 @@ namespace Tests
         [Fact]
         public async void VirtualHostFailureAccess()
         {
-            var clientParameters = new ClientParameters { VirtualHost = "DOES_NOT_EXIST" };
+            var clientParameters = new ClientParameters {VirtualHost = "DOES_NOT_EXIST"};
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
                 async () => { await Client.Create(clientParameters); }
             );
+        }
+
+        [Fact]
+        public async void ExchangeVersionEmpty()
+        {
+            var clientParameters = new ClientParameters { };
+            var client = await Client.Create(clientParameters);
+            var response = await client.ExchangeVersions();
+            Assert.Equal(ResponseCode.Ok, response.ResponseCode);
+            Assert.True(response.Commands.Count > 0);
+            await client.Close("done");
         }
     }
 }

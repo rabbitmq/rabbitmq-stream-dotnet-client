@@ -311,7 +311,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
+            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -362,6 +362,12 @@ namespace RabbitMQ.Stream.Client
         {
             return await Request<RouteQueryRequest, RouteQueryResponse>(corr =>
                 new RouteQueryRequest(corr, superStream, routingKey)).ConfigureAwait(false);
+        }
+
+        public async Task<CommandVersionsResponse> ExchangeVersions()
+        {
+            return await Request<CommandVersionsRequest, CommandVersionsResponse>(corr =>
+                new CommandVersionsRequest(corr)).ConfigureAwait(false);
         }
 
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
@@ -553,6 +559,10 @@ namespace RabbitMQ.Stream.Client
                     RouteQueryResponse.Read(frame, out var routeQueryResponse);
                     HandleCorrelatedResponse(routeQueryResponse);
                     break;
+                case CommandVersionsResponse.Key:
+                    CommandVersionsResponse.Read(frame, out var commandVersionsResponse);
+                    HandleCorrelatedResponse(commandVersionsResponse);
+                    break;
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
@@ -655,9 +665,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] { stream };
+            var streams = new[] {stream};
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is { Count: >= 1 } &&
+            return response.StreamInfos is {Count: >= 1} &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -704,7 +714,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
+                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
             }
         }
 
