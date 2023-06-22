@@ -364,6 +364,12 @@ namespace RabbitMQ.Stream.Client
                 new RouteQueryRequest(corr, superStream, routingKey)).ConfigureAwait(false);
         }
 
+        public async Task<CommandVersionsResponse> ExchangeVersions()
+        {
+            return await Request<CommandVersionsRequest, CommandVersionsResponse>(corr =>
+                new CommandVersionsRequest(corr)).ConfigureAwait(false);
+        }
+
         private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
             where TIn : struct, ICommand where TOut : struct, ICommand
         {
@@ -552,6 +558,10 @@ namespace RabbitMQ.Stream.Client
                 case RouteQueryResponse.Key:
                     RouteQueryResponse.Read(frame, out var routeQueryResponse);
                     HandleCorrelatedResponse(routeQueryResponse);
+                    break;
+                case CommandVersionsResponse.Key:
+                    CommandVersionsResponse.Read(frame, out var commandVersionsResponse);
+                    HandleCorrelatedResponse(commandVersionsResponse);
                     break;
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))

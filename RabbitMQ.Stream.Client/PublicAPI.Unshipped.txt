@@ -9,11 +9,33 @@ RabbitMQ.Stream.Client.AuthMechanismNotSupportedException
 RabbitMQ.Stream.Client.AuthMechanismNotSupportedException.AuthMechanismNotSupportedException(string s) -> void
 RabbitMQ.Stream.Client.Chunk.Data.get -> System.Memory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
+RabbitMQ.Stream.Client.Client.ExchangeVersions() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CommandVersionsResponse>
 RabbitMQ.Stream.Client.Client.QueryRoute(string superStream, string routingKey) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.RouteQueryResponse>
 RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.StreamStatsResponse>
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.set -> void
+RabbitMQ.Stream.Client.CommandVersions
+RabbitMQ.Stream.Client.CommandVersions.Command.get -> ushort
+RabbitMQ.Stream.Client.CommandVersions.CommandVersions(ushort command, ushort minVersion, ushort maxVersion) -> void
+RabbitMQ.Stream.Client.CommandVersions.MaxVersion.get -> ushort
+RabbitMQ.Stream.Client.CommandVersions.MinVersion.get -> ushort
+RabbitMQ.Stream.Client.CommandVersionsRequest
+RabbitMQ.Stream.Client.CommandVersionsRequest.CommandVersionsRequest() -> void
+RabbitMQ.Stream.Client.CommandVersionsRequest.CommandVersionsRequest(uint correlationId) -> void
+RabbitMQ.Stream.Client.CommandVersionsRequest.SizeNeeded.get -> int
+RabbitMQ.Stream.Client.CommandVersionsRequest.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.CommandVersionsResponse
+RabbitMQ.Stream.Client.CommandVersionsResponse.Commands.get -> System.Collections.Generic.List<RabbitMQ.Stream.Client.ICommandVersions>
+RabbitMQ.Stream.Client.CommandVersionsResponse.CommandVersionsResponse() -> void
+RabbitMQ.Stream.Client.CommandVersionsResponse.CorrelationId.get -> uint
+RabbitMQ.Stream.Client.CommandVersionsResponse.ResponseCode.get -> RabbitMQ.Stream.Client.ResponseCode
+RabbitMQ.Stream.Client.CommandVersionsResponse.SizeNeeded.get -> int
+RabbitMQ.Stream.Client.CommandVersionsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
+RabbitMQ.Stream.Client.ICommandVersions
+RabbitMQ.Stream.Client.ICommandVersions.Command.get -> ushort
+RabbitMQ.Stream.Client.ICommandVersions.MaxVersion.get -> ushort
+RabbitMQ.Stream.Client.ICommandVersions.MinVersion.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
