@@ -119,10 +119,7 @@ namespace Tests
             await client.CreateStream(stream, new Dictionary<string, string>());
             var testPassed = new TaskCompletionSource<bool>();
 
-            Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) =>
-            {
-                testPassed.SetResult(false);
-            };
+            Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) => { testPassed.SetResult(false); };
 
             Action<(ulong, ResponseCode)[]> errored = (errors) =>
             {
@@ -414,6 +411,17 @@ namespace Tests
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
                 async () => { await Client.Create(clientParameters); }
             );
+        }
+
+        [Fact]
+        public async void ExchangeVersionCommandsShouldNotBeEmpty()
+        {
+            var clientParameters = new ClientParameters { };
+            var client = await Client.Create(clientParameters);
+            var response = await client.ExchangeVersions();
+            Assert.Equal(ResponseCode.Ok, response.ResponseCode);
+            Assert.True(response.Commands.Count > 0);
+            await client.Close("done");
         }
     }
 }
