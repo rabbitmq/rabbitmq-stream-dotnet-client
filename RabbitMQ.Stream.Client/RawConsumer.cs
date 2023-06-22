@@ -82,7 +82,7 @@ namespace RabbitMQ.Stream.Client
 
             if (IsFiltering && !FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled)
             {
-                throw new ArgumentException("Broker does not support filtering");
+                throw new UnsupportedOperationException("Broker does not support filtering");
             }
 
             if (Filter is { PostFilter: null })
