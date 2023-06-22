@@ -254,7 +254,7 @@ namespace RabbitMQ.Stream.Client
             if (peerPropertiesResponse.Properties.TryGetValue("version", out var version))
             {
                 FeaturesEnabledSingleton.Instance.ParseServerVersion(version);
-                if (FeaturesEnabledSingleton.Instance.IsMore311)
+                if (FeaturesEnabledSingleton.Instance.Is311OrMore)
                 {
                     var features = await client.ExchangeVersions().ConfigureAwait(false);
                     FeaturesEnabledSingleton.Instance.ParseCommandVersions(features.Commands);

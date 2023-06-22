@@ -363,13 +363,13 @@ namespace Tests
         public void FeaturesCheckEnabledDisabled()
         {
             FeaturesEnabledSingleton.Instance.ParseServerVersion("3.9.0");
-            Assert.False(FeaturesEnabledSingleton.Instance.IsMore311);
+            Assert.False(FeaturesEnabledSingleton.Instance.Is311OrMore);
 
             FeaturesEnabledSingleton.Instance.ParseServerVersion("3.11.0");
-            Assert.True(FeaturesEnabledSingleton.Instance.IsMore311);
+            Assert.True(FeaturesEnabledSingleton.Instance.Is311OrMore);
 
             FeaturesEnabledSingleton.Instance.ParseServerVersion("3.12.1");
-            Assert.True(FeaturesEnabledSingleton.Instance.IsMore311);
+            Assert.True(FeaturesEnabledSingleton.Instance.Is311OrMore);
 
             FeaturesEnabledSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
             {

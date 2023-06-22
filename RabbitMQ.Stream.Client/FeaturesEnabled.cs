@@ -14,11 +14,11 @@ internal class FeaturesEnabled
 {
     public bool IsPublishFilterEnabled { get; private set; }
 
-    public bool IsMore311 { get; private set; }
+    public bool Is311OrMore { get; private set; }
 
     public void ParseServerVersion(string brokerVersion)
     {
-        IsMore311 = new System.Version(brokerVersion) >= new System.Version("3.11.0");
+        Is311OrMore = new System.Version(brokerVersion) >= new System.Version("3.11.0");
     }
 
     public void ParseCommandVersions(List<ICommandVersions> commands)
