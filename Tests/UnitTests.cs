@@ -358,5 +358,32 @@ namespace Tests
                 0);
             Assert.False(hBeatHandler.IsActive());
         }
+
+        [Fact]
+        public void FeaturesCheckEnabledDisabled()
+        {
+            FeaturesEnabledSingleton.Instance.ParseServerVersion("3.9.0");
+            Assert.False(FeaturesEnabledSingleton.Instance.IsMore311);
+
+            FeaturesEnabledSingleton.Instance.ParseServerVersion("3.11.0");
+            Assert.True(FeaturesEnabledSingleton.Instance.IsMore311);
+
+            FeaturesEnabledSingleton.Instance.ParseServerVersion("3.12.1");
+            Assert.True(FeaturesEnabledSingleton.Instance.IsMore311);
+
+            FeaturesEnabledSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
+            {
+                new CommandVersions(PublishFilter.Key, Consts.Version1, Consts.Version1)
+            });
+
+            Assert.False(FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled);
+
+            FeaturesEnabledSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
+            {
+                new CommandVersions(PublishFilter.Key, Consts.Version1, Consts.Version2)
+            });
+
+            Assert.True(FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled);
+        }
     }
 }

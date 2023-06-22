@@ -34,10 +34,18 @@ namespace RabbitMQ.Stream.Client
         {
             if (string.IsNullOrWhiteSpace(stream))
             {
-                throw new ArgumentException("Stream cannot be null or whitespace.", nameof(stream));
+                throw new ArgumentException("Stream cannot be null or whitespace.", nameof(Stream));
             }
 
             Stream = stream;
+        }
+
+        internal void Validate()
+        {
+            if (FilterValue != null && !FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled)
+            {
+                throw new ArgumentException("Broker does not support filtering");
+            }
         }
     }
 
@@ -103,6 +111,8 @@ namespace RabbitMQ.Stream.Client
             {
                 _client.Parameters.MetadataHandler += _config.MetadataHandler;
             }
+
+            _config.Validate();
 
             var (pubId, response) = await _client.DeclarePublisher(
                 _config.Reference,

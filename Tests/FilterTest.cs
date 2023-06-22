@@ -253,7 +253,7 @@ public class FilterTest
         // function for the message with id_7
         // So we sent 10 messages. 1 error was thrown in the producer filter and 1 error in the consumer Postfilter
         Assert.Equal(8, consumed.Count);
-        
+
         // No message with id_7 should be consumed
         Assert.Empty(consumed.Where(message => message.Properties.MessageId!.Equals("id_7")).ToList());
         await producer.Close().ConfigureAwait(false);

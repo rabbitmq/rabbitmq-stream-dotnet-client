@@ -8,9 +8,9 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct PublishFilter : ICommand
+    public readonly struct PublishFilter : ICommand, ICommandVersions
     {
-        private const ushort Key = 2;
+        internal const ushort Key = 2;
         private readonly Func<Message, string> _filterValueExtractor;
         private static byte Version => Consts.Version2;
 
@@ -112,6 +112,21 @@ namespace RabbitMQ.Stream.Client
             }
 
             return offset;
+        }
+
+        public ushort MaxVersion
+        {
+            get => Consts.Version2;
+        }
+
+        public ushort MinVersion
+        {
+            get => Consts.Version2;
+        }
+
+        public ushort Command
+        {
+            get => Key;
         }
     }
 }

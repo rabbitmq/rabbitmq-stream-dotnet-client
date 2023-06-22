@@ -80,6 +80,11 @@ namespace RabbitMQ.Stream.Client
                 throw new ArgumentException("With single active consumer, the reference must be set.");
             }
 
+            if (IsFiltering && !FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled)
+            {
+                throw new ArgumentException("Broker does not support filtering");
+            }
+
             if (Filter is { PostFilter: null })
             {
                 throw new ArgumentException("PostFilter must be provided when Filter is set");
@@ -246,8 +251,9 @@ namespace RabbitMQ.Stream.Client
                                         }
                                         catch (Exception e)
                                         {
-                                            _logger.LogError(e, "Error while filtering message. Message won't be dispatched."
-                                                                + "Check the filter function implementation");
+                                            _logger.LogError(e,
+                                                "Error while filtering message. Message won't be dispatched."
+                                                + "Check the filter function implementation");
                                             canDispatch = false;
                                         }
                                     }

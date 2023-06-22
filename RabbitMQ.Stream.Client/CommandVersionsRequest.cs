@@ -10,7 +10,8 @@ public readonly struct CommandVersionsRequest : ICommand
 {
     private const ushort Key = 0x001b;
     private readonly uint _correlationId;
-    private readonly ICommandVersions[] _commands = { };
+    private readonly ICommandVersions[] _commands = { new PublishFilter() };
+    // private readonly ICommandVersions[] _commands = {};
 
     public CommandVersionsRequest(uint correlationId)
     {
@@ -23,7 +24,7 @@ public readonly struct CommandVersionsRequest : ICommand
         {
             var size = 2 + 2 + 4
                        + 4 + // _commands.Length
-                          _commands.Length * (2 + 2 + 2);
+                       _commands.Length * (2 + 2 + 2);
             return size;
         }
     }
@@ -45,4 +46,3 @@ public readonly struct CommandVersionsRequest : ICommand
         return offset;
     }
 }
-
