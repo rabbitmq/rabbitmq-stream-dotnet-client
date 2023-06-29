@@ -42,7 +42,7 @@ namespace RabbitMQ.Stream.Client
 
         internal void Validate()
         {
-            if (FilterValue != null && !FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled)
+            if (FilterValue != null && !AvailableFeaturesSingleton.Instance.IsPublishFilterEnabled)
             {
                 throw new UnsupportedOperationException("Broker does not support filtering");
             }

@@ -11,16 +11,16 @@ namespace RabbitMQ.Stream.Client;
 /// <summary>
 /// FeaturesEnabled holds the features enabled by the server and the client.
 /// </summary>
-internal class FeaturesEnabled
+internal class AvailableFeatures
 {
     public bool IsPublishFilterEnabled { get; private set; }
 
     public bool Is311OrMore { get; private set; }
 
-    static string ExtractVersion(string fullVersion)
+    private static string ExtractVersion(string fullVersion)
     {
-        var pattern = @"(\d+\.\d+\.\d+)";
-        var match = Regex.Match(fullVersion, pattern);
+        const string Pattern = @"(\d+\.\d+\.\d+)";
+        var match = Regex.Match(fullVersion, Pattern);
 
         return match.Success
             ? match.Groups[1].Value
@@ -49,10 +49,10 @@ internal class FeaturesEnabled
     }
 }
 
-internal sealed class FeaturesEnabledSingleton
+internal sealed class AvailableFeaturesSingleton
 {
-    private static readonly Lazy<FeaturesEnabled> s_lazy =
-        new(() => new FeaturesEnabled());
+    private static readonly Lazy<AvailableFeatures> s_lazy =
+        new(() => new AvailableFeatures());
 
-    public static FeaturesEnabled Instance => s_lazy.Value;
+    public static AvailableFeatures Instance => s_lazy.Value;
 }

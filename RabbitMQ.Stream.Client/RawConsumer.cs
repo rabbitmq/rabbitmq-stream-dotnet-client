@@ -80,7 +80,7 @@ namespace RabbitMQ.Stream.Client
                 throw new ArgumentException("With single active consumer, the reference must be set.");
             }
 
-            if (IsFiltering && !FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled)
+            if (IsFiltering && !AvailableFeaturesSingleton.Instance.IsPublishFilterEnabled)
             {
                 throw new UnsupportedOperationException("Broker does not support filtering");
             }

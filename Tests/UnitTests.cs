@@ -362,28 +362,28 @@ namespace Tests
         [Fact]
         public void FeaturesCheckEnabledDisabled()
         {
-            FeaturesEnabledSingleton.Instance.ParseServerVersion("3.9.0");
-            Assert.False(FeaturesEnabledSingleton.Instance.Is311OrMore);
+            AvailableFeaturesSingleton.Instance.ParseServerVersion("3.9.0");
+            Assert.False(AvailableFeaturesSingleton.Instance.Is311OrMore);
 
-            FeaturesEnabledSingleton.Instance.ParseServerVersion("3.11.0");
-            Assert.True(FeaturesEnabledSingleton.Instance.Is311OrMore);
+            AvailableFeaturesSingleton.Instance.ParseServerVersion("3.11.0");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is311OrMore);
 
-            FeaturesEnabledSingleton.Instance.ParseServerVersion("3.12.1");
-            Assert.True(FeaturesEnabledSingleton.Instance.Is311OrMore);
+            AvailableFeaturesSingleton.Instance.ParseServerVersion("3.12.1");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is311OrMore);
 
-            FeaturesEnabledSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
+            AvailableFeaturesSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
             {
                 new CommandVersions(PublishFilter.Key, Consts.Version1, Consts.Version1)
             });
 
-            Assert.False(FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled);
+            Assert.False(AvailableFeaturesSingleton.Instance.IsPublishFilterEnabled);
 
-            FeaturesEnabledSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
+            AvailableFeaturesSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
             {
                 new CommandVersions(PublishFilter.Key, Consts.Version1, Consts.Version2)
             });
 
-            Assert.True(FeaturesEnabledSingleton.Instance.IsPublishFilterEnabled);
+            Assert.True(AvailableFeaturesSingleton.Instance.IsPublishFilterEnabled);
         }
     }
 }
