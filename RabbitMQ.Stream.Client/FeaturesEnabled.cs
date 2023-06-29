@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace RabbitMQ.Stream.Client;
 
@@ -16,9 +17,20 @@ internal class FeaturesEnabled
 
     public bool Is311OrMore { get; private set; }
 
+    static string ExtractVersion(string fullVersion)
+    {
+        var pattern = @"(\d+\.\d+\.\d+)";
+        var match = Regex.Match(fullVersion, pattern);
+
+        return match.Success
+            ? match.Groups[1].Value
+            : string.Empty;
+    }
+
     public void ParseServerVersion(string brokerVersion)
     {
-        Is311OrMore = new System.Version(brokerVersion) >= new System.Version("3.11.0");
+        var v = ExtractVersion(brokerVersion);
+        Is311OrMore = new System.Version(v) >= new System.Version("3.11.0");
     }
 
     public void ParseCommandVersions(List<ICommandVersions> commands)

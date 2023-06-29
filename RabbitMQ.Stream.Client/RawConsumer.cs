@@ -85,18 +85,16 @@ namespace RabbitMQ.Stream.Client
                 throw new UnsupportedOperationException("Broker does not support filtering");
             }
 
-            if (Filter is { PostFilter: null })
+            switch (Filter)
             {
-                throw new ArgumentException("PostFilter must be provided when Filter is set");
-            }
-
-            if (Filter is { Values: null } || Filter.Values.Count == 0)
-            {
-                throw new ArgumentException("Values must be provided when Filter is set");
+                case {PostFilter: null}:
+                    throw new ArgumentException("PostFilter must be provided when Filter is set");
+                case {Values.Count: 0}:
+                    throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => Filter is { Values.Count: > 0 };
+        internal bool IsFiltering => Filter is {Values.Count: > 0};
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;

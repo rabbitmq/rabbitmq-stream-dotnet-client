@@ -69,7 +69,7 @@ public record ProducerConfig : ReliableConfig
     /// Function used to set the value of the filter<br/>
     /// The filter enable the server to filter the messages sent to the consumer.<br/>
     /// </summary>
-    public Func<Message, string> FilterValue { get; set; } = _ => null;
+    public Func<Message, string> FilterValue { get; set; } = null;
 
     public int MaxInFlight { get; set; } = 1000;
 
