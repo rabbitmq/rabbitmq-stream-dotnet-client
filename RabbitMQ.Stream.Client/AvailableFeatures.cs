@@ -13,7 +13,7 @@ namespace RabbitMQ.Stream.Client;
 /// </summary>
 internal class AvailableFeatures
 {
-    public bool IsPublishFilterEnabled { get; private set; }
+    public bool PublishFilter { get; private set; }
 
     public bool Is311OrMore { get; private set; }
 
@@ -27,7 +27,7 @@ internal class AvailableFeatures
             : string.Empty;
     }
 
-    public void ParseServerVersion(string brokerVersion)
+    public void SetServerVersion(string brokerVersion)
     {
         var v = ExtractVersion(brokerVersion);
         Is311OrMore = new System.Version(v) >= new System.Version("3.11.0");
@@ -39,9 +39,9 @@ internal class AvailableFeatures
         {
             switch (command.Command)
             {
-                case PublishFilter.Key:
+                case Stream.Client.PublishFilter.Key:
                     var p = new PublishFilter();
-                    IsPublishFilterEnabled = command.MinVersion <= p.MinVersion &&
+                    PublishFilter = command.MinVersion <= p.MinVersion &&
                                              command.MaxVersion >= p.MaxVersion;
                     break;
             }

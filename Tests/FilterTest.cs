@@ -24,26 +24,29 @@ public class FilterTest
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
-            new ConsumerConfig(system, stream) { Filter = new Filter() }
+            new ConsumerConfig(system, stream) { Filter = new ConsumerFilter() }
         ));
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
-            new ConsumerConfig(system, stream) { Filter = new Filter() { Values = new List<string>() } }
+            new ConsumerConfig(system, stream) { Filter = new ConsumerFilter() { Values = new List<string>() } }
         ));
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(new ConsumerConfig(system, stream)
         {
-            Filter = new Filter() { Values = new List<string>() { "test" }, PostFilter = null }
+            Filter = new ConsumerFilter() { Values = new List<string>() { "test" }, PostFilter = null }
         }
         ));
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
             new ConsumerConfig(system, stream)
             {
-                Filter = new Filter() { Values = new List<string>(), PostFilter = _ => true }
+                Filter = new ConsumerFilter() { Values = new List<string>(), PostFilter = _ => true }
             }
         ));
 
+        var c = await Consumer.Create(new ConsumerConfig(system, stream));
+        Assert.NotNull(c);
+        await c.Close();
         await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
     }
 
@@ -59,8 +62,11 @@ public class FilterTest
         var producer = await Producer.Create(
             new ProducerConfig(system, stream)
             {
-                // define the producer filter 
-                FilterValue = message => message.ApplicationProperties["state"].ToString(),
+                Filter = new ProducerFilter()
+                {
+                    // define the producer filter 
+                    FilterValue = message => message.ApplicationProperties["state"].ToString(),
+                }
             }
         );
 
@@ -95,7 +101,7 @@ public class FilterTest
             OffsetSpec = new OffsetTypeFirst(),
 
             // This is mandatory for enabling the filter
-            Filter = new Filter()
+            Filter = new ConsumerFilter()
             {
                 Values = new List<string>() { "Alabama" },
                 PostFilter =
@@ -133,7 +139,7 @@ public class FilterTest
             OffsetSpec = new OffsetTypeFirst(),
 
             // This is mandatory for enabling the filter
-            Filter = new Filter()
+            Filter = new ConsumerFilter()
             {
                 Values = new List<string>() { "New York" },
                 PostFilter =
@@ -193,16 +199,19 @@ public class FilterTest
                     await Task.CompletedTask.ConfigureAwait(false);
                 },
                 // define the producer filter 
-                FilterValue = message =>
+                Filter = new ProducerFilter()
                 {
-                    if (message.Properties.MessageId!.Equals("id_8"))
+                    FilterValue = message =>
                     {
-                        // we simulate an error on the filter function
-                        // the message with id_8 will be reported as not confirmed
-                        throw new Exception("Simulate an error");
-                    }
+                        if (message.Properties.MessageId!.Equals("id_8"))
+                        {
+                            // we simulate an error on the filter function
+                            // the message with id_8 will be reported as not confirmed
+                            throw new Exception("Simulate an error");
+                        }
 
-                    return message.Properties.MessageId.ToString();
+                        return message.Properties.MessageId.ToString();
+                    }
                 }
             }
         );
@@ -225,8 +234,7 @@ public class FilterTest
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
             OffsetSpec = new OffsetTypeFirst(),
-
-            Filter = new Filter()
+            Filter = new ConsumerFilter()
             {
                 Values = new List<string>() { "id_7" },
                 PostFilter =

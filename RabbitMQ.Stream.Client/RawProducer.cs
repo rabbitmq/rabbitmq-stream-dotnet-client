@@ -42,7 +42,7 @@ namespace RabbitMQ.Stream.Client
 
         internal void Validate()
         {
-            if (FilterValue != null && !AvailableFeaturesSingleton.Instance.IsPublishFilterEnabled)
+            if (Filter is { FilterValue: not null } && !AvailableFeaturesSingleton.Instance.PublishFilter)
             {
                 throw new UnsupportedOperationException("Broker does not support filtering");
             }
@@ -150,7 +150,7 @@ namespace RabbitMQ.Stream.Client
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 
-        private bool IsFilteringEnabled => _config.FilterValue != null;
+        private bool IsFilteringEnabled => _config.Filter is { FilterValue: not null };
 
         /// <summary>
         /// SubEntry Batch send: Aggregate more messages under the same publishingId.
@@ -227,7 +227,7 @@ namespace RabbitMQ.Stream.Client
             switch (IsFilteringEnabled)
             {
                 case true:
-                    await _client.Publish(new PublishFilter(_publisherId, messages, _config.FilterValue, _logger))
+                    await _client.Publish(new PublishFilter(_publisherId, messages, _config.Filter.FilterValue, _logger))
                         .ConfigureAwait(false);
                     break;
                 case false:

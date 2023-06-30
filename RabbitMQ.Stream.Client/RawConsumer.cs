@@ -54,7 +54,7 @@ namespace RabbitMQ.Stream.Client
         public Func<bool, Task<IOffsetType>> ConsumerUpdateHandler { get; }
     }
 
-    public record Filter
+    public record ConsumerFilter
     {
         public List<string> Values { get; set; }
         public bool MatchUnfiltered { get; set; }
@@ -80,21 +80,21 @@ namespace RabbitMQ.Stream.Client
                 throw new ArgumentException("With single active consumer, the reference must be set.");
             }
 
-            if (IsFiltering && !AvailableFeaturesSingleton.Instance.IsPublishFilterEnabled)
+            if (IsFiltering && !AvailableFeaturesSingleton.Instance.PublishFilter)
             {
                 throw new UnsupportedOperationException("Broker does not support filtering");
             }
 
-            switch (Filter)
+            switch (ConsumerFilter)
             {
-                case {PostFilter: null}:
+                case { PostFilter: null }:
                     throw new ArgumentException("PostFilter must be provided when Filter is set");
-                case {Values.Count: 0}:
+                case { Values.Count: 0 }:
                     throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => Filter is {Values.Count: > 0};
+        internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -245,7 +245,7 @@ namespace RabbitMQ.Stream.Client
                                             // and can go in error for several reasons
                                             // here we decided to catch the exception and
                                             // log it. The message won't be dispatched
-                                            canDispatch = _config.Filter.PostFilter(message);
+                                            canDispatch = _config.ConsumerFilter.PostFilter(message);
                                         }
                                         catch (Exception e)
                                         {
@@ -428,14 +428,14 @@ namespace RabbitMQ.Stream.Client
             if (_config.IsFiltering)
             {
                 var i = 0;
-                foreach (var filterValue in _config.Filter.Values)
+                foreach (var filterValue in _config.ConsumerFilter.Values)
                 {
                     var k = Consts.SubscriptionPropertyFilterPrefix + i++;
                     consumerProperties[k] = filterValue;
                 }
 
                 consumerProperties[Consts.SubscriptionPropertyMatchUnfiltered] =
-                    _config.Filter.MatchUnfiltered.ToString().ToLower();
+                    _config.ConsumerFilter.MatchUnfiltered.ToString().ToLower();
             }
 
             if (_config.IsSingleActiveConsumer)

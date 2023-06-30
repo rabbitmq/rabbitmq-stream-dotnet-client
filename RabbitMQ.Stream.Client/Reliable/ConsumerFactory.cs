@@ -50,7 +50,7 @@ public abstract class ConsumerFactory : ReliableBase
             IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
             InitialCredits = _consumerConfig.InitialCredits,
             OffsetSpec = offsetSpec,
-            Filter = _consumerConfig.Filter,
+            ConsumerFilter = _consumerConfig.Filter,
             ConnectionClosedHandler = async _ =>
             {
                 await TryToReconnect(_consumerConfig.ReconnectStrategy).ConfigureAwait(false);
@@ -109,7 +109,7 @@ public abstract class ConsumerFactory : ReliableBase
                 ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
                 IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
                 InitialCredits = _consumerConfig.InitialCredits,
-                Filter = _consumerConfig.Filter,
+                ConsumerFilter = _consumerConfig.Filter,
                 OffsetSpec = offsetSpecs,
                 MessageHandler = async (stream, consumer, ctx, message) =>
                 {

@@ -36,7 +36,7 @@ public class FilterSuperStreamConsumer
             IsSuperStream = true,
 
             // This is mandatory for enabling the filter
-            Filter = new RabbitMQ.Stream.Client.Filter()
+            Filter = new RabbitMQ.Stream.Client.ConsumerFilter()
             {
                 Values = new List<string>() {"Alabama"},
                 // PostFilter = message => message.ApplicationProperties["state"].Equals("Alabama"), // <1>

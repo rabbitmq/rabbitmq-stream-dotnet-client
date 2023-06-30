@@ -69,6 +69,11 @@ public interface IProducer
     public int PendingCount { get; }
 }
 
+public record ProducerFilter
+{
+    public Func<Message, string> FilterValue { get; set; } = null;
+}
+
 public record IProducerConfig : INamedEntity
 {
     public string Reference { get; set; }
@@ -85,5 +90,8 @@ public record IProducerConfig : INamedEntity
     /// </summary>
     public int MessagesBufferSize { get; set; } = 100;
 
-    public Func<Message, string> FilterValue { get; set; } = _ => null;
+    /// <summary>
+    /// Filter enables the chunk filter feature.
+    /// </summary>
+    public ProducerFilter Filter { get; set; } = null;
 }

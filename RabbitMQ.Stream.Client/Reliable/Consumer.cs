@@ -110,7 +110,7 @@ public record ConsumerConfig : ReliableConfig
     /// The filter applied is a bloom filter, so there is a possibility of false positives.
     /// The PostFilter helps to avoid false positives.
     /// </summary>
-    public Filter Filter { get; set; } = null;
+    public ConsumerFilter Filter { get; set; } = null;
 
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {

@@ -26,23 +26,27 @@ public class FilterSuperStreamProducer
 
         var config = new StreamSystemConfig();
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
-        loggerMain.LogInformation("FilterSuperStreamProducer connected to RabbitMQ. StreamName {StreamName}", streamName);
+        loggerMain.LogInformation("FilterSuperStreamProducer connected to RabbitMQ. StreamName {StreamName}",
+            streamName);
 
         var producer = await Producer.Create(new ProducerConfig(system, streamName)
         {
             // tag::producer-filter[]
-            SuperStreamConfig = new SuperStreamConfig()
-            {
-              Routing  = message => message.Properties.GroupId.ToString()
-            },
+            SuperStreamConfig = new SuperStreamConfig() {Routing = message => message.Properties.GroupId.ToString()},
+
 
             // This is mandatory for enabling the filter
-            FilterValue = message => message.ApplicationProperties["state"].ToString(), // <1>
+
+            Filter = new ProducerFilter()
+            {
+                FilterValue = message => message.ApplicationProperties["state"].ToString(), // <1>
+            }
             // end::producer-filter[]
         }).ConfigureAwait(false);
 
 
         const int ToSend = 100;
+
         async Task SendTo(string state, string groupId)
         {
             var messages = new List<Message>();
@@ -50,15 +54,8 @@ public class FilterSuperStreamProducer
             {
                 var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {state}"))
                 {
-                    Properties = new Properties()
-                    {
-                        GroupId = groupId,
-                    },
-                    
-                    ApplicationProperties = new ApplicationProperties()
-                    {
-                        ["state"] = state 
-                    }
+                    Properties = new Properties() {GroupId = groupId,},
+                    ApplicationProperties = new ApplicationProperties() {["state"] = state}
                 };
                 await producer.Send(message).ConfigureAwait(false);
                 messages.Add(message);
@@ -66,13 +63,13 @@ public class FilterSuperStreamProducer
 
             await producer.Send(messages).ConfigureAwait(false);
         }
-        
-        
+
+
         // Send the first 200 messages with state "New York"
         // then we wait a bit to be sure that all the messages will go in a chuck
         await SendTo("New York", "NewYorkGroup").ConfigureAwait(false);
         loggerMain.LogInformation("Sent: {MessagesSent} - filter value: {FilerValue}", ToSend * 2, "New York");
-        
+
         // Wait a bit to be sure that all the messages will go in a chuck
         await Task.Delay(2000).ConfigureAwait(false);
 

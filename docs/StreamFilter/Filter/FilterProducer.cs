@@ -34,11 +34,15 @@ public class FilterProducer
             // tag::producer-filter[]
 
             // This is mandatory for enabling the filter
-            FilterValue = message => message.ApplicationProperties["state"].ToString(), // <1>
+            Filter = new ProducerFilter()
+            {
+                FilterValue = message => message.ApplicationProperties["state"].ToString(), // <1>
+            }
             // end::producer-filter[]
         }).ConfigureAwait(false);
 
         const int ToSend = 100;
+
         async Task SendTo(string state)
         {
             var messages = new List<Message>();
@@ -46,10 +50,7 @@ public class FilterProducer
             {
                 var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {state}"))
                 {
-                    ApplicationProperties = new ApplicationProperties()
-                    {
-                        ["state"] = state 
-                    }
+                    ApplicationProperties = new ApplicationProperties() {["state"] = state}
                 };
                 await producer.Send(message).ConfigureAwait(false);
                 messages.Add(message);
@@ -57,7 +58,7 @@ public class FilterProducer
 
             await producer.Send(messages).ConfigureAwait(false);
         }
-        
+
         // Send the first 200 messages with state "New York"
         // then we wait a bit to be sure that all the messages will go in a chuck
         await SendTo("New York").ConfigureAwait(false);
