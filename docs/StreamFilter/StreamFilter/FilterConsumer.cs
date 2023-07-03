@@ -8,23 +8,24 @@ using RabbitMQ.Stream.Client.Reliable;
 
 namespace Filter;
 
-public class FilterSuperStreamConsumer
+public class FilterConsumer
 {
     public static async Task Start(string streamName)
     {
         var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddSimpleConsole();
-            builder.AddFilter("RabbitMQ.Stream", LogLevel.Debug);
+            builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
         });
 
         var logger = loggerFactory.CreateLogger<Consumer>();
-        var loggerMain = loggerFactory.CreateLogger<FilterSuperStreamConsumer>();
+        var loggerMain = loggerFactory.CreateLogger<FilterConsumer>();
 
 
         var config = new StreamSystemConfig();
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
-        loggerMain.LogInformation("FilterSuperStreamConsumer connected to RabbitMQ. StreamName {StreamName}", streamName);
+        await system.CreateStream(new StreamSpec(streamName)).ConfigureAwait(false);
+        loggerMain.LogInformation("FilterConsumer connected to RabbitMQ. StreamName {StreamName}", streamName);
 
 
         // tag::consumer-filter[]
@@ -33,14 +34,12 @@ public class FilterSuperStreamConsumer
         var consumer = await Consumer.Create(new ConsumerConfig(system, streamName)
         {
             OffsetSpec = new OffsetTypeFirst(),
-            IsSuperStream = true,
 
             // This is mandatory for enabling the filter
-            Filter = new RabbitMQ.Stream.Client.ConsumerFilter()
+            Filter = new ConsumerFilter()
             {
                 Values = new List<string>() {"Alabama"},
-                // PostFilter = message => message.ApplicationProperties["state"].Equals("Alabama"), // <1>
-                PostFilter = message => true, // <1>
+                PostFilter = message => message.ApplicationProperties["state"].Equals("Alabama"), // <1>
                 MatchUnfiltered = true // <2>
             },
             MessageHandler = (_, _, _, message) =>
@@ -50,8 +49,8 @@ public class FilterSuperStreamConsumer
                 return Task.CompletedTask;
             }
             // end::consumer-filter[]
-        }, logger).ConfigureAwait(false);
-
+        }).ConfigureAwait(false);
+        
         await Task.Delay(2000).ConfigureAwait(false);
         await consumer.Close().ConfigureAwait(false);
         await system.Close().ConfigureAwait(false);

@@ -71,6 +71,10 @@ public interface IProducer
 
 public record ProducerFilter
 {
+    /// <summary>
+    /// FilterValue is a function that returns the filter value.
+    /// It is executed for each message.
+    /// </summary>
     public Func<Message, string> FilterValue { get; set; } = null;
 }
 
