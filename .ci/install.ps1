@@ -35,7 +35,9 @@ Write-Host "[INFO] Installing Erlang to $erlang_install_dir..."
 & $erlang_installer_path '/S' "/D=$erlang_install_dir" | Out-Null
 
 $rabbitmq_installer_download_url = "https://github.com/rabbitmq/rabbitmq-server/releases/download/v$rabbitmq_ver/rabbitmq-server-$rabbitmq_ver.exe"
-$rabbitmq_installer_path = Join-Path -Path $base_installers_dir -ChildPath "rabbitmq-server-$rabbitmq_ver.exe"
+# $rabbitmq_installer_path = Join-Path -Path $base_installers_dir -ChildPath "rabbitmq-server-$rabbitmq_ver.exe"
+$rabbitmq_installer_path = [IO.Path]::Combine($base_installers_dir, 'rabbitmq-server-$rabbitmq_ver.exe')
+Write-Host "[INFO] rabbitmq installer path $rabbitmq_installer_path"
 
 $erlang_reg_path = 'HKLM:\SOFTWARE\Ericsson\Erlang'
 if (Test-Path 'HKLM:\SOFTWARE\WOW6432Node\')
