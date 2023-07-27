@@ -10,6 +10,7 @@ Write-Host "[INFO] versions: $versions"
 $erlang_ver = $versions.erlang
 $rabbitmq_ver = $versions.rabbitmq
 
+
 $base_installers_dir = Join-Path -Path $HOME -ChildPath 'installers'
 if (-Not (Test-Path $base_installers_dir))
 {
@@ -35,8 +36,7 @@ Write-Host "[INFO] Installing Erlang to $erlang_install_dir..."
 & $erlang_installer_path '/S' "/D=$erlang_install_dir" | Out-Null
 
 $rabbitmq_installer_download_url = "https://github.com/rabbitmq/rabbitmq-server/releases/download/v$rabbitmq_ver/rabbitmq-server-$rabbitmq_ver.exe"
-# $rabbitmq_installer_path = Join-Path -Path $base_installers_dir -ChildPath "rabbitmq-server-$rabbitmq_ver.exe"
-$rabbitmq_installer_path = [IO.Path]::Combine($base_installers_dir, 'rabbitmq-server-$rabbitmq_ver.exe')
+$rabbitmq_installer_path = Join-Path -Path $base_installers_dir -ChildPath "rabbitmq-server-$rabbitmq_ver.exe"
 Write-Host "[INFO] rabbitmq installer path $rabbitmq_installer_path"
 
 $erlang_reg_path = 'HKLM:\SOFTWARE\Ericsson\Erlang'
@@ -96,7 +96,14 @@ if (Test-Path 'HKLM:\SOFTWARE\WOW6432Node\')
 $rabbitmq_base_path = Split-Path -Parent (Get-ItemProperty $regPath 'UninstallString').UninstallString
 $rabbitmq_version = (Get-ItemProperty $regPath "DisplayVersion").DisplayVersion
 
+$pattern = '\b\d+\.\d+\.\d+(-[\w\d]+(\.\d+)?)?\b'
+$rabbitmq_version = [Regex]::Match($rabbitmq_version, $pattern)
+Write-Host '[INFO] RabbitMQ version $rabbitmq_version'
+
+
 $rabbitmq_home = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$rabbitmq_version"
+
+
 Write-Host "[INFO] Setting RABBITMQ_HOME to '$rabbitmq_home'..."
 [Environment]::SetEnvironmentVariable('RABBITMQ_HOME', $rabbitmq_home, 'Machine')
 $env:RABBITMQ_HOME = $rabbitmq_home
