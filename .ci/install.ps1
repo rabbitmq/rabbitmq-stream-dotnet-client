@@ -96,7 +96,7 @@ if (Test-Path 'HKLM:\SOFTWARE\WOW6432Node\')
 $rabbitmq_base_path = Split-Path -Parent (Get-ItemProperty $regPath 'UninstallString').UninstallString
 $rabbitmq_version = (Get-ItemProperty $regPath "DisplayVersion").DisplayVersion
 
-$pattern = '\b\d+\.\d+\.\d+(-[\w\d]+(\.\d+)?)?\b'
+$pattern = '\b\d+\.\d+\.\d+\b'
 $matches = [Regex]::Match($rabbitmq_version, $pattern)
 
 # Output the SemVer version
