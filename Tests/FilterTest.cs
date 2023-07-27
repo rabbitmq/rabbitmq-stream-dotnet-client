@@ -210,7 +210,7 @@ public class FilterTest
                             throw new Exception("Simulate an error");
                         }
 
-                        return message.Properties.MessageId.ToString();
+                        return "my_filter";
                     }
                 }
             }
@@ -236,12 +236,12 @@ public class FilterTest
             OffsetSpec = new OffsetTypeFirst(),
             Filter = new ConsumerFilter()
             {
-                Values = new List<string>() { "id_3" },
+                Values = new List<string>() { "my_filter" },// at this level we don't care about the filter value
                 PostFilter =
                     message =>
                     {
                         // We simulate an error on the post filter function
-                        if (message.Properties.MessageId!.Equals("id_3"))
+                        if (message.Properties.MessageId!.Equals("id_2"))
                             throw new Exception("Simulate an error");
 
                         return true;
@@ -251,7 +251,7 @@ public class FilterTest
             MessageHandler = (_, _, _, message) =>
             {
                 consumed.Add(message);
-                // the message message.Properties.MessageId!.Equals("id_7") will be skipped
+                // the message message.Properties.MessageId!.Equals("id_2") will be skipped
                 return Task.CompletedTask;
             }
         }).ConfigureAwait(false);
