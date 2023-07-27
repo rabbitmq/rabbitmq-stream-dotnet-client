@@ -97,19 +97,29 @@ $rabbitmq_base_path = Split-Path -Parent (Get-ItemProperty $regPath 'UninstallSt
 $rabbitmq_version = (Get-ItemProperty $regPath "DisplayVersion").DisplayVersion
 
 $pattern = '\b\d+\.\d+\.\d+(-[\w\d]+(\.\d+)?)?\b'
-$rabbitmq_version = [Regex]::Match($rabbitmq_version, $pattern)
-Write-Host '[INFO] RabbitMQ version $rabbitmq_version'
+$matches = [Regex]::Match($rabbitmq_version, $pattern)
+
+# Output the SemVer version
+if ($matches.Success) {
+    $semverVersion = $matches.Value
+    Write-Host "Extracted SemVer version: $semverVersion"
+} else {
+    Write-Host "No SemVer version found in the input string."
+}
 
 
-$rabbitmq_home = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$rabbitmq_version"
+Write-Host "[INFO] RabbitMQ version $semverVersion"
+
+
+$rabbitmq_home = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$semverVersion"
 
 
 Write-Host "[INFO] Setting RABBITMQ_HOME to '$rabbitmq_home'..."
 [Environment]::SetEnvironmentVariable('RABBITMQ_HOME', $rabbitmq_home, 'Machine')
 $env:RABBITMQ_HOME = $rabbitmq_home
 
-$rabbitmqctl_path = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$rabbitmq_version" | Join-Path -ChildPath 'sbin' | Join-Path -ChildPath 'rabbitmqctl.bat'
-$rabbitmq_plugins_path = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$rabbitmq_version" | Join-Path -ChildPath 'sbin' | Join-Path -ChildPath 'rabbitmq-plugins.bat'
+$rabbitmqctl_path = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$semverVersion" | Join-Path -ChildPath 'sbin' | Join-Path -ChildPath 'rabbitmqctl.bat'
+$rabbitmq_plugins_path = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$semverVersion" | Join-Path -ChildPath 'sbin' | Join-Path -ChildPath 'rabbitmq-plugins.bat'
 
 Write-Host "[INFO] Setting RABBITMQ_RABBITMQCTL_PATH to '$rabbitmqctl_path'..."
 $env:RABBITMQ_RABBITMQCTL_PATH = $rabbitmqctl_path
