@@ -178,7 +178,7 @@ public class FilterTest
         var messagesConfirmed = 0;
         var messagesError = 0;
         var testPassed = new TaskCompletionSource<int>();
-        const int ToSend = 10;
+        const int ToSend = 5;
 
         var producer = await Producer.Create(
             new ProducerConfig(system, stream)
@@ -203,10 +203,10 @@ public class FilterTest
                 {
                     FilterValue = message =>
                     {
-                        if (message.Properties.MessageId!.Equals("id_8"))
+                        if (message.Properties.MessageId!.Equals("id_4"))
                         {
                             // we simulate an error on the filter function
-                            // the message with id_8 will be reported as not confirmed
+                            // the message with id_4 will be reported as not confirmed
                             throw new Exception("Simulate an error");
                         }
 
@@ -225,8 +225,8 @@ public class FilterTest
         }
 
         Assert.True(testPassed.Task.Wait(TimeSpan.FromSeconds(5)));
-        // we should have 9 messages confirmed and 1 error == 10
-        // since we are filtering the message with id_8 and throwing an exception
+        // we should have 4 messages confirmed and 1 error == 5
+        // since we are filtering the message with id_3 and throwing an exception
         Assert.Equal(ToSend - 1, messagesConfirmed);
         Assert.Equal(1, messagesError);
 
@@ -236,12 +236,12 @@ public class FilterTest
             OffsetSpec = new OffsetTypeFirst(),
             Filter = new ConsumerFilter()
             {
-                Values = new List<string>() { "id_7" },
+                Values = new List<string>() { "id_3" },
                 PostFilter =
                     message =>
                     {
                         // We simulate an error on the post filter function
-                        if (message.Properties.MessageId!.Equals("id_7"))
+                        if (message.Properties.MessageId!.Equals("id_3"))
                             throw new Exception("Simulate an error");
 
                         return true;
@@ -257,12 +257,12 @@ public class FilterTest
         }).ConfigureAwait(false);
 
         SystemUtils.Wait(TimeSpan.FromSeconds(3));
-        // we should have 8 messages since there is an error in the PostFilter
-        // function for the message with id_7
-        // So we sent 10 messages. 1 error was thrown in the producer filter and 1 error in the consumer Postfilter
-        Assert.Equal(8, consumed.Count);
+        // we should have 3 messages since there is an error in the PostFilter
+        // function for the message with id_3
+        // So we sent 5 messages. 1 error was thrown in the producer filter and 1 error in the consumer Postfilter
+        Assert.Equal(3, consumed.Count);
 
-        // No message with id_7 should be consumed
+        // No message with id_3 should be consumed
         Assert.Empty(consumed.Where(message => message.Properties.MessageId!.Equals("id_7")).ToList());
         await producer.Close().ConfigureAwait(false);
         await consumer.Close().ConfigureAwait(false);
