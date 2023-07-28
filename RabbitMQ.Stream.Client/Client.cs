@@ -261,13 +261,14 @@ namespace RabbitMQ.Stream.Client
                 }
                 else
                 {
-                    logger?.LogWarning(
-                        "Server version is less than 3.11.0, command version negotiation is not supported");
+                    logger?.LogInformation(
+                        "Server version is less than 3.11.0, skipping command version exchange");
                 }
             }
             else
             {
-                logger?.LogWarning("Server version is not provided, command version negotiation is not supported");
+                logger?.LogInformation(
+                    "Server version is less than 3.11.0, skipping command version exchange");
             }
 
             client.correlationId = 100;

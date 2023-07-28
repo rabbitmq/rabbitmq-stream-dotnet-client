@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 namespace RabbitMQ.Stream.Client;
 
 /// <summary>
-/// FeaturesEnabled holds the features enabled by the server and the client.
+/// AvailableFeatures holds the features enabled by the server and the client.
 /// </summary>
 internal class AvailableFeatures
 {
@@ -42,7 +42,7 @@ internal class AvailableFeatures
                 case Stream.Client.PublishFilter.Key:
                     var p = new PublishFilter();
                     PublishFilter = command.MinVersion <= p.MinVersion &&
-                                             command.MaxVersion >= p.MaxVersion;
+                                    command.MaxVersion >= p.MaxVersion;
                     break;
             }
         }

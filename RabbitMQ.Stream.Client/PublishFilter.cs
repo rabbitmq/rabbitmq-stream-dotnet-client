@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
-    public readonly struct PublishFilter : ICommand, ICommandVersions
+    public struct PublishFilter : ICommand, ICommandVersions
     {
         internal const ushort Key = 2;
         private readonly Func<Message, string> _filterValueExtractor;
@@ -18,8 +18,8 @@ namespace RabbitMQ.Stream.Client
         {
             get
             {
-                var size = 9; // pre amble 
-                foreach (var (_, msg) in messages)
+                var size = 9; // preamble 
+                foreach (var (publishingId, msg) in messages)
                 {
                     try
                     {
@@ -35,8 +35,13 @@ namespace RabbitMQ.Stream.Client
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e, "Error calculate size for the filter message. Message won't be sent"
-                                            + "Check the filter value function");
+                        // The only reason here is that the filterValueExtractor throws an exception
+                        // we decide to skip the message and log the error
+                        // The user should be aware of this and make sure the function is safe
+                        MessageCount--; // <-- exclude the message from the count
+                        _logger.LogError(e,
+                            "Error calculate size for the filter message. Message with id {PublishingId} won't be sent"
+                            + "Suggestion: review the filter value function", publishingId);
                     }
                 }
 
@@ -53,7 +58,7 @@ namespace RabbitMQ.Stream.Client
             return _filterValueExtractor != null;
         }
 
-        private int MessageCount { get; }
+        private int MessageCount { get; set; }
 
         public PublishFilter(byte publisherId, List<(ulong, Message)> messages,
             Func<Message, string> filterValueExtractor, ILogger logger)
@@ -70,7 +75,8 @@ namespace RabbitMQ.Stream.Client
             var offset = WireFormatting.WriteUInt16(span, Key);
             offset += WireFormatting.WriteUInt16(span[offset..], Version);
             offset += WireFormatting.WriteByte(span[offset..], publisherId);
-            // this assumes we never write an empty publish frame
+            // Message count by default is the number of messages
+            // In case of filter cloud be less in case of _filterValueExtractor throws an exception
             offset += WireFormatting.WriteInt32(span[offset..], MessageCount);
             foreach (var (publishingId, msg) in messages)
             {
@@ -106,8 +112,12 @@ namespace RabbitMQ.Stream.Client
                     // If there is an error on _filterValueExtractor we skip the message.
                     // If there is an error on _filterValueExtractor the buffer here is still consistent.
                     // so we can skip and continue
-                    _logger.LogError(e, "Error writing the filter message. Message won't be sent"
-                                        + "Check the filter value function");
+
+                    // the MessageCount is safe here since it was decremented before.
+                    // See the SizeNeeded property
+
+                    _logger.LogError(e, "Error writing the filter message. Message with id {PublishingId} won't be sent"
+                                        + "Suggestion: review the filter value function", publishingId);
                 }
             }
 

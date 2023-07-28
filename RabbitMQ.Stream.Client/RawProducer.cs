@@ -224,15 +224,15 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
-            switch (IsFilteringEnabled)
+            if (IsFilteringEnabled)
             {
-                case true:
-                    await _client.Publish(new PublishFilter(_publisherId, messages, _config.Filter.FilterValue, _logger))
-                        .ConfigureAwait(false);
-                    break;
-                case false:
-                    await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
-                    break;
+                await _client.Publish(new PublishFilter(_publisherId, messages, _config.Filter.FilterValue,
+                        _logger))
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
             }
 
             if (clearMessagesList)
