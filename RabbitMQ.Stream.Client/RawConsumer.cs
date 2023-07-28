@@ -250,8 +250,9 @@ namespace RabbitMQ.Stream.Client
                                         catch (Exception e)
                                         {
                                             _logger.LogError(e,
-                                                "Error while filtering message. Message won't be dispatched."
-                                                + "Check the filter function implementation");
+                                                "Error while filtering message. Message  with offset {MessageOffset} won't be dispatched."
+                                                + "Suggestion: review the PostFilter value function",
+                                                message.MessageOffset);
                                             canDispatch = false;
                                         }
                                     }
