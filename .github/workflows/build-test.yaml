@@ -76,6 +76,6 @@ jobs:
       - name: Verify
         run: dotnet format ./rabbitmq-stream-dotnet-client.sln --no-restore --verbosity=diagnostic --verify-no-changes
       - name: Test
-        run: dotnet test ./Build.csproj --no-build --logger "console;verbosity=detailed" /p:AltCover=true
+        run: dotnet test ./Build.csproj --no-build --logger "console;verbosity=detailed" /p:AltCover=true /p:AltCoverStrongNameKey=${{github.workspace}}/rabbit.snk
       - name: Upload code coverage to Codecov
         run: bash <(curl -s https://codecov.io/bash)

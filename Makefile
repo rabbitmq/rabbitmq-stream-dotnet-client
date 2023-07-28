@@ -7,7 +7,7 @@ build:
 	dotnet build $(CURDIR)/Build.csproj
 
 test: build
-	dotnet test $(CURDIR)/Tests/Tests.csproj --no-build --logger "console;verbosity=detailed" /p:AltCover=true
+	dotnet test $(CURDIR)/Tests/Tests.csproj --no-build --logger "console;verbosity=detailed" /p:AltCover=true /p:AltCoverStrongNameKey=$(CURDIR)/rabbit.snk
 
 rabbitmq-server:
 	docker run -it --rm --name rabbitmq-stream-docker \
