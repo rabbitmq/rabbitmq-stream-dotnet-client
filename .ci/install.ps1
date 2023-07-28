@@ -96,30 +96,23 @@ if (Test-Path 'HKLM:\SOFTWARE\WOW6432Node\')
 $rabbitmq_base_path = Split-Path -Parent (Get-ItemProperty $regPath 'UninstallString').UninstallString
 $rabbitmq_version = (Get-ItemProperty $regPath "DisplayVersion").DisplayVersion
 
-$pattern = '\b\d+\.\d+\.\d+\b'
-$matches = [Regex]::Match($rabbitmq_version, $pattern)
-
-# Output the SemVer version
-if ($matches.Success) {
-    $semverVersion = $matches.Value
-    Write-Host "Extracted SemVer version: $semverVersion"
-} else {
-    Write-Host "No SemVer version found in the input string."
-}
 
 
-Write-Host "[INFO] RabbitMQ version $semverVersion"
+Write-Host "[INFO] RabbitMQ version path: $rabbitmq_base_path  and version: $rabbitmq_version"
 
+## we have to remove the double quote added here
+## https://github.com/rabbitmq/rabbitmq-packaging/commit/4476a3489f80658b31c0b58a6a04314c9d7acf72
+$rabbitmq_base_path = $rabbitmq_base_path -replace '"', ''
 
-$rabbitmq_home = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$semverVersion"
+$rabbitmq_home = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$rabbitmq_version"
 
 
 Write-Host "[INFO] Setting RABBITMQ_HOME to '$rabbitmq_home'..."
 [Environment]::SetEnvironmentVariable('RABBITMQ_HOME', $rabbitmq_home, 'Machine')
 $env:RABBITMQ_HOME = $rabbitmq_home
 
-$rabbitmqctl_path = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$semverVersion" | Join-Path -ChildPath 'sbin' | Join-Path -ChildPath 'rabbitmqctl.bat'
-$rabbitmq_plugins_path = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$semverVersion" | Join-Path -ChildPath 'sbin' | Join-Path -ChildPath 'rabbitmq-plugins.bat'
+$rabbitmqctl_path = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$rabbitmq_version" | Join-Path -ChildPath 'sbin' | Join-Path -ChildPath 'rabbitmqctl.bat'
+$rabbitmq_plugins_path = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$rabbitmq_version" | Join-Path -ChildPath 'sbin' | Join-Path -ChildPath 'rabbitmq-plugins.bat'
 
 Write-Host "[INFO] Setting RABBITMQ_RABBITMQCTL_PATH to '$rabbitmqctl_path'..."
 $env:RABBITMQ_RABBITMQCTL_PATH = $rabbitmqctl_path
