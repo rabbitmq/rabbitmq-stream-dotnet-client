@@ -10,7 +10,7 @@ namespace RabbitMQ.Stream.Client
     public readonly struct Publish : ICommand
     {
         private const ushort Key = 2;
-        public static byte Version => 1;
+        private static byte Version => Consts.Version1;
 
         public int SizeNeeded
         {

@@ -28,17 +28,24 @@ namespace RabbitMQ.Stream.Client
         public string Stream { get; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
-
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
         public RawProducerConfig(string stream)
         {
             if (string.IsNullOrWhiteSpace(stream))
             {
-                throw new ArgumentException("Stream cannot be null or whitespace.", nameof(stream));
+                throw new ArgumentException("Stream cannot be null or whitespace.", nameof(Stream));
             }
 
             Stream = stream;
+        }
+
+        internal void Validate()
+        {
+            if (Filter is { FilterValue: not null } && !AvailableFeaturesSingleton.Instance.PublishFilter)
+            {
+                throw new UnsupportedOperationException("Broker does not support filtering");
+            }
         }
     }
 
@@ -105,6 +112,8 @@ namespace RabbitMQ.Stream.Client
                 _client.Parameters.MetadataHandler += _config.MetadataHandler;
             }
 
+            _config.Validate();
+
             var (pubId, response) = await _client.DeclarePublisher(
                 _config.Reference,
                 _config.Stream,
@@ -140,6 +149,8 @@ namespace RabbitMQ.Stream.Client
 
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
+
+        private bool IsFilteringEnabled => _config.Filter is { FilterValue: not null };
 
         /// <summary>
         /// SubEntry Batch send: Aggregate more messages under the same publishingId.
@@ -181,7 +192,7 @@ namespace RabbitMQ.Stream.Client
             await InternalBatchSend(messages).ConfigureAwait(false);
         }
 
-        internal async Task InternalBatchSend(List<(ulong, Message)> messages)
+        private async Task InternalBatchSend(List<(ulong, Message)> messages)
         {
             for (var i = 0; i < messages.Count; i++)
             {
@@ -213,7 +224,17 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
-            await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
+            if (IsFilteringEnabled)
+            {
+                await _client.Publish(new PublishFilter(_publisherId, messages, _config.Filter.FilterValue,
+                        _logger))
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
+            }
+
             if (clearMessagesList)
             {
                 messages.Clear();

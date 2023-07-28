@@ -43,6 +43,8 @@ public record IConsumerConfig : INamedEntity
 
     public Func<string, Task> ConnectionClosedHandler { get; set; }
 
+    public ConsumerFilter ConsumerFilter { get; set; } = null;
+
     // InitialCredits is the initial credits to be used for the consumer.
     // if the InitialCredits is not set, the default value will be 2.
     // It is the number of the chunks that the consumer will receive at beginning.

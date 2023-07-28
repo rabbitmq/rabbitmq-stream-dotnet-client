@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -68,6 +69,15 @@ public interface IProducer
     public int PendingCount { get; }
 }
 
+public record ProducerFilter
+{
+    /// <summary>
+    /// FilterValue is a function that returns the filter value.
+    /// It is executed for each message.
+    /// </summary>
+    public Func<Message, string> FilterValue { get; set; } = null;
+}
+
 public record IProducerConfig : INamedEntity
 {
     public string Reference { get; set; }
@@ -83,4 +93,9 @@ public record IProducerConfig : INamedEntity
     /// Default value is 100.
     /// </summary>
     public int MessagesBufferSize { get; set; } = 100;
+
+    /// <summary>
+    /// Filter enables the chunk filter feature.
+    /// </summary>
+    public ProducerFilter Filter { get; set; } = null;
 }

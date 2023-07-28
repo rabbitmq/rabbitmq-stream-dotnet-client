@@ -101,4 +101,12 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
+
+    public class UnsupportedOperationException : Exception
+    {
+        public UnsupportedOperationException(string s)
+            : base(s)
+        {
+        }
+    }
 }

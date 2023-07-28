@@ -358,5 +358,41 @@ namespace Tests
                 0);
             Assert.False(hBeatHandler.IsActive());
         }
+
+        [Fact]
+        public void CheckAvailableFeatures()
+        {
+            AvailableFeaturesSingleton.Instance.SetServerVersion("3.9.0");
+            Assert.False(AvailableFeaturesSingleton.Instance.Is311OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("3.11.0");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is311OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("3.12.1");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is311OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("3.12.1-rc1");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is311OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("3.13.1-alpha.234");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is311OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("3.0.1-beta.111");
+            Assert.False(AvailableFeaturesSingleton.Instance.Is311OrMore);
+
+            AvailableFeaturesSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
+            {
+                new CommandVersions(PublishFilter.Key, Consts.Version1, Consts.Version1)
+            });
+
+            Assert.False(AvailableFeaturesSingleton.Instance.PublishFilter);
+
+            AvailableFeaturesSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
+            {
+                new CommandVersions(PublishFilter.Key, Consts.Version1, Consts.Version2)
+            });
+
+            Assert.True(AvailableFeaturesSingleton.Instance.PublishFilter);
+        }
     }
 }

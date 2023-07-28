@@ -211,9 +211,9 @@ namespace RabbitMQ.Stream.Client
                 .ConfigureAwait(false);
 
             // exchange properties
-            await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
+            var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                 new PeerPropertiesRequest(corr, parameters.Properties)).ConfigureAwait(false);
-            logger?.LogDebug("Server properties: {@Properties}", parameters.Properties);
+            logger?.LogDebug("Server properties: {@Properties}", peerPropertiesResponse);
 
             //auth
             var saslHandshakeResponse =
@@ -250,6 +250,26 @@ namespace RabbitMQ.Stream.Client
             ClientExceptions.MaybeThrowException(open.ResponseCode, parameters.VirtualHost);
             logger?.LogDebug("Open: ConnectionProperties: {ConnectionProperties}", open.ConnectionProperties);
             client.ConnectionProperties = open.ConnectionProperties;
+
+            if (peerPropertiesResponse.Properties.TryGetValue("version", out var version))
+            {
+                AvailableFeaturesSingleton.Instance.SetServerVersion(version);
+                if (AvailableFeaturesSingleton.Instance.Is311OrMore)
+                {
+                    var features = await client.ExchangeVersions().ConfigureAwait(false);
+                    AvailableFeaturesSingleton.Instance.ParseCommandVersions(features.Commands);
+                }
+                else
+                {
+                    logger?.LogInformation(
+                        "Server version is less than 3.11.0, skipping command version exchange");
+                }
+            }
+            else
+            {
+                logger?.LogInformation(
+                    "Server version is less than 3.11.0, skipping command version exchange");
+            }
 
             client.correlationId = 100;
             // start heart beat only when the client is connected

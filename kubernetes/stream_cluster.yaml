@@ -10,7 +10,7 @@ metadata:
   namespace: stream-clients-test
 spec:
   replicas: 1
-  image: rabbitmq:3.11.11-management
+  image: rabbitmq:3-management
   service:
     type: LoadBalancer
   resources:
@@ -24,6 +24,3 @@ spec:
     additionalPlugins:
       - rabbitmq_stream
       - rabbitmq_stream_management
-    additionalConfig:
-      default_user=test 
-      default_pass=test

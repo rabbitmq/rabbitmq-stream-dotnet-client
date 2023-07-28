@@ -103,6 +103,15 @@ public record ConsumerConfig : ReliableConfig
     // The default value it is usually a good value.
     public ushort InitialCredits { get; set; } = Consts.ConsumerInitialCredits;
 
+    /// <summary>
+    /// Filter enable the consumer to receive only the messages that match the filter.
+    /// Filter.Values is the list of the values that the filter will match.
+    /// Filter.PostFilter is the function that will be executed after the filter.
+    /// The filter applied is a bloom filter, so there is a possibility of false positives.
+    /// The PostFilter helps to avoid false positives.
+    /// </summary>
+    public ConsumerFilter Filter { get; set; } = null;
+
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {
     }

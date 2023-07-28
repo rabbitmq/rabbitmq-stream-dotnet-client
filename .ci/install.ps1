@@ -10,6 +10,7 @@ Write-Host "[INFO] versions: $versions"
 $erlang_ver = $versions.erlang
 $rabbitmq_ver = $versions.rabbitmq
 
+
 $base_installers_dir = Join-Path -Path $HOME -ChildPath 'installers'
 if (-Not (Test-Path $base_installers_dir))
 {
@@ -36,6 +37,7 @@ Write-Host "[INFO] Installing Erlang to $erlang_install_dir..."
 
 $rabbitmq_installer_download_url = "https://github.com/rabbitmq/rabbitmq-server/releases/download/v$rabbitmq_ver/rabbitmq-server-$rabbitmq_ver.exe"
 $rabbitmq_installer_path = Join-Path -Path $base_installers_dir -ChildPath "rabbitmq-server-$rabbitmq_ver.exe"
+Write-Host "[INFO] rabbitmq installer path $rabbitmq_installer_path"
 
 $erlang_reg_path = 'HKLM:\SOFTWARE\Ericsson\Erlang'
 if (Test-Path 'HKLM:\SOFTWARE\WOW6432Node\')
@@ -94,7 +96,17 @@ if (Test-Path 'HKLM:\SOFTWARE\WOW6432Node\')
 $rabbitmq_base_path = Split-Path -Parent (Get-ItemProperty $regPath 'UninstallString').UninstallString
 $rabbitmq_version = (Get-ItemProperty $regPath "DisplayVersion").DisplayVersion
 
+
+
+Write-Host "[INFO] RabbitMQ version path: $rabbitmq_base_path  and version: $rabbitmq_version"
+
+## we have to remove the double quote added here
+## https://github.com/rabbitmq/rabbitmq-packaging/commit/4476a3489f80658b31c0b58a6a04314c9d7acf72
+$rabbitmq_base_path = $rabbitmq_base_path -replace '"', ''
+
 $rabbitmq_home = Join-Path -Path $rabbitmq_base_path -ChildPath "rabbitmq_server-$rabbitmq_version"
+
+
 Write-Host "[INFO] Setting RABBITMQ_HOME to '$rabbitmq_home'..."
 [Environment]::SetEnvironmentVariable('RABBITMQ_HOME', $rabbitmq_home, 'Machine')
 $env:RABBITMQ_HOME = $rabbitmq_home

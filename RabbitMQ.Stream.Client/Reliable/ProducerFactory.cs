@@ -40,6 +40,7 @@ public abstract class ProducerFactory : ReliableBase
                 MaxInFlight = _producerConfig.MaxInFlight,
                 Routing = _producerConfig.SuperStreamConfig.Routing,
                 RoutingStrategyType = _producerConfig.SuperStreamConfig.RoutingStrategyType,
+                Filter = _producerConfig.Filter,
                 ConfirmHandler = confirmationHandler =>
                 {
                     var (stream, confirmation) = confirmationHandler;
@@ -66,6 +67,7 @@ public abstract class ProducerFactory : ReliableBase
             ClientProvidedName = _producerConfig.ClientProvidedName,
             Reference = _producerConfig.Reference,
             MaxInFlight = _producerConfig.MaxInFlight,
+            Filter = _producerConfig.Filter,
             MetadataHandler = update =>
             {
                 // This is Async since the MetadataHandler is called from the Socket connection thread

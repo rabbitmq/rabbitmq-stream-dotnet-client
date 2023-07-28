@@ -87,6 +87,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             },
             Reference = _config.Reference,
             MaxInFlight = _config.MaxInFlight,
+            Filter = _config.Filter,
             ConnectionClosedHandler = s =>
             {
                 // In case of connection closed, we need to remove the producer from the list
