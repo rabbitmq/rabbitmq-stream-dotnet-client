@@ -55,7 +55,7 @@ public class FilterTest
     // By using the filter we should be able to consume only the messages from Alabama 
     // and the server has to send only one chunk with all the messages from Alabama
     [Fact]
-    public async void FilterShouldReturnOnlyOneChuck()
+    public async void FilterShouldReturnOnlyOneChunk()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
@@ -189,7 +189,7 @@ public class FilterTest
                     if (confirmation.Status == ConfirmationStatus.Confirmed)
                         messagesConfirmed++;
                     else
-                        messagesError++; // we should have only one error caused by the message with id_8 On FilterValue function
+                        messagesError++; // we should have only one error caused by the message with id_4 On FilterValue function
 
                     if (messagesConfirmed + messagesError == ToSend)
                     {
@@ -226,7 +226,7 @@ public class FilterTest
 
         Assert.True(testPassed.Task.Wait(TimeSpan.FromSeconds(5)));
         // we should have 4 messages confirmed and 1 error == 5
-        // since we are filtering the message with id_3 and throwing an exception
+        // since we are filtering the message with id_4 and throwing an exception
         Assert.Equal(ToSend - 1, messagesConfirmed);
         Assert.Equal(1, messagesError);
 
@@ -258,12 +258,13 @@ public class FilterTest
 
         SystemUtils.Wait(TimeSpan.FromSeconds(3));
         // we should have 3 messages since there is an error in the PostFilter
-        // function for the message with id_3
+        // function for the message with id_2
         // So we sent 5 messages. 1 error was thrown in the producer filter and 1 error in the consumer Postfilter
         Assert.Equal(3, consumed.Count);
 
-        // No message with id_3 should be consumed
-        Assert.Empty(consumed.Where(message => message.Properties.MessageId!.Equals("id_7")).ToList());
+        // No message with id_2 should be consumed, since we simulate and error
+        // during the post filter function
+        Assert.Empty(consumed.Where(message => message.Properties.MessageId!.Equals("id_2")).ToList());
         await producer.Close().ConfigureAwait(false);
         await consumer.Close().ConfigureAwait(false);
         await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
