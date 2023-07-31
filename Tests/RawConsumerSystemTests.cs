@@ -511,10 +511,10 @@ namespace Tests
             // When a consumer from a stored offset with:
             // await system.QueryOffset(Reference, stream);
             // the user has to receive the messages for that offset.
-            // The client receive the chuck this is why we need
+            // The client receive the chunk this is why we need
             // to filter the value client side
             // see Consumer:MaybeDispatch/1
-            // For example given 10 messages in a chuck
+            // For example given 10 messages in a chunk
             // the stored is 7 we need to skip client side the first
             // 6 messages 
 
@@ -634,7 +634,7 @@ namespace Tests
         {
             // We send messages mixing different send
             // This test is to validate the consumer can handle
-            // different messages inside the same chuck
+            // different messages inside the same chunk
             // This is not a common pattern but it is possible
 
             var testPassed = new TaskCompletionSource<bool>();

@@ -38,9 +38,9 @@ public class FilterConsumer
             // This is mandatory for enabling the filter
             Filter = new ConsumerFilter()
             {
-                Values = new List<string>() {"Alabama"},
-                PostFilter = message => message.ApplicationProperties["state"].Equals("Alabama"), // <1>
-                MatchUnfiltered = true // <2>
+                Values = new List<string>() {"Alabama"},// <1>
+                PostFilter = message => message.ApplicationProperties["state"].Equals("Alabama"), // <2>
+                MatchUnfiltered = true 
             },
             MessageHandler = (_, _, _, message) =>
             {

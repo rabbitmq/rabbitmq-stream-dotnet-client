@@ -1,0 +1,76 @@
+:test-examples: ../StreamFilter/StreamFilter
+
+=== Advanced Topics
+
+==== Filtering
+
+WARNING: Filtering requires *RabbitMQ 3.13* or more.
+
+RabbitMQ Stream provides a server-side filtering feature that avoids reading all the messages of a stream and filtering only on the client side.
+This helps to save network bandwidth when a consuming application needs only a subset of messages, e.g. the messages from a given geographical region.
+
+The filtering feature works as follows:
+
+* each message is published with an associated _filter value_
+* a consumer that wants to enable filtering must:
+** define one or several filter values
+** define some client-side filtering logic
+
+Why does the consumer need to define some client-side filtering logic?
+Because the server-side filtering is probabilistic: messages that do not match the filter value(s) can still be sent to the consumer.
+The server uses a https://en.wikipedia.org/wiki/Bloom_filter[Bloom filter], _a space-efficient probabilistic data structure_, where false positives are possible.
+Despite this, the filtering saves some bandwidth, which is its primary goal.
+
+===== Filtering on the Publishing Side
+
+Filtering on the publishing side consists in defining some logic to extract the filter value from a message.
+The following snippet shows how to extract the filter value from an application property:
+
+.Declaring a producer with logic to extract a filter value from each message
+[source,java,indent=0]
+--------
+include::{test-examples}/FilterProducer.cs[tag=producer-filter]
+--------
+<1> Get filter value from `state` application property
+
+Note the filter value can be null: the message is then published in a regular way.
+It is called in this context an _unfiltered_ message.
+
+===== Filtering on the Consuming Side
+
+A consumer needs to set up one or several filter values and some filtering logic to enable filtering.
+The filtering logic must be consistent with the filter values.
+In the next snippet, the consumer wants to process only messages from the state of `Alabama`.
+It sets a filter value to `Alabama` and a predicate that accepts a message only if the `state` application properties is `Alabama`:
+
+.Declaring a consumer with a filter value and filtering logic
+[source,java,indent=0]
+--------
+include::{test-examples}/FilterConsumer.cs[tag=consumer-filter]
+--------
+<1> Set filter value
+<2> Set filtering logic
+
+The filter logic is a `Predicate<Message>`.
+It must return `true` if a message is accepted.
+
+As stated above, not all messages must have an associated filter value.
+Many applications may not need some filtering, so they can publish messages the regular way.
+So a stream can contain messages with and without an associated filter value.
+
+By default, messages without a filter value (a.k.a _unfiltered_ messages) are not sent to a consumer that enabled filtering.
+
+But what if a consumer wants to process messages with a filter value and messages without any filter value as well?
+It must use the `MatchUnfiltered` property in its declaration and also make sure to keep the filtering logic consistent.
+
+===== Considerations on Filtering
+
+As stated previously, the server can send messages that do not match the filter value(s) set by consumers.
+This is why application developers must be very careful with the filtering logic they define to avoid processing unwanted messages.
+
+What are good candidates for filter values?
+Unique identifiers are _not_: if you know a given message property will be unique in a stream, do not use it as a filter value.
+A defined set of values shared across the messages is a good candidate: geographical locations (e.g. countries, states), document types in a stream that stores document information (e.g. payslip, invoice, order), categories of products (e.g. book, luggage, toy).
+
+Cardinality of filter values can be from a few to a few thousands.
+Extreme cardinality (a couple or dozens of thousands) can make filtering less efficient.

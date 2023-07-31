@@ -68,6 +68,6 @@ In this case the consumer will receive 200 messages.
  PostFilter = (msg) => true
 ```
 
-Note: In this example we forced the chucks to have a consistent messages with the same filter value. ("Alabama" or "New York")
+Note: In this example we forced the chunks to have a consistent messages with the same filter value. ("Alabama" or "New York")
 
 In real world the chunks can have different messages with different filter values so the PostFilter is needed to filter the messages on the client side.

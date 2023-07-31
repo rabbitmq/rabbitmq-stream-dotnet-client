@@ -33,7 +33,7 @@ include::query-stream.adoc[]
 
 include::super-streams.adoc[]
 
-// include::advanced-topics.adoc[]
+include::advanced-topics.adoc[]
 
 // include::building.adoc[]
 
