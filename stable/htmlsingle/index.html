@@ -610,6 +610,17 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#super-stream-sac-full-example">Super Stream with Single Active Consumer Example</a></li>
 </ul>
 </li>
+<li><a href="#_advanced_topics">Advanced Topics</a>
+<ul class="sectlevel3">
+<li><a href="#_filtering">Filtering</a>
+<ul class="sectlevel4">
+<li><a href="#_filtering_on_the_publishing_side">Filtering on the Publishing Side</a></li>
+<li><a href="#_filtering_on_the_consuming_side">Filtering on the Consuming Side</a></li>
+<li><a href="#_considerations_on_filtering">Considerations on Filtering</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -3905,12 +3916,165 @@ The <code>ConsumerUpdateListener</code> callback is still your friend in this ca
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_advanced_topics">Advanced Topics</h3>
+<div class="sect3">
+<h4 id="_filtering">Filtering</h4>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Warning</div>
+</td>
+<td class="content">
+Filtering requires <strong>RabbitMQ 3.13</strong> or more.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>RabbitMQ Stream provides a server-side filtering feature that avoids reading all the messages of a stream and filtering only on the client side.
+This helps to save network bandwidth when a consuming application needs only a subset of messages, e.g. the messages from a given geographical region.</p>
+</div>
+<div class="paragraph">
+<p>The filtering feature works as follows:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>each message is published with an associated <em>filter value</em></p>
+</li>
+<li>
+<p>a consumer that wants to enable filtering must:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>define one or several filter values</p>
+</li>
+<li>
+<p>define some client-side filtering logic</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Why does the consumer need to define some client-side filtering logic?
+Because the server-side filtering is probabilistic: messages that do not match the filter value(s) can still be sent to the consumer.
+The server uses a <a href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom filter</a>, <em>a space-efficient probabilistic data structure</em>, where false positives are possible.
+Despite this, the filtering saves some bandwidth, which is its primary goal.</p>
+</div>
+<div class="sect4">
+<h5 id="_filtering_on_the_publishing_side">Filtering on the Publishing Side</h5>
+<div class="paragraph">
+<p>Filtering on the publishing side consists in defining some logic to extract the filter value from a message.
+The following snippet shows how to extract the filter value from an application property:</p>
+</div>
+<div class="listingblock">
+<div class="title">Declaring a producer with logic to extract a filter value from each message</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="comment">// This is mandatory for enabling the filter</span>
+<span class="predefined-type">Filter</span> = <span class="keyword">new</span> ProducerFilter()
+{
+    FilterValue = message =&gt; message.ApplicationProperties[<span class="string"><span class="delimiter">&quot;</span><span class="content">state</span><span class="delimiter">&quot;</span></span>].ToString(), // <b class="conum">(1)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Get filter value from <code>state</code> application property</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Note the filter value can be null: the message is then published in a regular way.
+It is called in this context an <em>unfiltered</em> message.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_filtering_on_the_consuming_side">Filtering on the Consuming Side</h5>
+<div class="paragraph">
+<p>A consumer needs to set up one or several filter values and some filtering logic to enable filtering.
+The filtering logic must be consistent with the filter values.
+In the next snippet, the consumer wants to process only messages from the state of <code>Alabama</code>.
+It sets a filter value to <code>Alabama</code> and a predicate that accepts a message only if the <code>state</code> application properties is <code>Alabama</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">Declaring a consumer with a filter value and filtering logic</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="type">var</span> consumedMessages = <span class="integer">0</span>;
+<span class="type">var</span> consumer = await Consumer.Create(<span class="keyword">new</span> ConsumerConfig(system, streamName)
+{
+    OffsetSpec = <span class="keyword">new</span> OffsetTypeFirst(),
+
+    <span class="comment">// This is mandatory for enabling the filter</span>
+    <span class="predefined-type">Filter</span> = <span class="keyword">new</span> ConsumerFilter()
+    {
+        Values = <span class="keyword">new</span> <span class="predefined-type">List</span>&lt;string&gt;() {<span class="string"><span class="delimiter">&quot;</span><span class="content">Alabama</span><span class="delimiter">&quot;</span></span>},// <b class="conum">(1)</b>
+        PostFilter = message =&gt; message.ApplicationProperties[<span class="string"><span class="delimiter">&quot;</span><span class="content">state</span><span class="delimiter">&quot;</span></span>].Equals(<span class="string"><span class="delimiter">&quot;</span><span class="content">Alabama</span><span class="delimiter">&quot;</span></span>), // <b class="conum">(2)</b>
+        MatchUnfiltered = <span class="predefined-constant">true</span> 
+    },
+    MessageHandler = (_, _, _, message) =&gt;
+    {
+        logger.LogInformation(<span class="string"><span class="delimiter">&quot;</span><span class="content">Received message with state {State} - consumed {Consumed}</span><span class="delimiter">&quot;</span></span>,
+            message.ApplicationProperties[<span class="string"><span class="delimiter">&quot;</span><span class="content">state</span><span class="delimiter">&quot;</span></span>], ++consumedMessages);
+        <span class="keyword">return</span> Task.CompletedTask;
+    }</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Set filter value</p>
+</li>
+<li>
+<p>Set filtering logic</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The filter logic is a <code>Predicate&lt;Message&gt;</code>.
+It must return <code>true</code> if a message is accepted.</p>
+</div>
+<div class="paragraph">
+<p>As stated above, not all messages must have an associated filter value.
+Many applications may not need some filtering, so they can publish messages the regular way.
+So a stream can contain messages with and without an associated filter value.</p>
+</div>
+<div class="paragraph">
+<p>By default, messages without a filter value (a.k.a <em>unfiltered</em> messages) are not sent to a consumer that enabled filtering.</p>
+</div>
+<div class="paragraph">
+<p>But what if a consumer wants to process messages with a filter value and messages without any filter value as well?
+It must use the <code>MatchUnfiltered</code> property in its declaration and also make sure to keep the filtering logic consistent.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_considerations_on_filtering">Considerations on Filtering</h5>
+<div class="paragraph">
+<p>As stated previously, the server can send messages that do not match the filter value(s) set by consumers.
+This is why application developers must be very careful with the filtering logic they define to avoid processing unwanted messages.</p>
+</div>
+<div class="paragraph">
+<p>What are good candidates for filter values?
+Unique identifiers are <em>not</em>: if you know a given message property will be unique in a stream, do not use it as a filter value.
+A defined set of values shared across the messages is a good candidate: geographical locations (e.g. countries, states), document types in a stream that stores document information (e.g. payslip, invoice, order), categories of products (e.g. book, luggage, toy).</p>
+</div>
+<div class="paragraph">
+<p>Cardinality of filter values can be from a few to a few thousands.
+Extreme cardinality (a couple or dozens of thousands) can make filtering less efficient.</p>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-05-31 12:58:52 UTC
+Last updated 2023-07-31 11:59:23 UTC
 </div>
 </div>
 </body>
