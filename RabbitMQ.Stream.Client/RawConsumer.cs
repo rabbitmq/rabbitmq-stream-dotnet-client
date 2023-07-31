@@ -169,7 +169,7 @@ namespace RabbitMQ.Stream.Client
         // It is needed to understand if the consumer is active or not
         // by default is active
         // in case of single active consumer can be not active
-        // it is important to skip the messages in the chuck that 
+        // it is important to skip the messages in the chunk that 
         // it is in progress. In this way the promotion will be faster
         // avoiding to block the consumer handler if the user put some
         // long task

@@ -60,11 +60,11 @@ public class FilterProducer
         }
 
         // Send the first 200 messages with state "New York"
-        // then we wait a bit to be sure that all the messages will go in a chuck
+        // then we wait a bit to be sure that all the messages will go in a chunk
         await SendTo("New York").ConfigureAwait(false);
         loggerMain.LogInformation("Sent: {MessagesSent} - filter value: {FilerValue}", ToSend * 2, "New York");
 
-        // Wait a bit to be sure that all the messages will go in a chuck
+        // Wait a bit to be sure that all the messages will go in a chunk
         await Task.Delay(2000).ConfigureAwait(false);
 
         // Send the second 200 messages with the Alabama state
