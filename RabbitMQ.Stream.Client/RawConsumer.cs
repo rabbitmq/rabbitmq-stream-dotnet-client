@@ -88,14 +88,14 @@ namespace RabbitMQ.Stream.Client
 
             switch (ConsumerFilter)
             {
-                case { PostFilter: null }:
+                case {PostFilter: null}:
                     throw new ArgumentException("PostFilter must be provided when Filter is set");
-                case { Values.Count: 0 }:
+                case {Values.Count: 0}:
                     throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
+        internal bool IsFiltering => ConsumerFilter is {Values.Count: > 0};
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -214,9 +214,10 @@ namespace RabbitMQ.Stream.Client
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e, "Error while parsing message. Message will be skipped. " +
-                                            "Please report this issue to the RabbitMQ team on GitHub {Repo}",
-                            Consts.RabbitMQClientRepo);
+                        _logger.LogError(e,
+                            "Error while parsing message on the stream {Stream} Message will be skipped. " +
+                            "Please report this issue to the RabbitMQ team on GitHub {Repo}",
+                            _config.Stream, Consts.RabbitMQClientRepo);
                     }
 
                     return null;
