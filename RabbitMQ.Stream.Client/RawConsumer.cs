@@ -215,7 +215,7 @@ namespace RabbitMQ.Stream.Client
                     catch (Exception e)
                     {
                         _logger.LogError(e,
-                            "Error while parsing message on the stream {Stream}. the message will be skipped. " +
+                            "Error while parsing message on the stream {Stream}. The message will be skipped. " +
                             "Please report this issue to the RabbitMQ team on GitHub {Repo}",
                             _config.Stream, Consts.RabbitMQClientRepo);
                     }
