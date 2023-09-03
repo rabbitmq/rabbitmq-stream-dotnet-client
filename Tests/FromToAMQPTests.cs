@@ -96,40 +96,78 @@ public class FromToAmqpTests
         var factory = new ConnectionFactory();
         using var connection = factory.CreateConnection();
         var channel = connection.CreateModel();
-        var properties = channel.CreateBasicProperties();
+        const int NumberOfMessages = 1_000;
 
-        properties.MessageId = "年 6 月";
-        properties.CorrelationId = "10000_00000";
-        properties.ContentType = "text/plain";
-        properties.ContentEncoding = "utf-8";
-        properties.UserId = "guest";
-        properties.Headers = new Dictionary<string, object>()
+        for (var i = 0; i < NumberOfMessages; i++)
         {
-            {"stream_key", "stream_value"}, {"stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日"},
-        };
-        channel.BasicPublish("", stream, properties, Encoding.ASCII.GetBytes("FromAMQP"));
-        var tcs = new TaskCompletionSource<Message>();
+            var properties = channel.CreateBasicProperties();
+            properties.Type = "text/plain";
+            properties.Expiration = "1000";
+            properties.Persistent = false;
+            properties.Priority = 1;
+            properties.Timestamp = new AmqpTimestamp(1000);
+            properties.DeliveryMode = 1;
+            properties.MessageId = "年 6 月";
+            properties.CorrelationId = "10000_00000";
+            properties.ContentType = "text/plain";
+            properties.ContentEncoding = "utf-8";
+            properties.UserId = "guest";
+            properties.Headers = new Dictionary<string, object>()
+            {
+                {"stream_key", $"stream_value{i}"},
+                {"stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日"},
+                {"bool", true},
+                {"decimal", 10_000_000_000},
+                {"int", i},
+                {
+                    "alan",
+                    $"Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父{i}"
+                }
+            };
+            channel.BasicPublish("", stream, properties, Encoding.UTF8.GetBytes($"FromAMQP 日本語{i}"));
+        }
 
+        var tcs = new TaskCompletionSource<List<Message>>();
+
+        var messages = new List<Message>();
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
             OffsetSpec = new OffsetTypeFirst(),
             MessageHandler = async (_, _, _, message) =>
             {
-                tcs.SetResult(message);
+                messages.Add(message);
+                if (messages.Count == NumberOfMessages)
+                {
+                    tcs.SetResult(messages);
+                }
+
                 await Task.CompletedTask;
             }
         });
 
-        new Utils<Message>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
+        new Utils<List<Message>>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
         var result = tcs.Task.Result;
-        Assert.Equal("FromAMQP", Encoding.ASCII.GetString(result.Data.Contents.ToArray()));
-        Assert.Equal("年 6 月", result.Properties.MessageId);
-        Assert.Equal("10000_00000", result.Properties.CorrelationId);
-        Assert.Equal("text/plain", result.Properties.ContentType);
-        Assert.Equal("utf-8", result.Properties.ContentEncoding);
-        Assert.Equal(Encoding.Default.GetBytes("guest"), result.Properties.UserId);
-        Assert.Equal("stream_value", result.ApplicationProperties["stream_key"]);
-        Assert.Equal("Alan Mathison Turing（1912 年 6 月 23 日", result.ApplicationProperties["stream_key4"]);
+        Assert.Equal(NumberOfMessages, result.Count);
+        for (var i = 0; i < result.Count; i++)
+        {
+            var message = result[i];
+            Assert.Equal($"FromAMQP 日本語{i}", Encoding.UTF8.GetString(message.Data.Contents.ToArray()));
+            Assert.Equal("年 6 月", message.Properties.MessageId);
+            Assert.Equal("10000_00000", message.Properties.CorrelationId);
+            Assert.Equal("text/plain", message.Properties.ContentType);
+            Assert.Equal("utf-8", message.Properties.ContentEncoding);
+            Assert.Equal(Encoding.Default.GetBytes("guest"), message.Properties.UserId);
+            Assert.Equal($"stream_value{i}", message.ApplicationProperties["stream_key"]);
+            Assert.Equal("Alan Mathison Turing（1912 年 6 月 23 日", message.ApplicationProperties["stream_key4"]);
+            Assert.Equal(true, message.ApplicationProperties["bool"]);
+            Assert.Equal(10_000_000_000, message.ApplicationProperties["decimal"]);
+            Assert.Equal(
+                $"Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父{i}",
+                message.ApplicationProperties["alan"]
+            );
+            Assert.Equal(i, message.ApplicationProperties["int"]);
+        }
+
         await consumer.Close();
         await system.DeleteStream(stream);
         await system.Close();
