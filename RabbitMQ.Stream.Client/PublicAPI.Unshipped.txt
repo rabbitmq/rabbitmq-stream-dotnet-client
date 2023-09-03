@@ -7,6 +7,7 @@ RabbitMQ.Stream.Client.AuthMechanism.External = 1 -> RabbitMQ.Stream.Client.Auth
 RabbitMQ.Stream.Client.AuthMechanism.Plain = 0 -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.AuthMechanismNotSupportedException
 RabbitMQ.Stream.Client.AuthMechanismNotSupportedException.AuthMechanismNotSupportedException(string s) -> void
+RabbitMQ.Stream.Client.Chunk.Crc.get -> uint
 RabbitMQ.Stream.Client.Chunk.Data.get -> System.Memory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
 RabbitMQ.Stream.Client.Client.ExchangeVersions() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CommandVersionsResponse>

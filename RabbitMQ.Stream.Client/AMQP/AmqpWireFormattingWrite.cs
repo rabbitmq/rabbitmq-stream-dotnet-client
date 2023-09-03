@@ -359,7 +359,8 @@ namespace RabbitMQ.Stream.Client.AMQP
                 bool => GetBoolSize(),
                 float => GetFloatSize(),
                 byte[] bArr => GetBytesSize(bArr),
-                byte => 1,
+                byte => 1 // FormatCode.Ubyte 
+                        + 1, // value
                 DateTime d => GetTimestampSize(d),
                 _ => throw new AmqpParseException($"GetAnySize Invalid type {value}")
             };

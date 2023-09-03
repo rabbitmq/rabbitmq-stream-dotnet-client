@@ -115,7 +115,7 @@ namespace RabbitMQ.Stream.Client
             long timestamp,
             ulong epoch,
             ulong chunkId,
-            int crc,
+            uint crc,
             Memory<byte> data)
         {
             MagicVersion = magicVersion;
@@ -135,7 +135,7 @@ namespace RabbitMQ.Stream.Client
         public long Timestamp { get; }
         public ulong Epoch { get; }
         public ulong ChunkId { get; }
-        public int Crc { get; }
+        public uint Crc { get; }
         public Memory<byte> Data { get; }
 
         internal static int Read(ReadOnlySequence<byte> frame, out Chunk chunk)
@@ -148,7 +148,7 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadInt64(ref reader, out var timestamp);
             offset += WireFormatting.ReadUInt64(ref reader, out var epoch);
             offset += WireFormatting.ReadUInt64(ref reader, out var chunkId);
-            offset += WireFormatting.ReadInt32(ref reader, out var crc);
+            offset += WireFormatting.ReadUInt32(ref reader, out var crc);
             offset += WireFormatting.ReadUInt32(ref reader, out var dataLen);
             offset += WireFormatting.ReadUInt32(ref reader, out _);
             // offset += 4; // reserved
@@ -157,6 +157,18 @@ namespace RabbitMQ.Stream.Client
                 ArrayPool<byte>.Shared.Rent((int)dataLen).AsMemory(0, (int)dataLen);
             var data = reader.Sequence.Slice(reader.Consumed, dataLen);
             data.CopyTo(memory.Span);
+            var dataCrc = Crc32.CalculateCRC32(memory.Span);
+
+            if (dataCrc != crc)
+            {
+                throw new Exception("data crc mismatch");
+            }
+
+            if (data.Length != dataLen)
+            {
+                throw new Exception("data length mismatch");
+            }
+
             chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, memory);
             return offset;
         }
