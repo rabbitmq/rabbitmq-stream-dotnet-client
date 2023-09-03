@@ -155,16 +155,14 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadUInt32(ref reader, out _); // reserved
             var memory =
                 ArrayPool<byte>.Shared.Rent((int)dataLen).AsMemory(0, (int)dataLen);
-            var data = reader.Sequence.Slice(reader.Consumed, dataLen);
-            data.CopyTo(memory.Span);
-            var dataCrc = Crc32.CalculateCRC32(memory.Span);
 
-            if (dataCrc != crc)
+            if (!reader.TryCopyTo(memory.Span))
             {
-                throw new Exception("data crc mismatch");
+                throw new Exception(
+                    $"Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
             }
 
-            if (data.Length != dataLen)
+            if (memory.Length != dataLen)
             {
                 throw new Exception("data length mismatch");
             }
