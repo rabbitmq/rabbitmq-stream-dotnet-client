@@ -70,7 +70,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             IsSingleActiveConsumer = _config.IsSingleActiveConsumer,
             ConsumerUpdateListener = _config.ConsumerUpdateListener,
             ConsumerFilter = _config.ConsumerFilter,
-
+            CheckCrcOnDelivery = _config.CheckCrcOnDelivery,
             ConnectionClosedHandler = async (string s) =>
             {
                 // if the stream is still in the consumer list

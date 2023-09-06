@@ -23,6 +23,8 @@ RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.set -> void
 RabbitMQ.Stream.Client.ConsumerFilter.Values.get -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
+RabbitMQ.Stream.Client.IConsumerConfig.CheckCrcOnDelivery.get -> bool
+RabbitMQ.Stream.Client.IConsumerConfig.CheckCrcOnDelivery.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerFilter.get -> RabbitMQ.Stream.Client.ConsumerFilter
 RabbitMQ.Stream.Client.CommandVersions
 RabbitMQ.Stream.Client.CommandVersions.Command.get -> ushort
@@ -67,6 +69,8 @@ RabbitMQ.Stream.Client.PublishFilter.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.PublishFilter.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.set -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.CheckCrcOnDelivery.get -> bool
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.CheckCrcOnDelivery.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Filter.get -> RabbitMQ.Stream.Client.ConsumerFilter
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.get -> ushort

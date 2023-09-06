@@ -34,8 +34,9 @@ internal class Crc32
         }
     }
 
-    internal static uint CalculateCRC32(Span<byte> Span)
+    internal static uint ComputeHash(Span<byte> Span)
     {
+
         var crc = 0xFFFFFFFFU;
 
         foreach (var b in Span)

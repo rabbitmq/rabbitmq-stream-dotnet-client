@@ -112,6 +112,14 @@ public record ConsumerConfig : ReliableConfig
     /// </summary>
     public ConsumerFilter Filter { get; set; } = null;
 
+    /// <summary>
+    /// CheckCrcOnDelivery enables the check of the crc on the delivery.
+    /// the server will send the crc for each chunk and the client will check it.
+    /// It is not enabled by default because it is could reduce the performance.
+    /// Default value is false.
+    /// </summary>
+    public bool CheckCrcOnDelivery { get; set; } = false;
+
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {
     }

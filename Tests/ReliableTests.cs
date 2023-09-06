@@ -323,6 +323,7 @@ public class ReliableTests
         var messagesReceived = 0;
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
+            CheckCrcOnDelivery = true,
             Reference = reference,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
@@ -368,6 +369,7 @@ public class ReliableTests
         var messagesReceived = 0;
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
+            CheckCrcOnDelivery = true,
             Reference = reference,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),

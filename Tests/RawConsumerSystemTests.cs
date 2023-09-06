@@ -416,6 +416,7 @@ namespace Tests
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
+                    CheckCrcOnDelivery = true,
                     Reference = "consumer",
                     MessageHandler = async (consumer, ctx, message) =>
                     {
@@ -462,6 +463,7 @@ namespace Tests
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
+                    CheckCrcOnDelivery = true,
                     Reference = reference,
                     OffsetSpec = new OffsetTypeOffset(),
                     MessageHandler = async (consumer, ctx, message) =>
@@ -532,6 +534,7 @@ namespace Tests
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
+                    CheckCrcOnDelivery = false,
                     Reference = Reference,
                     OffsetSpec = new OffsetTypeOffset(),
                     MessageHandler = async (consumer, ctx, _) =>

@@ -64,6 +64,7 @@ public class SuperStreamConsumerTests
         var consumer = await system.CreateSuperStreamConsumer(
             new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
             {
+                CheckCrcOnDelivery = true,
                 ClientProvidedName = clientProvidedName,
                 OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange, new OffsetTypeFirst()),
                 MessageHandler = (stream, consumer1, context, message) =>
