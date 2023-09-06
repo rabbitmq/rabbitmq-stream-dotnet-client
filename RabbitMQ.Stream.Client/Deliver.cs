@@ -93,8 +93,18 @@ namespace RabbitMQ.Stream.Client
             // We need to pass it to the subEntryChunk that will decode the information
             var memory =
                 ArrayPool<byte>.Shared.Rent((int)dataLen).AsMemory(0, (int)dataLen);
-            var data = reader.Sequence.Slice(reader.Consumed, dataLen);
-            data.CopyTo(memory.Span);
+            
+            if (!reader.TryCopyTo(memory.Span))
+            {
+                throw new Exception(
+                    $"SubEntryChunk Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
+            }
+            
+            if (memory.Length != dataLen)
+            {
+                throw new Exception(
+                    $"Chunk: Memory Length {memory.Length} is different from source data Length: {dataLen}");
+            }
 
             subEntryChunk =
                 new SubEntryChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, memory);
@@ -103,6 +113,7 @@ namespace RabbitMQ.Stream.Client
             // Here we need to advance the reader to the datalen
             // Since Data is passed to the subEntryChunk.
             reader.Advance(dataLen);
+            
             return offset;
         }
     }
@@ -156,15 +167,22 @@ namespace RabbitMQ.Stream.Client
             var memory =
                 ArrayPool<byte>.Shared.Rent((int)dataLen).AsMemory(0, (int)dataLen);
 
+            // the reader in this position contains the chunk information
+            // we copy it in a memory stream to be sure that we have all the data
+            // the memory stream will passed to the consumer to parse the messages
+            // reader.TryCopyTo will return false if the data is not enough
+            // It usually happens when the chunk is not complete. Most of the time
+            // the chunk is completed. 
             if (!reader.TryCopyTo(memory.Span))
             {
                 throw new Exception(
-                    $"Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
+                    $"Chunk: Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
             }
 
             if (memory.Length != dataLen)
             {
-                throw new Exception("data length mismatch");
+                throw new Exception(
+                    $"Chunk: Memory Length {memory.Length} is different from source data Length: {dataLen}");
             }
 
             chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, memory);

@@ -149,6 +149,8 @@ namespace RabbitMQ.Stream.Client
                         var memory =
                             ArrayPool<byte>.Shared.Rent((int)frame.Length).AsMemory(0, (int)frame.Length);
                         frame.CopyTo(memory.Span);
+                        
+                        
                         await commandCallback(memory).ConfigureAwait(false);
                         numFrames += 1;
                     }
