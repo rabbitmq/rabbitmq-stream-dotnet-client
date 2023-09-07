@@ -69,5 +69,5 @@ public record IConsumerConfig : INamedEntity
     // enables the check of the crc on the delivery.
     // the server will send the crc for each chunk and the client will check it.
     // It is not enabled by default because it is could reduce the performance.
-    public bool CheckCrcOnDelivery { get; set; } = false;
+    public ICrc32 Crc32 { get; set; } = null;
 }

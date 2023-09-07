@@ -18,6 +18,7 @@ namespace Tests;
 
 public class ReliableTests
 {
+    private readonly ICrc32 _crc32 = new Crc32();
     private readonly ITestOutputHelper _testOutputHelper;
 
     public ReliableTests(ITestOutputHelper testOutputHelper)
@@ -323,7 +324,7 @@ public class ReliableTests
         var messagesReceived = 0;
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
-            CheckCrcOnDelivery = true,
+            Crc32 = _crc32,
             Reference = reference,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
@@ -369,7 +370,7 @@ public class ReliableTests
         var messagesReceived = 0;
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
-            CheckCrcOnDelivery = true,
+            Crc32 = _crc32,
             Reference = reference,
             ClientProvidedName = clientProviderName,
             OffsetSpec = new OffsetTypeFirst(),
