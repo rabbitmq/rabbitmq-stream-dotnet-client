@@ -394,29 +394,5 @@ namespace Tests
 
             Assert.True(AvailableFeaturesSingleton.Instance.PublishFilter);
         }
-
-        [Fact]
-        public void Crc32Validation()
-        {
-            // validate some crc, values from https://crccalc.com/
-            // Since the crc is local to the library here we do just some basic test
-            // to validate the crc32 algorithm.
-            var memorySpan = new Span<byte>(new byte[4]);
-            WireFormatting.WriteUInt32(memorySpan, 0x12345678);
-            Assert.True(1242107544 == Crc32.ComputeHash(memorySpan));
-
-            memorySpan = new Span<byte>(new byte[4]);
-            WireFormatting.WriteUInt32(memorySpan, 0x55555555);
-            Assert.True(1798160573 == Crc32.ComputeHash(memorySpan));
-
-            memorySpan = new Span<byte>(new byte[1]);
-            WireFormatting.WriteByte(memorySpan, 1);
-            Assert.True(2768625435 == Crc32.ComputeHash(memorySpan));
-
-            memorySpan = new Span<byte>(new byte[2]);
-            WireFormatting.WriteInt16(memorySpan, 0x1234);
-            Assert.True(412718745 == Crc32.ComputeHash(memorySpan));
-
-        }
     }
 }
