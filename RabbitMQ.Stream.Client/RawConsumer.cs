@@ -465,6 +465,23 @@ namespace RabbitMQ.Stream.Client
                     // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
                     if (Token.IsCancellationRequested)
                         return;
+
+                    if (_config.Crc32 is not null)
+                    {
+                        var crcCalculated = BitConverter.ToUInt32(
+                            _config.Crc32.Hash(deliver.Chunk.Data.ToArray())
+                        );
+                        if (crcCalculated != deliver.Chunk.Crc)
+                        {
+                            _logger.LogError(
+                                "CRC32 does not match, server crc {ChunkCrc}, local crc {CrcCalculated}, stream {Stream}",
+                                deliver.Chunk.Crc, crcCalculated, _config.Stream);
+                            throw new CrcException(
+                                $"CRC32 does not match, server crc {deliver.Chunk.Crc}, local crc {crcCalculated}, " +
+                                $"stream {_config.Stream}");
+                        }
+                    }
+
                     await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
                 }, async promotedAsActive =>
                 {

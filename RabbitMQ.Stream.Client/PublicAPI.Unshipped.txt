@@ -7,6 +7,7 @@ RabbitMQ.Stream.Client.AuthMechanism.External = 1 -> RabbitMQ.Stream.Client.Auth
 RabbitMQ.Stream.Client.AuthMechanism.Plain = 0 -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.AuthMechanismNotSupportedException
 RabbitMQ.Stream.Client.AuthMechanismNotSupportedException.AuthMechanismNotSupportedException(string s) -> void
+RabbitMQ.Stream.Client.Chunk.Crc.get -> uint
 RabbitMQ.Stream.Client.Chunk.Data.get -> System.Memory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
 RabbitMQ.Stream.Client.Client.ExchangeVersions() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CommandVersionsResponse>
@@ -21,7 +22,11 @@ RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.get -> System.Func<RabbitMQ.Str
 RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.set -> void
 RabbitMQ.Stream.Client.ConsumerFilter.Values.get -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
+RabbitMQ.Stream.Client.CrcException
+RabbitMQ.Stream.Client.CrcException.CrcException(string s) -> void
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
+RabbitMQ.Stream.Client.IConsumerConfig.Crc32.get -> RabbitMQ.Stream.Client.ICrc32
+RabbitMQ.Stream.Client.IConsumerConfig.Crc32.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerFilter.get -> RabbitMQ.Stream.Client.ConsumerFilter
 RabbitMQ.Stream.Client.CommandVersions
 RabbitMQ.Stream.Client.CommandVersions.Command.get -> ushort
@@ -47,6 +52,8 @@ RabbitMQ.Stream.Client.ICommandVersions.MinVersion.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerFilter.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
+RabbitMQ.Stream.Client.ICrc32
+RabbitMQ.Stream.Client.ICrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.IProducerConfig.Filter.get -> RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.IProducerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
@@ -66,6 +73,8 @@ RabbitMQ.Stream.Client.PublishFilter.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.PublishFilter.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.set -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Crc32.get -> RabbitMQ.Stream.Client.ICrc32
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Crc32.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Filter.get -> RabbitMQ.Stream.Client.ConsumerFilter
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.get -> ushort
@@ -110,6 +119,8 @@ RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.set -> void
+RabbitMQ.Stream.Client.UnknownCommandException
+RabbitMQ.Stream.Client.UnknownCommandException.UnknownCommandException(string s) -> void
 RabbitMQ.Stream.Client.UnsupportedOperationException
 RabbitMQ.Stream.Client.UnsupportedOperationException.UnsupportedOperationException(string s) -> void
 static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption, Microsoft.Extensions.Logging.ILogger logger) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>

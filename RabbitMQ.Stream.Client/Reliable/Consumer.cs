@@ -112,6 +112,14 @@ public record ConsumerConfig : ReliableConfig
     /// </summary>
     public ConsumerFilter Filter { get; set; } = null;
 
+    /// <summary>
+    /// Eenables the check of the crc on the delivery when set to an implementation
+    /// of <see cref="ICrc32"><code>ICrc32</code></see>.
+    /// >he server will send the crc for each chunk and the client will check it.
+    /// It is not enabled by default because it is could reduce the performance.
+    /// </summary>
+    public ICrc32 Crc32 { get; set; } = null;
+
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {
     }

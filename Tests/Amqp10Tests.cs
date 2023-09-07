@@ -463,7 +463,7 @@ namespace Tests
             Assert.Equal(14, AmqpWireFormatting.GetAnySize("string_value"));
             Assert.Equal(9, AmqpWireFormatting.GetAnySize(DoubleValue));
             Assert.Equal(1, AmqpWireFormatting.GetAnySize(true));
-            Assert.Equal(1, AmqpWireFormatting.GetAnySize((byte)1));
+            Assert.Equal(2, AmqpWireFormatting.GetAnySize((byte)1));
             Assert.Equal(3, AmqpWireFormatting.GetAnySize((short)1));
             // In this case is a byte
             Assert.Equal(2, AmqpWireFormatting.GetAnySize(1));

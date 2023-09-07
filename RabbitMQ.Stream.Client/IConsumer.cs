@@ -65,4 +65,9 @@ public record IConsumerConfig : INamedEntity
             _initialCredits = value;
         }
     }
+
+    // enables the check of the crc on the delivery.
+    // the server will send the crc for each chunk and the client will check it.
+    // It is not enabled by default because it is could reduce the performance.
+    public ICrc32 Crc32 { get; set; } = null;
 }

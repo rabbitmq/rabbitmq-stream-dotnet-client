@@ -93,8 +93,13 @@ namespace RabbitMQ.Stream.Client
             // We need to pass it to the subEntryChunk that will decode the information
             var memory =
                 ArrayPool<byte>.Shared.Rent((int)dataLen).AsMemory(0, (int)dataLen);
-            var data = reader.Sequence.Slice(reader.Consumed, dataLen);
-            data.CopyTo(memory.Span);
+
+            //see the Chunk.Read for more details about this check
+            if (!reader.TryCopyTo(memory.Span))
+            {
+                throw new NotEnoughDataException(
+                    $"SubEntryChunk Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
+            }
 
             subEntryChunk =
                 new SubEntryChunk(compress, numRecordsInBatch, unCompressedDataSize, dataLen, memory);
@@ -103,6 +108,7 @@ namespace RabbitMQ.Stream.Client
             // Here we need to advance the reader to the datalen
             // Since Data is passed to the subEntryChunk.
             reader.Advance(dataLen);
+
             return offset;
         }
     }
@@ -115,7 +121,7 @@ namespace RabbitMQ.Stream.Client
             long timestamp,
             ulong epoch,
             ulong chunkId,
-            int crc,
+            uint crc,
             Memory<byte> data)
         {
             MagicVersion = magicVersion;
@@ -135,7 +141,7 @@ namespace RabbitMQ.Stream.Client
         public long Timestamp { get; }
         public ulong Epoch { get; }
         public ulong ChunkId { get; }
-        public int Crc { get; }
+        public uint Crc { get; }
         public Memory<byte> Data { get; }
 
         internal static int Read(ReadOnlySequence<byte> frame, out Chunk chunk)
@@ -148,15 +154,27 @@ namespace RabbitMQ.Stream.Client
             offset += WireFormatting.ReadInt64(ref reader, out var timestamp);
             offset += WireFormatting.ReadUInt64(ref reader, out var epoch);
             offset += WireFormatting.ReadUInt64(ref reader, out var chunkId);
-            offset += WireFormatting.ReadInt32(ref reader, out var crc);
+            offset += WireFormatting.ReadUInt32(ref reader, out var crc);
             offset += WireFormatting.ReadUInt32(ref reader, out var dataLen);
             offset += WireFormatting.ReadUInt32(ref reader, out _);
             // offset += 4; // reserved
             offset += WireFormatting.ReadUInt32(ref reader, out _); // reserved
             var memory =
                 ArrayPool<byte>.Shared.Rent((int)dataLen).AsMemory(0, (int)dataLen);
-            var data = reader.Sequence.Slice(reader.Consumed, dataLen);
-            data.CopyTo(memory.Span);
+
+            // the reader in this position contains the chunk information
+            // we copy it in a memory stream to be sure that we have all the data
+            // the memory stream will passed to the consumer to parse the messages
+            // reader.TryCopyTo will return false if the data is not enough.
+            // The chunk should be always complete, so this check is just a safety check
+            // the connection::TryReadFrame reads the frame based on the length
+            // so here we should have all the data
+            if (!reader.TryCopyTo(memory.Span))
+            {
+                throw new NotEnoughDataException(
+                    $"Chunk: Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
+            }
+
             chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, memory);
             return offset;
         }

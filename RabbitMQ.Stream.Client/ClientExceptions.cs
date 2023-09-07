@@ -109,4 +109,20 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
+
+    public class UnknownCommandException : Exception
+    {
+        public UnknownCommandException(string s)
+            : base(s)
+        {
+        }
+    }
+
+    public class CrcException : Exception
+    {
+        public CrcException(string s)
+            : base(s)
+        {
+        }
+    }
 }

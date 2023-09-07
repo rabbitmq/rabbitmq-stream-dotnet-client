@@ -19,6 +19,7 @@ namespace Tests;
 
 public class SuperStreamConsumerTests
 {
+    private readonly ICrc32 _crc32 = new Crc32();
     private readonly ITestOutputHelper _testOutputHelper;
 
     public SuperStreamConsumerTests(ITestOutputHelper testOutputHelper)
@@ -64,6 +65,7 @@ public class SuperStreamConsumerTests
         var consumer = await system.CreateSuperStreamConsumer(
             new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
             {
+                Crc32 = _crc32,
                 ClientProvidedName = clientProvidedName,
                 OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange, new OffsetTypeFirst()),
                 MessageHandler = (stream, consumer1, context, message) =>

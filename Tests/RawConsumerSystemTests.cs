@@ -19,6 +19,7 @@ namespace Tests
 {
     public class ConsumerSystemTests
     {
+        private readonly ICrc32 _crc32 = new Crc32();
         private readonly ITestOutputHelper testOutputHelper;
 
         public ConsumerSystemTests(ITestOutputHelper testOutputHelper)
@@ -416,6 +417,7 @@ namespace Tests
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
+                    Crc32 = _crc32,
                     Reference = "consumer",
                     MessageHandler = async (consumer, ctx, message) =>
                     {
@@ -462,6 +464,7 @@ namespace Tests
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
+                    Crc32 = _crc32,
                     Reference = reference,
                     OffsetSpec = new OffsetTypeOffset(),
                     MessageHandler = async (consumer, ctx, message) =>
@@ -532,6 +535,7 @@ namespace Tests
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
+                    Crc32 = _crc32,
                     Reference = Reference,
                     OffsetSpec = new OffsetTypeOffset(),
                     MessageHandler = async (consumer, ctx, _) =>
