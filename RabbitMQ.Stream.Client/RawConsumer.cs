@@ -6,7 +6,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -467,10 +466,10 @@ namespace RabbitMQ.Stream.Client
                     if (Token.IsCancellationRequested)
                         return;
 
-                    if (_config.CheckCrcOnDelivery)
+                    if (_config.Crc32 is not null)
                     {
                         var crcCalculated = BitConverter.ToUInt32(
-                            Crc32.Hash(deliver.Chunk.Data.ToArray())
+                            _config.Crc32.Hash(deliver.Chunk.Data.ToArray())
                         );
                         if (crcCalculated != deliver.Chunk.Crc)
                         {
