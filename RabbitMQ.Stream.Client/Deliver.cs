@@ -97,7 +97,7 @@ namespace RabbitMQ.Stream.Client
             //see the Chunk.Read for more details about this check
             if (!reader.TryCopyTo(memory.Span))
             {
-                throw new Exception(
+                throw new NotEnoughDataException(
                     $"SubEntryChunk Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
             }
 
@@ -171,7 +171,7 @@ namespace RabbitMQ.Stream.Client
             // so here we should have all the data
             if (!reader.TryCopyTo(memory.Span))
             {
-                throw new Exception(
+                throw new NotEnoughDataException(
                     $"Chunk: Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
             }
 

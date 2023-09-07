@@ -476,7 +476,7 @@ namespace RabbitMQ.Stream.Client
                             _logger.LogError(
                                 "CRC32 does not match, server crc {ChunkCrc}, local crc {CrcCalculated}, stream {Stream}",
                                 deliver.Chunk.Crc, crcCalculated, _config.Stream);
-                            throw new Exception(
+                            throw new CrcException(
                                 $"CRC32 does not match, server crc {deliver.Chunk.Crc}, local crc {crcCalculated}, " +
                                 $"stream {_config.Stream}");
                         }

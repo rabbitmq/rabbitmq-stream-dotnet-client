@@ -22,6 +22,8 @@ RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.get -> System.Func<RabbitMQ.Str
 RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.set -> void
 RabbitMQ.Stream.Client.ConsumerFilter.Values.get -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
+RabbitMQ.Stream.Client.CrcException
+RabbitMQ.Stream.Client.CrcException.CrcException(string s) -> void
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
 RabbitMQ.Stream.Client.IConsumerConfig.Crc32.get -> RabbitMQ.Stream.Client.ICrc32
 RabbitMQ.Stream.Client.IConsumerConfig.Crc32.set -> void
@@ -117,6 +119,8 @@ RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.set -> void
+RabbitMQ.Stream.Client.UnknownCommandException
+RabbitMQ.Stream.Client.UnknownCommandException.UnknownCommandException(string s) -> void
 RabbitMQ.Stream.Client.UnsupportedOperationException
 RabbitMQ.Stream.Client.UnsupportedOperationException.UnsupportedOperationException(string s) -> void
 static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption, Microsoft.Extensions.Logging.ILogger logger) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>

@@ -597,7 +597,7 @@ namespace RabbitMQ.Stream.Client
         {
             if (command.CorrelationId == uint.MaxValue)
             {
-                throw new Exception($"unhandled incoming command {command.GetType()}");
+                throw new UnknownCommandException($"unhandled incoming command {command.GetType()}");
             }
 
             if (requests.TryRemove(command.CorrelationId, out var tsc))
