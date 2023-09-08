@@ -77,7 +77,7 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-tls-external-auth]
 <1> Enable TLS and configure the certificates
 <2> Set the external authentication mechanism
 
-Note: you need the `rabbitmq_auth_mechanism_ssl` plugin enabled on the server side to use external authentication. 
+Note: you need the `rabbitmq_auth_mechanism_ssl` plugin enabled on the server side to use external authentication.
 `AuthMechanism.External` can be used from RabbitMQ server 3.11.19 and RabbitMQ 3.12.1 onwards.
 
 .Creating a TLS environment that trusts all server certificates for development
@@ -87,9 +87,6 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-tls-trust]
 --------
 
 <1> Trust all server certificates
-
-
-
 
 ===== Configuring the Stream System
 
@@ -322,7 +319,7 @@ This value is valid only for the `Send(Message)` method.
 
 Once a `Producer` has been created, it is possible to send a message with:
 
-* `Producer#send(Message)`, 
+* `Producer#send(Message)`,
 * `Producer#send(List<Message>)`
 * `Producer#send(List<Message> messages, CompressionType compressionType)`.
 
@@ -682,9 +679,7 @@ include::{test-examples}/ConsumerUsage.cs[tag=consumer-creation]
 
 The broker start sending messages as soon as the `Consumer` instance is created.
 
-
 Staring from the 1.3.0 version, the `Consumer#MessageHandler` API runs in a separated `Task` and it is possible to use `async`/`await` in the handler.
-
 
 The following table sums up the main settings to create a `Consumer` with `ConsumerConfig`:
 
@@ -750,23 +745,28 @@ See the <<specifying-an-offset,offset section>> to find out more about the diffe
 
 [[crc-on-delivery]]
 ===== Check the CRC on Delivery
-RabbitMQ Stream provides a CRC32 checksum on each message to ensure the chunk is not corrupted.
-The client library can check the CRC32 on the message and throw an exception if the message is corrupted. By default the CRC32 is not checked, to enable it you need to set the `ICrc32` in the `ConsumerConfig`:
 
-.Checking the CRC32 on the message
+RabbitMQ Stream provides a CRC32 checksum on each chunk.
+The client library can check the checksum before parse the chunk and throw an `CrcException` exception if the validation fails.
+By default the CRC32 checksum is not enabled, to enable it you need to set the `ICrc32` interface in the `ConsumerConfig`:
+
+.Checking the CRC32 checksum on the chunk
 [source,c#,indent=0]
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=consumer-creation-crc]
 --------
-1- An implementation of the `ICrc32` interface. You are free to use any implementation you want.
-   We suggest to use `System.IO.Hashing`. `System.IO.Hashing` is not shipped with the client library. 
-2- Set the `ICrc32` in the `ConsumerConfig`
 
-In case the CrC32 is not valid the `Consumer` will throw an `CrcException` exception.
-It is recommended to use it even if it _could_ reduce the performance of the consumer. It depends on the use case.
+<1> An implementation of the `ICrc32` interface.
+You are free to use any implementation you want.
+The client is tested with `System.IO.Hashing`.
+`System.IO.Hashing` is not shipped with the client library.
+<2> Set the `ICrc32` implementation in the `ConsumerConfig`
+
+It is recommended to use it.
+It _could_ reduce the performance of the consumer.
+It depends on the use case.
 
 [[consumer-reconnect-strategy]]
-
 [[specifying-an-offset]]
 ===== Specifying an Offset
 
@@ -950,6 +950,7 @@ Use the `ConsumerBuilder#singleActiveConsumer()` method to enable the feature:
 --------
 include::{test-examples}/ConsumerUsage.cs[tag=enabling-single-active-consumer]
 --------
+
 <1> Set the `Reference` name (mandatory to enable single active consumer)
 <2> Enable single active consumer
 
@@ -981,12 +982,10 @@ include::{test-examples}/ConsumerUsage.cs[tag=sac-consumer-update-listener]
 <2> Enable single active consumer
 <3> Handle `ConsumerUpdateListener` callback
 
-
 [[low-high-level-classes]]
 ==== Low Level and High Level classes
 
-.NET stream client provides  two types of classes:
-
+.NET stream client provides two types of classes:
 * Low-level classes
 * High-level classes
 
@@ -997,7 +996,9 @@ include::{test-examples}/ConsumerUsage.cs[tag=sac-consumer-update-listener]
 ** `RabbitMQ.Stream.Client.RawSuperStreamProducer` - Low-level super-stream producer class
 ** `RabbitMQ.Stream.Client.RawSuperStreamConsumer` - Low-level super-stream consumer class
 
-The Classes are used to interact with the stream server in a low level way. They are used to create streams, publish messages, consume messages, etc. They give you all the callbacks to manually handle events like:
+The Classes are used to interact with the stream server in a low level way.
+They are used to create streams, publish messages, consume messages, etc.
+They give you all the callbacks to manually handle events like:
 
 * `Disconnection`
 * `Metadata update`
@@ -1007,10 +1008,13 @@ The Classes are used to interact with the stream server in a low level way. They
 --------
 include::{test-examples}/RawClasses.cs[tag=raw-producer-creation]
 --------
+
 <1> Create a `RawProducer` instance
 <2> Event in case of disconnection
-<3> Event in case of MetadataHandler update. This event is triggered by the server when a stream changes topology like deleted or added/removed mirrors
-<4> ConfirmHandler event. This event is triggered when a `PublishingId` message is confirmed by the server with or without an error.
+<3> Event in case of MetadataHandler update.
+This event is triggered by the server when a stream changes topology like deleted or added/removed mirrors
+<4> ConfirmHandler event.
+This event is triggered when a `PublishingId` message is confirmed by the server with or without an error.
 
 Like the `RawProducer` class, the `Raw*` classes have the same events to handle the disconnection and metadata update.
 
@@ -1019,21 +1023,24 @@ It is up to the user to handle the disconnection and metadata update events.
 [WARNING]
 .Be careful when using the `Raw*` classes.
 ====
-They are low-level classes and you need to handle the disconnection and metadata update events. If you don't handle them, you will end up with a disconnected client and you will not be able to reconnect to the server.
+They are low-level classes and you need to handle the disconnection and metadata update events.
+If you don't handle them, you will end up with a disconnected client and you will not be able to reconnect to the server.
 
-"RawProducer:send" is not thread-safe. You need to synchronize access to it.
-"RawProducer" does not handle the timeout/error confirmation messages. You need to handle it yourself.
+"RawProducer:send" is not thread-safe.
+You need to synchronize access to it.
+"RawProducer" does not handle the timeout/error confirmation messages.
+You need to handle it yourself.
 ====
 
 ===== High-level classes
 
-** <<creating-a-producer, `Producer`>> - High-level producer class 
+** <<creating-a-producer, `Producer`>> - High-level producer class
 ** <<creating-a-consumer, `Consumer`>> - High-level consumer class
-
 
 `Producer` and `Consumer` classes handle auto-reconnection, metadata updates, super-stream and some low-level client behaviour.
 
-The `Producer` traces the sent and received messages to give back to the user the original message sent to the server and also handle the message timeout. See <<confirmation-status>> for more details.
+The `Producer` traces the sent and received messages to give back to the user the original message sent to the server and also handle the message timeout.
+See <<confirmation-status>> for more details.
 
 It would be best to use `Producer` and `Consumer` classes unless you need to handle the low-level details.  
 
