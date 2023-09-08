@@ -734,7 +734,7 @@ The following table sums up the main settings to create a `Consumer` with `Consu
 |`false`
 
 |`ICrc32`
-|The <<crc-on-delivery,CRC32 implementation>> to use to validate the server crc32.
+|The <<crc-on-delivery,CRC32 implementation>> to use to validate the chunk server crc32 .
 |`null` (no CRC32)
 
 |===
@@ -759,7 +759,7 @@ The client library can check the CRC32 on the message and throw an exception if 
 include::{test-examples}/ConsumerUsage.cs[tag=consumer-creation-crc]
 --------
 1- An implementation of the `ICrc32` interface. You are free to use any implementation you want.
-   We suggest to use `System.IO.Hashing`.
+   We suggest to use `System.IO.Hashing`. `System.IO.Hashing` is not shipped with the client library. 
 2- Set the `ICrc32` in the `ConsumerConfig`
 
 In case the CrC32 is not valid the `Consumer` will throw an `CrcException` exception.
