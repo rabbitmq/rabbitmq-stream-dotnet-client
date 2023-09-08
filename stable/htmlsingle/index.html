@@ -564,6 +564,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#creating-a-consumer">Consumer</a>
 <ul class="sectlevel4">
 <li><a href="#_creating_a_consumer">Creating a Consumer</a></li>
+<li><a href="#crc-on-delivery">Check the CRC on Delivery</a></li>
 <li><a href="#specifying-an-offset">Specifying an Offset</a></li>
 <li><a href="#consumer-offset-tracking">Tracking the Offset for a Consumer</a>
 <ul class="sectlevel5">
@@ -2738,6 +2739,11 @@ await streamSystem.Close().ConfigureAwait(false);</code></pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Enable the Super Stream feature</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ICrc32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <a href="#crc-on-delivery">CRC32 implementation</a> to use to validate the chunk server crc32 .</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (no CRC32)</p></td>
+</tr>
 </tbody>
 </table>
 <div class="admonitionblock note">
@@ -2757,6 +2763,48 @@ See the <a href="#specifying-an-offset">offset section</a> to find out more abou
 </td>
 </tr>
 </table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="crc-on-delivery">Check the CRC on Delivery</h5>
+<div class="paragraph">
+<p>RabbitMQ Stream provides a CRC32 checksum on each message to ensure the chunk is not corrupted.
+The client library can check the CRC32 on the message and throw an exception if the message is corrupted. By default the CRC32 is not checked, to enable it you need to set the <code>ICrc32</code> in the <code>ConsumerConfig</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">Checking the CRC32 on the message</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">private class UserCrc32 : ICrc32 // <b class="conum">(1)</b>
+{
+    public byte[] Hash(byte[] data)
+    {
+        // Here we use the System.IO.Hashing.Crc32 implementation
+        return System.IO.Hashing.Crc32.Hash(data);
+    }
+}
+
+public static async Task CreateConsumerWithCrc()
+{
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);
+    var consumer = await Consumer.Create(
+        new ConsumerConfig(
+            streamSystem,
+            &quot;my-stream&quot;)
+        {
+            Crc32 = new UserCrc32(), // <b class="conum">(2)</b>
+            OffsetSpec = new OffsetTypeTimestamp(),</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>1- An implementation of the <code>ICrc32</code> interface. You are free to use any implementation you want.
+   We suggest to use <code>System.IO.Hashing</code>. <code>System.IO.Hashing</code> is not shipped with the client library.
+2- Set the <code>ICrc32</code> in the <code>ConsumerConfig</code></p>
+</div>
+<div class="paragraph">
+<p>In case the CrC32 is not valid the <code>Consumer</code> will throw an <code>CrcException</code> exception.
+It is recommended to use it even if it <em>could</em> reduce the performance of the consumer. It depends on the use case.</p>
 </div>
 </div>
 <div class="sect4">
@@ -3116,8 +3164,8 @@ var consumer = await Consumer.Create(
         IsSingleActiveConsumer = true, // <b class="conum">(2)</b>
         ConsumerUpdateListener = async (consumerRef, stream, isActive) =&gt; // <b class="conum">(3)</b>
         {
-           var offset =  await streamSystem.QueryOffset(consumerRef, stream).ConfigureAwait(false);
-           return new OffsetTypeOffset(offset);
+            var offset = await streamSystem.QueryOffset(consumerRef, stream).ConfigureAwait(false);
+            return new OffsetTypeOffset(offset);
         },</code></pre>
 </div>
 </div>
@@ -4074,7 +4122,7 @@ Extreme cardinality (a couple or dozens of thousands) can make filtering less ef
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-07-31 11:59:23 UTC
+Last updated 2023-07-31 11:59:48 UTC
 </div>
 </div>
 </body>
