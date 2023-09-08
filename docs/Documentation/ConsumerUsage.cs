@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
+using System.IO.Hashing;
 using System.Text;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
@@ -91,11 +92,10 @@ public class ConsumerUsage
             }
         ).ConfigureAwait(false);
 
-        await consumer.Close().ConfigureAwait(false); 
+        await consumer.Close().ConfigureAwait(false);
         await streamSystem.Close().ConfigureAwait(false);
-        
     }
-    
+
     public static async Task CreateConsumerSingleUpdateListener()
     {
         // tag::sac-consumer-update-listener[]
@@ -112,8 +112,8 @@ public class ConsumerUsage
                 IsSingleActiveConsumer = true, // <2>
                 ConsumerUpdateListener = async (consumerRef, stream, isActive) => // <3>
                 {
-                   var offset =  await streamSystem.QueryOffset(consumerRef, stream).ConfigureAwait(false);
-                   return new OffsetTypeOffset(offset);
+                    var offset = await streamSystem.QueryOffset(consumerRef, stream).ConfigureAwait(false);
+                    return new OffsetTypeOffset(offset);
                 },
                 // end::sac-consumer-update-listener[]
                 MessageHandler = async (stream, consumer, context, message) =>
@@ -124,32 +124,32 @@ public class ConsumerUsage
             }
         ).ConfigureAwait(false);
 
-        await consumer.Close().ConfigureAwait(false); 
+        await consumer.Close().ConfigureAwait(false);
         await streamSystem.Close().ConfigureAwait(false);
-        
     }
-    
+
     // tag::consumer-creation-crc[]
-    private class MyCrc32 : ICrc32 // <1>
+    private class UserCrc32 : ICrc32 // <1>
     {
         public byte[] Hash(byte[] data)
         {
-            return Array.Empty<byte>();
+            // Here we use the System.IO.Hashing.Crc32 implementation
+            return System.IO.Hashing.Crc32.Hash(data);
         }
     }
-    
+
     public static async Task CreateConsumerWithCrc()
     {
         var streamSystem = await StreamSystem.Create(
             new StreamSystemConfig()
         ).ConfigureAwait(false);
-        var consumer = await Consumer.Create( 
-            new ConsumerConfig( 
+        var consumer = await Consumer.Create(
+            new ConsumerConfig(
                 streamSystem,
                 "my-stream")
             {
-                Crc32 = new MyCrc32(), // <2>
-                OffsetSpec = new OffsetTypeTimestamp(), 
+                Crc32 = new UserCrc32(), // <2>
+                OffsetSpec = new OffsetTypeTimestamp(),
                 // end::consumer-creation-crc[]
                 MessageHandler = async (stream, consumer, context, message) => // <4>
                 {
