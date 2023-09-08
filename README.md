@@ -57,7 +57,7 @@ Test:
 make test
 ```
 
-To execute the tests you need a RabbitMQ `v3.11.9` running with the following plugins enabled:
+To execute the tests you need a RabbitMQ `3.13.x` running with the following plugins enabled:
 - `rabbitmq_management`
 - `rabbitmq_stream`
 - `rabbitmq_stream_management`

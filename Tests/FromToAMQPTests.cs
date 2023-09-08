@@ -161,8 +161,14 @@ public class FromToAmqpTests
             Assert.Equal("Alan Mathison Turing（1912 年 6 月 23 日", message.ApplicationProperties["stream_key4"]);
             Assert.Equal(true, message.ApplicationProperties["bool"]);
             Assert.Equal(10_000_000_000, message.ApplicationProperties["decimal"]);
-            Assert.Equal(
-                $"Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父{i}",
+            // Starting from rabbitmq:3.13.0-beta.5 there is new Message Containers feature
+            // https://github.com/rabbitmq/rabbitmq-server/pull/5077
+            // In this version the long string are not converted to string but to byte[] 
+            // reason why we changed this test starting from the ci with RabbitMQ version >= 3.13.0-beta.5
+            var binaryValue = Encoding.UTF8.GetBytes(
+                $"Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父{i}");
+
+            Assert.Equal(binaryValue,
                 message.ApplicationProperties["alan"]
             );
             Assert.Equal(i, message.ApplicationProperties["int"]);
