@@ -2768,11 +2768,12 @@ See the <a href="#specifying-an-offset">offset section</a> to find out more abou
 <div class="sect4">
 <h5 id="crc-on-delivery">Check the CRC on Delivery</h5>
 <div class="paragraph">
-<p>RabbitMQ Stream provides a CRC32 checksum on each message to ensure the chunk is not corrupted.
-The client library can check the CRC32 on the message and throw an exception if the message is corrupted. By default the CRC32 is not checked, to enable it you need to set the <code>ICrc32</code> in the <code>ConsumerConfig</code>:</p>
+<p>RabbitMQ Stream provides a CRC32 checksum on each chunk.
+The client library can check the checksum before parse the chunk and throw an <code>CrcException</code> exception if the validation fails.
+By default the CRC32 checksum is not enabled, to enable it you need to set the <code>ICrc32</code> interface in the <code>ConsumerConfig</code>:</p>
 </div>
 <div class="listingblock">
-<div class="title">Checking the CRC32 on the message</div>
+<div class="title">Checking the CRC32 checksum on the chunk</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="c#">private class UserCrc32 : ICrc32 // <b class="conum">(1)</b>
 {
@@ -2797,14 +2798,23 @@ public static async Task CreateConsumerWithCrc()
             OffsetSpec = new OffsetTypeTimestamp(),</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>1- An implementation of the <code>ICrc32</code> interface. You are free to use any implementation you want.
-   We suggest to use <code>System.IO.Hashing</code>. <code>System.IO.Hashing</code> is not shipped with the client library.
-2- Set the <code>ICrc32</code> in the <code>ConsumerConfig</code></p>
+<div class="colist arabic">
+<ol>
+<li>
+<p>An implementation of the <code>ICrc32</code> interface.
+You are free to use any implementation you want.
+The client is tested with <code>System.IO.Hashing</code>.
+<code>System.IO.Hashing</code> is not shipped with the client library.</p>
+</li>
+<li>
+<p>Set the <code>ICrc32</code> implementation in the <code>ConsumerConfig</code></p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
-<p>In case the CrC32 is not valid the <code>Consumer</code> will throw an <code>CrcException</code> exception.
-It is recommended to use it even if it <em>could</em> reduce the performance of the consumer. It depends on the use case.</p>
+<p>It is recommended to use it.
+It <em>could</em> reduce the performance of the consumer.
+It depends on the use case.</p>
 </div>
 </div>
 <div class="sect4">
@@ -3188,7 +3198,7 @@ var consumer = await Consumer.Create(
 <div class="sect3">
 <h4 id="low-high-level-classes">Low Level and High Level classes</h4>
 <div class="ulist">
-<div class="title">NET stream client provides  two types of classes:</div>
+<div class="title">NET stream client provides two types of classes:</div>
 <ul>
 <li>
 <p>Low-level classes</p>
@@ -3217,7 +3227,9 @@ var consumer = await Consumer.Create(
 </ul>
 </div>
 <div class="paragraph">
-<p>The Classes are used to interact with the stream server in a low level way. They are used to create streams, publish messages, consume messages, etc. They give you all the callbacks to manually handle events like:</p>
+<p>The Classes are used to interact with the stream server in a low level way.
+They are used to create streams, publish messages, consume messages, etc.
+They give you all the callbacks to manually handle events like:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -3262,10 +3274,12 @@ var consumer = await Consumer.Create(
 <p>Event in case of disconnection</p>
 </li>
 <li>
-<p>Event in case of MetadataHandler update. This event is triggered by the server when a stream changes topology like deleted or added/removed mirrors</p>
+<p>Event in case of MetadataHandler update.
+This event is triggered by the server when a stream changes topology like deleted or added/removed mirrors</p>
 </li>
 <li>
-<p>ConfirmHandler event. This event is triggered when a <code>PublishingId</code> message is confirmed by the server with or without an error.</p>
+<p>ConfirmHandler event.
+This event is triggered when a <code>PublishingId</code> message is confirmed by the server with or without an error.</p>
 </li>
 </ol>
 </div>
@@ -3284,11 +3298,14 @@ var consumer = await Consumer.Create(
 <td class="content">
 <div class="title">Be careful when using the <code>Raw*</code> classes.</div>
 <div class="paragraph">
-<p>They are low-level classes and you need to handle the disconnection and metadata update events. If you don&#8217;t handle them, you will end up with a disconnected client and you will not be able to reconnect to the server.</p>
+<p>They are low-level classes and you need to handle the disconnection and metadata update events.
+If you don&#8217;t handle them, you will end up with a disconnected client and you will not be able to reconnect to the server.</p>
 </div>
 <div class="paragraph">
-<p>"RawProducer:send" is not thread-safe. You need to synchronize access to it.
-"RawProducer" does not handle the timeout/error confirmation messages. You need to handle it yourself.</p>
+<p>"RawProducer:send" is not thread-safe.
+You need to synchronize access to it.
+"RawProducer" does not handle the timeout/error confirmation messages.
+You need to handle it yourself.</p>
 </div>
 </td>
 </tr>
@@ -3311,7 +3328,8 @@ var consumer = await Consumer.Create(
 <p><code>Producer</code> and <code>Consumer</code> classes handle auto-reconnection, metadata updates, super-stream and some low-level client behaviour.</p>
 </div>
 <div class="paragraph">
-<p>The <code>Producer</code> traces the sent and received messages to give back to the user the original message sent to the server and also handle the message timeout. See <a href="#confirmation-status">[confirmation-status]</a> for more details.</p>
+<p>The <code>Producer</code> traces the sent and received messages to give back to the user the original message sent to the server and also handle the message timeout.
+See <a href="#confirmation-status">[confirmation-status]</a> for more details.</p>
 </div>
 <div class="paragraph">
 <p>It would be best to use <code>Producer</code> and <code>Consumer</code> classes unless you need to handle the low-level details.</p>
@@ -4122,7 +4140,7 @@ Extreme cardinality (a couple or dozens of thousands) can make filtering less ef
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-07-31 11:59:48 UTC
+Last updated 2023-09-08 09:34:27 UTC
 </div>
 </div>
 </body>
