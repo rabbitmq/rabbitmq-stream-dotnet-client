@@ -62,6 +62,11 @@ public abstract class ProducerFactory : ReliableBase
 
     private async Task<IProducer> StandardProducer()
     {
+        var onConnectionClosed = _producerConfig.OnConnectionClosed ?? (async _ =>
+        {
+            await TryToReconnect(_producerConfig.ReconnectStrategy).ConfigureAwait(false);
+        });
+
         return await _producerConfig.StreamSystem.CreateRawProducer(new RawProducerConfig(_producerConfig.Stream)
         {
             ClientProvidedName = _producerConfig.ClientProvidedName,
@@ -80,10 +85,7 @@ public abstract class ProducerFactory : ReliableBase
                         _producerConfig.StreamSystem).WaitAsync(CancellationToken.None);
                 });
             },
-            ConnectionClosedHandler = async _ =>
-            {
-                await TryToReconnect(_producerConfig.ReconnectStrategy).ConfigureAwait(false);
-            },
+            ConnectionClosedHandler = onConnectionClosed,
             ConfirmHandler = confirmation =>
             {
                 var confirmationStatus = confirmation.Code switch

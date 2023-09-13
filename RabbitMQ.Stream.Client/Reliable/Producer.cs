@@ -104,6 +104,8 @@ public record ProducerConfig : ReliableConfig
         }
     }
 
+    public Func<string, Task> OnConnectionClosed { get; set; } = null;
+
     public ProducerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {
     }

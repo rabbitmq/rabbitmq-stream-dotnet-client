@@ -88,6 +88,8 @@ RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig.DeduplicatingProducerConfig(RabbitMQ.Stream.Client.StreamSystem streamSystem, string stream, string reference) -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.get -> RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.set -> void
+RabbitMQ.Stream.Client.Reliable.ProducerConfig.OnConnectionClosed.get -> System.Func<string, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.Reliable.ProducerConfig.OnConnectionClosed.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.RoutingStrategyType.set -> void
