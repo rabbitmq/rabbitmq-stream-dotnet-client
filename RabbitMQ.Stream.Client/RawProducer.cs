@@ -122,12 +122,24 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var id in publishingIds.Span)
                     {
-                        _config.ConfirmHandler(new Confirmation
+                        try
                         {
-                            PublishingId = id,
-                            Code = ResponseCode.Ok,
-                            Stream = _config.Stream
-                        });
+                            _config.ConfirmHandler(new Confirmation
+                            {
+                                PublishingId = id,
+                                Code = ResponseCode.Ok,
+                                Stream = _config.Stream
+                            });
+                        }
+                        catch (Exception e)
+                        {
+                            // The call is exposed to the user so we need to catch any exception
+                            // there could be an exception in the user code. 
+                            // So here we log the exception and we continue.
+
+                            _logger.LogError(e, "Error during confirm handler, publishing id: {Id}. " +
+                                                "Hint: Check the user ConfirmHandler callback", id);
+                        }
                     }
 
                     _semaphore.Release(publishingIds.Length);

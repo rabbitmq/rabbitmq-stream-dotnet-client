@@ -55,7 +55,7 @@ public abstract class ProducerFactory : ReliableBase
                         _ => ConfirmationStatus.UndefinedError
                     };
                     _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
-                        stream);
+                        stream).ConfigureAwait(false);
                 }
             }, BaseLogger).ConfigureAwait(false);
     }
@@ -97,7 +97,7 @@ public abstract class ProducerFactory : ReliableBase
                     _ => ConfirmationStatus.UndefinedError
                 };
                 _confirmationPipe.RemoveUnConfirmedMessage(confirmationStatus, confirmation.PublishingId,
-                    confirmation.Stream);
+                    confirmation.Stream).ConfigureAwait(false);
             }
         }, BaseLogger).ConfigureAwait(false);
     }
