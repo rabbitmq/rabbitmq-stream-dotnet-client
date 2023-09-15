@@ -20,14 +20,15 @@ public class FilterProducer
             builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
         });
 
-        var logger = loggerFactory.CreateLogger<Producer>();
-        var loggerMain = loggerFactory.CreateLogger<FilterProducer>();
+        var producerLogger = loggerFactory.CreateLogger<Producer>();
+        var streamLogger = loggerFactory.CreateLogger<StreamSystem>();
+        var mainLogger = loggerFactory.CreateLogger<FilterConsumer>();
 
 
         var config = new StreamSystemConfig();
-        var system = await StreamSystem.Create(config).ConfigureAwait(false);
+        var system = await StreamSystem.Create(config, streamLogger).ConfigureAwait(false);
         await system.CreateStream(new StreamSpec(streamName)).ConfigureAwait(false);
-        loggerMain.LogInformation("FilterProducer connected to RabbitMQ. StreamName {StreamName}", streamName);
+        mainLogger.LogInformation("FilterProducer connected to RabbitMQ. StreamName {StreamName}", streamName);
 
         var producer = await Producer.Create(new ProducerConfig(system, streamName)
         {
@@ -39,7 +40,7 @@ public class FilterProducer
                 FilterValue = message => message.ApplicationProperties["state"].ToString(), // <1>
             }
             // end::producer-filter[]
-        }).ConfigureAwait(false);
+        },producerLogger).ConfigureAwait(false);
 
         const int ToSend = 100;
 
@@ -62,14 +63,14 @@ public class FilterProducer
         // Send the first 200 messages with state "New York"
         // then we wait a bit to be sure that all the messages will go in a chunk
         await SendTo("New York").ConfigureAwait(false);
-        loggerMain.LogInformation("Sent: {MessagesSent} - filter value: {FilerValue}", ToSend * 2, "New York");
+        mainLogger.LogInformation("Sent: {MessagesSent} - filter value: {FilerValue}", ToSend * 2, "New York");
 
         // Wait a bit to be sure that all the messages will go in a chunk
         await Task.Delay(2000).ConfigureAwait(false);
 
         // Send the second 200 messages with the Alabama state
         await SendTo("Alabama").ConfigureAwait(false);
-        loggerMain.LogInformation("Sent: {MessagesSent} - filter value: {FilerValue}", ToSend * 2, "Alabama");
+        mainLogger.LogInformation("Sent: {MessagesSent} - filter value: {FilerValue}", ToSend * 2, "Alabama");
         await Task.Delay(1000).ConfigureAwait(false);
         await producer.Close().ConfigureAwait(false);
         await system.Close().ConfigureAwait(false);
