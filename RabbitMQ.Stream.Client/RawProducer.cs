@@ -45,7 +45,8 @@ namespace RabbitMQ.Stream.Client
             if (Filter is { FilterValue: not null } && !AvailableFeaturesSingleton.Instance.PublishFilter)
             {
                 throw new UnsupportedOperationException("Broker does not support filtering. " +
-                                                        "You need RabbitMQ 3.13.0 or later.");
+                                                        "You need RabbitMQ 3.13.0 or later and" +
+                                                        "the stream_filtering feature flag enabled.");
             }
         }
     }
