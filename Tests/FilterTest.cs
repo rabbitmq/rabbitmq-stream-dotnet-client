@@ -18,10 +18,14 @@ public class FilterTest
 {
     // When the Filter is set also Values must be set and PostFilter must be set
     // Values must be a list of string and must contain at least one element
-    [Fact]
+    [SkippableFact]
     public async void ValidateFilter()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        if (!AvailableFeaturesSingleton.Instance.PublishFilter)
+        {
+            throw new SkipException("broker does not support filter");
+        }
 
         await Assert.ThrowsAsync<ArgumentException>(() => Consumer.Create(
             new ConsumerConfig(system, stream) { Filter = new ConsumerFilter() }
@@ -54,10 +58,14 @@ public class FilterTest
     // We send 100 messages with two different states (Alabama and New York)
     // By using the filter we should be able to consume only the messages from Alabama 
     // and the server has to send only one chunk with all the messages from Alabama
-    [Fact]
+    [SkippableFact]
     public async void FilterShouldReturnOnlyOneChunk()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        if (!AvailableFeaturesSingleton.Instance.PublishFilter)
+        {
+            throw new SkipException("broker does not support filter");
+        }
 
         var producer = await Producer.Create(
             new ProducerConfig(system, stream)
@@ -171,10 +179,15 @@ public class FilterTest
     // For the producer side we have the ConfirmationHandler the messages with errors 
     // will be reported as not confirmed and the user can handle them.
     // for the consumer the messages will be skipped and logged with the standard logger
-    [Fact]
+    [SkippableFact]
     public async void ErrorFiltersFunctionWontDeliverTheMessage()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        if (!AvailableFeaturesSingleton.Instance.PublishFilter)
+        {
+            throw new SkipException("broker does not support filter");
+        }
+
         var messagesConfirmed = 0;
         var messagesError = 0;
         var testPassed = new TaskCompletionSource<int>();

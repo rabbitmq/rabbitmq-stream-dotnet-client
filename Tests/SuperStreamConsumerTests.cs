@@ -59,7 +59,16 @@ public class SuperStreamConsumerTests
         var consumedMessages = 0;
         const int NumberOfMessages = 20;
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, NumberOfMessages, "", _testOutputHelper);
+        // Publish to super stream hands sometimes, for unknow reason
+        var publishTask = SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, NumberOfMessages,
+            "", _testOutputHelper);
+        if (await Task.WhenAny(publishTask, Task.Delay(10000)) != publishTask)
+        {
+            Assert.Fail("timed out awaiting to publish messages to super stream");
+        }
+
+        await publishTask;
+
         var clientProvidedName = Guid.NewGuid().ToString();
 
         var consumer = await system.CreateSuperStreamConsumer(
@@ -200,7 +209,15 @@ public class SuperStreamConsumerTests
         var listConsumed = new ConcurrentBag<string>();
         const int NumberOfMessages = 20;
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        await SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
+        var publishToSuperStreamTask =
+            SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
+        if (await Task.WhenAny(publishToSuperStreamTask, Task.Delay(10000)) != publishToSuperStreamTask)
+        {
+            Assert.Fail("timeout waiting to publish messages");
+        }
+
+        // We re-await the task so that any exceptions/cancellation is rethrown.
+        await publishToSuperStreamTask;
         var clientProvidedName = Guid.NewGuid().ToString();
         var consumers = new Dictionary<string, IConsumer>();
 
@@ -253,7 +270,17 @@ public class SuperStreamConsumerTests
     {
         SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
+        _testOutputHelper.WriteLine("awaiting publish to super stream");
+        var publishTask =
+            SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
+        if (await Task.WhenAny(publishTask, Task.Delay(10000)) != publishTask)
+        {
+            Assert.Fail("timed out awaiting to publish messages to super stream");
+        }
+
+        // re-await in case any cancellation or exception happen, it can throw
+        await publishTask;
+
         var listConsumed = new ConcurrentBag<string>();
         var testPassed = new TaskCompletionSource<bool>();
         var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)

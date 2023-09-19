@@ -33,7 +33,8 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var rawProducer = await system.CreateRawProducer(
+
+            var createProducerTask = system.CreateRawProducer(
                 new RawProducerConfig(stream)
                 {
                     Reference = "producer",
@@ -43,6 +44,15 @@ namespace Tests
                         testPassed.SetResult(conf.Code == ResponseCode.Ok);
                     }
                 });
+
+            if (await Task.WhenAny(createProducerTask, Task.Delay(5000)) != createProducerTask)
+            {
+                // timeout to avoid infinite await
+                Assert.Fail("timeout awaiting for CreateRawProducer");
+                return;
+            }
+
+            var rawProducer = await createProducerTask;
 
             var readonlySequence = "apple".AsReadonlySequence();
             var message = new Message(new Data(readonlySequence));
@@ -315,16 +325,16 @@ namespace Tests
             const int NumberOfMessages = 100;
             var rawProducer = await system.CreateRawProducer(new
                 RawProducerConfig(stream)
-            {
-                Reference = "producer",
-                ConfirmHandler = confirmation =>
                 {
-                    if (confirmation.PublishingId == NumberOfMessages)
+                    Reference = "producer",
+                    ConfirmHandler = confirmation =>
                     {
-                        testPassed.SetResult(true);
+                        if (confirmation.PublishingId == NumberOfMessages)
+                        {
+                            testPassed.SetResult(true);
+                        }
                     }
                 }
-            }
             );
             var messages = new List<(ulong, Message)>();
             for (var i = 1; i <= NumberOfMessages; i++)
@@ -376,13 +386,9 @@ namespace Tests
             var testPassed = new TaskCompletionSource<bool>();
             var rawProducer = await system.CreateRawProducer(new
                 RawProducerConfig(stream)
-            {
-                Reference = "producer",
-                ConfirmHandler = _ =>
                 {
-                    testPassed.SetResult(true);
+                    Reference = "producer", ConfirmHandler = _ => { testPassed.SetResult(true); }
                 }
-            }
             );
 
             const ulong PublishingId = 0;
