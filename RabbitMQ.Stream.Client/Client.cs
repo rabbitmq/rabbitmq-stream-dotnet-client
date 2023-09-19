@@ -213,7 +213,7 @@ namespace RabbitMQ.Stream.Client
             // exchange properties
             var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                 new PeerPropertiesRequest(corr, parameters.Properties)).ConfigureAwait(false);
-            logger?.LogDebug("Server properties: {@Properties}", peerPropertiesResponse);
+            logger?.LogDebug("Server properties: {@Properties}", peerPropertiesResponse.Properties);
 
             //auth
             var saslHandshakeResponse =
@@ -254,6 +254,8 @@ namespace RabbitMQ.Stream.Client
             if (peerPropertiesResponse.Properties.TryGetValue("version", out var version))
             {
                 AvailableFeaturesSingleton.Instance.SetServerVersion(version);
+                logger?.LogDebug("Extracted BrokerVersion version: {Version}",
+                    AvailableFeaturesSingleton.Instance.BrokerVersion);
                 if (AvailableFeaturesSingleton.Instance.Is311OrMore)
                 {
                     var features = await client.ExchangeVersions().ConfigureAwait(false);

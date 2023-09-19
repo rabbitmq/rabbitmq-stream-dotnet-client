@@ -1,7 +1,11 @@
 Server Side Filter Example
 --------------------------
 
+WARNING: Filtering requires *RabbitMQ 3.13* or more and the stream_filter feature flag enabled.
+
+
 This example shows how to use the server side filter to filter the data on the server side.
+
 
 ### Running the Producer 
 
