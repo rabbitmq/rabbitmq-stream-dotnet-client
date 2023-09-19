@@ -6,13 +6,15 @@ metadata:
 apiVersion: rabbitmq.com/v1beta1
 kind: RabbitmqCluster
 metadata:
-  name: rabbitmq-stream
+  name: tls
   namespace: stream-clients-test
 spec:
   replicas: 1
   image: rabbitmq:3-management
   service:
     type: LoadBalancer
+  tls:
+    secretName: tls-secret
   resources:
     requests:
       cpu: 500m

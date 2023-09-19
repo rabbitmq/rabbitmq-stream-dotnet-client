@@ -124,7 +124,8 @@ public class ConfirmationPipe
 
         foreach (var pair in timedOutMessages)
         {
-            await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null).ConfigureAwait(false);
+            await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null)
+                .ConfigureAwait(false);
         }
     }
 
@@ -145,8 +146,13 @@ public class ConfirmationPipe
             });
     }
 
-    internal Task RemoveUnConfirmedMessage(ConfirmationStatus confirmationStatus, ulong publishingId, string stream)
+    internal async Task RemoveUnConfirmedMessage(ConfirmationStatus confirmationStatus, ulong publishingId,
+        string stream)
     {
-        return _waitForConfirmationActionBlock.SendAsync((confirmationStatus, publishingId, stream));
+        if (!await _waitForConfirmationActionBlock.SendAsync((confirmationStatus, publishingId, stream))
+                .ConfigureAwait(false))
+        {
+            await _waitForConfirmationActionBlock.Completion.ConfigureAwait(false);
+        }
     }
 }
