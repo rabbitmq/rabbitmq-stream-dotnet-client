@@ -86,7 +86,7 @@ namespace RabbitMQ.Stream.Client
     /// <summary>
     /// Offset of type timestamp.
     /// </summary>
-    /// <remarks>Note that timestamp itself is not UNIX timestamp but microsecond-precise UNIX timestamp.</remarks>
+    /// <remarks>Note that timestamp itself is not UNIX timestamp but millisecond-precise UNIX timestamp.</remarks>
     public readonly struct OffsetTypeTimestamp : IOffsetType
     {
         private readonly long _timestamp;
@@ -95,8 +95,8 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// Create offset of type timestamp from given timestamp.
         /// </summary>
-        /// <param name="timestamp">unix timestamp, microsecond precision</param>
-        /// <remarks>Note that timestamp itself is not UNIX timestamp but microsecond-precise UNIX timestamp.</remarks>
+        /// <param name="timestamp">unix timestamp, millisecond precision</param>
+        /// <remarks>Note that timestamp itself is not UNIX timestamp but millisecond-precise UNIX timestamp.</remarks>
         public OffsetTypeTimestamp(long timestamp)
         {
             _timestamp = timestamp;
