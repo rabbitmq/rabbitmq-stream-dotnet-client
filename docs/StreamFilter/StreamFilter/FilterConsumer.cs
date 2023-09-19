@@ -18,14 +18,15 @@ public class FilterConsumer
             builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
         });
 
-        var logger = loggerFactory.CreateLogger<Consumer>();
-        var loggerMain = loggerFactory.CreateLogger<FilterConsumer>();
+        var consumerLogger = loggerFactory.CreateLogger<Consumer>();
+        var streamLogger = loggerFactory.CreateLogger<StreamSystem>();
+        var mainLogger = loggerFactory.CreateLogger<FilterConsumer>();
 
 
         var config = new StreamSystemConfig();
-        var system = await StreamSystem.Create(config).ConfigureAwait(false);
+        var system = await StreamSystem.Create(config, streamLogger).ConfigureAwait(false);
         await system.CreateStream(new StreamSpec(streamName)).ConfigureAwait(false);
-        loggerMain.LogInformation("FilterConsumer connected to RabbitMQ. StreamName {StreamName}", streamName);
+        mainLogger.LogInformation("FilterConsumer connected to RabbitMQ. StreamName {StreamName}", streamName);
 
 
         // tag::consumer-filter[]
@@ -38,19 +39,19 @@ public class FilterConsumer
             // This is mandatory for enabling the filter
             Filter = new ConsumerFilter()
             {
-                Values = new List<string>() {"Alabama"},// <1>
+                Values = new List<string>() {"Alabama"}, // <1>
                 PostFilter = message => message.ApplicationProperties["state"].Equals("Alabama"), // <2>
-                MatchUnfiltered = true 
+                MatchUnfiltered = true
             },
             MessageHandler = (_, _, _, message) =>
             {
-                logger.LogInformation("Received message with state {State} - consumed {Consumed}",
+                consumerLogger.LogInformation("Received message with state {State} - consumed {Consumed}",
                     message.ApplicationProperties["state"], ++consumedMessages);
                 return Task.CompletedTask;
             }
             // end::consumer-filter[]
-        }).ConfigureAwait(false);
-        
+        }, consumerLogger).ConfigureAwait(false);
+
         await Task.Delay(2000).ConfigureAwait(false);
         await consumer.Close().ConfigureAwait(false);
         await system.Close().ConfigureAwait(false);

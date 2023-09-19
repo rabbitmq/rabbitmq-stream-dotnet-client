@@ -17,6 +17,8 @@ internal class AvailableFeatures
 
     public bool Is311OrMore { get; private set; }
 
+    public string BrokerVersion { get; private set; }
+
     private static string ExtractVersion(string fullVersion)
     {
         const string Pattern = @"(\d+\.\d+\.\d+)";
@@ -30,6 +32,7 @@ internal class AvailableFeatures
     public void SetServerVersion(string brokerVersion)
     {
         var v = ExtractVersion(brokerVersion);
+        BrokerVersion = v;
         Is311OrMore = new System.Version(v) >= new System.Version("3.11.0");
     }
 
