@@ -20,6 +20,10 @@ namespace RabbitMQ.Stream.Client
         internal const string SubscriptionPropertyFilterPrefix = "filter.";
         internal const string SubscriptionPropertyMatchUnfiltered = "match-unfiltered";
 
+        internal const string FilterNotSupported = "Broker does not support filtering. " +
+                                                   "You need RabbitMQ 3.13.0 or later and" +
+                                                   "the stream_filtering feature flag enabled.";
+
         internal static int RandomShort()
         {
             return Random.Shared.Next(500, 1500);

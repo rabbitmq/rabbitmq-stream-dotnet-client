@@ -82,9 +82,7 @@ namespace RabbitMQ.Stream.Client
 
             if (IsFiltering && !AvailableFeaturesSingleton.Instance.PublishFilter)
             {
-                throw new UnsupportedOperationException("Broker does not support filtering. You need " +
-                                                        "RabbitMQ 3.13.0 or later and " +
-                                                        "the stream_filtering feature flag enabled.");
+                throw new UnsupportedOperationException(Consts.FilterNotSupported);
             }
 
             switch (ConsumerFilter)
