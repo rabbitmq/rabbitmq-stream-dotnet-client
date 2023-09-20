@@ -83,23 +83,47 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
+    /// <summary>
+    /// Offset of type timestamp.
+    /// </summary>
+    /// <remarks>Note that timestamp itself is not UNIX timestamp but millisecond-precise UNIX timestamp.</remarks>
     public readonly struct OffsetTypeTimestamp : IOffsetType
     {
-        private readonly long timestamp;
+        private readonly long _timestamp;
         public OffsetTypeEnum OffsetType => OffsetTypeEnum.Timestamp;
 
+        /// <summary>
+        /// Create offset of type timestamp from given timestamp.
+        /// </summary>
+        /// <param name="timestamp">unix timestamp, millisecond precision</param>
+        /// <remarks>Note that timestamp itself is not UNIX timestamp but millisecond-precise UNIX timestamp.</remarks>
         public OffsetTypeTimestamp(long timestamp)
         {
-            this.timestamp = timestamp;
+            _timestamp = timestamp;
         }
 
-        internal long TimeStamp => timestamp;
+        public OffsetTypeTimestamp(DateTimeOffset dateTimeOffset)
+        {
+            _timestamp = dateTimeOffset.ToUnixTimeMilliseconds();
+        }
+
+        public OffsetTypeTimestamp(DateTime dateTime)
+        {
+            if (dateTime.Kind != DateTimeKind.Utc)
+            {
+                throw new UnsupportedOperationException("Given datetime has to be of kind Utc");
+            }
+
+            _timestamp = new DateTimeOffset(dateTime).ToUnixTimeMilliseconds();
+        }
+
+        internal long TimeStamp => _timestamp;
         public int Size => 10;
 
         public int Write(Span<byte> span)
         {
             var offset = WireFormatting.WriteUInt16(span, (ushort)OffsetType);
-            offset += WireFormatting.WriteInt64(span[offset..], timestamp);
+            offset += WireFormatting.WriteInt64(span[offset..], _timestamp);
             return offset;
         }
     }
