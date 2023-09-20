@@ -583,7 +583,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error during disposing of consumer: {SubscriberId}.", _subscriberId);
+                _logger.LogError(e, "Error during disposing of consumer: {SubscriberId}", _subscriberId);
             }
             finally
             {
