@@ -92,6 +92,9 @@ namespace RabbitMQ.Stream.Client
                 advertisedPort = GetPropertyValue(client.ConnectionProperties, "advertised_port");
                 if (attemptNo > maxAttempts)
                 {
+                    await client.Close($"advertised_host or advertised_port doesn't match after {attemptNo} attempts")
+                        .ConfigureAwait(false);
+
                     throw new RoutingClientException(
                         $"Could not find broker ({broker.Host}:{broker.Port}) after {maxAttempts} attempts");
                 }
