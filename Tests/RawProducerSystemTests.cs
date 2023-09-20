@@ -325,16 +325,16 @@ namespace Tests
             const int NumberOfMessages = 100;
             var rawProducer = await system.CreateRawProducer(new
                 RawProducerConfig(stream)
+            {
+                Reference = "producer",
+                ConfirmHandler = confirmation =>
                 {
-                    Reference = "producer",
-                    ConfirmHandler = confirmation =>
+                    if (confirmation.PublishingId == NumberOfMessages)
                     {
-                        if (confirmation.PublishingId == NumberOfMessages)
-                        {
-                            testPassed.SetResult(true);
-                        }
+                        testPassed.SetResult(true);
                     }
                 }
+            }
             );
             var messages = new List<(ulong, Message)>();
             for (var i = 1; i <= NumberOfMessages; i++)
@@ -386,9 +386,10 @@ namespace Tests
             var testPassed = new TaskCompletionSource<bool>();
             var rawProducer = await system.CreateRawProducer(new
                 RawProducerConfig(stream)
-                {
-                    Reference = "producer", ConfirmHandler = _ => { testPassed.SetResult(true); }
-                }
+            {
+                Reference = "producer",
+                ConfirmHandler = _ => { testPassed.SetResult(true); }
+            }
             );
 
             const ulong PublishingId = 0;
