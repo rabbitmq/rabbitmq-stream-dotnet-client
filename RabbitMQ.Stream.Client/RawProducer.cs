@@ -397,7 +397,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error during disposing Consumer: {PublisherId}.", _publisherId);
+                _logger.LogError(e, "Error during disposing Consumer: {PublisherId}", _publisherId);
             }
 
             GC.SuppressFinalize(this);

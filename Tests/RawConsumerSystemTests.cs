@@ -90,23 +90,23 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            const int numberOfMessages = 10;
-            await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
+            const int NumberOfMessages = 10;
+            await SystemUtils.PublishMessages(system, stream, NumberOfMessages, testOutputHelper);
             var count = 0;
             var consumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer_offset",
                     OffsetSpec = new OffsetTypeFirst(),
-                    MessageHandler = async (consumer, ctx, message) =>
+                    MessageHandler = async (consumer, ctx, _) =>
                     {
                         testOutputHelper.WriteLine($"ConsumerStoreOffset receiving.. {count}");
                         count++;
-                        if (count == numberOfMessages)
+                        if (count == NumberOfMessages)
                         {
                             await consumer.StoreOffset(ctx.Offset);
                             testOutputHelper.WriteLine($"ConsumerStoreOffset done: {count}");
-                            testPassed.SetResult(numberOfMessages);
+                            testPassed.SetResult(NumberOfMessages);
                         }
 
                         await Task.CompletedTask;
@@ -122,7 +122,7 @@ namespace Tests
             var client = await Client.Create(clientParameters);
             var offset = await client.QueryOffset("consumer_offset", stream);
             // The offset must be numberOfMessages less one
-            Assert.Equal(offset.Offset, Convert.ToUInt64(numberOfMessages - 1));
+            Assert.Equal(offset.Offset, Convert.ToUInt64(NumberOfMessages - 1));
             await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();
@@ -456,33 +456,33 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            const int numberOfMessages = 10;
-            const int numberOfMessagesToStore = 4;
-            await SystemUtils.PublishMessages(system, stream, numberOfMessages, testOutputHelper);
+            const int NumberOfMessages = 10;
+            const int NumberOfMessagesToStore = 4;
+            await SystemUtils.PublishMessages(system, stream, NumberOfMessages, testOutputHelper);
             var count = 0;
-            const string reference = "consumer_offset";
+            const string Reference = "consumer_offset";
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
                     Crc32 = _crc32,
-                    Reference = reference,
+                    Reference = Reference,
                     OffsetSpec = new OffsetTypeOffset(),
                     MessageHandler = async (consumer, ctx, message) =>
                     {
                         testOutputHelper.WriteLine($"ConsumerStoreOffset receiving.. {count}");
                         count++;
-                        if (count == numberOfMessagesToStore)
+                        switch (count)
                         {
-                            // store the the offset after numberOfMessagesToStore messages
-                            // so when we query the offset we should (must) have the same
-                            // values
-                            await consumer.StoreOffset(ctx.Offset);
-                            testOutputHelper.WriteLine($"ConsumerStoreOffset done: {count}");
-                        }
-
-                        if (count == numberOfMessages)
-                        {
-                            testPassed.SetResult(numberOfMessages);
+                            case NumberOfMessagesToStore:
+                                // store the the offset after numberOfMessagesToStore messages
+                                // so when we query the offset we should (must) have the same
+                                // values
+                                await consumer.StoreOffset(ctx.Offset);
+                                testOutputHelper.WriteLine($"ConsumerStoreOffset done: {count}");
+                                break;
+                            case NumberOfMessages:
+                                testPassed.SetResult(NumberOfMessages);
+                                break;
                         }
 
                         await Task.CompletedTask;
@@ -494,8 +494,8 @@ namespace Tests
             // it may need some time to store the offset
             SystemUtils.Wait();
             // numberOfMessagesToStore index 0
-            Assert.Equal((ulong)(numberOfMessagesToStore - 1),
-                await system.QueryOffset(reference, stream));
+            Assert.Equal((ulong)(NumberOfMessagesToStore - 1),
+                await system.QueryOffset(Reference, stream));
 
             // this has to raise OffsetNotFoundException in case the offset 
             // does not exist like in this case.
@@ -695,6 +695,42 @@ namespace Tests
             await rawProducer.Close();
             await system.DeleteStream(stream);
             await system.Close();
+        }
+
+        [Fact]
+        public async void ShouldConsumeFromDateTimeOffset()
+        {
+            // validate the consumer can start from a specific time
+            // this test is not deterministic because it depends on the
+            // time the test is executed.
+            // but at least we can validate the consumer can start from a specific time less 100 ms
+            // and it has to receive all the messages
+            // not 100% perfect but it is better than nothing
+
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var before = DateTimeOffset.Now.AddMilliseconds(-100);
+            await SystemUtils.PublishMessages(system, stream, 100, testOutputHelper);
+            var testPassed = new TaskCompletionSource<bool>();
+
+            var consumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
+                {
+                    Reference = "consumer",
+                    OffsetSpec = new OffsetTypeTimestamp(before),
+                    MessageHandler = async (_, ctx, _) =>
+                    {
+                        Assert.True(ctx.Timestamp >= before.Offset);
+                        if (ctx.Offset == 99)
+                        {
+                            testPassed.SetResult(true);
+                        }
+
+                        await Task.CompletedTask;
+                    }
+                });
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            await consumer.Close().ConfigureAwait(false);
+            await SystemUtils.CleanUpStreamSystem(system, stream);
         }
     }
 }
