@@ -180,8 +180,8 @@ namespace Tests
                 new List<Broker>() { new Broker("replica", 5552) });
 
             await Assert.ThrowsAsync<RoutingClientException>(
-                () => RoutingHelper<MisconfiguredLoadBalancerRouting>.LookupLeaderConnection(clientParameters,
-                    metaDataInfo));
+                () => RoutingHelper<MisconfiguredLoadBalancerRouting>.LookupConnection(clientParameters,
+                    metaDataInfo.Leader, 3));
         }
 
         [Fact]

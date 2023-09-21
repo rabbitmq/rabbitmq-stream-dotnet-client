@@ -14,6 +14,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using RabbitMQ.Client;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
@@ -373,18 +374,6 @@ namespace Tests
             }
         }
 
-        private static void HttpDeleteExchange(string exchange)
-        {
-            var task = CreateHttpClient().DeleteAsync($"http://localhost:15672/api/exchanges/%2F/{exchange}");
-            task.Wait();
-            var result = task.Result;
-            if (!result.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
-            {
-                throw new XunitException(string.Format("HTTP DELETE failed: {0} {1}", result.StatusCode,
-                    result.ReasonPhrase));
-            }
-        }
-
         public static byte[] GetFileContent(string fileName)
         {
             var codeBaseUrl = new Uri(Assembly.GetExecutingAssembly().Location);
@@ -403,14 +392,40 @@ namespace Tests
 
         public static void ResetSuperStreams()
         {
-            HttpDeleteExchange("invoices");
-            HttpDeleteQueue("invoices-0");
-            HttpDeleteQueue("invoices-1");
-            HttpDeleteQueue("invoices-2");
+            var factory = new ConnectionFactory();
+            using var connection = factory.CreateConnection();
+            var channel = connection.CreateModel();
+
+            channel.ExchangeDelete(InvoicesExchange);
+
+            channel.QueueDelete(InvoicesStream0);
+            channel.QueueDelete(InvoicesStream1);
+            channel.QueueDelete(InvoicesStream2);
             Wait();
-            HttpPost(
-                Encoding.Default.GetString(
-                    GetFileContent("definition_test.json")), "definitions");
+
+            channel.ExchangeDeclare(InvoicesExchange, "direct", true, false,
+                new Dictionary<string, object>() { { "x-super-stream-enabled", "true" } });
+
+            channel.QueueDeclare(InvoicesStream0, true, false, false,
+                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
+
+            channel.QueueDeclare(InvoicesStream1, true, false, false,
+                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
+
+            channel.QueueDeclare(InvoicesStream2, true, false, false,
+                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
+            Wait();
+
+            channel.QueueBind(InvoicesStream0, InvoicesExchange, "0",
+                new Dictionary<string, object>() { { "x-stream-partition-order", "0" } });
+
+            channel.QueueBind(InvoicesStream1, InvoicesExchange, "1",
+                new Dictionary<string, object>() { { "x-stream-partition-order", "1" } });
+
+            channel.QueueBind(InvoicesStream2, InvoicesExchange, "2",
+                new Dictionary<string, object>() { { "x-stream-partition-order", "2" } });
+
+            connection.Close();
         }
     }
 }
