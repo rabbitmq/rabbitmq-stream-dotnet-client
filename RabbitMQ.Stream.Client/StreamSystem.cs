@@ -166,8 +166,7 @@ namespace RabbitMQ.Stream.Client
             IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
             foreach (var partitionsStream in partitions.Streams)
             {
-                var metaDataResponse = await _client.QueryMetadata(new[] { partitionsStream }).ConfigureAwait(false);
-                streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
+                streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
             }
 
             var r = RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
@@ -217,8 +216,7 @@ namespace RabbitMQ.Stream.Client
             IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
             foreach (var partitionsStream in partitions.Streams)
             {
-                var metaDataResponse = await _client.QueryMetadata(new[] { partitionsStream }).ConfigureAwait(false);
-                streamInfos[partitionsStream] = metaDataResponse.StreamInfos[partitionsStream];
+                streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
             }
 
             var s = RawSuperStreamConsumer.Create(rawSuperStreamConsumerConfig,
@@ -239,10 +237,7 @@ namespace RabbitMQ.Stream.Client
                 throw new CreateProducerException("Batch Size must be bigger than 0");
             }
 
-            await MayBeReconnectLocator().ConfigureAwait(false);
-            var meta = await _client.QueryMetadata(new[] { rawProducerConfig.Stream }).ConfigureAwait(false);
-
-            var metaStreamInfo = meta.StreamInfos[rawProducerConfig.Stream];
+            var metaStreamInfo = await StreamInfo(rawProducerConfig.Stream).ConfigureAwait(false);
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
@@ -266,6 +261,47 @@ namespace RabbitMQ.Stream.Client
             {
                 _semClientProvidedName.Release();
             }
+        }
+
+        private async Task<StreamInfo> StreamInfo(string streamName)
+        {
+            // force localhost connection for single node clusters and when address resolver is not provided
+            // when theres 1 endpoint and an address resolver, there could be a cluster behind a load balancer
+            var forceLocalHost = false;
+            var localPort = 0;
+            if (_clientParameters.Endpoints.Count == 1 &&
+                _clientParameters.AddressResolver is null)
+            {
+                var clientParametersEndpoint = _clientParameters.Endpoints[0];
+                switch (clientParametersEndpoint)
+                {
+                    case DnsEndPoint { Host: "localhost" } dnsEndPoint:
+                        forceLocalHost = true;
+                        localPort = dnsEndPoint.Port;
+                        break;
+                    case IPEndPoint ipEndPoint when Equals(ipEndPoint.Address, IPAddress.Loopback):
+                        forceLocalHost = true;
+                        localPort = ipEndPoint.Port;
+                        break;
+                }
+            }
+
+            StreamInfo metaStreamInfo;
+            if (forceLocalHost)
+            {
+                // craft the metadata response to force using localhost
+                var leader = new Broker("localhost", (uint)localPort);
+                metaStreamInfo = new StreamInfo(streamName, ResponseCode.Ok, leader,
+                    new List<Broker>(1) { leader });
+            }
+            else
+            {
+                await MayBeReconnectLocator().ConfigureAwait(false);
+                var meta = await _client.QueryMetadata(new[] { streamName }).ConfigureAwait(false);
+                metaStreamInfo = meta.StreamInfos[streamName];
+            }
+
+            return metaStreamInfo;
         }
 
         public async Task CreateStream(StreamSpec spec)
@@ -350,9 +386,7 @@ namespace RabbitMQ.Stream.Client
         public async Task<IConsumer> CreateRawConsumer(RawConsumerConfig rawConsumerConfig,
             ILogger logger = null)
         {
-            await MayBeReconnectLocator().ConfigureAwait(false);
-            var meta = await _client.QueryMetadata(new[] { rawConsumerConfig.Stream }).ConfigureAwait(false);
-            var metaStreamInfo = meta.StreamInfos[rawConsumerConfig.Stream];
+            var metaStreamInfo = await StreamInfo(rawConsumerConfig.Stream).ConfigureAwait(false);
             if (metaStreamInfo.ResponseCode != ResponseCode.Ok)
             {
                 throw new CreateConsumerException($"consumer could not be created code: {metaStreamInfo.ResponseCode}");
