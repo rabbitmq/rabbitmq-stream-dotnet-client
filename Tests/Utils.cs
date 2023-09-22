@@ -129,7 +129,8 @@ namespace Tests
         public static async Task PublishMessages(StreamSystem system, string stream, int numberOfMessages,
             string producerName, ITestOutputHelper testOutputHelper)
         {
-            testOutputHelper.WriteLine("Publishing messages...");
+            testOutputHelper.WriteLine(
+                $"Publishing messages to the stream {stream} number of messages {numberOfMessages}");
 
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
@@ -156,11 +157,17 @@ namespace Tests
                 await producer.Send(Convert.ToUInt64(i), message);
             }
 
+            testOutputHelper.WriteLine($"Messages sent to the stream {stream} number of messages {numberOfMessages}");
+
             testPassed.Task.Wait(TimeSpan.FromSeconds(10));
             Assert.Equal(numberOfMessages, testPassed.Task.Result);
             WaitUntil(() => producer.ConfirmFrames >= 1);
             WaitUntil(() => producer.IncomingFrames >= 1);
             WaitUntil(() => producer.PublishCommandsSent >= 1);
+
+            testOutputHelper.WriteLine(
+                $"Messages sent to the stream {stream} number of messages {numberOfMessages} " +
+                $"confirmed {producer.ConfirmFrames} incoming {producer.IncomingFrames} publish commands sent {producer.PublishCommandsSent}");
             producer.Dispose();
         }
 
@@ -181,7 +188,8 @@ namespace Tests
         public static async Task PublishMessagesSuperStream(StreamSystem system, string stream, int numberOfMessages,
             string producerName, ITestOutputHelper testOutputHelper)
         {
-            testOutputHelper.WriteLine("Publishing super stream messages...");
+            testOutputHelper.WriteLine($"Publishing super stream messages...to the stream {stream} " +
+                                       $"number of messages {numberOfMessages}");
 
             var testPassed = new TaskCompletionSource<int>();
             var count = 0;
@@ -211,11 +219,16 @@ namespace Tests
                 await producer.Send(Convert.ToUInt64(i), message);
             }
 
+            testOutputHelper.WriteLine($"Messages sent to the stream {stream} number of messages {numberOfMessages}");
             testPassed.Task.Wait(TimeSpan.FromSeconds(10));
             Assert.Equal(numberOfMessages, testPassed.Task.Result);
             Assert.True(producer.ConfirmFrames >= 1);
             Assert.True(producer.IncomingFrames >= 1);
             Assert.True(producer.PublishCommandsSent >= 1);
+
+            testOutputHelper.WriteLine(
+                $"Messages sent to the stream {stream} number of messages {numberOfMessages} " +
+                $"confirmed {producer.ConfirmFrames} incoming {producer.IncomingFrames} publish commands sent {producer.PublishCommandsSent}");
             producer.Dispose();
         }
 

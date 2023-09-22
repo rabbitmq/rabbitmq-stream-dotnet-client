@@ -45,7 +45,7 @@ jobs:
       rabbitmq:
         image: rabbitmq:3.13.0-beta.6-management
         env:
-          RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_stream advertised_host localhost -rabbit collect_statistics_interval 3
+          RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_stream advertised_host localhost -rabbit collect_statistics_interval 4
         ports:
             - 5552:5552
             - 5672:5672
