@@ -292,7 +292,7 @@ namespace RabbitMQ.Stream.Client
                     }
                 }
 
-                var chunkBuffer = new ReadOnlySequence<byte>(chunk.Data.ToArray());
+                var chunkBuffer = new ReadOnlySequence<byte>(chunk.Data);
 
                 Debug.Assert(chunkBuffer.Length == chunk.Data.Length);
 
