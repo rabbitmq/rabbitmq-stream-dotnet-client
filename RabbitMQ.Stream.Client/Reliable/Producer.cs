@@ -20,17 +20,6 @@ public record SuperStreamConfig
     public RoutingStrategyType RoutingStrategyType { get; set; } = RoutingStrategyType.Hash;
 }
 
-[AttributeUsage(AttributeTargets.Method)]
-internal class MyMethodAttribute : Attribute
-{
-    public string Message { get; }
-
-    public MyMethodAttribute(string message)
-    {
-        Message = message;
-    }
-}
-
 public record ProducerConfig : ReliableConfig
 {
     private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
