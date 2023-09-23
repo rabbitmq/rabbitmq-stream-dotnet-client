@@ -33,7 +33,8 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
-            var rawProducer = await system.CreateRawProducer(
+
+            var createProducerTask = system.CreateRawProducer(
                 new RawProducerConfig(stream)
                 {
                     Reference = "producer",
@@ -43,6 +44,15 @@ namespace Tests
                         testPassed.SetResult(conf.Code == ResponseCode.Ok);
                     }
                 });
+
+            if (await Task.WhenAny(createProducerTask, Task.Delay(5000)) != createProducerTask)
+            {
+                // timeout to avoid infinite await
+                Assert.Fail("timeout awaiting for CreateRawProducer");
+                return;
+            }
+
+            var rawProducer = await createProducerTask;
 
             var readonlySequence = "apple".AsReadonlySequence();
             var message = new Message(new Data(readonlySequence));
@@ -378,10 +388,7 @@ namespace Tests
                 RawProducerConfig(stream)
             {
                 Reference = "producer",
-                ConfirmHandler = _ =>
-                {
-                    testPassed.SetResult(true);
-                }
+                ConfirmHandler = _ => { testPassed.SetResult(true); }
             }
             );
 
