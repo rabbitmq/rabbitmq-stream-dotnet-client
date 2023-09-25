@@ -36,7 +36,7 @@ namespace RabbitMQ.Stream.Client
     /// </summary>
     public static class RoutingHelper<T> where T : IRouting, new()
     {
-        private static async Task<IClient> LookupConnection(
+        internal static async Task<IClient> LookupConnection(
             ClientParameters clientParameters,
             Broker broker,
             int maxAttempts,
