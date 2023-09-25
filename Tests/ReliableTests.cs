@@ -171,8 +171,8 @@ public class ReliableTests
             await producer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
         }
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(6));
-        Assert.Equal(1, SystemUtils.HttpKillConnections(clientProvidedName).Result);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 1);
+
         await SystemUtils.HttpKillConnections(clientProvidedNameLocator);
 
         for (var i = 0; i < 5; i++)
@@ -339,7 +339,6 @@ public class ReliableTests
                 await Task.CompletedTask;
             }
         });
-        SystemUtils.Wait(TimeSpan.FromSeconds(1));
         // in this case we kill the connection before consume consume any message
         // so it should use the selected   OffsetSpec in this case = new OffsetTypeFirst(),
 
@@ -387,13 +386,11 @@ public class ReliableTests
                 await Task.CompletedTask;
             }
         });
-        SystemUtils.Wait(TimeSpan.FromSeconds(4));
         // kill the first time 
         SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
             Guid.NewGuid().ToString(),
             _testOutputHelper);
-        SystemUtils.Wait(TimeSpan.FromSeconds(4));
         SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // after kill the consumer must be open
@@ -417,7 +414,7 @@ public class ReliableTests
         // When the stream is deleted the consumer has to close the 
         // connection an become inactive.
         await system.DeleteStream(stream);
-        SystemUtils.Wait(TimeSpan.FromSeconds(5));
+        SystemUtils.Wait(TimeSpan.FromSeconds(3));
         Assert.False(consumer.IsOpen());
         await system.Close();
     }
