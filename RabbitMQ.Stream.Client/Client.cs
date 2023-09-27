@@ -451,7 +451,8 @@ namespace RabbitMQ.Stream.Client
                     confirmCallback(confirm.PublishingIds);
                     if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out var confirmSegment))
                     {
-                        ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
+                        if (confirmSegment.Array != null)
+                            ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
                     }
 
                     break;
@@ -468,8 +469,8 @@ namespace RabbitMQ.Stream.Client
                         // we can ignore the chunk since the subscription does not exists anymore
                         _logger?.LogDebug(
                             "Could not find stream subscription {ID} or subscription closing." +
-                            " A possible cause it that the subscription was closed and the are still chunks on the wire. " +
-                            "Reduce the initial credits to avoid this situation",
+                            "A possible cause it that the subscription was closed and the are still chunks on the wire. " +
+                            "Reduce the initial credits can help to avoid this situation",
                             deliver.SubscriptionId);
                     }
 

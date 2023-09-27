@@ -51,7 +51,7 @@ namespace RabbitMQ.Stream.Client
         private SubEntryChunk(byte compress,
             ushort numRecordsInBatch,
             uint unCompressedDataSize, uint dataLen,
-            Memory<byte> data)
+            ReadOnlyMemory<byte> data)
         {
             compressValue = compress;
             NumRecordsInBatch = numRecordsInBatch;
@@ -67,7 +67,7 @@ namespace RabbitMQ.Stream.Client
         public uint UnCompressedDataSize { get; }
 
         public uint DataLen { get; }
-        public Memory<byte> Data { get; }
+        public ReadOnlyMemory<byte> Data { get; }
 
         // This wrapper was added to be used in async methods
         // where the SequenceReader is not available
@@ -122,7 +122,7 @@ namespace RabbitMQ.Stream.Client
             ulong epoch,
             ulong chunkId,
             uint crc,
-            Memory<byte> data)
+            ReadOnlyMemory<byte> data)
         {
             MagicVersion = magicVersion;
             NumEntries = numEntries;
@@ -142,7 +142,7 @@ namespace RabbitMQ.Stream.Client
         public ulong Epoch { get; }
         public ulong ChunkId { get; }
         public uint Crc { get; }
-        public Memory<byte> Data { get; }
+        public ReadOnlyMemory<byte> Data { get; }
 
         internal static int Read(ReadOnlySequence<byte> frame, out Chunk chunk)
         {

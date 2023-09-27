@@ -287,8 +287,8 @@ namespace RabbitMQ.Stream.Client
                     catch (Exception e)
                     {
                         _logger?.LogError(e,
-                            "Error while processing chunk: {ChunkId} Stream:{Stream}, reference: {Reference}",
-                            chunk.ChunkId, _config.Stream, _config.Reference);
+                            "Error while processing chunk: {ChunkId} Stream:{Stream}, reference: {Reference}, Token IsCancellationRequested: {Token}",
+                            chunk.ChunkId, _config.Stream, _config.Reference, Token.IsCancellationRequested);
                     }
                 }
 
@@ -345,8 +345,8 @@ namespace RabbitMQ.Stream.Client
             catch (Exception e)
             {
                 _logger?.LogError(e,
-                    "Error while processing chunk: {ChunkId} Stream:{Stream}, reference: {Reference}",
-                    chunk.ChunkId, _config.Stream, _config.Reference);
+                    "Error while processing chunk: {ChunkId} Stream:{Stream}, reference: {Reference}, Token IsCancellationRequested: {Token}",
+                    chunk.ChunkId, _config.Stream, _config.Reference, Token.IsCancellationRequested);
             }
         }
 
@@ -358,7 +358,7 @@ namespace RabbitMQ.Stream.Client
                 try
                 {
                     while (!Token.IsCancellationRequested &&
-                           await _chunksBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
+                           await _chunksBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false)) // 
                     {
                         while (_chunksBuffer.Reader.TryRead(out var chunk))
                         {
@@ -494,8 +494,8 @@ namespace RabbitMQ.Stream.Client
                         if (crcCalculated != deliver.Chunk.Crc)
                         {
                             _logger?.LogError(
-                                "CRC32 does not match, server crc {ChunkCrc}, local crc {CrcCalculated}, stream {Stream}",
-                                deliver.Chunk.Crc, crcCalculated, _config.Stream);
+                                "CRC32 does not match, server crc: {ChunkCrc}, local crc: {CrcCalculated}, stream: {Stream}, token IsCancellationRequested: {Token}",
+                                deliver.Chunk.Crc, crcCalculated, _config.Stream, Token.IsCancellationRequested);
                             throw new CrcException(
                                 $"CRC32 does not match, server crc {deliver.Chunk.Crc}, local crc {crcCalculated}, " +
                                 $"stream {_config.Stream}");

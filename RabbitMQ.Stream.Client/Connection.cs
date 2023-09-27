@@ -28,6 +28,9 @@ namespace RabbitMQ.Stream.Client
         private bool _disposedValue;
         private readonly ILogger _logger;
 
+        private readonly CancellationTokenSource _cancelTokenSource = new();
+        private CancellationToken Token => _cancelTokenSource.Token;
+
         internal int NumFrames => numFrames;
 
         public bool IsClosed => isClosed;
@@ -44,6 +47,7 @@ namespace RabbitMQ.Stream.Client
             this.socket = socket;
             commandCallback = callback;
             closedCallback = closedCallBack;
+            Token.Register(socket.Close);
             var networkStream = new NetworkStream(socket);
             var stream = MaybeTcpUpgrade(networkStream, sslOption);
             writer = PipeWriter.Create(stream);
@@ -98,21 +102,27 @@ namespace RabbitMQ.Stream.Client
 
         private async Task WriteCommand<T>(T command) where T : struct, ICommand
         {
+            if (Token.IsCancellationRequested)
+            {
+                await Task.FromCanceled(Token).ConfigureAwait(false);
+            }
+
             if (isClosed)
             {
                 throw new InvalidOperationException("Connection is closed");
             }
+
             // Only one thread should be able to write to the output pipeline at a time.
-            await _writeLock.WaitAsync().ConfigureAwait(false);
+            await _writeLock.WaitAsync(Token).ConfigureAwait(false);
             try
             {
                 var size = command.SizeNeeded;
                 var mem = new byte[4 + size]; // + 4 to write the size
                 WireFormatting.WriteUInt32(mem, (uint)size);
                 var written = command.Write(mem.AsSpan()[4..]);
-                await writer.WriteAsync(new ReadOnlyMemory<byte>(mem)).ConfigureAwait(false);
+                await writer.WriteAsync(new ReadOnlyMemory<byte>(mem), Token).ConfigureAwait(false);
                 Debug.Assert(size == written);
-                await writer.FlushAsync().ConfigureAwait(false);
+                await writer.FlushAsync(Token).ConfigureAwait(false);
             }
             finally
             {
@@ -129,7 +139,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     if (!reader.TryRead(out var result))
                     {
-                        result = await reader.ReadAsync().ConfigureAwait(false);
+                        result = await reader.ReadAsync(Token).ConfigureAwait(false);
                     }
 
                     var buffer = result.Buffer;
@@ -219,13 +229,19 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
+                    if (!_cancelTokenSource.IsCancellationRequested)
+                    {
+                        _cancelTokenSource.Cancel();
+                    }
+
                     isClosed = true;
                     writer.Complete();
                     reader.Complete();
                     socket.Dispose();
                     if (!_incomingFramesTask.Wait(Consts.MidWait))
                     {
-                        _logger?.LogWarning("ProcessIncomingFrames reader task did not exit in {MidWait}", Consts.MidWait);
+                        _logger?.LogWarning("ProcessIncomingFrames reader task did not exit in {MidWait}",
+                            Consts.MidWait);
                     }
                 }
                 finally
