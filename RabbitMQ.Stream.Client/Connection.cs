@@ -28,6 +28,7 @@ namespace RabbitMQ.Stream.Client
         private bool _disposedValue;
         private readonly ILogger _logger;
 
+        // this is used to cancel the socket and the reader/write operations tasks
         private readonly CancellationTokenSource _cancelTokenSource = new();
         private CancellationToken Token => _cancelTokenSource.Token;
 
@@ -47,7 +48,6 @@ namespace RabbitMQ.Stream.Client
             this.socket = socket;
             commandCallback = callback;
             closedCallback = closedCallBack;
-            Token.Register(socket.Close);
             var networkStream = new NetworkStream(socket);
             var stream = MaybeTcpUpgrade(networkStream, sslOption);
             writer = PipeWriter.Create(stream);
@@ -104,7 +104,7 @@ namespace RabbitMQ.Stream.Client
         {
             if (Token.IsCancellationRequested)
             {
-                await Task.FromCanceled(Token).ConfigureAwait(false);
+                throw new OperationCanceledException("Token Cancellation Requested Connection");
             }
 
             if (isClosed)
@@ -237,7 +237,7 @@ namespace RabbitMQ.Stream.Client
                     isClosed = true;
                     writer.Complete();
                     reader.Complete();
-                    socket.Dispose();
+                    socket.Close();
                     if (!_incomingFramesTask.Wait(Consts.MidWait))
                     {
                         _logger?.LogWarning("ProcessIncomingFrames reader task did not exit in {MidWait}",
