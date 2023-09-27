@@ -6,10 +6,9 @@
 
 [![Build Status](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions/workflows/main.yaml/badge.svg)](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions)
 [![codecov](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client/branch/main/graph/badge.svg?token=OIA04ZQD79)](https://codecov.io/gh/rabbitmq/rabbitmq-stream-dotnet-client)
-</div>
-
-
-
+[![nuget](https://img.shields.io/nuget/dt/rabbitmq.stream.client)](https://www.nuget.org/packages/RabbitMQ.Stream.Client/)
+[![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/)
+[![Dependabot](https://img.shields.io/discord/1092487794984755311?logo=discord)](https://rabbitmq.com/discord/)
 
 The RabbitMQ Stream .NET Client is a .NET library to communicate with the [RabbitMQ Stream Plugin](https://rabbitmq.com/stream.html). It allows to create and delete streams, as well as to publish to and consume from these streams.
 
