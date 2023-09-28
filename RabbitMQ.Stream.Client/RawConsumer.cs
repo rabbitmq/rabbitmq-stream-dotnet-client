@@ -122,14 +122,24 @@ namespace RabbitMQ.Stream.Client
         private readonly Channel<Chunk> _chunksBuffer;
         private readonly ushort _initialCredits;
 
+        private string ConsumerInfo()
+        {
+            var superStream = string.IsNullOrEmpty(_config.SuperStream)
+                ? "No SuperStream"
+                : $"SuperStream {_config.SuperStream}";
+            return
+                $"Consumer for stream: {_config.Stream}, reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
+                $"Client ProvidedName {_config.ClientProvidedName}, " +
+                $"{superStream}, IsSingleActiveConsumer: {_config.IsSingleActiveConsumer}, " +
+                $"Token IsCancellationRequested: {Token.IsCancellationRequested} ";
+        }
+
         private RawConsumer(Client client, RawConsumerConfig config, ILogger logger = null)
         {
             _logger = logger ?? NullLogger.Instance;
             _initialCredits = config.InitialCredits;
-            _logger.LogDebug("creating consumer {Consumer} with initial credits {InitialCredits}, " +
-                             "offset {OffsetSpec}, is single active consumer {IsSingleActiveConsumer}, super stream {SuperStream}, client provided name {ClientProvidedName}",
-                config.Reference, _initialCredits, config.OffsetSpec, config.IsSingleActiveConsumer, config.SuperStream,
-                config.ClientProvidedName);
+            _config = config;
+            _logger.LogDebug("Creating... {ConsumerInfo}", ConsumerInfo());
 
             // _chunksBuffer is a channel that is used to buffer the chunks
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
@@ -141,7 +151,6 @@ namespace RabbitMQ.Stream.Client
             });
             IsPromotedAsActive = true;
             _client = client;
-            _config = config;
 
             ProcessChunks();
         }
@@ -215,10 +224,18 @@ namespace RabbitMQ.Stream.Client
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e,
-                            "Error while parsing message on the stream {Stream}, reference {Reference}  The message will be skipped. " +
+                        if (Token.IsCancellationRequested)
+                        {
+                            _logger?.LogDebug(
+                                "Error while parsing message {ConsumerInfo}, Cancellation Requested, the consumer is closing. ",
+                                ConsumerInfo());
+                            return null;
+                        }
+
+                        _logger?.LogError(e,
+                            "Error while parsing message {ConsumerInfo}.  The message will be skipped. " +
                             "Please report this issue to the RabbitMQ team on GitHub {Repo}",
-                            _config.Stream, _config.Reference, Consts.RabbitMQClientRepo);
+                            ConsumerInfo(), Consts.RabbitMQClientRepo);
                     }
 
                     return null;
@@ -254,8 +271,9 @@ namespace RabbitMQ.Stream.Client
                                         {
                                             _logger.LogError(e,
                                                 "Error while filtering message. Message  with offset {MessageOffset} won't be dispatched."
-                                                + "Suggestion: review the PostFilter value function",
-                                                message.MessageOffset);
+                                                + "Suggestion: review the PostFilter value function"
+                                                + "{ConsumerInfo}",
+                                                message.MessageOffset, ConsumerInfo());
                                             canDispatch = false;
                                         }
                                     }
@@ -271,8 +289,8 @@ namespace RabbitMQ.Stream.Client
                                 else
                                 {
                                     _logger?.LogDebug(
-                                        "The consumer is not active for the stream {Stream}. message won't dispatched",
-                                        _config.Stream);
+                                        "{ConsumerInfo} is not active. message won't dispatched",
+                                        ConsumerInfo());
                                 }
                             }
                         }
@@ -281,14 +299,14 @@ namespace RabbitMQ.Stream.Client
                     catch (OperationCanceledException)
                     {
                         _logger?.LogWarning(
-                            "OperationCanceledException. The consumer id: {SubscriberId}, Stream:{Stream}, reference: {Reference} has been closed while consuming messages",
-                            _subscriberId, _config.Stream, _config.Reference);
+                            "OperationCanceledException. {ConsumerInfo} has been closed while consuming messages",
+                            ConsumerInfo());
                     }
                     catch (Exception e)
                     {
                         _logger?.LogError(e,
-                            "Error while processing chunk: {ChunkId} Stream:{Stream}, reference: {Reference}, Token IsCancellationRequested: {Token}",
-                            chunk.ChunkId, _config.Stream, _config.Reference, Token.IsCancellationRequested);
+                            "Error while Dispatching message, ChunkId : {ChunkId} {ConsumerInfo}",
+                            chunk.ChunkId, ConsumerInfo());
                     }
                 }
 
@@ -345,8 +363,8 @@ namespace RabbitMQ.Stream.Client
             catch (Exception e)
             {
                 _logger?.LogError(e,
-                    "Error while processing chunk: {ChunkId} Stream:{Stream}, reference: {Reference}, Token IsCancellationRequested: {Token}",
-                    chunk.ChunkId, _config.Stream, _config.Reference, Token.IsCancellationRequested);
+                    "Error while parsing chunk, ChunkId : {ChunkId} {ConsumerInfo}",
+                    chunk.ChunkId, ConsumerInfo());
             }
         }
 
@@ -377,7 +395,9 @@ namespace RabbitMQ.Stream.Client
                                 // The client will throw an InvalidOperationException
                                 // since the connection is closed
                                 // In this case we don't want to log the error to avoid log noise
-                                _logger?.LogDebug("Can't send the credit: The TCP client has been closed");
+                                _logger?.LogDebug(
+                                    "Can't send the credit {ConsumerInfo}: The TCP client has been closed",
+                                    ConsumerInfo());
                                 break;
                             }
 
@@ -394,8 +414,8 @@ namespace RabbitMQ.Stream.Client
                     }
 
                     _logger?.LogDebug(
-                        "The ProcessChunks for the stream: {Stream}, reference: {Reference} task has been closed normally",
-                        _config.Stream, _config.Reference);
+                        "The ProcessChunks {ConsumerInfo} task has been closed normally",
+                        ConsumerInfo());
                 }
                 catch (Exception e)
                 {
@@ -405,14 +425,14 @@ namespace RabbitMQ.Stream.Client
                     if (Token.IsCancellationRequested)
                     {
                         _logger?.LogDebug(
-                            "The ProcessChunks task for the stream: {Stream}, reference: {Reference} has been closed due to cancellation",
-                            _config.Stream, _config.Reference);
+                            "The ProcessChunks task for the stream: {ConsumerInfo}  has been closed due to cancellation",
+                            ConsumerInfo());
                         return;
                     }
 
                     _logger?.LogError(e,
-                        "Error while process chunks the stream: {Stream}, reference: {Reference}. The ProcessChunks task will be closed",
-                        _config.Stream, _config.Reference);
+                        "Error while process chunks the stream: {ConsumerInfo} The ProcessChunks task will be closed",
+                        ConsumerInfo());
                 }
             }, Token);
         }
@@ -463,6 +483,7 @@ namespace RabbitMQ.Stream.Client
                 }
             }
 
+            var chunkConsumed = 0;
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
             var (consumerId, response) = await _client.Subscribe(
@@ -471,6 +492,7 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
+                    chunkConsumed++;
                     // Send the chunk to the _chunksBuffer
                     // in this way the chunks are processed in a separate thread
                     // this wont' block the socket thread
@@ -480,9 +502,9 @@ namespace RabbitMQ.Stream.Client
                         // the consumer is closing from the user but some chunks are still in the buffer
                         // simply skip the chunk
                         _logger?.LogTrace(
-                            "CancellationToken requested. The consumer is closing from the stream {Stream}, reference: {Reference}. " +
+                            "CancellationToken requested. The {ConsumerInfo} " +
                             "The chunk won't be processed",
-                            _config.Stream, _config.Reference);
+                            ConsumerInfo());
                         return;
                     }
 
@@ -494,12 +516,13 @@ namespace RabbitMQ.Stream.Client
                         if (crcCalculated != deliver.Chunk.Crc)
                         {
                             _logger?.LogError(
-                                "CRC32 does not match, server crc: {ChunkCrc}, local crc: {CrcCalculated}, stream: {Stream}, token IsCancellationRequested: {Token}",
-                                deliver.Chunk.Crc, crcCalculated, _config.Stream, Token.IsCancellationRequested);
+                                "CRC32 does not match, server crc: {Crc}, local crc: {CrcCalculated}, {ConsumerInfo}, " +
+                                "Chunk Consumed {ChunkConsumed}", deliver.Chunk.Crc, crcCalculated, ConsumerInfo(),
+                                chunkConsumed);
 
                             throw new CrcException(
-                                $"CRC32 does not match, server crc {deliver.Chunk.Crc}, local crc {crcCalculated}, " +
-                                $"stream {_config.Stream}");
+                                $"CRC32 does not match, server crc: {deliver.Chunk.Crc}, local crc: {crcCalculated}, {ConsumerInfo()}, " +
+                                $"Chunk Consumed {chunkConsumed}");
                         }
                     }
 
@@ -520,9 +543,9 @@ namespace RabbitMQ.Stream.Client
                     // important for the dispatcher messages 
                     IsPromotedAsActive = promotedAsActive;
                     _logger?.LogDebug(
-                        "The consumer active status is: {IsActive} for the stream: {Stream}, reference: {Reference}",
+                        "The consumer active status is: {IsActive} for {ConsumeInfo}",
                         IsPromotedAsActive,
-                        _config.Stream, _config.Reference);
+                        ConsumerInfo());
                     return _config.StoredOffsetSpec;
                 }
             ).ConfigureAwait(false);
@@ -557,21 +580,21 @@ namespace RabbitMQ.Stream.Client
             catch (TimeoutException)
             {
                 _logger.LogError(
-                    "Timeout removing the consumer id: {SubscriberId}, stream {Stream}, reference {Reference} from the server. " +
+                    "Timeout removing the consumer id: {SubscriberId}, {ConsumerInfo} from the server. " +
                     "The consumer will be closed anyway",
-                    _subscriberId, _config.Stream, _config.Reference);
+                    _subscriberId, ConsumerInfo());
             }
 
             catch (Exception e)
             {
                 _logger.LogError(e,
-                    "Error removing the consumer id: {SubscriberId}, stream {Stream}, reference {Reference} from the server",
-                    _subscriberId, _config.Stream, _config.Reference);
+                    "Error removing the consumer id: {SubscriberId}, {ConsumerInfo} from the server",
+                    _subscriberId, ConsumerInfo());
             }
 
             var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}").ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
-            _logger.LogDebug("Consumer {SubscriberId} closed", _subscriberId);
+            _logger.LogDebug("{ConsumerInfo} is closed", ConsumerInfo());
 
             return result;
         }
@@ -597,7 +620,7 @@ namespace RabbitMQ.Stream.Client
                 }
 
                 ClientExceptions.MaybeThrowException(closeConsumer.Result,
-                    $"Error during remove producer. Subscriber: {_subscriberId}");
+                    $"Error during remove producer. {ConsumerInfo()}");
             }
             finally
             {
@@ -613,7 +636,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error during disposing of consumer: {SubscriberId}", _subscriberId);
+                _logger.LogError(e, "Error during disposing of {ConsumerInfo}", ConsumerInfo());
             }
             finally
             {

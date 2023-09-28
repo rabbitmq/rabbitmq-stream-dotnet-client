@@ -175,6 +175,11 @@ namespace RabbitMQ.Stream.Client
                     $"Chunk: Not enough data, sourceLength: {reader.Length}, memoryLen: {memory.Length}, dataLen: {dataLen}");
             }
 
+            if (memory.Length != dataLen)
+            {
+                throw new Exception($"Chunk: Not enough data, memoryLen: {memory.Length}, dataLen: {dataLen}");
+            }
+
             chunk = new Chunk(magicVersion, numEntries, numRecords, timestamp, epoch, chunkId, crc, memory);
             return offset;
         }
