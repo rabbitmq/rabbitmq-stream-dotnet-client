@@ -362,13 +362,19 @@ namespace RabbitMQ.Stream.Client
         {
             try
             {
+                // here we reduce a bit the timeout to avoid waiting too much
+                // if the client is busy with read operations it can take time to process the unsubscribe
+                // but the subscribe is removed.
                 var result =
                     await Request<UnsubscribeRequest, UnsubscribeResponse>(corr =>
-                        new UnsubscribeRequest(corr, subscriptionId)).ConfigureAwait(false);
+                        new UnsubscribeRequest(corr, subscriptionId), TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                _logger.LogDebug("Unsubscribe request : {SubscriptionId}", subscriptionId);
+
                 return result;
             }
             finally
             {
+                _logger.LogDebug("Unsubscribe: {SubscriptionId}", subscriptionId);
                 // remove consumer after RPC returns, this should avoid uncorrelated data being sent
                 consumers.Remove(subscriptionId);
             }
@@ -436,7 +442,6 @@ namespace RabbitMQ.Stream.Client
             // so there is no need to send the heartbeat when not necessary 
             _heartBeatHandler.UpdateHeartBeat();
 
-            ConsumerEvents consumerEvents;
             switch (tag)
             {
                 case PublishConfirm.Key:
@@ -446,14 +451,29 @@ namespace RabbitMQ.Stream.Client
                     confirmCallback(confirm.PublishingIds);
                     if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out var confirmSegment))
                     {
-                        ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
+                        if (confirmSegment.Array != null)
+                            ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
                     }
 
                     break;
                 case Deliver.Key:
                     Deliver.Read(frame, out var deliver);
-                    consumerEvents = consumers[deliver.SubscriptionId];
-                    await consumerEvents.DeliverHandler(deliver).ConfigureAwait(false);
+                    if (consumers.TryGetValue(deliver.SubscriptionId, out var consumerEvent))
+                    {
+                        await consumerEvent.DeliverHandler(deliver).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // the consumer is not found, this can happen when the consumer is closing
+                        // and there are still chunks on the wire to the handler is still processing the chunks
+                        // we can ignore the chunk since the subscription does not exists anymore
+                        _logger?.LogDebug(
+                            "Could not find stream subscription {ID} or subscription closing." +
+                            "A possible cause it that the subscription was closed and the are still chunks on the wire. " +
+                            "Reduce the initial credits can help to avoid this situation",
+                            deliver.SubscriptionId);
+                    }
+
                     break;
                 case PublishError.Key:
                     PublishError.Read(frame, out var error);
@@ -588,7 +608,8 @@ namespace RabbitMQ.Stream.Client
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
-                        ArrayPool<byte>.Shared.Return(segment.Array);
+                        if (segment.Array != null)
+                            ArrayPool<byte>.Shared.Return(segment.Array);
                     }
 
                     throw new ArgumentException($"Unknown or unexpected tag: {tag}", nameof(tag));
@@ -637,18 +658,22 @@ namespace RabbitMQ.Stream.Client
                     await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
                         TimeSpan.FromSeconds(10)).ConfigureAwait(false);
 
-                InternalClose();
-                connection.Dispose();
                 return result;
             }
-
-            catch (System.TimeoutException)
+            catch (TimeoutException)
             {
-                _logger.LogError("Timeout while closing the connection. The connection will be closed anyway");
+                _logger.LogError(
+                    "Timeout while closing the connection. The connection will be closed anyway");
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "An error occurred while calling {CalledFunction}", nameof(connection.Dispose));
+            }
+            finally
+            {
+                // even if the close fails we need to close the connection
+                InternalClose();
+                connection.Dispose();
             }
 
             return new CloseResponse(0, ResponseCode.Ok);
