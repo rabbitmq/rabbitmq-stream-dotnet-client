@@ -63,7 +63,7 @@ RabbitMQ.Stream.Client.ICrc32
 RabbitMQ.Stream.Client.ICrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.IEventBus
 RabbitMQ.Stream.Client.IEventBus.Publish<T>(T v) -> void
-RabbitMQ.Stream.Client.IEventBus.Subscribe<T>(System.Action<T> action) -> void
+RabbitMQ.Stream.Client.IEventBus.Subscribe<T>(System.Func<T, System.Threading.Tasks.Task> action) -> void
 RabbitMQ.Stream.Client.IProducerConfig.Filter.get -> RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.IProducerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
@@ -128,9 +128,8 @@ RabbitMQ.Stream.Client.RoutingStrategyType.Key = 1 -> RabbitMQ.Stream.Client.Rou
 RabbitMQ.Stream.Client.StreamEventsBus
 RabbitMQ.Stream.Client.StreamEventsBus.Publish<T>(T v) -> void
 RabbitMQ.Stream.Client.StreamEventsBus.StreamEventsBus() -> void
-RabbitMQ.Stream.Client.StreamEventsBus.Subscribe<T>(System.Action<T> action) -> void
+RabbitMQ.Stream.Client.StreamEventsBus.Subscribe<T>(System.Func<T, System.Threading.Tasks.Task> action) -> void
 RabbitMQ.Stream.Client.StreamEventsBusSingleton
-RabbitMQ.Stream.Client.StreamEventsBusSingleton.StreamEventsBusSingleton() -> void
 RabbitMQ.Stream.Client.StreamStats
 RabbitMQ.Stream.Client.StreamStats.CommittedChunkId() -> ulong
 RabbitMQ.Stream.Client.StreamStats.FirstOffset() -> ulong

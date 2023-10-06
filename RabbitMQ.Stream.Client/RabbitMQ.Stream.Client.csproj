@@ -49,4 +49,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="EventBus\" />
+  </ItemGroup>
+
 </Project>

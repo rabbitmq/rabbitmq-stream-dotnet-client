@@ -22,22 +22,7 @@ namespace RabbitMQ.Stream.Client
 
         public string Stream { get; set; }
     }
-
-    public class ProducerConnectEvent : IStreamEvent
-    {
-        public ProducerConnectEvent(RawProducer producer, RawProducerConfig config)
-        {
-            Producer = producer;
-            Config = config;
-        }
-
-        public RawProducerConfig Config { get; }
-
-        public EventTypes EventType => EventTypes.Connection;
-        public EventSeverity EventSeverity => EventSeverity.Info;
-        public RawProducer Producer { get; }
-    }
-
+    
     public record RawProducerConfig : IProducerConfig
     {
         public string Stream { get; }
@@ -113,8 +98,6 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
-            StreamEventsBusSingleton.Instance.Publish<ProducerConnectEvent>(new ProducerConnectEvent(this, _config));
-
             _client.ConnectionClosed += async reason =>
             {
                 await Close().ConfigureAwait(false);
