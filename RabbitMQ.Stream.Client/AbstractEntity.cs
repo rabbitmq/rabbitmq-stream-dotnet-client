@@ -21,5 +21,7 @@ namespace RabbitMQ.Stream.Client
         }
 
         protected Client _client;
+
+        public Info Info { get; internal set; }
     }
 }

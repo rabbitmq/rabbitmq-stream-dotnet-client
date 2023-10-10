@@ -12,6 +12,8 @@ public interface IConsumer
     public Task StoreOffset(ulong offset);
     public Task<ResponseCode> Close();
     public void Dispose();
+
+    public Info Info { get; }
 }
 
 public record IConsumerConfig : INamedEntity

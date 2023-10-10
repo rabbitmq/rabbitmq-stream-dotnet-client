@@ -216,4 +216,6 @@ public abstract class ReliableBase
     {
         return _isOpen;
     }
+
+    public Info Info { get; internal set; }
 }

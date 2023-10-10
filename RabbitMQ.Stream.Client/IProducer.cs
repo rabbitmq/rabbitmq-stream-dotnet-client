@@ -67,6 +67,11 @@ public interface IProducer
     public int PublishCommandsSent { get; }
 
     public int PendingCount { get; }
+
+    /// <summary>
+    /// Info contains the reference and the stream name.
+    /// </summary>
+    public Info Info { get; }
 }
 
 public record ProducerFilter
