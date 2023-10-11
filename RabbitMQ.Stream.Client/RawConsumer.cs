@@ -140,7 +140,7 @@ namespace RabbitMQ.Stream.Client
             _initialCredits = config.InitialCredits;
             _config = config;
             _logger.LogDebug("Creating... {ConsumerInfo}", ConsumerInfo());
-
+            Info = new Info(_config.Reference, _config.Stream);
             // _chunksBuffer is a channel that is used to buffer the chunks
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
             {

@@ -56,13 +56,13 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     private RawSuperStreamProducer(
         RawSuperStreamProducerConfig config,
         IDictionary<string, StreamInfo> streamInfos,
-        ClientParameters clientParameters,
-        ILogger logger = null
+        ClientParameters clientParameters, ILogger logger = null
     )
     {
         _config = config;
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
+        Info = new Info(config.Reference, config.SuperStream);
         _defaultRoutingConfiguration.RoutingStrategy = _config.RoutingStrategyType switch
         {
             RoutingStrategyType.Key => new KeyRoutingStrategy(_config.Routing,
@@ -277,6 +277,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     public int IncomingFrames => _producers.Sum(x => x.Value.IncomingFrames);
     public int PublishCommandsSent => _producers.Sum(x => x.Value.PublishCommandsSent);
     public int PendingCount => _producers.Sum(x => x.Value.PendingCount);
+    public Info Info { get; }
 }
 
 public enum RoutingStrategyType

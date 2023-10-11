@@ -138,6 +138,7 @@ public class Producer : ProducerFactory
             producerConfig.TimeoutMessageAfter,
             producerConfig.MaxInFlight
         );
+        Info = new Info(producerConfig.Reference, producerConfig.Stream);
         _logger = logger ?? NullLogger<Producer>.Instance;
     }
 

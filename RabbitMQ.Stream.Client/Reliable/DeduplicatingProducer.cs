@@ -86,4 +86,6 @@ public class DeduplicatingProducer
     {
         return await _producer.GetLastPublishingId().ConfigureAwait(false);
     }
+
+    public Info Info => _producer.Info;
 }
