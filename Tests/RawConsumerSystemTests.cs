@@ -741,17 +741,15 @@ namespace Tests
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream) { Reference = "consumer", });
 
-            var entityInfo = rawConsumer.Info;
-            Assert.Equal(stream, entityInfo.Stream);
-            Assert.Equal("consumer", entityInfo.Reference);
+            Assert.Equal(stream, rawConsumer.Info.Stream);
+            Assert.Equal("consumer", rawConsumer.Info.Reference);
             await rawConsumer.Close();
 
             var rawProducer = await system.CreateRawProducer(
                 new RawProducerConfig(stream) { Reference = "producer", });
 
-            entityInfo = rawProducer.Info;
-            Assert.Equal(stream, entityInfo.Stream);
-            Assert.Equal("producer", entityInfo.Reference);
+            Assert.Equal(stream, rawProducer.Info.Stream);
+            Assert.Equal("producer", rawProducer.Info.Reference);
             await rawProducer.Close();
 
             var rawSuperStreamProducer = await system.CreateRawSuperStreamProducer(
@@ -761,31 +759,27 @@ namespace Tests
                     RoutingStrategyType = RoutingStrategyType.Hash,
                     Routing = _ => "OK",
                 });
-            entityInfo = rawSuperStreamProducer.Info;
-            Assert.Equal(SystemUtils.InvoicesExchange, entityInfo.Stream);
-            Assert.Equal("super_producer", entityInfo.Reference);
+            Assert.Equal(SystemUtils.InvoicesExchange, rawSuperStreamProducer.Info.Stream);
+            Assert.Equal("super_producer", rawSuperStreamProducer.Info.Reference);
             await rawSuperStreamProducer.Close();
 
             var rawSuperStreamConsumer = await system.CreateSuperStreamConsumer(
                 new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange) { Reference = "super_consumer", });
 
-            entityInfo = rawSuperStreamConsumer.Info;
-            Assert.Equal(SystemUtils.InvoicesExchange, entityInfo.Stream);
-            Assert.Equal("super_consumer", entityInfo.Reference);
+            Assert.Equal(SystemUtils.InvoicesExchange, rawSuperStreamConsumer.Info.Stream);
+            Assert.Equal("super_consumer", rawSuperStreamConsumer.Info.Reference);
             await rawSuperStreamConsumer.Close();
 
             var producer = await Producer.Create(new ProducerConfig(system, stream));
 
-            entityInfo = producer.Info;
-            Assert.Equal(stream, entityInfo.Stream);
-            Assert.True(string.IsNullOrWhiteSpace(entityInfo.Reference));
+            Assert.Equal(stream, producer.Info.Stream);
+            Assert.True(string.IsNullOrWhiteSpace(producer.Info.Reference));
             await producer.Close();
 
             var consumer = await Consumer.Create(new ConsumerConfig(system, stream) { Reference = "consumer", });
 
-            entityInfo = consumer.Info;
-            Assert.Equal(stream, entityInfo.Stream);
-            Assert.Equal("consumer", entityInfo.Reference);
+            Assert.Equal(stream, consumer.Info.Stream);
+            Assert.Equal("consumer", consumer.Info.Reference);
             await consumer.Close();
 
             var producerSuperStream =
@@ -794,9 +788,8 @@ namespace Tests
                     SuperStreamConfig = new SuperStreamConfig() { Routing = _ => "OK" }
                 });
 
-            entityInfo = producerSuperStream.Info;
-            Assert.Equal(SystemUtils.InvoicesExchange, entityInfo.Stream);
-            Assert.True(string.IsNullOrWhiteSpace(entityInfo.Reference));
+            Assert.Equal(SystemUtils.InvoicesExchange, producerSuperStream.Info.Stream);
+            Assert.True(string.IsNullOrWhiteSpace(producerSuperStream.Info.Reference));
 
             await producerSuperStream.Close();
 
@@ -806,17 +799,15 @@ namespace Tests
                 IsSuperStream = true,
             });
 
-            entityInfo = consumerSuperStream.Info;
-            Assert.Equal(SystemUtils.InvoicesExchange, entityInfo.Stream);
-            Assert.Equal("consumer", entityInfo.Reference);
+            Assert.Equal(SystemUtils.InvoicesExchange, consumerSuperStream.Info.Stream);
+            Assert.Equal("consumer", consumerSuperStream.Info.Reference);
             await consumerSuperStream.Close();
 
             var dedProducer =
                 await DeduplicatingProducer.Create(new DeduplicatingProducerConfig(system, stream, "dedProducer"));
 
-            entityInfo = dedProducer.Info;
-            Assert.Equal(stream, entityInfo.Stream);
-            Assert.Equal("dedProducer", entityInfo.Reference);
+            Assert.Equal(stream, dedProducer.Info.Stream);
+            Assert.Equal("dedProducer", dedProducer.Info.Reference);
             await dedProducer.Close();
 
             await SystemUtils.CleanUpStreamSystem(system, stream);

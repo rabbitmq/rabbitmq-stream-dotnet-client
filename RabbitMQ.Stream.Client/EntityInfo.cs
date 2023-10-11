@@ -4,14 +4,12 @@
 
 namespace RabbitMQ.Stream.Client;
 
-public class Info
+public abstract class Info
 {
-    public string Reference { get; }
     public string Stream { get; }
 
-    internal Info(string reference, string stream)
+    protected Info(string stream)
     {
-        Reference = reference;
         Stream = stream;
     }
 }
