@@ -13,7 +13,7 @@ public interface IConsumer
     public Task<ResponseCode> Close();
     public void Dispose();
 
-    public Info Info { get; }
+    public ConsumerInfo Info { get; }
 }
 
 public record IConsumerConfig : INamedEntity
@@ -72,4 +72,13 @@ public record IConsumerConfig : INamedEntity
     // the server will send the crc for each chunk and the client will check it.
     // It is not enabled by default because it is could reduce the performance.
     public ICrc32 Crc32 { get; set; } = null;
+}
+
+public class ConsumerInfo : Info
+{
+    public string Reference { get; }
+    public ConsumerInfo(string stream, string reference) : base(stream)
+    {
+        Reference = reference;
+    }
 }

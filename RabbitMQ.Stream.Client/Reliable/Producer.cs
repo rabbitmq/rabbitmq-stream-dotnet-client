@@ -138,7 +138,7 @@ public class Producer : ProducerFactory
             producerConfig.TimeoutMessageAfter,
             producerConfig.MaxInFlight
         );
-        Info = new Info(producerConfig.Reference, producerConfig.Stream);
+        Info = new ProducerInfo(producerConfig.Stream, producerConfig.Reference);
         _logger = logger ?? NullLogger<Producer>.Instance;
     }
 
@@ -374,4 +374,6 @@ public class Producer : ProducerFactory
             SemaphoreSlim.Release();
         }
     }
+
+    public ProducerInfo Info { get; }
 }
