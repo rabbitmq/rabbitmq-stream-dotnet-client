@@ -67,6 +67,11 @@ public interface IProducer
     public int PublishCommandsSent { get; }
 
     public int PendingCount { get; }
+
+    /// <summary>
+    /// Info contains the reference and the stream name.
+    /// </summary>
+    public ProducerInfo Info { get; }
 }
 
 public record ProducerFilter
@@ -98,4 +103,17 @@ public record IProducerConfig : INamedEntity
     /// Filter enables the chunk filter feature.
     /// </summary>
     public ProducerFilter Filter { get; set; } = null;
+}
+
+/// <summary>
+/// ProducerInfo contains the reference and the stream name.
+/// </summary>
+public class ProducerInfo : Info
+{
+    public string Reference { get; }
+
+    public ProducerInfo(string stream, string reference) : base(stream)
+    {
+        Reference = reference;
+    }
 }

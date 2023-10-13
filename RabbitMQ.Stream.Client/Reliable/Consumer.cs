@@ -165,6 +165,7 @@ public class Consumer : ConsumerFactory
     {
         _logger = logger ?? NullLogger<Consumer>.Instance;
         _consumerConfig = consumerConfig;
+        Info = new ConsumerInfo(consumerConfig.Stream, consumerConfig.Reference);
     }
 
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
@@ -212,4 +213,6 @@ public class Consumer : ConsumerFactory
     {
         return $"Consumer reference: {_consumerConfig.Reference}, stream: {_consumerConfig.Stream} ";
     }
+
+    public ConsumerInfo Info { get; }
 }

@@ -55,6 +55,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
         _logger = logger ?? NullLogger.Instance;
+        Info = new ConsumerInfo(_config.SuperStream, _config.Reference);
 
         StartConsumers().Wait(CancellationToken.None);
     }
@@ -217,6 +218,8 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
         _disposed = true;
         GC.SuppressFinalize(this);
     }
+
+    public ConsumerInfo Info { get; }
 }
 
 public record RawSuperStreamConsumerConfig : IConsumerConfig

@@ -21,5 +21,6 @@ namespace RabbitMQ.Stream.Client
         }
 
         protected Client _client;
+
     }
 }

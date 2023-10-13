@@ -79,6 +79,7 @@ namespace RabbitMQ.Stream.Client
         {
             _client = client;
             _config = config;
+            Info = new ProducerInfo(_config.Stream, _config.Reference);
             _messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
             {
                 AllowSynchronousContinuations = false,
@@ -402,5 +403,7 @@ namespace RabbitMQ.Stream.Client
 
             GC.SuppressFinalize(this);
         }
+
+        public ProducerInfo Info { get; }
     }
 }
