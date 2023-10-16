@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RabbitMQ.Stream.Client.EventBus;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -28,6 +29,8 @@ public record ReliableConfig
         Stream = stream;
         StreamSystem = streamSystem;
     }
+
+    public IEventBus Events { get; set; }
 }
 
 /// <summary>
@@ -40,6 +43,7 @@ public abstract class ReliableBase
 
     protected bool _isOpen;
     protected bool _inReconnection;
+    protected Func<bool, EventSeverity, Task> OnReconnected { get; set; }
 
     protected abstract ILogger BaseLogger { get; }
 
@@ -105,6 +109,11 @@ public abstract class ReliableBase
     protected async Task TryToReconnect(IReconnectStrategy reconnectStrategy)
     {
         _inReconnection = true;
+        if (OnReconnected != null)
+        {
+            await OnReconnected.Invoke(_inReconnection, EventSeverity.Warning)!.ConfigureAwait(false)!;
+        }
+
         try
         {
             switch (await reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false) && _isOpen)
@@ -122,6 +131,10 @@ public abstract class ReliableBase
         finally
         {
             _inReconnection = false;
+            if (OnReconnected != null)
+            {
+                await OnReconnected.Invoke(_inReconnection, EventSeverity.Info)!.ConfigureAwait(false)!;
+            }
         }
     }
 
@@ -143,7 +156,8 @@ public abstract class ReliableBase
         await Task.Delay(500).ConfigureAwait(false);
         if (await system.StreamExists(stream).ConfigureAwait(false))
         {
-            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
+            BaseLogger.LogInformation(
+                "Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
                 stream,
                 ToString()
             );

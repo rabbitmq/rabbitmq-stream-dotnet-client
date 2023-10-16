@@ -77,7 +77,8 @@ public record IConsumerConfig : INamedEntity
 public class ConsumerInfo : Info
 {
     public string Reference { get; }
-    public ConsumerInfo(string stream, string reference) : base(stream)
+
+    public ConsumerInfo(string stream, string reference, string clientProvidedName) : base(stream, clientProvidedName)
     {
         Reference = reference;
     }

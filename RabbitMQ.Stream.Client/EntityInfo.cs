@@ -7,9 +7,11 @@ namespace RabbitMQ.Stream.Client;
 public abstract class Info
 {
     public string Stream { get; }
+    public string ClientProvidedName { get; }
 
-    protected Info(string stream)
+    protected Info(string stream, string clientProvidedName)
     {
         Stream = stream;
+        ClientProvidedName = clientProvidedName;
     }
 }

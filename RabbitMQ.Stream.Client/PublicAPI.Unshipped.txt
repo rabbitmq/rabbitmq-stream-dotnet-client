@@ -23,10 +23,16 @@ RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.set -> void
 RabbitMQ.Stream.Client.ConsumerFilter.Values.get -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
 RabbitMQ.Stream.Client.ConsumerInfo
-RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference) -> void
+RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference, string clientProvidedName) -> void
 RabbitMQ.Stream.Client.ConsumerInfo.Reference.get -> string
 RabbitMQ.Stream.Client.CrcException
 RabbitMQ.Stream.Client.CrcException.CrcException(string s) -> void
+RabbitMQ.Stream.Client.EventBus.ClientEvent
+RabbitMQ.Stream.Client.EventBus.ClientEvent.ClientEvent(System.Collections.Generic.IDictionary<string, string> connectionProperties, RabbitMQ.Stream.Client.ClientParameters parameters, RabbitMQ.Stream.Client.EventBus.EventTypes eventType, RabbitMQ.Stream.Client.EventBus.EventSeverity eventSeverity) -> void
+RabbitMQ.Stream.Client.EventBus.ClientEvent.ConnectionProperties.get -> System.Collections.Generic.IDictionary<string, string>
+RabbitMQ.Stream.Client.EventBus.ClientEvent.EventSeverity.get -> RabbitMQ.Stream.Client.EventBus.EventSeverity
+RabbitMQ.Stream.Client.EventBus.ClientEvent.EventType.get -> RabbitMQ.Stream.Client.EventBus.EventTypes
+RabbitMQ.Stream.Client.EventBus.ClientEvent.Parameters.get -> RabbitMQ.Stream.Client.ClientParameters
 RabbitMQ.Stream.Client.EventBus.EventSeverity
 RabbitMQ.Stream.Client.EventBus.EventSeverity.Error = 2 -> RabbitMQ.Stream.Client.EventBus.EventSeverity
 RabbitMQ.Stream.Client.EventBus.EventSeverity.Info = 0 -> RabbitMQ.Stream.Client.EventBus.EventSeverity
@@ -41,6 +47,20 @@ RabbitMQ.Stream.Client.EventBus.IEventBus.Subscribe<T>(System.Func<T, System.Thr
 RabbitMQ.Stream.Client.EventBus.IStreamEvent
 RabbitMQ.Stream.Client.EventBus.IStreamEvent.EventSeverity.get -> RabbitMQ.Stream.Client.EventBus.EventSeverity
 RabbitMQ.Stream.Client.EventBus.IStreamEvent.EventType.get -> RabbitMQ.Stream.Client.EventBus.EventTypes
+RabbitMQ.Stream.Client.EventBus.ProducerReconnected
+RabbitMQ.Stream.Client.EventBus.ProducerReconnected.Instance.get -> RabbitMQ.Stream.Client.Reliable.Producer
+RabbitMQ.Stream.Client.EventBus.ProducerReconnected.ProducerReconnected(bool isReconnection, RabbitMQ.Stream.Client.EventBus.EventSeverity eventSeverity, RabbitMQ.Stream.Client.Reliable.Producer instance) -> void
+RabbitMQ.Stream.Client.EventBus.RawProducerConnected
+RabbitMQ.Stream.Client.EventBus.RawProducerConnected.Instance.get -> RabbitMQ.Stream.Client.RawProducer
+RabbitMQ.Stream.Client.EventBus.RawProducerConnected.RawProducerConnected(System.Collections.Generic.IDictionary<string, string> connectionProperties, RabbitMQ.Stream.Client.ClientParameters parameters, RabbitMQ.Stream.Client.RawProducer instance) -> void
+RabbitMQ.Stream.Client.EventBus.RawProducerDisconnected
+RabbitMQ.Stream.Client.EventBus.RawProducerDisconnected.Instance.get -> RabbitMQ.Stream.Client.RawProducer
+RabbitMQ.Stream.Client.EventBus.RawProducerDisconnected.RawProducerDisconnected(System.Collections.Generic.IDictionary<string, string> connectionProperties, RabbitMQ.Stream.Client.ClientParameters parameters, RabbitMQ.Stream.Client.RawProducer instance) -> void
+RabbitMQ.Stream.Client.EventBus.ReliableBaseReconnected
+RabbitMQ.Stream.Client.EventBus.ReliableBaseReconnected.EventSeverity.get -> RabbitMQ.Stream.Client.EventBus.EventSeverity
+RabbitMQ.Stream.Client.EventBus.ReliableBaseReconnected.EventType.get -> RabbitMQ.Stream.Client.EventBus.EventTypes
+RabbitMQ.Stream.Client.EventBus.ReliableBaseReconnected.IsReconnection.get -> bool
+RabbitMQ.Stream.Client.EventBus.ReliableBaseReconnected.ReliableBaseReconnected(bool isReconnection, RabbitMQ.Stream.Client.EventBus.EventSeverity eventSeverity) -> void
 RabbitMQ.Stream.Client.EventBus.StreamEventsBus
 RabbitMQ.Stream.Client.EventBus.StreamEventsBus.Publish<T>(T v) -> void
 RabbitMQ.Stream.Client.EventBus.StreamEventsBus.StreamEventsBus() -> void
@@ -78,9 +98,12 @@ RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.ICrc32
 RabbitMQ.Stream.Client.ICrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.Info
-RabbitMQ.Stream.Client.Info.Info(string stream) -> void
+RabbitMQ.Stream.Client.Info.ClientProvidedName.get -> string
+RabbitMQ.Stream.Client.Info.Info(string stream, string clientProvidedName) -> void
 RabbitMQ.Stream.Client.Info.Stream.get -> string
 RabbitMQ.Stream.Client.IProducer.Info.get -> RabbitMQ.Stream.Client.ProducerInfo
+RabbitMQ.Stream.Client.IProducerConfig.Events.get -> RabbitMQ.Stream.Client.EventBus.IEventBus
+RabbitMQ.Stream.Client.IProducerConfig.Events.set -> void
 RabbitMQ.Stream.Client.IProducerConfig.Filter.get -> RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.IProducerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.IRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
@@ -93,7 +116,7 @@ RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.set -> void
 RabbitMQ.Stream.Client.ProducerInfo
-RabbitMQ.Stream.Client.ProducerInfo.ProducerInfo(string stream, string reference) -> void
+RabbitMQ.Stream.Client.ProducerInfo.ProducerInfo(string stream, string reference, string clientProvidedName) -> void
 RabbitMQ.Stream.Client.ProducerInfo.Reference.get -> string
 RabbitMQ.Stream.Client.PublishFilter
 RabbitMQ.Stream.Client.PublishFilter.Command.get -> ushort
@@ -128,6 +151,10 @@ RabbitMQ.Stream.Client.Reliable.Producer.Info.get -> RabbitMQ.Stream.Client.Prod
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.get -> RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableBase.OnReconnected.get -> System.Func<bool, RabbitMQ.Stream.Client.EventBus.EventSeverity, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.Reliable.ReliableBase.OnReconnected.set -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConfig.Events.get -> RabbitMQ.Stream.Client.EventBus.IEventBus
+RabbitMQ.Stream.Client.Reliable.ReliableConfig.Events.set -> void
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.RoutingStrategyType.set -> void
 RabbitMQ.Stream.Client.RouteNotFoundException

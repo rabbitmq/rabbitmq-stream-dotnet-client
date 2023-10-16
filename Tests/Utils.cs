@@ -66,6 +66,8 @@ namespace Tests
         public const string InvoicesStream1 = "invoices-1";
         public const string InvoicesStream2 = "invoices-2";
 
+        public static readonly List<string> InvoicesStreams = new List<string> { InvoicesStream0, InvoicesStream1, InvoicesStream2 };
+
         // Waits for 10 seconds total by default
         public static void WaitUntil(Func<bool> func, ushort retries = 40)
         {
@@ -108,7 +110,7 @@ namespace Tests
             string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
+            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator, };
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();
@@ -286,7 +288,8 @@ namespace Tests
 
         public static async Task<int> HttpKillConnections(string connectionName)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var handler = new HttpClientHandler();
+            handler.Credentials = new NetworkCredential("guest", "guest");
             using var client = new HttpClient(handler);
 
             var result = await client.GetAsync("http://localhost:15672/api/connections");

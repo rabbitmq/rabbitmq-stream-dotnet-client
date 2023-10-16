@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using RabbitMQ.Stream.Client.EventBus;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -138,8 +139,14 @@ public class Producer : ProducerFactory
             producerConfig.TimeoutMessageAfter,
             producerConfig.MaxInFlight
         );
-        Info = new ProducerInfo(producerConfig.Stream, producerConfig.Reference);
+        Info = new ProducerInfo(producerConfig.Stream, producerConfig.Reference, producerConfig.ClientProvidedName);
         _logger = logger ?? NullLogger<Producer>.Instance;
+        OnReconnected = (isReconnection, eventSeverity) =>
+        {
+            
+            producerConfig.Events?.Publish(new ProducerReconnected(isReconnection, eventSeverity, this));
+            return Task.CompletedTask;
+        };
     }
 
     /// <summary>

@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using RabbitMQ.Stream.Client.EventBus;
 
 namespace RabbitMQ.Stream.Client;
 
@@ -103,6 +104,8 @@ public record IProducerConfig : INamedEntity
     /// Filter enables the chunk filter feature.
     /// </summary>
     public ProducerFilter Filter { get; set; } = null;
+
+    public IEventBus Events { get; set; }
 }
 
 /// <summary>
@@ -112,7 +115,7 @@ public class ProducerInfo : Info
 {
     public string Reference { get; }
 
-    public ProducerInfo(string stream, string reference) : base(stream)
+    public ProducerInfo(string stream, string reference, string clientProvidedName) : base(stream, clientProvidedName)
     {
         Reference = reference;
     }

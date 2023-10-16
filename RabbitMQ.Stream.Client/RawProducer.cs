@@ -12,6 +12,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using RabbitMQ.Stream.Client.EventBus;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -22,7 +23,7 @@ namespace RabbitMQ.Stream.Client
 
         public string Stream { get; set; }
     }
-    
+
     public record RawProducerConfig : IProducerConfig
     {
         public string Stream { get; }
@@ -71,6 +72,8 @@ namespace RabbitMQ.Stream.Client
                 .ConfigureAwait(false);
             var producer = new RawProducer((Client)client, config, logger);
             await producer.Init().ConfigureAwait(false);
+            config.Events?.Publish(new RawProducerConnected(client.ConnectionProperties,
+                client.Parameters, producer));
 
             return producer;
         }
@@ -79,7 +82,7 @@ namespace RabbitMQ.Stream.Client
         {
             _client = client;
             _config = config;
-            Info = new ProducerInfo(_config.Stream, _config.Reference);
+            Info = new ProducerInfo(_config.Stream, _config.Reference,_config.ClientProvidedName);
             _messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
             {
                 AllowSynchronousContinuations = false,
@@ -102,10 +105,14 @@ namespace RabbitMQ.Stream.Client
             _client.ConnectionClosed += async reason =>
             {
                 await Close().ConfigureAwait(false);
+                _config.Events?.Publish(new RawProducerDisconnected(_client.ConnectionProperties,
+                    _client.Parameters, this));
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
+
+
             };
 
             if (_config.MetadataHandler != null)
