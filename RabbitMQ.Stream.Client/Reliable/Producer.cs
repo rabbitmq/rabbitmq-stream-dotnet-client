@@ -143,7 +143,7 @@ public class Producer : ProducerFactory
         _logger = logger ?? NullLogger<Producer>.Instance;
         OnReconnected = (isReconnection, eventSeverity) =>
         {
-            
+
             producerConfig.Events?.Publish(new ProducerReconnected(isReconnection, eventSeverity, this));
             return Task.CompletedTask;
         };

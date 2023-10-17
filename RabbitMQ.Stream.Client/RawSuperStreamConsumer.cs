@@ -144,7 +144,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                             _config.Reference,
                             update.Stream
                         );
-                        var x = await _config.Client.QueryMetadata(new[] {update.Stream}).ConfigureAwait(false);
+                        var x = await _config.Client.QueryMetadata(new[] { update.Stream }).ConfigureAwait(false);
                         x.StreamInfos.TryGetValue(update.Stream, out var streamInfo);
                         _streamInfos.Add(update.Stream, streamInfo);
                         await GetConsumer(update.Stream).ConfigureAwait(false);
@@ -158,7 +158,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     private async Task<IConsumer> InitConsumer(string stream)
     {
         var c = await RawConsumer.Create(
-            _clientParameters with {ClientProvidedName = _clientParameters.ClientProvidedName},
+            _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
         _logger?.LogDebug("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference,
             stream);

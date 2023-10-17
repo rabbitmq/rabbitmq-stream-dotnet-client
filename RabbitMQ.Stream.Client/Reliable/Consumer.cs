@@ -165,7 +165,7 @@ public class Consumer : ConsumerFactory
     {
         _logger = logger ?? NullLogger<Consumer>.Instance;
         _consumerConfig = consumerConfig;
-        Info = new ConsumerInfo(consumerConfig.Stream, consumerConfig.Reference,consumerConfig.ClientProvidedName);
+        Info = new ConsumerInfo(consumerConfig.Stream, consumerConfig.Reference, consumerConfig.ClientProvidedName);
     }
 
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
