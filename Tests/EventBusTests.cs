@@ -92,12 +92,17 @@ public class EventBusTests
         var bus = new StreamEventsBus();
         bus.Subscribe<RawProducerConnected>(async connected =>
         {
+            _testOutputHelper.WriteLine(
+                $"raw producer connected {connected.Instance.Info.ClientProvidedName} to stream {connected.Instance.Info.Stream}");
             events.Add(connected);
             await Task.CompletedTask;
         });
         bus.Subscribe<RawProducerDisconnected>(async disconnected =>
         {
             events.Add(disconnected);
+            _testOutputHelper.WriteLine(
+                $"raw producer disconnected {disconnected.Instance.Info.ClientProvidedName} from the stream {disconnected.Instance.Info.Stream}. Events: {events.Count}");
+
             if (events.Count == 6)
             {
                 testPassed.SetResult(events);
@@ -130,9 +135,10 @@ public class EventBusTests
         {
             var connected = (RawProducerConnected)events[i];
             Assert.Equal(new IPEndPoint(IPAddress.IPv6Loopback, 5552), connected.Parameters.Endpoint);
-            Assert.Equal("dotnet-stream-raw-producer", connected.Parameters.ClientProvidedName);
             Assert.Contains(connected.Instance.Info.Stream, SystemUtils.InvoicesStreams);
+            Assert.Contains(connected.Instance.Info.ClientProvidedName, $"dotnet-stream-raw-producer#invoices-{i}");
             Assert.Equal(typeof(RawProducerConnected), connected.GetType());
+            Assert.Contains(connected.Instance.Info.ClientProvidedName, $"dotnet-stream-raw-producer#invoices-{i}");
             Assert.Equal(EventTypes.Connection, connected.EventType);
             Assert.Equal(EventSeverity.Info, connected.EventSeverity);
         }
@@ -141,9 +147,8 @@ public class EventBusTests
         {
             var disconnected = (RawProducerDisconnected)events[i];
             Assert.Equal(new IPEndPoint(IPAddress.IPv6Loopback, 5552), disconnected.Parameters.Endpoint);
-            Assert.Equal("dotnet-stream-raw-producer", disconnected.Parameters.ClientProvidedName);
             Assert.Contains(disconnected.Instance.Info.Stream, SystemUtils.InvoicesStreams);
-
+            Assert.Contains(disconnected.Instance.Info.ClientProvidedName, $"dotnet-stream-raw-producer#invoices-{i}");
             Assert.Equal(typeof(RawProducerDisconnected), disconnected.GetType());
             Assert.Equal(EventTypes.Disconnection, disconnected.EventType);
             Assert.Equal(EventSeverity.Info, disconnected.EventSeverity);
