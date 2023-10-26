@@ -6,7 +6,8 @@
     <MinVerSkip>true</MinVerSkip>
     <Nullable>enable</Nullable>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
+    <TargetFrameworks />
   </PropertyGroup>
 
   <ItemGroup>

@@ -22,7 +22,7 @@ public record SuperStreamConfig
 
 public record ProducerConfig : ReliableConfig
 {
-    private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(3);
+    private readonly TimeSpan _timeoutMessageAfter = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// Reference used for deduplication.

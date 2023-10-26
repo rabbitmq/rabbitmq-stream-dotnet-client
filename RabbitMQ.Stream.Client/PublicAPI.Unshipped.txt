@@ -109,6 +109,11 @@ RabbitMQ.Stream.Client.Reliable.Producer.Info.get -> RabbitMQ.Stream.Client.Prod
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.get -> RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
+RabbitMQ.Stream.Client.Reliable.ReconnectingArgs
+RabbitMQ.Stream.Client.Reliable.ReconnectingArgs.IsReconnecting.get -> bool
+RabbitMQ.Stream.Client.Reliable.ReconnectingArgs.ReconnectingArgs(bool isReconnecting) -> void
+RabbitMQ.Stream.Client.Reliable.ReliableConfig.Reconnecting -> RabbitMQ.Stream.Client.Reliable.ReliableConfig.ReconnectingEventHandler
+RabbitMQ.Stream.Client.Reliable.ReliableConfig.ReconnectingEventHandler
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.Reliable.SuperStreamConfig.RoutingStrategyType.set -> void
 RabbitMQ.Stream.Client.RouteNotFoundException
@@ -146,3 +151,4 @@ RabbitMQ.Stream.Client.UnsupportedOperationException.UnsupportedOperationExcepti
 static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption, Microsoft.Extensions.Logging.ILogger logger) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>
 static RabbitMQ.Stream.Client.Message.From(ref System.Buffers.ReadOnlySequence<byte> seq, uint len) -> RabbitMQ.Stream.Client.Message
 static RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Create(RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig producerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.Reliable.Producer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer>
+virtual RabbitMQ.Stream.Client.Reliable.ReliableBase.OnReconnecting(RabbitMQ.Stream.Client.Reliable.ReconnectingArgs e) -> void
