@@ -10,31 +10,11 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
-public class ReconnectingArgs : EventArgs
-{
-    public ReconnectingArgs(bool isReconnecting)
-    {
-        IsReconnecting = isReconnecting;
-    }
-
-    public bool IsReconnecting { get; }
-}
-
 public record ReliableConfig
 {
     public IReconnectStrategy ReconnectStrategy { get; set; }
     public StreamSystem StreamSystem { get; }
     public string Stream { get; }
-
-
-    public delegate void ReconnectingEventHandler(object sender, ReconnectingArgs e);
-
-    public event ReconnectingEventHandler Reconnecting;
-
-    internal virtual void OnReconnecting(ReconnectingArgs e)
-    {
-        Reconnecting?.Invoke(this, e);
-    }
 
     protected ReliableConfig(StreamSystem streamSystem, string stream)
     {
@@ -60,15 +40,6 @@ public abstract class ReliableBase
 
     protected bool _isOpen;
     protected bool _inReconnection;
-
-    internal delegate void ReconnectingEventHandler(object sender, ReconnectingArgs e);
-
-    internal event ReconnectingEventHandler Reconnecting;
-
-    protected virtual void OnReconnecting(ReconnectingArgs e)
-    {
-        Reconnecting?.Invoke(this, e);
-    }
 
     protected abstract ILogger BaseLogger { get; }
 
@@ -134,7 +105,6 @@ public abstract class ReliableBase
     protected async Task TryToReconnect(IReconnectStrategy reconnectStrategy)
     {
         _inReconnection = true;
-        OnReconnecting(new ReconnectingArgs(true));
         try
         {
             switch (await reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false) && _isOpen)
@@ -152,7 +122,6 @@ public abstract class ReliableBase
         finally
         {
             _inReconnection = false;
-            OnReconnecting(new ReconnectingArgs(false));
         }
     }
 
@@ -174,8 +143,7 @@ public abstract class ReliableBase
         await Task.Delay(500).ConfigureAwait(false);
         if (await system.StreamExists(stream).ConfigureAwait(false))
         {
-            BaseLogger.LogInformation(
-                "Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
+            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
                 stream,
                 ToString()
             );
