@@ -79,7 +79,8 @@ public class MultiThreadTests
         Assert.Equal(TotalMessages * ThreadNumber, confirmed);
         Assert.Equal(TotalMessages * ThreadNumber, receivedTask.Task.Result);
         Assert.Equal(0, error);
-        await system.DeleteStream(stream);
+        await producer.Close().ConfigureAwait(false);
+        await SystemUtils.CleanUpStreamSystem(system, stream);
     }
 
     [Fact]
@@ -128,7 +129,6 @@ public class MultiThreadTests
 
         SystemUtils.WaitUntil(() => consumers.TrueForAll(c => !c.IsOpen()));
         Assert.All(consumers, c => Assert.False(c.IsOpen()));
-        await system.DeleteStream(stream);
-        await system.Close();
+        await SystemUtils.CleanUpStreamSystem(system, stream);
     }
 }

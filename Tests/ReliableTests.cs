@@ -155,6 +155,7 @@ public class ReliableTests
             new ProducerConfig(system, stream)
             {
                 ClientProvidedName = clientProvidedName,
+                TimeoutMessageAfter = TimeSpan.FromSeconds(3),
                 ConfirmationHandler = _ =>
                 {
                     if (Interlocked.Increment(ref count) == 10)
