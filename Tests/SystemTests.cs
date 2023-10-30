@@ -319,6 +319,7 @@ namespace Tests
             Assert.Contains(SystemUtils.InvoicesStream1, partitions);
             Assert.Contains(SystemUtils.InvoicesStream2, partitions);
             Assert.DoesNotContain(SystemUtils.InvoicesExchange, partitions);
+            await system.Close().ConfigureAwait(false);
         }
     }
 }

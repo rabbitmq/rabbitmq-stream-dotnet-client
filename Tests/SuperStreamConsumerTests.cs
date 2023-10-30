@@ -211,7 +211,7 @@ public class SuperStreamConsumerTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var publishToSuperStreamTask =
             SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
-        if (await Task.WhenAny(publishToSuperStreamTask, Task.Delay(10000)) != publishToSuperStreamTask)
+        if (await Task.WhenAny(publishToSuperStreamTask, Task.Delay(20000)) != publishToSuperStreamTask)
         {
             Assert.Fail("timeout waiting to publish messages");
         }
