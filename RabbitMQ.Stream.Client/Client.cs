@@ -685,17 +685,18 @@ namespace RabbitMQ.Stream.Client
         // not a public method used internally by producers and consumers
         internal async Task<CloseResponse> MaybeClose(string reason)
         {
+            if (!string.IsNullOrEmpty(MetaInfoBroker.ToString()))
+            {
+                _logger.LogInformation("Releasing connection {Connection}", MetaInfoBroker.ToString());
+                ConnectionsPool.ConnectionsPoolSingleton.Instance.Release(MetaInfoBroker.ToString());
+            }
+            
             if (publishers.Count == 0 && consumers.Count == 0)
             {
-                if (!string.IsNullOrEmpty(MetaInfoBroker.ToString()))
-                {
-                    _logger.LogInformation("Releasing connection {Connection}", MetaInfoBroker.ToString());
-                    ConnectionsPool.ConnectionsPoolSingleton.Instance.Release(MetaInfoBroker.ToString());
-                }
-                else
+            
+                if (string.IsNullOrEmpty(MetaInfoBroker.ToString()))
                 {
                     _logger.LogInformation("Close connection {Connection}", MetaInfoBroker.ToString());
-
                     await Close(reason).ConfigureAwait(false);
                 }
             }
