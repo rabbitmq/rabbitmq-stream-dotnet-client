@@ -382,8 +382,6 @@ RabbitMQ.Stream.Client.IProducerConfig.MessagesBufferSize.get -> int
 RabbitMQ.Stream.Client.IProducerConfig.MessagesBufferSize.set -> void
 RabbitMQ.Stream.Client.IProducerConfig.Reference.get -> string
 RabbitMQ.Stream.Client.IProducerConfig.Reference.set -> void
-RabbitMQ.Stream.Client.IRouting
-RabbitMQ.Stream.Client.IRouting.CreateClient(RabbitMQ.Stream.Client.ClientParameters clientParameters, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 RabbitMQ.Stream.Client.IRouting.ValidateDns.get -> bool
 RabbitMQ.Stream.Client.IRouting.ValidateDns.set -> void
 RabbitMQ.Stream.Client.IRoutingConfiguration

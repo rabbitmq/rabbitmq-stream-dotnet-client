@@ -14,6 +14,7 @@ namespace RabbitMQ.Stream.Client
         public const ushort Key = 15;
         private readonly uint correlationId;
         private readonly IEnumerable<string> streams;
+
         public MetaDataQuery(uint correlationId, IList<string> streams)
         {
             this.correlationId = correlationId;
@@ -52,6 +53,11 @@ namespace RabbitMQ.Stream.Client
         {
             this.host = host;
             this.port = port;
+        }
+
+        public override string ToString()
+        {
+            return string.IsNullOrEmpty(host) ? string.Empty : $"{host}:{port}";
         }
     }
 

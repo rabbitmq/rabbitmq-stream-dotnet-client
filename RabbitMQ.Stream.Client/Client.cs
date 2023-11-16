@@ -110,6 +110,7 @@ namespace RabbitMQ.Stream.Client
         private byte nextPublisherId = 0;
 
         private Connection connection;
+        internal Broker MetaInfoBroker { get; set; }
 
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
             publishers =
@@ -333,7 +334,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
+            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -686,7 +687,17 @@ namespace RabbitMQ.Stream.Client
         {
             if (publishers.Count == 0 && consumers.Count == 0)
             {
-                await Close(reason).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(MetaInfoBroker.ToString()))
+                {
+                    _logger.LogInformation("Releasing connection {Connection}", MetaInfoBroker.ToString());
+                    ConnectionsPool.ConnectionsPoolSingleton.Instance.Release(MetaInfoBroker.ToString());
+                }
+                else
+                {
+                    _logger.LogInformation("Close connection {Connection}", MetaInfoBroker.ToString());
+
+                    await Close(reason).ConfigureAwait(false);
+                }
             }
 
             var result = new CloseResponse(0, ResponseCode.Ok);
@@ -712,9 +723,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] { stream };
+            var streams = new[] {stream};
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is { Count: >= 1 } &&
+            return response.StreamInfos is {Count: >= 1} &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -761,7 +772,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
+                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
             }
         }
 
