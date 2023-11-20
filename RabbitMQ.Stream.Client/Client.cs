@@ -107,10 +107,10 @@ namespace RabbitMQ.Stream.Client
 
         private uint correlationId = 0; // allow for some pre-amble
 
-        private byte nextPublisherId = 0;
-
         private Connection connection;
         internal Broker MetaInfoBroker { get; set; }
+
+        private byte nextPublisherId = 0;
 
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
             publishers =
@@ -121,7 +121,14 @@ namespace RabbitMQ.Stream.Client
         private readonly TaskCompletionSource<TuneResponse> tuneReceived =
             new TaskCompletionSource<TuneResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        private byte nextSubscriptionId;
+/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
+Before:
+        private List<byte> subscriptionIds = new();
+After:
+        private readonly List<byte> subscriptionIds = new();
+*/
+
+        private readonly List<byte> subscriptionIds = new();
 
         internal readonly IDictionary<byte, ConsumerEvents> consumers =
             new ConcurrentDictionary<byte, ConsumerEvents>();
@@ -160,15 +167,44 @@ namespace RabbitMQ.Stream.Client
             _logger = logger ?? NullLogger.Instance;
         }
 
+        private static byte FindMissingConsecutive(List<byte> ids)
+        {
+            if (ids.Count == 0)
+            {
+                return 0;
+            }
+
+            ids.Sort();
+
+            for (var i = 0; i < ids.Count - 1; i++)
+            {
+                if (ids[i + 1] - ids[i] > 1)
+                {
+                    return (byte)(ids[i] + 1);
+                }
+            }
+
+            return (byte)(ids[^1] + 1);
+        }
+
         private byte GetNextSubscriptionId()
         {
             byte result;
             lock (Obj)
             {
-                result = nextSubscriptionId++;
+                result = FindMissingConsecutive(subscriptionIds);
+                subscriptionIds.Add(result);
             }
 
             return result;
+        }
+
+        internal void RemoveSubscriptionId(byte id)
+        {
+            lock (Obj)
+            {
+                subscriptionIds.Remove(id);
+            }
         }
 
         public bool IsClosed
@@ -334,7 +370,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
+            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -690,13 +726,13 @@ namespace RabbitMQ.Stream.Client
                 _logger.LogInformation("Releasing connection {Connection}", MetaInfoBroker.ToString());
                 ConnectionsPool.ConnectionsPoolSingleton.Instance.Release(MetaInfoBroker.ToString());
             }
-            
+
             if (publishers.Count == 0 && consumers.Count == 0)
             {
-            
                 if (string.IsNullOrEmpty(MetaInfoBroker.ToString()))
                 {
                     _logger.LogInformation("Close connection {Connection}", MetaInfoBroker.ToString());
+                    ConnectionsPool.ConnectionsPoolSingleton.Instance.Remove(MetaInfoBroker.ToString());
                     await Close(reason).ConfigureAwait(false);
                 }
             }
@@ -724,9 +760,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] {stream};
+            var streams = new[] { stream };
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is {Count: >= 1} &&
+            return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -773,7 +809,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
+                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
             }
         }
 

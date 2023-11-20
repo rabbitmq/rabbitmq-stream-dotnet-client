@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -17,13 +16,13 @@ public class ConnectionsPool
         public BrokerInUse(string brokerInfo)
         {
             BrokerInfo = brokerInfo;
-            InUse = 0;
+            ActiveItems = 0;
             LastUsed = DateTime.UtcNow;
         }
 
         public string BrokerInfo { get; }
-        public int InUse { get; set; }
-        public bool Available => InUse < 50;
+        public int ActiveItems { get; set; }
+        public bool Available => ActiveItems < 50;
 
         public DateTime LastUsed { get; set; }
     }
@@ -43,7 +42,7 @@ public class ConnectionsPool
         var available = connections.FirstOrDefault(c => c.Item1.BrokerInfo == brokerInfo && (c.Item1.Available));
         if (available.Item1 != null)
         {
-            available.Item1.InUse += 1;
+            available.Item1.ActiveItems += 1;
             available.Item1.LastUsed = DateTime.UtcNow;
             return available.Item2;
         }
@@ -64,10 +63,19 @@ public class ConnectionsPool
         var available = connections.FirstOrDefault(c => c.Item1.BrokerInfo == brokerInfo);
         if (available.Item1 != null)
         {
-            available.Item1.InUse -= 1;
+            available.Item1.ActiveItems -= 1;
         }
     }
 
+    public void Remove(string brokerInfo)
+    {
+        var connections = _connections.ToArray();
+        var available = connections.FirstOrDefault(c => c.Item1.BrokerInfo == brokerInfo);
+        if (available.Item1 != null)
+        {
+            _connections.TryTake(out var _);
+        }
+    }
 
     internal sealed class ConnectionsPoolSingleton
     {

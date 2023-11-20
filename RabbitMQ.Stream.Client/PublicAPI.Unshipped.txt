@@ -20,6 +20,7 @@ RabbitMQ.Stream.Client.ConnectionsPool
 RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsPool(int maxConnections) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.GetOrCreateClient(string brokerInfo, System.Func<System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>> createClient) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 RabbitMQ.Stream.Client.ConnectionsPool.Release(string brokerInfo) -> void
+RabbitMQ.Stream.Client.ConnectionsPool.Remove(string brokerInfo) -> void
 RabbitMQ.Stream.Client.ConsumerFilter
 RabbitMQ.Stream.Client.ConsumerFilter.MatchUnfiltered.get -> bool
 RabbitMQ.Stream.Client.ConsumerFilter.MatchUnfiltered.set -> void

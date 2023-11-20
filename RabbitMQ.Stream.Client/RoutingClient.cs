@@ -68,7 +68,7 @@ namespace RabbitMQ.Stream.Client
                 // In this case we just return the node (leader for producer, random for consumer)
                 // since there is not load balancer configuration
 
-                return await routing.CreateClient(clientParameters with {Endpoint = endPointNoLb}, broker, logger)
+                return await routing.CreateClient(clientParameters with { Endpoint = endPointNoLb }, broker, logger)
                     .ConfigureAwait(false);
             }
 
@@ -76,7 +76,7 @@ namespace RabbitMQ.Stream.Client
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
             var endPoint = clientParameters.AddressResolver.EndPoint;
-            var client = await routing.CreateClient(clientParameters with {Endpoint = endPoint}, broker, logger)
+            var client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, broker, logger)
                 .ConfigureAwait(false);
 
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
@@ -88,7 +88,7 @@ namespace RabbitMQ.Stream.Client
                 attemptNo++;
                 await client.Close("advertised_host or advertised_port doesn't match").ConfigureAwait(false);
 
-                client = await routing.CreateClient(clientParameters with {Endpoint = endPoint}, broker, logger)
+                client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, broker, logger)
                     .ConfigureAwait(false);
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
@@ -167,7 +167,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<IClient> LookupRandomConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo, ILogger logger = null)
         {
-            var brokers = new List<Broker>() {metaDataInfo.Leader};
+            var brokers = new List<Broker>() { metaDataInfo.Leader };
             brokers.AddRange(metaDataInfo.Replicas);
             brokers.Sort((_, _) => Random.Shared.Next(-1, 1));
             var exceptions = new List<Exception>();

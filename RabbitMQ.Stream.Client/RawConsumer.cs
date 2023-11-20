@@ -592,6 +592,8 @@ namespace RabbitMQ.Stream.Client
                     _subscriberId, ConsumerInfo());
             }
 
+            _client.RemoveSubscriptionId(_subscriberId);
+
             var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}").ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("{ConsumerInfo} is closed", ConsumerInfo());
