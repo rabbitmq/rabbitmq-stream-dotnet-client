@@ -13,25 +13,29 @@ public class ConnectionsPool
 {
     private class BrokerInUse
     {
-        public BrokerInUse(string brokerInfo)
+        public BrokerInUse(string brokerInfo, byte itemsPerConnection)
         {
             BrokerInfo = brokerInfo;
-            ActiveItems = 0;
+            ActiveItems = 1;
             LastUsed = DateTime.UtcNow;
+            ItemsPerConnection = itemsPerConnection;
         }
 
         public string BrokerInfo { get; }
         public int ActiveItems { get; set; }
-        public bool Available => ActiveItems < 50;
+        public bool Available => ActiveItems < ItemsPerConnection;
 
+        public byte ItemsPerConnection { get; set; }
         public DateTime LastUsed { get; set; }
     }
 
     private readonly int _maxConnections;
+    private readonly byte _itemsPerConnection;
 
-    public ConnectionsPool(int maxConnections)
+    public ConnectionsPool(int maxConnections, byte itemsPerConnection)
     {
         _maxConnections = maxConnections;
+        _itemsPerConnection = itemsPerConnection;
     }
 
     private readonly ConcurrentBag<(BrokerInUse, Task<IClient> client)> _connections = new();
@@ -53,7 +57,7 @@ public class ConnectionsPool
         }
 
         var client = createClient();
-        _connections.Add((new BrokerInUse(brokerInfo), client));
+        _connections.Add((new BrokerInUse(brokerInfo, _itemsPerConnection), client));
         return client;
     }
 
@@ -75,13 +79,5 @@ public class ConnectionsPool
         {
             _connections.TryTake(out var _);
         }
-    }
-
-    internal sealed class ConnectionsPoolSingleton
-    {
-        private static readonly Lazy<ConnectionsPool> s_lazy =
-            new(() => new ConnectionsPool(100));
-
-        public static ConnectionsPool Instance => s_lazy.Value;
     }
 }

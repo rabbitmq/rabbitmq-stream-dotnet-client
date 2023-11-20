@@ -124,7 +124,8 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
                 new List<Broker>());
             await Assert.ThrowsAsync<AggregateException>(() =>
-                RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo));
+                RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1)));
         }
 
         [Fact]
@@ -192,7 +193,9 @@ namespace Tests
             var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552),
                 new List<Broker>());
-            var client = RoutingHelper<ReplicaRouting>.LookupRandomConnection(clientParameters, metaDataInfo);
+            var client =
+                RoutingHelper<ReplicaRouting>.LookupRandomConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1));
             Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             var res = (client.Result.ConnectionProperties["advertised_host"] == "leader" ||
                        client.Result.ConnectionProperties["advertised_host"] == "replica");

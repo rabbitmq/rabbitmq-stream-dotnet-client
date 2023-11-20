@@ -30,6 +30,9 @@ namespace RabbitMQ.Stream.Client
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
+
+        public byte ConsumersPerConnection { get; set; } = 1;
+        public byte ProducersPerConnection { get; set; } = 1;
     }
 
     public class StreamSystem
@@ -37,12 +40,19 @@ namespace RabbitMQ.Stream.Client
         private readonly ClientParameters _clientParameters;
         private Client _client;
         private readonly ILogger<StreamSystem> _logger;
+        private ConnectionsPool PoolConsumers { get; init; }
+        private ConnectionsPool PoolProducers { get; init; }
 
-        private StreamSystem(ClientParameters clientParameters, Client client, ILogger<StreamSystem> logger = null)
+        private StreamSystem(ClientParameters clientParameters, Client client,
+            byte consumersPerConnection,
+            byte producersPerConnection,
+            ILogger<StreamSystem> logger = null)
         {
             _clientParameters = clientParameters;
             _client = client;
             _logger = logger ?? NullLogger<StreamSystem>.Instance;
+            PoolConsumers = new ConnectionsPool(100, consumersPerConnection);
+            PoolProducers = new ConnectionsPool(100, producersPerConnection);
         }
 
         public bool IsClosed => _client.IsClosed;
@@ -71,7 +81,8 @@ namespace RabbitMQ.Stream.Client
                     if (!client.IsClosed)
                     {
                         logger?.LogDebug("Client connected to {@EndPoint}", endPoint);
-                        return new StreamSystem(clientParams, client, logger);
+                        return new StreamSystem(clientParams, client, config.ConsumersPerConnection,
+                            config.ProducersPerConnection, logger);
                     }
                 }
                 catch (Exception e)
@@ -86,7 +97,8 @@ namespace RabbitMQ.Stream.Client
                             throw;
                         default:
                             // hopefully all implementations of endpoint have a nice ToString()
-                            logger?.LogError(e, "Error connecting to {@TargetEndpoint}. Trying next endpoint", endPoint);
+                            logger?.LogError(e, "Error connecting to {@TargetEndpoint}. Trying next endpoint",
+                                endPoint);
                             break;
                     }
                 }
@@ -248,7 +260,7 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
-
+                rawProducerConfig.Pool = PoolProducers;
                 var p = await RawProducer.Create(
                     _clientParameters with { ClientProvidedName = rawProducerConfig.ClientProvidedName },
                     rawProducerConfig, metaStreamInfo, logger).ConfigureAwait(false);
@@ -397,6 +409,7 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
+                rawConsumerConfig.Pool = PoolConsumers;
                 var s = _clientParameters with { ClientProvidedName = rawConsumerConfig.ClientProvidedName };
                 var c = await RawConsumer.Create(s,
                     rawConsumerConfig, metaStreamInfo, logger).ConfigureAwait(false);

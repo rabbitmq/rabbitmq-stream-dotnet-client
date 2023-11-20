@@ -190,7 +190,8 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger)
+            var client = await RoutingHelper<Routing>
+                .LookupRandomConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);
@@ -594,7 +595,8 @@ namespace RabbitMQ.Stream.Client
 
             _client.RemoveSubscriptionId(_subscriberId);
 
-            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}").ConfigureAwait(false);
+            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}", _config.Pool)
+                .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("{ConsumerInfo} is closed", ConsumerInfo());
 

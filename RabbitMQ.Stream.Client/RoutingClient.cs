@@ -165,7 +165,7 @@ namespace RabbitMQ.Stream.Client
         /// Gets a random connection. The consumer can connect to a replica or leader.
         /// </summary>
         public static async Task<IClient> LookupRandomConnection(ClientParameters clientParameters,
-            StreamInfo metaDataInfo, ILogger logger = null)
+            StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
             var brokers = new List<Broker>() { metaDataInfo.Leader };
             brokers.AddRange(metaDataInfo.Replicas);
@@ -175,7 +175,7 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    return await ConnectionsPool.ConnectionsPoolSingleton.Instance.GetOrCreateClient(broker.ToString(),
+                    return await pool.GetOrCreateClient(broker.ToString(),
                         async () =>
                             await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo), logger)
                                 .ConfigureAwait(false)).ConfigureAwait(false);

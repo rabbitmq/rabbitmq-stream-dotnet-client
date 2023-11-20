@@ -85,6 +85,9 @@ public record ProducerFilter
 
 public record IProducerConfig : INamedEntity
 {
+
+    internal ConnectionsPool Pool { get; set; }
+
     public string Reference { get; set; }
     public int MaxInFlight { get; set; } = 1_000;
     public string ClientProvidedName { get; set; } = "dotnet-stream-raw-producer";

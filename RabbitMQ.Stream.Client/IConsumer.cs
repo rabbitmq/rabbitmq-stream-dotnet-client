@@ -18,7 +18,10 @@ public interface IConsumer
 
 public record IConsumerConfig : INamedEntity
 {
+
     private ushort _initialCredits = Consts.ConsumerInitialCredits;
+
+    internal ConnectionsPool Pool { get; set; }
 
     // StoredOffsetSpec configuration it is needed to keep the offset spec.
     // since the offset can be decided from the ConsumerConfig.OffsetSpec.

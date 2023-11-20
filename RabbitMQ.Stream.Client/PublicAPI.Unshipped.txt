@@ -17,7 +17,7 @@ RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tas
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.set -> void
 RabbitMQ.Stream.Client.ConnectionsPool
-RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsPool(int maxConnections) -> void
+RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsPool(int maxConnections, byte itemsPerConnection) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.GetOrCreateClient(string brokerInfo, System.Func<System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>> createClient) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 RabbitMQ.Stream.Client.ConnectionsPool.Release(string brokerInfo) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.Remove(string brokerInfo) -> void
@@ -147,6 +147,10 @@ RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.set -> void
+RabbitMQ.Stream.Client.StreamSystemConfig.ConsumersPerConnection.get -> byte
+RabbitMQ.Stream.Client.StreamSystemConfig.ConsumersPerConnection.set -> void
+RabbitMQ.Stream.Client.StreamSystemConfig.ProducersPerConnection.get -> byte
+RabbitMQ.Stream.Client.StreamSystemConfig.ProducersPerConnection.set -> void
 RabbitMQ.Stream.Client.UnknownCommandException
 RabbitMQ.Stream.Client.UnknownCommandException.UnknownCommandException(string s) -> void
 RabbitMQ.Stream.Client.UnsupportedOperationException
@@ -154,3 +158,4 @@ RabbitMQ.Stream.Client.UnsupportedOperationException.UnsupportedOperationExcepti
 static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption, Microsoft.Extensions.Logging.ILogger logger) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>
 static RabbitMQ.Stream.Client.Message.From(ref System.Buffers.ReadOnlySequence<byte> seq, uint len) -> RabbitMQ.Stream.Client.Message
 static RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Create(RabbitMQ.Stream.Client.Reliable.DeduplicatingProducerConfig producerConfig, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.Reliable.Producer> logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer>
+static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupRandomConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>

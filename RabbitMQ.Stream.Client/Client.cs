@@ -677,6 +677,14 @@ namespace RabbitMQ.Stream.Client
             IsClosed = true;
         }
 
+        private bool HasEntities()
+        {
+            lock (Obj)
+            {
+                return publishers.Count > 0 || consumers.Count > 0;
+            }
+        }
+
         private async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
         {
             return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification)).ConfigureAwait(false);
@@ -719,20 +727,20 @@ namespace RabbitMQ.Stream.Client
         // Safe close 
         // the client can be closed only if the publishers are == 0
         // not a public method used internally by producers and consumers
-        internal async Task<CloseResponse> MaybeClose(string reason)
+        internal async Task<CloseResponse> MaybeClose(string reason, ConnectionsPool pool)
         {
             if (!string.IsNullOrEmpty(MetaInfoBroker.ToString()))
             {
                 _logger.LogInformation("Releasing connection {Connection}", MetaInfoBroker.ToString());
-                ConnectionsPool.ConnectionsPoolSingleton.Instance.Release(MetaInfoBroker.ToString());
+                pool.Release(MetaInfoBroker.ToString());
             }
 
-            if (publishers.Count == 0 && consumers.Count == 0)
+            if (!HasEntities())
             {
                 if (!string.IsNullOrEmpty(MetaInfoBroker.ToString()))
                 {
                     _logger.LogInformation("Close connection {Connection}", MetaInfoBroker.ToString());
-                    ConnectionsPool.ConnectionsPoolSingleton.Instance.Remove(MetaInfoBroker.ToString());
+                    pool.Remove(MetaInfoBroker.ToString());
                     await Close(reason).ConfigureAwait(false);
                 }
             }
