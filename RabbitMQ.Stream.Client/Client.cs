@@ -729,7 +729,7 @@ namespace RabbitMQ.Stream.Client
 
             if (publishers.Count == 0 && consumers.Count == 0)
             {
-                if (string.IsNullOrEmpty(MetaInfoBroker.ToString()))
+                if (!string.IsNullOrEmpty(MetaInfoBroker.ToString()))
                 {
                     _logger.LogInformation("Close connection {Connection}", MetaInfoBroker.ToString());
                     ConnectionsPool.ConnectionsPoolSingleton.Instance.Remove(MetaInfoBroker.ToString());
