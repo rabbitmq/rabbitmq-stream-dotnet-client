@@ -121,12 +121,12 @@ namespace RabbitMQ.Stream.Client
         private readonly TaskCompletionSource<TuneResponse> tuneReceived =
             new TaskCompletionSource<TuneResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-Before:
-        private List<byte> subscriptionIds = new();
-After:
-        private readonly List<byte> subscriptionIds = new();
-*/
+        /* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
+        Before:
+                private List<byte> subscriptionIds = new();
+        After:
+                private readonly List<byte> subscriptionIds = new();
+        */
 
         private readonly List<byte> subscriptionIds = new();
 
