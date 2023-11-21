@@ -16,6 +16,14 @@ RabbitMQ.Stream.Client.Client.QueryRoute(string superStream, string routingKey) 
 RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.StreamStatsResponse>
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.set -> void
+RabbitMQ.Stream.Client.ConnectionPoolConfig
+RabbitMQ.Stream.Client.ConnectionPoolConfig.ConnectionPoolConfig() -> void
+RabbitMQ.Stream.Client.ConnectionPoolConfig.ConsumersPerConnection.get -> byte
+RabbitMQ.Stream.Client.ConnectionPoolConfig.ConsumersPerConnection.set -> void
+RabbitMQ.Stream.Client.ConnectionPoolConfig.MaxConnections.get -> int
+RabbitMQ.Stream.Client.ConnectionPoolConfig.MaxConnections.set -> void
+RabbitMQ.Stream.Client.ConnectionPoolConfig.ProducersPerConnection.get -> byte
+RabbitMQ.Stream.Client.ConnectionPoolConfig.ProducersPerConnection.set -> void
 RabbitMQ.Stream.Client.ConnectionsPool
 RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsPool(int maxConnections, byte itemsPerConnection) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.GetOrCreateClient(string brokerInfo, System.Func<System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>> createClient) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
@@ -147,10 +155,8 @@ RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.set -> void
-RabbitMQ.Stream.Client.StreamSystemConfig.ConsumersPerConnection.get -> byte
-RabbitMQ.Stream.Client.StreamSystemConfig.ConsumersPerConnection.set -> void
-RabbitMQ.Stream.Client.StreamSystemConfig.ProducersPerConnection.get -> byte
-RabbitMQ.Stream.Client.StreamSystemConfig.ProducersPerConnection.set -> void
+RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.get -> RabbitMQ.Stream.Client.ConnectionPoolConfig
+RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.set -> void
 RabbitMQ.Stream.Client.UnknownCommandException
 RabbitMQ.Stream.Client.UnknownCommandException.UnknownCommandException(string s) -> void
 RabbitMQ.Stream.Client.UnsupportedOperationException

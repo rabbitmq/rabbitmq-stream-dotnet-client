@@ -110,8 +110,6 @@ namespace RabbitMQ.Stream.Client
         private Connection connection;
         internal Broker MetaInfoBroker { get; set; }
 
-        private byte nextPublisherId = 0;
-
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
             publishers =
                 new ConcurrentDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>();
@@ -121,14 +119,8 @@ namespace RabbitMQ.Stream.Client
         private readonly TaskCompletionSource<TuneResponse> tuneReceived =
             new TaskCompletionSource<TuneResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        /* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-        Before:
-                private List<byte> subscriptionIds = new();
-        After:
-                private readonly List<byte> subscriptionIds = new();
-        */
-
         private readonly List<byte> subscriptionIds = new();
+        private readonly List<byte> publisherIds = new();
 
         internal readonly IDictionary<byte, ConsumerEvents> consumers =
             new ConcurrentDictionary<byte, ConsumerEvents>();
@@ -194,6 +186,18 @@ namespace RabbitMQ.Stream.Client
             {
                 result = FindMissingConsecutive(subscriptionIds);
                 subscriptionIds.Add(result);
+            }
+
+            return result;
+        }
+
+        private byte GetNextPublisherId()
+        {
+            byte result;
+            lock (Obj)
+            {
+                result = FindMissingConsecutive(publisherIds);
+                publisherIds.Add(result);
             }
 
             return result;
@@ -343,7 +347,7 @@ namespace RabbitMQ.Stream.Client
             Action<ReadOnlyMemory<ulong>> confirmCallback,
             Action<(ulong, ResponseCode)[]> errorCallback)
         {
-            var publisherId = nextPublisherId++;
+            var publisherId = GetNextPublisherId();
             publishers.Add(publisherId, (confirmCallback, errorCallback));
             return (publisherId, await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
                 new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)).ConfigureAwait(false));

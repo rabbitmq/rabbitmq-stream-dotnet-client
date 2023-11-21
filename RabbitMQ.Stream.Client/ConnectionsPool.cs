@@ -9,6 +9,13 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
+public class ConnectionPoolConfig
+{
+    public int MaxConnections { get; set; } = 0;
+    public byte ConsumersPerConnection { get; set; } = 1;
+    public byte ProducersPerConnection { get; set; } = 1;
+}
+
 public class ConnectionsPool
 {
     private class BrokerInUse
@@ -51,9 +58,9 @@ public class ConnectionsPool
             return available.Item2;
         }
 
-        if (connections.Length >= _maxConnections)
+        if (_maxConnections > 0 && connections.Length > _maxConnections)
         {
-            throw new Exception("Max connections reached");
+            throw new Exception($"Max connections reached {connections.Length}");
         }
 
         var client = createClient();

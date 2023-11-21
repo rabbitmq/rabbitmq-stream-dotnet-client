@@ -31,8 +31,7 @@ namespace RabbitMQ.Stream.Client
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
 
-        public byte ConsumersPerConnection { get; set; } = 1;
-        public byte ProducersPerConnection { get; set; } = 1;
+        public ConnectionPoolConfig ConnectionPoolConfig { get; set; } = new();
     }
 
     public class StreamSystem
@@ -44,15 +43,16 @@ namespace RabbitMQ.Stream.Client
         private ConnectionsPool PoolProducers { get; init; }
 
         private StreamSystem(ClientParameters clientParameters, Client client,
-            byte consumersPerConnection,
-            byte producersPerConnection,
+            ConnectionPoolConfig connectionPoolConfig,
             ILogger<StreamSystem> logger = null)
         {
             _clientParameters = clientParameters;
             _client = client;
             _logger = logger ?? NullLogger<StreamSystem>.Instance;
-            PoolConsumers = new ConnectionsPool(300, consumersPerConnection);
-            PoolProducers = new ConnectionsPool(300, producersPerConnection);
+            PoolConsumers = new ConnectionsPool(connectionPoolConfig.MaxConnections / 2,
+                connectionPoolConfig.ConsumersPerConnection);
+            PoolProducers = new ConnectionsPool(connectionPoolConfig.MaxConnections / 2,
+                connectionPoolConfig.ProducersPerConnection);
         }
 
         public bool IsClosed => _client.IsClosed;
@@ -81,8 +81,7 @@ namespace RabbitMQ.Stream.Client
                     if (!client.IsClosed)
                     {
                         logger?.LogDebug("Client connected to {@EndPoint}", endPoint);
-                        return new StreamSystem(clientParams, client, config.ConsumersPerConnection,
-                            config.ProducersPerConnection, logger);
+                        return new StreamSystem(clientParams, client, config.ConnectionPoolConfig, logger);
                     }
                 }
                 catch (Exception e)
