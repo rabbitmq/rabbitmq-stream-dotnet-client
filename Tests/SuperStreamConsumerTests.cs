@@ -216,10 +216,36 @@ public class SuperStreamConsumerTests
             Assert.Fail("timeout waiting to publish messages");
         }
 
+        _testOutputHelper.WriteLine("awaiting publish to super stream");
         // We re-await the task so that any exceptions/cancellation is rethrown.
         await publishToSuperStreamTask;
         var clientProvidedName = Guid.NewGuid().ToString();
         var consumers = new Dictionary<string, IConsumer>();
+
+        for (var i = 0; i < consumerExpected.Consumers; i++)
+        {
+            var consumer = await NewConsumer();
+            consumers.Add($"consumer_{i}", consumer);
+        }
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(3));
+
+        for (var i = 0; i < consumerExpected.ClosedConsumers; i++)
+        {
+            await consumers[$"consumer_{i}"].Close();
+            _testOutputHelper.WriteLine($"consumer_{i} closed");
+        }
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(3));
+
+        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream0] <=
+                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
+        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream1] <=
+                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
+        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream2] <=
+                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
+
+        await system.Close();
 
         async Task<IConsumer> NewConsumer()
         {
@@ -239,30 +265,6 @@ public class SuperStreamConsumerTests
                 });
             return iConsumer;
         }
-
-        for (var i = 0; i < consumerExpected.Consumers; i++)
-        {
-            var consumer = await NewConsumer();
-            consumers.Add($"consumer_{i}", consumer);
-        }
-
-        SystemUtils.Wait(TimeSpan.FromSeconds(3));
-
-        for (var i = 0; i < consumerExpected.ClosedConsumers; i++)
-        {
-            await consumers[$"consumer_{i}"].Close();
-        }
-
-        SystemUtils.Wait(TimeSpan.FromSeconds(3));
-
-        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream0] <=
-                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
-        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream1] <=
-                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
-        Assert.True(consumerExpected.MessagesPerStream[SystemUtils.InvoicesStream2] <=
-                    listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
-
-        await system.Close();
     }
 
     [Fact]
@@ -433,7 +435,7 @@ public class SuperStreamConsumerTests
                 return Task.CompletedTask;
             }
         });
-
+        _testOutputHelper.WriteLine("awaiting first consumer to receive all messages");
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(firstConsumerMessageReceived);
         Assert.True(firstConsumerMessageReceived.Task.Result);
         // the first consumer consumes all the messages and have to be like the messages published

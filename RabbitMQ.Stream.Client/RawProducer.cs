@@ -67,7 +67,8 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupLeaderConnection(clientParameters, metaStreamInfo, logger)
+            var client = await RoutingHelper<Routing>
+                .LookupLeaderConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
 
             var producer = new RawProducer((Client)client, config, logger);

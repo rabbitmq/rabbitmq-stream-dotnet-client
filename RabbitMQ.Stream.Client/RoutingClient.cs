@@ -155,10 +155,12 @@ namespace RabbitMQ.Stream.Client
         /// Gets the leader connection. The producer must connect to the leader. 
         /// </summary>
         public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
-            StreamInfo metaDataInfo, ILogger logger = null)
+            StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
-            return await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger)
-                .ConfigureAwait(false);
+            return await pool.GetOrCreateClient(metaDataInfo.Leader.ToString(),
+                async () =>
+                    await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger)
+                        .ConfigureAwait(false)).ConfigureAwait(false);
         }
 
         /// <summary>

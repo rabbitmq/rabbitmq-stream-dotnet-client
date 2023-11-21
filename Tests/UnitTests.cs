@@ -137,7 +137,8 @@ namespace Tests
                 new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552), new List<Broker>());
             // run more than one time just to be sure to use all the IP with random
             await Assert.ThrowsAsync<RoutingClientException>(() =>
-                RoutingHelper<MissingFieldsRouting>.LookupLeaderConnection(clientParameters, metaDataInfo));
+                RoutingHelper<MissingFieldsRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1)));
         }
 
         [Fact]
@@ -150,7 +151,7 @@ namespace Tests
             // run more than one time just to be sure to use all the IP with random
             for (var i = 0; i < 4; i++)
             {
-                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo);
+                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, new ConnectionsPool(1, 1));
                 Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }
@@ -166,7 +167,7 @@ namespace Tests
             // run more than one time just to be sure to use all the IP with random
             for (var i = 0; i < 4; i++)
             {
-                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo);
+                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, new ConnectionsPool(1, 1));
                 Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }

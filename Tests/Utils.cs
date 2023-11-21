@@ -406,7 +406,7 @@ namespace Tests
         public static void ResetSuperStreams()
         {
             var factory = new ConnectionFactory();
-            using var connection = factory.CreateConnection();
+            var connection = factory.CreateConnection();
             var channel = connection.CreateModel();
 
             channel.ExchangeDelete(InvoicesExchange);
