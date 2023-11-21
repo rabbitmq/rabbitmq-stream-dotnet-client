@@ -222,7 +222,7 @@ namespace RabbitMQ.Stream.Client
                     .ConfigureAwait(false);
             logger?.LogDebug("Sasl mechanism: {Mechanisms}", saslHandshakeResponse.Mechanisms);
 
-            var isValid = saslHandshakeResponse.Mechanisms.Contains(parameters.AuthMechanism.ToString().ToUpper(),
+            var isValid = saslHandshakeResponse.Mechanisms.Contains(parameters.AuthMechanism.ToString().ToUpperInvariant(),
                 StringComparer.OrdinalIgnoreCase);
             if (!isValid)
             {
@@ -234,7 +234,7 @@ namespace RabbitMQ.Stream.Client
             var authResponse =
                 await client
                     .Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
-                        new SaslAuthenticateRequest(corr, parameters.AuthMechanism.ToString().ToUpper(), saslData))
+                        new SaslAuthenticateRequest(corr, parameters.AuthMechanism.ToString().ToUpperInvariant(), saslData))
                     .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
