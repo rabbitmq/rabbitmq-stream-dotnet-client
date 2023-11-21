@@ -71,6 +71,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             IsSingleActiveConsumer = _config.IsSingleActiveConsumer,
             ConsumerUpdateListener = _config.ConsumerUpdateListener,
             ConsumerFilter = _config.ConsumerFilter,
+            Pool = _config.Pool,
             Crc32 = _config.Crc32,
             ConnectionClosedHandler = async (string s) =>
             {

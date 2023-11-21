@@ -438,6 +438,7 @@ namespace Tests
             channel.QueueBind(InvoicesStream2, InvoicesExchange, "2",
                 new Dictionary<string, object>() { { "x-stream-partition-order", "2" } });
 
+            channel.Close();
             connection.Close();
         }
     }

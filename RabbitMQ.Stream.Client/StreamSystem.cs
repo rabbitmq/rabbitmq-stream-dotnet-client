@@ -51,8 +51,8 @@ namespace RabbitMQ.Stream.Client
             _clientParameters = clientParameters;
             _client = client;
             _logger = logger ?? NullLogger<StreamSystem>.Instance;
-            PoolConsumers = new ConnectionsPool(100, consumersPerConnection);
-            PoolProducers = new ConnectionsPool(100, producersPerConnection);
+            PoolConsumers = new ConnectionsPool(300, consumersPerConnection);
+            PoolProducers = new ConnectionsPool(300, producersPerConnection);
         }
 
         public bool IsClosed => _client.IsClosed;
@@ -167,6 +167,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             rawSuperStreamProducerConfig.Client = _client;
+            rawSuperStreamProducerConfig.Pool = PoolProducers;
 
             var partitions = await _client.QueryPartition(rawSuperStreamProducerConfig.SuperStream)
                 .ConfigureAwait(false);
@@ -217,6 +218,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             rawSuperStreamConsumerConfig.Client = _client;
+            rawSuperStreamConsumerConfig.Pool = PoolConsumers;
 
             var partitions = await _client.QueryPartition(rawSuperStreamConsumerConfig.SuperStream)
                 .ConfigureAwait(false);
