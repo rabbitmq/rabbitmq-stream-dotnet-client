@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Tests
 {
@@ -16,7 +15,7 @@ namespace Tests
     {
         private static Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
         {
-            var fake = new FakeClient(clientParameters) {ConnectionProperties = new Dictionary<string, string>() { }};
+            var fake = new FakeClient(clientParameters) { ConnectionProperties = new Dictionary<string, string>() { } };
             return Task.FromResult<IClient>(fake);
         }
 
@@ -93,7 +92,6 @@ namespace Tests
             Assert.Equal(0, pool.Count);
         }
 
-
         private class PoolRouting : IRouting
         {
             public Task<IClient> CreateClient(ClientParameters clientParameters, Broker broker, ILogger logger = null)
@@ -108,7 +106,7 @@ namespace Tests
         [Fact]
         public async void RoutingShouldReturnTwoConnectionsGivenOneItemPerConnection()
         {
-            var clientParameters = new ClientParameters {Endpoint = new DnsEndPoint("localhost", 3939)};
+            var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("localhost", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
                 new List<Broker>());
             var pool = new ConnectionsPool(0, 1);
@@ -120,7 +118,7 @@ namespace Tests
         [Fact]
         public async void RoutingShouldReturnOneConnectionsGivenTwoIdPerConnection()
         {
-            var clientParameters = new ClientParameters {Endpoint = new DnsEndPoint("localhost", 3939)};
+            var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("localhost", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
                 new List<Broker>());
             var pool = new ConnectionsPool(0, 2);
@@ -133,25 +131,24 @@ namespace Tests
         [Fact]
         public async void RoutingShouldReturnTwoConnectionsGivenOneIdPerConnectionDifferentMetaInfo()
         {
-            var clientParameters = new ClientParameters {Endpoint = new DnsEndPoint("Node1", 3939)};
+            var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
                 new List<Broker>());
             var pool = new ConnectionsPool(0, 2);
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
 
-            var clientParameters1 = new ClientParameters {Endpoint = new DnsEndPoint("Node2", 3939)};
+            var clientParameters1 = new ClientParameters { Endpoint = new DnsEndPoint("Node2", 3939) };
             var metaDataInfo1 =
                 new StreamInfo("stream", ResponseCode.Ok, new Broker("Node2", 3939), new List<Broker>());
             var c2 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters1, metaDataInfo1, pool);
             Assert.NotSame(c1.ClientId, c2.ClientId);
         }
 
-
         [Fact]
         public async void RoutingShouldReturnTwoConnectionsGivenTreeIdsForConnection()
         {
             var pool = new ConnectionsPool(0, 3);
-            var clientParameters = new ClientParameters {Endpoint = new DnsEndPoint("Node1", 3939)};
+            var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
                 new List<Broker>());
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
@@ -173,7 +170,7 @@ namespace Tests
         public async void ReleaseFromThePoolShouldNotRemoveTheConnection()
         {
             var pool = new ConnectionsPool(0, 3);
-            var clientParameters = new ClientParameters {Endpoint = new DnsEndPoint("Node1", 3939)};
+            var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
                 new List<Broker>());
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
@@ -220,7 +217,7 @@ namespace Tests
         [Fact]
         public void FindMissingConsecutiveShouldReturnOneGivenOneItem()
         {
-            var ids = new List<byte>() {0};
+            var ids = new List<byte>() { 0 };
             var missing = ConnectionsPool.FindMissingConsecutive(ids);
             Assert.Equal(1, missing);
         }
@@ -243,16 +240,15 @@ namespace Tests
             ids.Add(3);
             missing = ConnectionsPool.FindMissingConsecutive(ids);
             Assert.Equal(5, missing);
-            
+
             ids.Add(5);
             missing = ConnectionsPool.FindMissingConsecutive(ids);
             Assert.Equal(7, missing);
-            
+
             ids.Add(7);
             missing = ConnectionsPool.FindMissingConsecutive(ids);
             Assert.Equal(10, missing);
-            
-            
+
         }
     }
 }

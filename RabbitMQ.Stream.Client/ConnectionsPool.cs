@@ -42,13 +42,13 @@ public class ConnectionsPool
     private readonly int _maxConnections;
     private readonly byte _itemsPerConnection;
 
-    
     internal static byte FindMissingConsecutive(List<byte> ids)
     {
         if (ids.Count == 0)
         {
             return 0;
         }
+
         ids.Sort();
         for (var i = 0; i < ids.Count - 1; i++)
         {
@@ -57,6 +57,7 @@ public class ConnectionsPool
                 return (byte)(ids[i] + 1);
             }
         }
+
         return (byte)(ids[^1] + 1);
     }
     public ConnectionsPool(int maxConnections, byte itemsPerConnection)
