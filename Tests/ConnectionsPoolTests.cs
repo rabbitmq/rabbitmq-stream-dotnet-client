@@ -13,7 +13,7 @@ namespace Tests
 {
     public class ConnectionsPoolTests
     {
-        private static Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
+        private static Task<IClient> CreateClient(ClientParameters clientParameters)
         {
             var fake = new FakeClient(clientParameters) { ConnectionProperties = new Dictionary<string, string>() { } };
             return Task.FromResult<IClient>(fake);
