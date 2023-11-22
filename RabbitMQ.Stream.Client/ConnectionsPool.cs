@@ -16,26 +16,28 @@ public class ConnectionPoolConfig
     public byte ProducersPerConnection { get; set; } = 1;
 }
 
-public class ConnectionsPool
+public class ConnectionItem
 {
-    private class BrokerInUse
+    public ConnectionItem(string brokerInfo, byte idsPerConnection, IClient client)
     {
-        public BrokerInUse(string brokerInfo, byte itemsPerConnection)
-        {
-            BrokerInfo = brokerInfo;
-            ActiveItems = 1;
-            LastUsed = DateTime.UtcNow;
-            ItemsPerConnection = itemsPerConnection;
-        }
-
-        public string BrokerInfo { get; }
-        public int ActiveItems { get; set; }
-        public bool Available => ActiveItems < ItemsPerConnection;
-
-        public byte ItemsPerConnection { get; set; }
-        public DateTime LastUsed { get; set; }
+        BrokerInfo = brokerInfo;
+        ActiveIds = 1;
+        LastUsed = DateTime.UtcNow;
+        IdsPerConnection = idsPerConnection;
+        Client = client;
     }
 
+    public IClient Client { get; }
+    public string BrokerInfo { get; }
+    public int ActiveIds { get; set; }
+    public bool Available => ActiveIds < IdsPerConnection;
+
+    public byte IdsPerConnection { get; }
+    public DateTime LastUsed { get; set; }
+}
+
+public class ConnectionsPool
+{
     private readonly int _maxConnections;
     private readonly byte _itemsPerConnection;
 
@@ -45,46 +47,67 @@ public class ConnectionsPool
         _itemsPerConnection = itemsPerConnection;
     }
 
-    private readonly ConcurrentBag<(BrokerInUse, Task<IClient> client)> _connections = new();
+    /// <summary>
+    ///  Key: is the client id. And GUID
+    ///  Value is the connection item
+    /// The Connections contains all the connections created by the pool
+    /// </summary>
+    internal ConcurrentDictionary<string, ConnectionItem> Connections { get; } = new();
 
-    public Task<IClient> GetOrCreateClient(string brokerInfo, Func<Task<IClient>> createClient)
+    internal async Task<IClient> GetOrCreateClient(string brokerInfo, Func<Task<IClient>> createClient)
     {
-        var connections = _connections.ToArray();
-        var available = connections.FirstOrDefault(c => c.Item1.BrokerInfo == brokerInfo && (c.Item1.Available));
-        if (available.Item1 != null)
+        // do we have a connection for this brokerInfo and with free slots for producer or consumer?
+        // it does not matter which connection is available 
+        // the important is to have a connection available for the brokerInfo
+        var count = Connections.Values.Count(x => x.BrokerInfo == brokerInfo && x.Available);
+
+        if (count > 0)
         {
-            available.Item1.ActiveItems += 1;
-            available.Item1.LastUsed = DateTime.UtcNow;
-            return available.Item2;
+            // ok we have a connection available for this brokerInfo
+            // let's get the first one
+            // TODO: we can improve this by getting the connection with the less active items
+            var connectionItem = Connections.Values.First(x => x.BrokerInfo == brokerInfo && x.Available);
+            // we need to increment the active items for this connection item
+            // ActiveItems that is the producerIds or consumerIds for this connection
+            connectionItem.ActiveIds += 1;
+            return connectionItem.Client;
         }
 
-        if (_maxConnections > 0 && connections.Length > _maxConnections)
+        if (_maxConnections > 0 && Connections.Count >= _maxConnections)
         {
-            throw new Exception($"Max connections reached {connections.Length}");
+            throw new Exception($"Max connections {_maxConnections} reached");
         }
 
-        var client = createClient();
-        _connections.Add((new BrokerInUse(brokerInfo, _itemsPerConnection), client));
+        // no connection available for this brokerInfo
+        // let's create a new one
+        var client = await createClient().ConfigureAwait(false);
+        // the connection give us the client id that is a GUID
+        Connections.TryAdd(client.ClientId, new ConnectionItem(brokerInfo, _itemsPerConnection, client));
         return client;
     }
 
-    public void Release(string brokerInfo)
+    public void Release(string clientId)
     {
-        var connections = _connections.ToArray();
-        var available = connections.FirstOrDefault(c => c.Item1.BrokerInfo == brokerInfo);
-        if (available.Item1 != null)
+        // given a client id we need to decrement the active items for this connection item
+        Connections.TryGetValue(clientId, out var connectionItem);
+
+        // it can be null if the connection is closed in unexpected way
+        // so the connection does not exist anymore in the pool
+        // we can ignore this case
+        if (connectionItem != null)
         {
-            available.Item1.ActiveItems -= 1;
+            connectionItem.ActiveIds -= 1;
         }
+
+        // throw new Exception($"Connection {clientId} not found");
     }
 
-    public void Remove(string brokerInfo)
+    public void Remove(string clientId)
     {
-        var connections = _connections.ToArray();
-        var available = connections.FirstOrDefault(c => c.Item1.BrokerInfo == brokerInfo);
-        if (available.Item1 != null)
-        {
-            _connections.TryTake(out var _);
-        }
+        // remove the connection from the pool
+        // it means that the connection is closed
+        Connections.TryRemove(clientId, out _);
     }
+
+    public int Count => Connections.Count;
 }

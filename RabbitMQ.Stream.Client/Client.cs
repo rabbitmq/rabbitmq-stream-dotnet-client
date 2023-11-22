@@ -108,7 +108,6 @@ namespace RabbitMQ.Stream.Client
         private uint correlationId = 0; // allow for some pre-amble
 
         private Connection connection;
-        internal Broker MetaInfoBroker { get; set; }
 
         private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
             publishers =
@@ -157,6 +156,7 @@ namespace RabbitMQ.Stream.Client
                 (int)parameters.Heartbeat.TotalSeconds);
             IsClosed = false;
             _logger = logger ?? NullLogger.Instance;
+            ClientId = Guid.NewGuid().ToString();
         }
 
         private static byte FindMissingConsecutive(List<byte> ids)
@@ -728,23 +728,25 @@ namespace RabbitMQ.Stream.Client
             return new CloseResponse(0, ResponseCode.Ok);
         }
 
+        public string ClientId { get; init; }
+
         // Safe close 
         // the client can be closed only if the publishers are == 0
         // not a public method used internally by producers and consumers
         internal async Task<CloseResponse> MaybeClose(string reason, ConnectionsPool pool)
         {
-            if (!string.IsNullOrEmpty(MetaInfoBroker.ToString()))
+            if (!string.IsNullOrEmpty(ClientId))
             {
-                _logger.LogInformation("Releasing connection {Connection}", MetaInfoBroker.ToString());
-                pool.Release(MetaInfoBroker.ToString());
+                _logger.LogInformation("Releasing connection {Connection}", ClientId);
+                pool.Release(ClientId);
             }
 
             if (!HasEntities())
             {
-                if (!string.IsNullOrEmpty(MetaInfoBroker.ToString()))
+                if (!string.IsNullOrEmpty(ClientId))
                 {
-                    _logger.LogInformation("Close connection {Connection}", MetaInfoBroker.ToString());
-                    pool.Remove(MetaInfoBroker.ToString());
+                    _logger.LogInformation("Close connection {Connection}", ClientId);
+                    // will remove the connection from the pool using the disconnect event form the rawConsumer and rawProducer
                     await Close(reason).ConfigureAwait(false);
                 }
             }

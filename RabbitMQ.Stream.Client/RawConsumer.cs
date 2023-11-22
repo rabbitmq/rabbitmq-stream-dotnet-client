@@ -444,6 +444,7 @@ namespace RabbitMQ.Stream.Client
 
             _client.ConnectionClosed += async reason =>
             {
+                _config.Pool.Remove(_client.ClientId);
                 await Close().ConfigureAwait(false);
                 if (_config.ConnectionClosedHandler != null)
                 {

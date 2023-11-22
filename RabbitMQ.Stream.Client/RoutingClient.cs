@@ -25,7 +25,6 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null)
         {
             var c = await Client.Create(clientParameters, logger).ConfigureAwait(false);
-            c.MetaInfoBroker = metaInfoBroker;
             return c;
         }
     }

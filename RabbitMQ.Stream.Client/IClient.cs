@@ -18,5 +18,7 @@ namespace RabbitMQ.Stream.Client
         IDictionary<string, string> ConnectionProperties { get; }
 
         Task<CloseResponse> Close(string reason);
+
+        string ClientId { get; init; }
     }
 }

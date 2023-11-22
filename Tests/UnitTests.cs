@@ -24,9 +24,12 @@ namespace Tests
             return Task.FromResult(new CloseResponse());
         }
 
+        public string ClientId { get; init; }
+
         public FakeClient(ClientParameters clientParameters)
         {
             Parameters = clientParameters;
+            ClientId = Guid.NewGuid().ToString();
         }
     }
 
