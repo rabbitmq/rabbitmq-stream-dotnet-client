@@ -159,32 +159,12 @@ namespace RabbitMQ.Stream.Client
             ClientId = Guid.NewGuid().ToString();
         }
 
-        private static byte FindMissingConsecutive(List<byte> ids)
-        {
-            if (ids.Count == 0)
-            {
-                return 0;
-            }
-
-            ids.Sort();
-
-            for (var i = 0; i < ids.Count - 1; i++)
-            {
-                if (ids[i + 1] - ids[i] > 1)
-                {
-                    return (byte)(ids[i] + 1);
-                }
-            }
-
-            return (byte)(ids[^1] + 1);
-        }
-
         private byte GetNextSubscriptionId()
         {
             byte result;
             lock (Obj)
             {
-                result = FindMissingConsecutive(subscriptionIds);
+                result = ConnectionsPool.FindMissingConsecutive(subscriptionIds);
                 subscriptionIds.Add(result);
             }
 
@@ -196,7 +176,7 @@ namespace RabbitMQ.Stream.Client
             byte result;
             lock (Obj)
             {
-                result = FindMissingConsecutive(publisherIds);
+                result = ConnectionsPool.FindMissingConsecutive(publisherIds);
                 publisherIds.Add(result);
             }
 
@@ -374,7 +354,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
+            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -774,9 +754,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] { stream };
+            var streams = new[] {stream};
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is { Count: >= 1 } &&
+            return response.StreamInfos is {Count: >= 1} &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -823,7 +803,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
+                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
             }
         }
 

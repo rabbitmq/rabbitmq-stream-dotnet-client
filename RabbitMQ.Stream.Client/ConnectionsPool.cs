@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -41,6 +42,23 @@ public class ConnectionsPool
     private readonly int _maxConnections;
     private readonly byte _itemsPerConnection;
 
+    
+    internal static byte FindMissingConsecutive(List<byte> ids)
+    {
+        if (ids.Count == 0)
+        {
+            return 0;
+        }
+        ids.Sort();
+        for (var i = 0; i < ids.Count - 1; i++)
+        {
+            if (ids[i + 1] - ids[i] > 1)
+            {
+                return (byte)(ids[i] + 1);
+            }
+        }
+        return (byte)(ids[^1] + 1);
+    }
     public ConnectionsPool(int maxConnections, byte itemsPerConnection)
     {
         _maxConnections = maxConnections;
