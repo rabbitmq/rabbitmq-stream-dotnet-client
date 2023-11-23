@@ -708,11 +708,11 @@ namespace RabbitMQ.Stream.Client
             return new CloseResponse(0, ResponseCode.Ok);
         }
 
-        public string ClientId { get; init; }
-
         // Safe close 
-        // the client can be closed only if the publishers are == 0
-        // not a public method used internally by producers and consumers
+        // the client can be closed only if HasEntities is false
+        // if the client has entities (publishers or consumers) it will be released from the pool
+        // Release will decrement the active ids for the connection
+        // if the active ids are 0 the connection will be closed
         internal async Task<CloseResponse> MaybeClose(string reason, ConnectionsPool pool)
         {
             if (!string.IsNullOrEmpty(ClientId))
@@ -726,7 +726,10 @@ namespace RabbitMQ.Stream.Client
                 if (!string.IsNullOrEmpty(ClientId))
                 {
                     _logger.LogInformation("Close connection {Connection}", ClientId);
-                    // will remove the connection from the pool using the disconnect event form the rawConsumer and rawProducer
+                    // pool.remove(ClientId)  is a duplicate call here but it is ok
+                    // the client can be closed in an unexpected way so we need to remove it from the pool
+                    // so you will find pool.remove(ClientId) also to the disconnect event
+                    pool.Release(ClientId);
                     await Close(reason).ConfigureAwait(false);
                 }
             }
@@ -734,6 +737,8 @@ namespace RabbitMQ.Stream.Client
             var result = new CloseResponse(0, ResponseCode.Ok);
             return result;
         }
+
+        public string ClientId { get; init; }
 
         public async ValueTask<QueryPublisherResponse> QueryPublisherSequence(string publisherRef, string stream)
         {

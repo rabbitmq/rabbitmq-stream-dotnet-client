@@ -3,6 +3,7 @@
 // Copyright (c) 2007-2023 VMware, Inc.
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -103,6 +104,10 @@ namespace Tests
             public bool ValidateDns { get; set; } = false;
         }
 
+        /// <summary>
+        /// The connection pool has 1 ids per connection.
+        /// Each request for a new connection should return a new connection
+        /// </summary>
         [Fact]
         public async void RoutingShouldReturnTwoConnectionsGivenOneItemPerConnection()
         {
@@ -112,9 +117,16 @@ namespace Tests
             var pool = new ConnectionsPool(0, 1);
             var c1 = await RoutingHelper<PoolRouting>.LookupRandomConnection(clientParameters, metaDataInfo, pool);
             var c2 = await RoutingHelper<PoolRouting>.LookupRandomConnection(clientParameters, metaDataInfo, pool);
+            // here we have two different connections
+            // and must be different since we have only one id per connection
             Assert.NotSame(c1.ClientId, c2.ClientId);
+            Assert.Equal(2, pool.Count);
         }
 
+        /// <summary>
+        /// The connection pool has 2 ids per connection.
+        /// Since we have two ids per connection we can reuse the same connection
+        /// </summary>
         [Fact]
         public async void RoutingShouldReturnOneConnectionsGivenTwoIdPerConnection()
         {
@@ -124,10 +136,17 @@ namespace Tests
             var pool = new ConnectionsPool(0, 2);
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
             var c2 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
+            // here we have one connection with two ids
             Assert.Equal(c1.ClientId, c2.ClientId);
+            // two ids per connection
             Assert.Equal(2, pool.Connections[c1.ClientId].ActiveIds);
         }
 
+        /// <summary>
+        /// The connection pool has 2 ids per connection.
+        /// but we have two different brokerInfo
+        /// so we should have two different connections
+        /// </summary>
         [Fact]
         public async void RoutingShouldReturnTwoConnectionsGivenOneIdPerConnectionDifferentMetaInfo()
         {
@@ -136,14 +155,26 @@ namespace Tests
                 new List<Broker>());
             var pool = new ConnectionsPool(0, 2);
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
+            Assert.Equal(1, pool.Count);
 
             var clientParameters1 = new ClientParameters { Endpoint = new DnsEndPoint("Node2", 3939) };
             var metaDataInfo1 =
                 new StreamInfo("stream", ResponseCode.Ok, new Broker("Node2", 3939), new List<Broker>());
             var c2 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters1, metaDataInfo1, pool);
             Assert.NotSame(c1.ClientId, c2.ClientId);
+            // even if we have two ids per connection
+            // we have two different connections since we have two different brokerInfo
+            // so the pool count is 2
+            Assert.Equal(2, pool.Count);
         }
 
+        /// <summary>
+        /// The pool has 3 ids per connection.
+        /// We request 3 connections with the same brokerInfo
+        /// then we request a new connection with the same brokerInfo
+        /// so we should have two different connections
+        /// one with 3 ids and one with 1 id
+        /// </summary>
         [Fact]
         public async void RoutingShouldReturnTwoConnectionsGivenTreeIdsForConnection()
         {
@@ -160,12 +191,20 @@ namespace Tests
             }
 
             Assert.Equal(3, pool.Connections[c1.ClientId].ActiveIds);
+            Assert.Equal(1, pool.Count);
             // here is a new client id since we reach the max ids per connection
             var c2 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
             Assert.NotSame(c1.ClientId, c2.ClientId);
             Assert.Equal(1, pool.Connections[c2.ClientId].ActiveIds);
+            Assert.Equal(2, pool.Count);
         }
 
+        /// <summary>
+        /// The pool has 3 ids per connection.
+        /// We request 3 connections with the same brokerInfo
+        /// then release one id and again we request a new connection with the same brokerInfo
+        /// so the pool should have one connection with 3 ids 
+        /// </summary>
         [Fact]
         public async void ReleaseFromThePoolShouldNotRemoveTheConnection()
         {
@@ -182,8 +221,10 @@ namespace Tests
             }
 
             Assert.Equal(3, pool.Connections[c1.ClientId].ActiveIds);
+            Assert.Equal(1, pool.Count);
             pool.Release(c1.ClientId);
             Assert.Equal(2, pool.Connections[c1.ClientId].ActiveIds);
+
             var reusedClient = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
                 pool);
 
@@ -206,6 +247,140 @@ namespace Tests
             Assert.Equal(0, pool.Count);
         }
 
+        /// <summary>
+        /// Test the max connections per pool
+        /// In this case there is only one connection per pool with 2 ids
+        /// The id 3 requires a new connection
+        /// but the pool is full so we raise an exception
+        /// </summary>
+        [Fact]
+        public async void RaiseExceptionWhenThePoolIsFull()
+        {
+            var pool = new ConnectionsPool(1, 2);
+            var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
+            var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
+                new List<Broker>());
+            await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
+            await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
+            await Assert.ThrowsAsync<TooManyConnectionsException>(async () =>
+                await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool));
+        }
+
+        /// Integration tests to validate the pool with actual connections
+
+        /// <summary>
+        ///  The pool has 2 ids per connection.
+        /// Given two consumers for different streams
+        /// The pool should have only one connection with 2 ids
+        /// </summary>
+        [Fact]
+        public async void TwoConsumersShouldShareTheSameConnectionFromThePool()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_consumer";
+            const string Stream2 = "pool_test_stream_2_consumer";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+
+            var pool = new ConnectionsPool(0, 2);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
+            var c1 = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]);
+
+            var c2 = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream2) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream2]);
+            // connection pool is 1 since we reuse the same connection
+            Assert.Equal(1, pool.Count);
+            Assert.Equal(2, pool.Connections.Values.First().ActiveIds);
+            await c1.Close();
+
+            Assert.Equal(1, pool.Count);
+            Assert.Equal(1, pool.Connections.Values.First().ActiveIds);
+
+            await c2.Close();
+            Assert.Equal(0, pool.Count);
+
+            await client.DeleteStream(Stream1);
+            await client.DeleteStream(Stream2);
+        }
+
+        /// <summary>
+        ///  The pool has 2 ids per connection.
+        /// Given two producers for different streams
+        /// The pool should have only one connection with 2 ids
+        /// </summary>
+        [Fact]
+        public async void TwoProducersShouldShareTheSameConnectionFromThePool()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_producer";
+            const string Stream2 = "pool_test_stream_2_producer";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+
+            var pool = new ConnectionsPool(0, 2);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
+            var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]);
+
+            var p2 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream2) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream2]);
+
+            Assert.Equal(1, pool.Count);
+            Assert.Equal(2, pool.Connections.Values.First().ActiveIds);
+            await p1.Close();
+
+            Assert.Equal(1, pool.Count);
+            Assert.Equal(1, pool.Connections.Values.First().ActiveIds);
+
+            await p2.Close();
+            Assert.Equal(0, pool.Count);
+
+            await client.DeleteStream(Stream1);
+            await client.DeleteStream(Stream2);
+        }
+
+        /// <summary>
+        /// The pool has 1 ids per connection.
+        /// So the producer and consumer should have different connections
+        /// </summary>
+        [Fact]
+        public async void TwoProducerAndConsumerShouldHaveDifferentConnection()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_producer";
+            const string Stream2 = "pool_test_stream_2_producer";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+
+            var pool = new ConnectionsPool(0, 1);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
+            var c1 = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]);
+
+            var p2 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream2) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream2]);
+            // one for the producer and one for the consumer
+            Assert.Equal(2, pool.Count);
+            Assert.Equal(1, pool.Connections.Values.First().ActiveIds);
+            await c1.Close();
+
+            Assert.Equal(1, pool.Count);
+            Assert.Equal(1, pool.Connections.Values.First().ActiveIds);
+
+            await p2.Close();
+            Assert.Equal(0, pool.Count);
+
+            await client.DeleteStream(Stream1);
+            await client.DeleteStream(Stream2);
+        }
+        /// The following tests are related to the FindMissingConsecutive method
+        /// We need to find the missing consecutive ids
+        /// by protocol we can have multi ids per connection so we need to find the missing ids
+        /// in case one id is released from the pool
+        /// if we start with 0,1,2,3,4,5,6,7,8,9 at some point we release the id 3
+        /// the next id should be 3
+        /// the id is a byte so we can have 0-255
         [Fact]
         public void FindMissingConsecutiveShouldReturnZeroGivenEmptyList()
         {
@@ -230,8 +405,11 @@ namespace Tests
                 0,
                 1,
                 2,
+                // 3 is missing
                 4,
+                // 5 is missing
                 6,
+                // 7 is missing
                 8,
                 9
             };
@@ -248,7 +426,6 @@ namespace Tests
             ids.Add(7);
             missing = ConnectionsPool.FindMissingConsecutive(ids);
             Assert.Equal(10, missing);
-
         }
     }
 }

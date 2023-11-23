@@ -19,6 +19,9 @@ namespace RabbitMQ.Stream.Client
 
         Task<CloseResponse> Close(string reason);
 
+        // The ClientId is a key that is used to identify the client in an unique way
+        // It is used to identify the client in the ConnectionsPool
+        // by default it is a GUID
         string ClientId { get; init; }
     }
 }
