@@ -2,13 +2,18 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
+using System;
+using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.AMQP;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Tests
 {
@@ -18,6 +23,13 @@ namespace Tests
         {
             var fake = new FakeClient(clientParameters) { ConnectionProperties = new Dictionary<string, string>() { } };
             return Task.FromResult<IClient>(fake);
+        }
+
+        private readonly ITestOutputHelper _testOutputHelper;
+
+        public ConnectionsPoolTests(ITestOutputHelper testOutputHelper)
+        {
+            _testOutputHelper = testOutputHelper;
         }
 
         /// <summary>
@@ -267,7 +279,6 @@ namespace Tests
         }
 
         /// Integration tests to validate the pool with actual connections
-
         /// <summary>
         ///  The pool has 2 ids per connection.
         /// Given two consumers for different streams
@@ -374,6 +385,233 @@ namespace Tests
             await client.DeleteStream(Stream1);
             await client.DeleteStream(Stream2);
         }
+
+        /// <summary>
+        /// Since the consumers and producers share the same connection
+        /// in this test we have two consumers and two producers
+        /// to be sure the messages are delivered to the right consumer
+        /// </summary>
+        [Fact]
+        public async void DeliverToTheRightConsumerEvenShareTheConnection()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_deliver";
+            const string Stream2 = "pool_test_stream_2_deliver";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+            var testPassedC1 = new TaskCompletionSource<Data>();
+
+            var poolConsumer = new ConnectionsPool(0, 2);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
+            var c1 = await RawConsumer.Create(client.Parameters,
+                new RawConsumerConfig(Stream1)
+                {
+                    Pool = poolConsumer,
+                    MessageHandler = async (consumer, context, message) =>
+                    {
+                        testPassedC1.SetResult(message.Data);
+                        await Task.CompletedTask;
+                    }
+                },
+                metaDataInfo.StreamInfos[Stream1]);
+
+            var testPassedC2 = new TaskCompletionSource<Data>();
+            await RawConsumer.Create(client.Parameters,
+                new RawConsumerConfig(Stream2)
+                {
+                    Pool = poolConsumer,
+                    MessageHandler = async (consumer, context, message) =>
+                    {
+                        testPassedC2.SetResult(message.Data);
+                        await Task.CompletedTask;
+                    }
+                },
+                metaDataInfo.StreamInfos[Stream2]);
+
+            var poolProducer = new ConnectionsPool(0, 2);
+
+            var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = poolProducer, },
+                metaDataInfo.StreamInfos[Stream1]);
+
+            var p2 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream2) { Pool = poolProducer },
+                metaDataInfo.StreamInfos[Stream2]);
+
+            var msgDataStream1 = new Data("Stream1".AsReadonlySequence());
+            var message = new Message(msgDataStream1);
+            await p1.Send(1, message);
+
+            var msgDataStream2 = new Data("Stream2".AsReadonlySequence());
+            var message2 = new Message(msgDataStream2);
+            await p2.Send(1, message2);
+
+            new Utils<Data>(_testOutputHelper).WaitUntilTaskCompletes(testPassedC1);
+            new Utils<Data>(_testOutputHelper).WaitUntilTaskCompletes(testPassedC2);
+            Assert.Equal(msgDataStream1.Contents.ToArray(), testPassedC1.Task.Result.Contents.ToArray());
+            Assert.Equal(msgDataStream2.Contents.ToArray(), testPassedC2.Task.Result.Contents.ToArray());
+            await client.DeleteStream(Stream1);
+            await client.DeleteStream(Stream2);
+        }
+
+        /// <summary>
+        /// Raise an exception in case the pool is full
+        /// </summary>
+        [Fact]
+        public async void RaiseErrorInCaseThePoolIsFull()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_full";
+            const string Stream2 = "pool_test_stream_2_full";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+
+            var pool = new ConnectionsPool(1, 1);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
+            var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream2) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream2]);
+
+            await Assert.ThrowsAsync<AggregateException>(async () => await RawConsumer.Create(
+                client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]));
+
+            Assert.Equal(1, pool.Count);
+            Assert.Equal(1, pool.Connections.Values.First().ActiveIds);
+
+            await p1.Close();
+            Assert.Equal(0, pool.Count);
+
+            await client.DeleteStream(Stream1);
+            await client.DeleteStream(Stream2);
+        }
+
+        /// <summary>
+        /// The pool has 17 ids per connection.
+        /// The pool should be consistent in multi thread
+        /// Id we create (17* 2) producers in multi thread
+        /// the pool must contain only two connections
+        /// Same when we close the producers in multi thread the pool must be empty at the end
+        /// </summary>
+        [Fact]
+        public async void TheProducerPoolShouldBeConsistentInMultiThread()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_multi_thread_producer";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            const int IdsPerConnection = 17;
+            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
+            var producerList = new ConcurrentDictionary<string, IProducer>();
+
+            var tasksP = new List<Task>();
+            for (var i = 0; i < (IdsPerConnection * 2); i++)
+            {
+                tasksP.Add(Task.Run(async () =>
+                {
+                    var p = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                        metaDataInfo.StreamInfos[Stream1]);
+                    producerList.TryAdd(Guid.NewGuid().ToString(), p);
+                }));
+            }
+
+            await Task.WhenAll(tasksP);
+
+            Assert.Equal(2, pool.Count);
+            Assert.Equal(IdsPerConnection, pool.Connections.Values.First().ActiveIds);
+            Assert.Equal(IdsPerConnection, pool.Connections.Values.Skip(1).First().ActiveIds);
+
+            var tasksC = new List<Task>();
+            producerList.Values.ToList().ForEach(p => tasksC.Add(Task.Run(async () => { await p.Close(); })));
+            await Task.WhenAll(tasksC);
+
+            SystemUtils.WaitUntil(() => pool.Count == 0);
+            Assert.Equal(0, pool.Count);
+            await client.DeleteStream(Stream1);
+        }
+
+        // this test doesn't work since the client parameters metadata handler is not an event
+        // for the moment I won't change the code. Introduced a new event is a breaking change
+
+        // [Fact]
+        // public async void TheProducerPoolShouldBeConsistentWhenAStreamIsDeleted()
+        // {
+        //     var client = await Client.Create(new ClientParameters() { });
+        //     const string Stream1 = "pool_test_stream_1_multi_thread_producer";
+        //     await client.CreateStream(Stream1, new Dictionary<string, string>());
+        //     const int IdsPerConnection = 2;
+        //     var pool = new ConnectionsPool(0, IdsPerConnection);
+        //     var metaDataInfo = await client.QueryMetadata(new[] {Stream1});
+        //     var producerList = new ConcurrentDictionary<string, IProducer>();
+        //
+        //     var tasksP = new List<Task>();
+        //     for (var i = 0; i < (IdsPerConnection * 1); i++)
+        //     {
+        //         tasksP.Add(Task.Run(async () =>
+        //         {
+        //             var p = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1)
+        //                 {
+        //                     Pool = pool,
+        //                 },
+        //                 metaDataInfo.StreamInfos[Stream1]);
+        //             producerList.TryAdd(Guid.NewGuid().ToString(), p);
+        //         }));
+        //     }
+        //
+        //     await Task.WhenAll(tasksP);
+        //
+        //     Assert.Equal(2, pool.Count);
+        //     Assert.Equal(IdsPerConnection, pool.Connections.Values.First().ActiveIds);
+        //     Assert.Equal(IdsPerConnection, pool.Connections.Values.Skip(1).First().ActiveIds);
+        //
+        //     await client.DeleteStream(Stream1);
+        //
+        //     SystemUtils.WaitUntil(() => pool.Count == 0);
+        //     Assert.Equal(0, pool.Count);
+        // }
+
+        /// <summary>
+        /// The pool has 13 ids per connection.
+        /// The pool should be consistent in multi thread
+        /// Id we create (13* 2) consumers in multi thread
+        /// the pool must contain only two connections
+        /// Same when we close the consumers in multi thread the pool must be empty at the end
+        /// </summary>
+        [Fact]
+        public async void TheConsumerPoolShouldBeConsistentInMultiThread()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_multi_thread_consumer";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            const int IdsPerConnection = 13;
+            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
+            var producerList = new ConcurrentDictionary<string, IConsumer>();
+
+            var tasksP = new List<Task>();
+            for (var i = 0; i < (IdsPerConnection * 2); i++)
+            {
+                tasksP.Add(Task.Run(async () =>
+                {
+                    producerList.TryAdd(Guid.NewGuid().ToString(),
+                        await RawConsumer.Create(client.Parameters,
+                            new RawConsumerConfig(Stream1) { Pool = pool },
+                            metaDataInfo.StreamInfos[Stream1]));
+                }));
+            }
+
+            await Task.WhenAll(tasksP);
+
+            Assert.Equal(2, pool.Count);
+            Assert.Equal(IdsPerConnection, pool.Connections.Values.First().ActiveIds);
+            Assert.Equal(IdsPerConnection, pool.Connections.Values.Skip(1).First().ActiveIds);
+
+            var tasksC = new List<Task>();
+            producerList.Values.ToList().ForEach(c => tasksC.Add(Task.Run(async () => { await c.Close(); })));
+            await Task.WhenAll(tasksC);
+
+            SystemUtils.WaitUntil(() => pool.Count == 0);
+            Assert.Equal(0, pool.Count);
+            await client.DeleteStream(Stream1);
+        }
+
         /// The following tests are related to the FindMissingConsecutive method
         /// We need to find the missing consecutive ids
         /// by protocol we can have multi ids per connection so we need to find the missing ids

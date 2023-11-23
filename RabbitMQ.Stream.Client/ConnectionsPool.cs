@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
@@ -74,6 +75,7 @@ public class ConnectionsPool
 
     private readonly int _maxConnections;
     private readonly byte _idsPerConnection;
+    private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
     /// <summary>
     /// Init the pool with the max connections and the max ids per connection
@@ -100,56 +102,80 @@ public class ConnectionsPool
     /// </summary>
     internal async Task<IClient> GetOrCreateClient(string brokerInfo, Func<Task<IClient>> createClient)
     {
-        // do we have a connection for this brokerInfo and with free slots for producer or consumer?
-        // it does not matter which connection is available 
-        // the important is to have a connection available for the brokerInfo
-        var count = Connections.Values.Count(x => x.BrokerInfo == brokerInfo && x.Available);
-
-        if (count > 0)
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
         {
-            // ok we have a connection available for this brokerInfo
-            // let's get the first one
-            // TODO: we can improve this by getting the connection with the less active items
-            var connectionItem = Connections.Values.First(x => x.BrokerInfo == brokerInfo && x.Available);
-            // we need to increment the active items for this connection item
-            // ActiveItems that is the producerIds or consumerIds for this connection
-            connectionItem.ActiveIds += 1;
-            return connectionItem.Client;
-        }
+            // do we have a connection for this brokerInfo and with free slots for producer or consumer?
+            // it does not matter which connection is available 
+            // the important is to have a connection available for the brokerInfo
+            var count = Connections.Values.Count(x => x.BrokerInfo == brokerInfo && x.Available);
 
-        if (_maxConnections > 0 && Connections.Count >= _maxConnections)
+            if (count > 0)
+            {
+                // ok we have a connection available for this brokerInfo
+                // let's get the first one
+                // TODO: we can improve this by getting the connection with the less active items
+                var connectionItem = Connections.Values.First(x => x.BrokerInfo == brokerInfo && x.Available);
+                // we need to increment the active items for this connection item
+                // ActiveItems that is the producerIds or consumerIds for this connection
+                connectionItem.ActiveIds += 1;
+                return connectionItem.Client;
+            }
+
+            if (_maxConnections > 0 && Connections.Count >= _maxConnections)
+            {
+                throw new TooManyConnectionsException($"Max connections {_maxConnections} reached");
+            }
+
+            // no connection available for this brokerInfo
+            // let's create a new one
+            var client = await createClient().ConfigureAwait(false);
+            // the connection give us the client id that is a GUID
+            Connections.TryAdd(client.ClientId, new ConnectionItem(brokerInfo, _idsPerConnection, client));
+            return client;
+        }
+        finally
         {
-            throw new TooManyConnectionsException($"Max connections {_maxConnections} reached");
+            _semaphoreSlim.Release();
         }
-
-        // no connection available for this brokerInfo
-        // let's create a new one
-        var client = await createClient().ConfigureAwait(false);
-        // the connection give us the client id that is a GUID
-        Connections.TryAdd(client.ClientId, new ConnectionItem(brokerInfo, _idsPerConnection, client));
-        return client;
     }
 
     public void Release(string clientId)
     {
-        // given a client id we need to decrement the active items for this connection item
-        Connections.TryGetValue(clientId, out var connectionItem);
-
-        // it can be null if the connection is closed in unexpected way
-        // so the connection does not exist anymore in the pool
-        // we can ignore this case
-        if (connectionItem != null)
+        _semaphoreSlim.Wait();
+        try
         {
-            connectionItem.ActiveIds -= 1;
+            // given a client id we need to decrement the active items for this connection item
+            Connections.TryGetValue(clientId, out var connectionItem);
+
+            // it can be null if the connection is closed in unexpected way
+            // so the connection does not exist anymore in the pool
+            // we can ignore this case
+            if (connectionItem != null)
+            {
+                connectionItem.ActiveIds -= 1;
+            }
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
         }
     }
 
     public void Remove(string clientId)
     {
-        // remove the connection from the pool
-        // it means that the connection is closed
-        // we don't care if it is called two times for the same connection
-        Connections.TryRemove(clientId, out _);
+        _semaphoreSlim.Wait();
+        try
+        {
+            // remove the connection from the pool
+            // it means that the connection is closed
+            // we don't care if it is called two times for the same connection
+            Connections.TryRemove(clientId, out _);
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
     }
 
     public int Count => Connections.Count;

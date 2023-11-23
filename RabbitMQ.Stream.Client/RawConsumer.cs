@@ -451,6 +451,7 @@ namespace RabbitMQ.Stream.Client
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
             };
+
             if (_config.MetadataHandler != null)
             {
                 _client.Parameters.MetadataHandler += _config.MetadataHandler;
