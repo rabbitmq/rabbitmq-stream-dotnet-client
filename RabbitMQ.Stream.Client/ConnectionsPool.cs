@@ -232,10 +232,10 @@ public class ConnectionsPool
     public int ConnectionsCount => Connections.Count;
 
     public int ActiveIdsCount => Connections.Values.Sum(x => x.StreamIds.Values.Sum(y => y.Count));
-    
+
     public int ActiveIdsCountForStream(string stream) => Connections.Values.Sum(x => x.StreamIds.TryGetValue(stream, out var streamIds) ? streamIds.Count : 0);
-    
+
     public int ActiveIdsCountForClient(string clientId) => Connections.TryGetValue(clientId, out var connectionItem) ? connectionItem.StreamIds.Values.Sum(y => y.Count) : 0;
-    
+
     public int ActiveIdsCountForClientAndStream(string clientId, string stream) => Connections.TryGetValue(clientId, out var connectionItem) && connectionItem.StreamIds.TryGetValue(stream, out var streamIds) ? streamIds.Count : 0;
 }

@@ -354,7 +354,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
+            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -713,7 +713,7 @@ namespace RabbitMQ.Stream.Client
         // if the client has entities (publishers or consumers) it will be released from the pool
         // Release will decrement the active ids for the connection
         // if the active ids are 0 the connection will be closed
-        internal async Task<CloseResponse> MaybeClose(string reason,string stream, ConnectionsPool pool)
+        internal async Task<CloseResponse> MaybeClose(string reason, string stream, ConnectionsPool pool)
         {
             if (!string.IsNullOrEmpty(ClientId))
             {
@@ -758,9 +758,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] {stream};
+            var streams = new[] { stream };
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is {Count: >= 1} &&
+            return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -807,7 +807,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
+                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
             }
         }
 
