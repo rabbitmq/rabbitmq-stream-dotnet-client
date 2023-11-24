@@ -87,14 +87,14 @@ namespace RabbitMQ.Stream.Client
 
             switch (ConsumerFilter)
             {
-                case { PostFilter: null }:
+                case {PostFilter: null}:
                     throw new ArgumentException("PostFilter must be provided when Filter is set");
-                case { Values.Count: 0 }:
+                case {Values.Count: 0}:
                     throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
+        internal bool IsFiltering => ConsumerFilter is {Values.Count: > 0};
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -558,6 +558,7 @@ namespace RabbitMQ.Stream.Client
                 return;
             }
 
+            _config.Pool.Release(_client.ClientId, _config.Stream);
             throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
         }
 
@@ -597,7 +598,8 @@ namespace RabbitMQ.Stream.Client
 
             _client.RemoveSubscriptionId(_subscriberId);
 
-            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}", _config.Pool)
+            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}",
+                    _config.Stream, _config.Pool)
                 .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("{ConsumerInfo} is closed", ConsumerInfo());

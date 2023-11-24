@@ -18,12 +18,33 @@ public class ConnectionPoolConfig
     public byte ProducersPerConnection { get; set; } = 1;
 }
 
+public class StreamIds
+{
+    public StreamIds(string stream)
+    {
+        Stream = stream;
+    }
+
+    internal void Acquire()
+    {
+        Count++;
+    }
+
+    internal void Release()
+    {
+        Count--;
+    }
+
+    public int Count { get; private set; } = 0;
+
+    public string Stream { get; }
+}
+
 public class ConnectionItem
 {
     public ConnectionItem(string brokerInfo, byte idsPerConnection, IClient client)
     {
         BrokerInfo = brokerInfo;
-        ActiveIds = 1;
         LastUsed = DateTime.UtcNow;
         IdsPerConnection = idsPerConnection;
         Client = client;
@@ -31,8 +52,17 @@ public class ConnectionItem
 
     public IClient Client { get; }
     public string BrokerInfo { get; }
-    public int ActiveIds { get; set; }
-    public bool Available => ActiveIds < IdsPerConnection;
+
+    public Dictionary<string, StreamIds> StreamIds { get; } = new();
+
+    public bool Available
+    {
+        get
+        {
+            var c = StreamIds.Values.Sum(streamIdsValue => streamIdsValue.Count);
+            return c < IdsPerConnection;
+        }
+    }
 
     public byte IdsPerConnection { get; }
     public DateTime LastUsed { get; set; }
@@ -100,7 +130,7 @@ public class ConnectionsPool
     /// The broker info is the string representation of the broker ip and port.
     /// See Metadata.cs Broker.ToString() method, ex: Broker(localhost,5552) is "localhost:5552" 
     /// </summary>
-    internal async Task<IClient> GetOrCreateClient(string brokerInfo, Func<Task<IClient>> createClient)
+    internal async Task<IClient> GetOrCreateClient(string brokerInfo, string stream, Func<Task<IClient>> createClient)
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
@@ -116,9 +146,8 @@ public class ConnectionsPool
                 // let's get the first one
                 // TODO: we can improve this by getting the connection with the less active items
                 var connectionItem = Connections.Values.First(x => x.BrokerInfo == brokerInfo && x.Available);
-                // we need to increment the active items for this connection item
-                // ActiveItems that is the producerIds or consumerIds for this connection
-                connectionItem.ActiveIds += 1;
+                connectionItem.LastUsed = DateTime.UtcNow;
+                Acquire(connectionItem.Client.ClientId, stream);
                 return connectionItem.Client;
             }
 
@@ -132,6 +161,7 @@ public class ConnectionsPool
             var client = await createClient().ConfigureAwait(false);
             // the connection give us the client id that is a GUID
             Connections.TryAdd(client.ClientId, new ConnectionItem(brokerInfo, _idsPerConnection, client));
+            Acquire(client.ClientId, stream);
             return client;
         }
         finally
@@ -140,7 +170,24 @@ public class ConnectionsPool
         }
     }
 
-    public void Release(string clientId)
+    private void Acquire(string clientId, string stream)
+    {
+        Connections.TryGetValue(clientId, out var connectionItem);
+
+        if (connectionItem != null)
+        {
+            connectionItem.StreamIds.TryGetValue(stream, out var streamIds);
+            if (streamIds == null)
+            {
+                streamIds = new StreamIds(stream);
+                connectionItem.StreamIds.Add(stream, streamIds);
+            }
+
+            streamIds.Acquire();
+        }
+    }
+
+    public void Release(string clientId, string stream)
     {
         _semaphoreSlim.Wait();
         try
@@ -153,7 +200,11 @@ public class ConnectionsPool
             // we can ignore this case
             if (connectionItem != null)
             {
-                connectionItem.ActiveIds -= 1;
+                connectionItem.StreamIds.TryGetValue(stream, out var streamIds);
+                if (streamIds != null)
+                {
+                    streamIds.Release();
+                }
             }
         }
         finally
@@ -178,5 +229,13 @@ public class ConnectionsPool
         }
     }
 
-    public int Count => Connections.Count;
+    public int ConnectionsCount => Connections.Count;
+
+    public int ActiveIdsCount => Connections.Values.Sum(x => x.StreamIds.Values.Sum(y => y.Count));
+    
+    public int ActiveIdsCountForStream(string stream) => Connections.Values.Sum(x => x.StreamIds.TryGetValue(stream, out var streamIds) ? streamIds.Count : 0);
+    
+    public int ActiveIdsCountForClient(string clientId) => Connections.TryGetValue(clientId, out var connectionItem) ? connectionItem.StreamIds.Values.Sum(y => y.Count) : 0;
+    
+    public int ActiveIdsCountForClientAndStream(string clientId, string stream) => Connections.TryGetValue(clientId, out var connectionItem) && connectionItem.StreamIds.TryGetValue(stream, out var streamIds) ? streamIds.Count : 0;
 }

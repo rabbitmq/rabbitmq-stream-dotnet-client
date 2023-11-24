@@ -42,7 +42,7 @@ namespace RabbitMQ.Stream.Client
 
         internal void Validate()
         {
-            if (Filter is { FilterValue: not null } && !AvailableFeaturesSingleton.Instance.PublishFilter)
+            if (Filter is {FilterValue: not null} && !AvailableFeaturesSingleton.Instance.PublishFilter)
             {
                 throw new UnsupportedOperationException(Consts.FilterNotSupported);
             }
@@ -128,9 +128,7 @@ namespace RabbitMQ.Stream.Client
                         {
                             _config.ConfirmHandler(new Confirmation
                             {
-                                PublishingId = id,
-                                Code = ResponseCode.Ok,
-                                Stream = _config.Stream
+                                PublishingId = id, Code = ResponseCode.Ok, Stream = _config.Stream
                             });
                         }
                         catch (Exception e)
@@ -150,7 +148,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var (id, code) in errors)
                     {
-                        _config.ConfirmHandler(new Confirmation { PublishingId = id, Code = code, });
+                        _config.ConfirmHandler(new Confirmation {PublishingId = id, Code = code,});
                     }
 
                     _semaphore.Release(errors.Length);
@@ -162,10 +160,11 @@ namespace RabbitMQ.Stream.Client
                 return;
             }
 
+            _config.Pool.Release(_client.ClientId, _config.Stream);
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 
-        private bool IsFilteringEnabled => _config.Filter is { FilterValue: not null };
+        private bool IsFilteringEnabled => _config.Filter is {FilterValue: not null};
 
         /// <summary>
         /// SubEntry Batch send: Aggregate more messages under the same publishingId.
@@ -363,7 +362,8 @@ namespace RabbitMQ.Stream.Client
                 _logger.LogError(e, "Error removing the producer id: {PublisherId} from the server", _publisherId);
             }
 
-            var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}", _config.Pool)
+            var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}", 
+                    _config.Stream, _config.Pool)
                 .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
             _logger?.LogDebug("Publisher {PublisherId} closed", _publisherId);
