@@ -51,7 +51,6 @@ namespace RabbitMQ.Stream.Client
 
     public class RawProducer : AbstractEntity, IProducer, IDisposable
     {
-        private bool _disposed;
         private byte _publisherId;
         private readonly RawProducerConfig _config;
         private readonly Channel<OutgoingMsg> _messageBuffer;
@@ -159,6 +158,7 @@ namespace RabbitMQ.Stream.Client
             if (response.ResponseCode == ResponseCode.Ok)
             {
                 _publisherId = pubId;
+                _status = EntityStatus.Open;
                 return;
             }
 
@@ -275,11 +275,6 @@ namespace RabbitMQ.Stream.Client
             return response.Sequence;
         }
 
-        public bool IsOpen()
-        {
-            return !_disposed && !_client.IsClosed;
-        }
-
         /// <summary>
         /// This is the standard way to send messages.
         /// The send is asynchronous and the aggregation of messages is done in the background.
@@ -340,14 +335,16 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<ResponseCode> Close()
         {
-            // This unlocks the semaphore so that the background task can exit
+            // MaybeCancelToken This unlocks the semaphore so that the background task can exit
             // see SemaphoreAwaitAsync method and processBuffer method
             MaybeCancelToken();
-            if (_client.IsClosed)
+
+            if (!IsOpen()) // the client is already closed
             {
                 return ResponseCode.Ok;
             }
 
+            _status = EntityStatus.Closed;
             var result = ResponseCode.Ok;
             try
             {
@@ -379,7 +376,7 @@ namespace RabbitMQ.Stream.Client
                 return;
             }
 
-            if (_disposed)
+            if (_status == EntityStatus.Disposed)
             {
                 return;
             }
@@ -390,9 +387,9 @@ namespace RabbitMQ.Stream.Client
                 Debug.WriteLine($"producer did not close within {Consts.ShortWait}");
             }
 
+            _status = EntityStatus.Disposed;
             ClientExceptions.MaybeThrowException(closeProducer.Result,
                 $"Error during remove producer. Producer: {_publisherId}");
-            _disposed = true;
         }
 
         public void Dispose()

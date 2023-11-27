@@ -227,6 +227,7 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
                 new List<Broker>());
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
+
             for (var i = 0; i < 2; i++)
             {
                 var c1_1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
@@ -347,12 +348,18 @@ namespace Tests
 
             Assert.Equal(1, pool.ConnectionsCount);
             Assert.Equal(1, pool.ActiveIdsCountForStream(Stream1));
-            await p1.Close();
+
+            Assert.Equal(ResponseCode.Ok, await p1.Close());
+            // closing should be idempotent and not affect to the pool
+            Assert.Equal(ResponseCode.Ok, await p1.Close());
 
             Assert.Equal(1, pool.ConnectionsCount);
             Assert.Equal(0, pool.ActiveIdsCountForStream(Stream1));
 
-            await p2.Close();
+            Assert.Equal(ResponseCode.Ok, await p2.Close());
+            // closing should be idempotent and not affect to the pool
+            Assert.Equal(ResponseCode.Ok, await p2.Close());
+
             Assert.Equal(0, pool.ConnectionsCount);
 
             await client.DeleteStream(Stream1);
@@ -384,7 +391,9 @@ namespace Tests
             Assert.Equal(1, pool.ActiveIdsCountForStream(Stream1));
             Assert.Equal(1, pool.ActiveIdsCountForStream(Stream2));
 
-            await c1.Close();
+            Assert.Equal(ResponseCode.Ok, await c1.Close());
+            // closing should be idempotent and not affect to the pool
+            Assert.Equal(ResponseCode.Ok, await c1.Close());
 
             Assert.Equal(1, pool.ConnectionsCount);
             Assert.Equal(0, pool.ActiveIdsCountForStream(Stream1));
@@ -532,7 +541,52 @@ namespace Tests
 
             var tasksC = new List<Task>();
             producerList.Values.ToList().ForEach(p => tasksC.Add(Task.Run(async () => { await p.Close(); })));
+            // called twice should not raise any error due of the _poolSemaphoreSlim in the client
+            producerList.Values.ToList().ForEach(p => tasksC.Add(Task.Run(async () => { await p.Close(); })));
             await Task.WhenAll(tasksC);
+
+            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            Assert.Equal(0, pool.ConnectionsCount);
+            Assert.Equal(0, pool.ActiveIdsCount);
+            await client.DeleteStream(Stream1);
+        }
+
+        /// <summary>
+        /// In this test we create and destroy producers and consumers in multi thread
+        /// The pool should be consistent at the end
+        /// </summary>
+        [Fact]
+        public async void TheProducerConsumerPoolShouldBeConsistentInMultiThreadCreateDestroy()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_multi_thread_producer_consumer_cd";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            const int IdsPerConnection = 17;
+            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
+
+            var tasksP = new List<Task>();
+            for (var i = 0; i < (IdsPerConnection * 2); i++)
+            {
+                tasksP.Add(Task.Run(async () =>
+                {
+                    var p = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                        metaDataInfo.StreamInfos[Stream1]);
+                    await p.Close();
+                }));
+            }
+
+            for (var i = 0; i < (IdsPerConnection * 2); i++)
+            {
+                tasksP.Add(Task.Run(async () =>
+                {
+                    var c = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool },
+                        metaDataInfo.StreamInfos[Stream1]);
+                    await c.Close();
+                }));
+            }
+
+            await Task.WhenAll(tasksP);
 
             SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
             Assert.Equal(0, pool.ConnectionsCount);
@@ -596,14 +650,14 @@ namespace Tests
             const int IdsPerConnection = 13;
             var pool = new ConnectionsPool(0, IdsPerConnection);
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
-            var producerList = new ConcurrentDictionary<string, IConsumer>();
+            var consumersList = new ConcurrentDictionary<string, IConsumer>();
 
             var tasksP = new List<Task>();
-            for (var i = 0; i < (IdsPerConnection * 2); i++)
+            for (var i = 0; i < (IdsPerConnection * 4); i++)
             {
                 tasksP.Add(Task.Run(async () =>
                 {
-                    producerList.TryAdd(Guid.NewGuid().ToString(),
+                    consumersList.TryAdd(Guid.NewGuid().ToString(),
                         await RawConsumer.Create(client.Parameters,
                             new RawConsumerConfig(Stream1) { Pool = pool },
                             metaDataInfo.StreamInfos[Stream1]));
@@ -612,12 +666,15 @@ namespace Tests
 
             await Task.WhenAll(tasksP);
 
-            Assert.Equal(2, pool.ConnectionsCount);
-            Assert.Equal(IdsPerConnection * 2, pool.ActiveIdsCountForStream(Stream1));
-            Assert.Equal(IdsPerConnection * 2, pool.ActiveIdsCount);
+            Assert.Equal(4, pool.ConnectionsCount);
+            Assert.Equal(IdsPerConnection * 4, pool.ActiveIdsCountForStream(Stream1));
+            Assert.Equal(IdsPerConnection * 4, pool.ActiveIdsCount);
 
             var tasksC = new List<Task>();
-            producerList.Values.ToList().ForEach(c => tasksC.Add(Task.Run(async () => { await c.Close(); })));
+            consumersList.Values.ToList().ForEach(c => tasksC.Add(Task.Run(async () => { await c.Close(); })));
+
+            // called twice should not raise any error due of the _poolSemaphoreSlim in the client
+            consumersList.Values.ToList().ForEach(c => tasksC.Add(Task.Run(async () => { await c.Close(); })));
             await Task.WhenAll(tasksC);
 
             SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);

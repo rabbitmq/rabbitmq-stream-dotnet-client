@@ -115,7 +115,6 @@ namespace RabbitMQ.Stream.Client
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
     {
-        private bool _disposed;
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
         private readonly ILogger _logger;
@@ -555,6 +554,7 @@ namespace RabbitMQ.Stream.Client
             if (response.ResponseCode == ResponseCode.Ok)
             {
                 _subscriberId = consumerId;
+                _status = EntityStatus.Open;
                 return;
             }
 
@@ -568,7 +568,7 @@ namespace RabbitMQ.Stream.Client
             // see DispatchMessage method where the token is used
             MaybeCancelToken();
 
-            if (_client.IsClosed)
+            if (!IsOpen())
             {
                 return ResponseCode.Ok;
             }
@@ -596,8 +596,6 @@ namespace RabbitMQ.Stream.Client
                     _subscriberId, ConsumerInfo());
             }
 
-            _client.RemoveSubscriptionId(_subscriberId);
-
             var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}",
                     _config.Stream, _config.Pool)
                 .ConfigureAwait(false);
@@ -614,7 +612,7 @@ namespace RabbitMQ.Stream.Client
                 return;
             }
 
-            if (_disposed)
+            if (_status == EntityStatus.Disposed)
             {
                 return;
             }
@@ -632,7 +630,7 @@ namespace RabbitMQ.Stream.Client
             }
             finally
             {
-                _disposed = true;
+                _status = EntityStatus.Disposed;
             }
         }
 

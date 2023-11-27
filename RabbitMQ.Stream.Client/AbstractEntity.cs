@@ -6,18 +6,32 @@ using System.Threading;
 
 namespace RabbitMQ.Stream.Client
 {
+
+    internal enum EntityStatus
+    {
+        Open,
+        Closed,
+        Disposed
+    }
     public abstract class AbstractEntity
     {
         private readonly CancellationTokenSource _cancelTokenSource = new();
         protected CancellationToken Token => _cancelTokenSource.Token;
 
+        internal EntityStatus _status = EntityStatus.Closed;
         // here the _cancelTokenSource is disposed and the token is cancelled
         // in producer is used to cancel the send task
         // in consumer is used to cancel the receive task
         protected void MaybeCancelToken()
         {
+
             if (!_cancelTokenSource.IsCancellationRequested)
                 _cancelTokenSource.Cancel();
+        }
+
+        public bool IsOpen()
+        {
+            return _status == EntityStatus.Open;
         }
 
         protected Client _client;

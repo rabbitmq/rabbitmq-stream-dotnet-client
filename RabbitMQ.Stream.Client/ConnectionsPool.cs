@@ -84,23 +84,28 @@ public class ConnectionItem
 /// </summary>
 public class ConnectionsPool
 {
+    private static readonly object s_lock = new();
+
     internal static byte FindMissingConsecutive(List<byte> ids)
     {
-        if (ids.Count == 0)
+        lock (s_lock)
         {
-            return 0;
-        }
-
-        ids.Sort();
-        for (var i = 0; i < ids.Count - 1; i++)
-        {
-            if (ids[i + 1] - ids[i] > 1)
+            if (ids.Count == 0)
             {
-                return (byte)(ids[i] + 1);
+                return 0;
             }
-        }
 
-        return (byte)(ids[^1] + 1);
+            ids.Sort();
+            for (var i = 0; i < ids.Count - 1; i++)
+            {
+                if (ids[i + 1] - ids[i] > 1)
+                {
+                    return (byte)(ids[i] + 1);
+                }
+            }
+
+            return (byte)(ids[^1] + 1);
+        }
     }
 
     private readonly int _maxConnections;
@@ -233,9 +238,16 @@ public class ConnectionsPool
 
     public int ActiveIdsCount => Connections.Values.Sum(x => x.StreamIds.Values.Sum(y => y.Count));
 
-    public int ActiveIdsCountForStream(string stream) => Connections.Values.Sum(x => x.StreamIds.TryGetValue(stream, out var streamIds) ? streamIds.Count : 0);
+    public int ActiveIdsCountForStream(string stream) => Connections.Values.Sum(x =>
+        x.StreamIds.TryGetValue(stream, out var streamIds) ? streamIds.Count : 0);
 
-    public int ActiveIdsCountForClient(string clientId) => Connections.TryGetValue(clientId, out var connectionItem) ? connectionItem.StreamIds.Values.Sum(y => y.Count) : 0;
+    public int ActiveIdsCountForClient(string clientId) => Connections.TryGetValue(clientId, out var connectionItem)
+        ? connectionItem.StreamIds.Values.Sum(y => y.Count)
+        : 0;
 
-    public int ActiveIdsCountForClientAndStream(string clientId, string stream) => Connections.TryGetValue(clientId, out var connectionItem) && connectionItem.StreamIds.TryGetValue(stream, out var streamIds) ? streamIds.Count : 0;
+    public int ActiveIdsCountForClientAndStream(string clientId, string stream) =>
+        Connections.TryGetValue(clientId, out var connectionItem) &&
+        connectionItem.StreamIds.TryGetValue(stream, out var streamIds)
+            ? streamIds.Count
+            : 0;
 }

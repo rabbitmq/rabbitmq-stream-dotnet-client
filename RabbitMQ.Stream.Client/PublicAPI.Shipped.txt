@@ -547,7 +547,6 @@ RabbitMQ.Stream.Client.RawProducer.ConfirmFrames.get -> int
 RabbitMQ.Stream.Client.RawProducer.Dispose() -> void
 RabbitMQ.Stream.Client.RawProducer.GetLastPublishingId() -> System.Threading.Tasks.Task<ulong>
 RabbitMQ.Stream.Client.RawProducer.IncomingFrames.get -> int
-RabbitMQ.Stream.Client.RawProducer.IsOpen() -> bool
 RabbitMQ.Stream.Client.RawProducer.MessagesSent.get -> int
 RabbitMQ.Stream.Client.RawProducer.PendingCount.get -> int
 RabbitMQ.Stream.Client.RawProducer.PublishCommandsSent.get -> int
