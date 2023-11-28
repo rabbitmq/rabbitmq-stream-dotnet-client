@@ -34,7 +34,7 @@ namespace RabbitMQ.Stream.Client
             return _status == EntityStatus.Open;
         }
 
-        protected Client _client;
+        internal Client _client;
 
     }
 }

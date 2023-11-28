@@ -25,6 +25,18 @@ namespace Tests
             return Task.FromResult<IClient>(fake);
         }
 
+        private static IEnumerable<byte> ConsumersIdsPerConnection(IConsumer consumer)
+        {
+            var client1 = ((RawConsumer)consumer)._client;
+            return client1.consumers.Keys.ToList();
+        }
+
+        private static IEnumerable<byte> ProducersIdsPerConnection(IProducer producer)
+        {
+            var client1 = ((RawProducer)producer)._client;
+            return client1.publishers.Keys.ToList();
+        }
+
         private readonly ITestOutputHelper _testOutputHelper;
 
         public ConnectionsPoolTests(ITestOutputHelper testOutputHelper)
@@ -322,6 +334,7 @@ namespace Tests
 
             await client.DeleteStream(Stream1);
             await client.DeleteStream(Stream2);
+            await client.Close("byte");
         }
 
         /// <summary>
@@ -364,6 +377,7 @@ namespace Tests
 
             await client.DeleteStream(Stream1);
             await client.DeleteStream(Stream2);
+            await client.Close("byte");
         }
 
         /// <summary>
@@ -391,6 +405,12 @@ namespace Tests
             Assert.Equal(1, pool.ActiveIdsCountForStream(Stream1));
             Assert.Equal(1, pool.ActiveIdsCountForStream(Stream2));
 
+            Assert.NotEmpty(ProducersIdsPerConnection(p2).ToList());
+            Assert.Equal(0, ProducersIdsPerConnection(p2).ToList()[0]);
+
+            Assert.NotEmpty(ConsumersIdsPerConnection(c1).ToList());
+            Assert.Equal(0, ConsumersIdsPerConnection(c1).ToList()[0]);
+
             Assert.Equal(ResponseCode.Ok, await c1.Close());
             // closing should be idempotent and not affect to the pool
             Assert.Equal(ResponseCode.Ok, await c1.Close());
@@ -398,12 +418,21 @@ namespace Tests
             Assert.Equal(1, pool.ConnectionsCount);
             Assert.Equal(0, pool.ActiveIdsCountForStream(Stream1));
 
+            Assert.NotEmpty(ProducersIdsPerConnection(p2).ToList());
+            Assert.Equal(0, ProducersIdsPerConnection(p2).ToList()[0]);
+
+            Assert.Empty(ConsumersIdsPerConnection(c1).ToList());
+
             await p2.Close();
             Assert.Equal(0, pool.ConnectionsCount);
             Assert.Equal(0, pool.ActiveIdsCountForStream(Stream2));
 
+            Assert.Empty(ProducersIdsPerConnection(p2).ToList());
+            Assert.Empty(ConsumersIdsPerConnection(c1).ToList());
+
             await client.DeleteStream(Stream1);
             await client.DeleteStream(Stream2);
+            await client.Close("byte");
         }
 
         /// <summary>
@@ -470,6 +499,7 @@ namespace Tests
             Assert.Equal(msgDataStream2.Contents.ToArray(), testPassedC2.Task.Result.Contents.ToArray());
             await client.DeleteStream(Stream1);
             await client.DeleteStream(Stream2);
+            await client.Close("byte");
         }
 
         /// <summary>
@@ -496,13 +526,17 @@ namespace Tests
             Assert.Equal(1, pool.ConnectionsCount);
             Assert.Equal(1, pool.ActiveIdsCountForStream(Stream2));
             Assert.Equal(1, pool.ActiveIdsCount);
+            Assert.NotEmpty(ProducersIdsPerConnection(p1).ToList());
+            Assert.Equal(0, ProducersIdsPerConnection(p1).ToList()[0]);
 
             await p1.Close();
             Assert.Equal(0, pool.ConnectionsCount);
             Assert.Equal(0, pool.ActiveIdsCount);
+            Assert.Empty(ProducersIdsPerConnection(p1).ToList());
 
             await client.DeleteStream(Stream1);
             await client.DeleteStream(Stream2);
+            await client.Close("byte");
         }
 
         /// <summary>
@@ -524,7 +558,7 @@ namespace Tests
             var producerList = new ConcurrentDictionary<string, IProducer>();
 
             var tasksP = new List<Task>();
-            for (var i = 0; i < (IdsPerConnection * 2); i++)
+            for (var i = 0; i < (IdsPerConnection); i++)
             {
                 tasksP.Add(Task.Run(async () =>
                 {
@@ -535,6 +569,21 @@ namespace Tests
             }
 
             await Task.WhenAll(tasksP);
+
+            producerList.Values.ToList().ForEach(p => Assert.Equal(IdsPerConnection, ProducersIdsPerConnection(p).Count()));
+
+            for (var i = 0; i < (IdsPerConnection); i++)
+            {
+                tasksP.Add(Task.Run(async () =>
+                {
+                    var p = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                        metaDataInfo.StreamInfos[Stream1]);
+                    producerList.TryAdd(Guid.NewGuid().ToString(), p);
+                }));
+            }
+
+            await Task.WhenAll(tasksP);
+            producerList.Values.ToList().ForEach(p => Assert.Equal(IdsPerConnection, ProducersIdsPerConnection(p).Count()));
 
             Assert.Equal(2, pool.ConnectionsCount);
             Assert.Equal(IdsPerConnection * 2, pool.ActiveIdsCountForStream(Stream1));
@@ -549,6 +598,7 @@ namespace Tests
             Assert.Equal(0, pool.ConnectionsCount);
             Assert.Equal(0, pool.ActiveIdsCount);
             await client.DeleteStream(Stream1);
+            await client.Close("byte");
         }
 
         /// <summary>
@@ -592,6 +642,7 @@ namespace Tests
             Assert.Equal(0, pool.ConnectionsCount);
             Assert.Equal(0, pool.ActiveIdsCount);
             await client.DeleteStream(Stream1);
+            await client.Close("byte");
         }
 
         // // this test doesn't work since the client parameters metadata handler is not an event
@@ -681,6 +732,45 @@ namespace Tests
             Assert.Equal(0, pool.ActiveIdsCount);
             Assert.Equal(0, pool.ConnectionsCount);
             await client.DeleteStream(Stream1);
+            await client.Close("byte");
+        }
+
+        [Fact]
+        public async void TheConsumerPoolShouldBeConsistentWhenTheConnectionIsClosed()
+        {
+            var clientProvidedName = Guid.NewGuid().ToString();
+            var client = await Client.Create(new ClientParameters() { ClientProvidedName = clientProvidedName });
+            const string Stream1 = "pool_test_stream_1_test_connection_closed";
+            const string Stream2 = "pool_test_stream_2_test_connection_closed";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+            const int IdsPerConnection = 2;
+            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
+
+            var c1 = await RawConsumer.Create(client.Parameters,
+                new RawConsumerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]);
+
+            var c2 = await RawConsumer.Create(client.Parameters,
+                new RawConsumerConfig(Stream2) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream2]);
+
+            Assert.Equal(1, pool.ConnectionsCount);
+            SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 2);
+            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            Assert.Equal(0, pool.ConnectionsCount);
+            Assert.Equal(0, pool.ActiveIdsCount);
+            Assert.Equal(0, pool.ActiveIdsCountForStream(Stream1));
+            Assert.Equal(0, pool.ActiveIdsCountForStream(Stream2));
+            SystemUtils.Wait(); // the event close is raised in another thread so we need to wait a bit to be sure the event is raised
+            Assert.Empty(ConsumersIdsPerConnection(c1).ToList());
+            Assert.Empty(ConsumersIdsPerConnection(c2).ToList());
+
+            client = await Client.Create(new ClientParameters());
+            await client.DeleteStream(Stream1);
+            await client.DeleteStream(Stream2);
+            await client.Close("bye");
         }
 
         /// The following tests are related to the FindMissingConsecutive method
@@ -688,26 +778,51 @@ namespace Tests
         /// by protocol we can have multi ids per connection so we need to find the missing ids
         /// in case one id is released from the pool
         /// if we start with 0,1,2,3,4,5,6,7,8,9 at some point we release the id 3
-        /// the next id should be 3
-        /// the id is a byte so we can have 0-255
+        /// the nextid it will be still 10 
+        /// The FindNextValidId function will start to reuse the missing ids when the max is reached
+        ///  In this way we can reduce the time to use the same ids
         [Fact]
-        public void FindMissingConsecutiveShouldReturnZeroGivenEmptyList()
+        public void FindNextValidIdShouldReturnZeroGivenEmptyList()
         {
             var ids = new List<byte>();
-            var missing = ConnectionsPool.FindMissingConsecutive(ids);
+            var missing = ConnectionsPool.FindNextValidId(ids);
             Assert.Equal(0, missing);
         }
 
         [Fact]
-        public void FindMissingConsecutiveShouldReturnOneGivenOneItem()
+        public void FindNextValidIdShouldReturnOne()
         {
             var ids = new List<byte>() { 0 };
-            var missing = ConnectionsPool.FindMissingConsecutive(ids);
+            var missing = ConnectionsPool.FindNextValidId(ids);
             Assert.Equal(1, missing);
         }
 
+        // even there are missing ids the next valid id is the next one
         [Fact]
-        public void FindMissingConsecutiveShouldReturnTreeGivenAList()
+        public void FindNextValidShouldReturnTreeGivenAList()
+        {
+            var ids = new List<byte>()
+            {
+                0,
+                1,
+                2,
+                4,
+                6,
+                8,
+                9
+            };
+            var nextValidId = ConnectionsPool.FindNextValidId(ids);
+            Assert.Equal(10, nextValidId);
+            ids.Add(10);
+            nextValidId = ConnectionsPool.FindNextValidId(ids);
+            Assert.Equal(11, nextValidId);
+            ids.Add(11);
+        }
+
+        // in this case we start to recycle the ids
+        // since the max is reached
+        [Fact]
+        public void RecycleIdsWhenTheMaxIsReached()
         {
             var ids = new List<byte>()
             {
@@ -722,19 +837,26 @@ namespace Tests
                 8,
                 9
             };
-            var missing = ConnectionsPool.FindMissingConsecutive(ids);
-            Assert.Equal(3, missing);
+            for (byte i = 10; i < byte.MaxValue; i++)
+            {
+                ids.Add(i);
+            }
+
+            var nextValidId = ConnectionsPool.FindNextValidId(ids);
+            Assert.Equal(255, nextValidId);
+            ids.Add(255);
+
+            nextValidId = ConnectionsPool.FindNextValidId(ids);
+            Assert.Equal(3, nextValidId);
             ids.Add(3);
-            missing = ConnectionsPool.FindMissingConsecutive(ids);
-            Assert.Equal(5, missing);
 
+            nextValidId = ConnectionsPool.FindNextValidId(ids);
+            Assert.Equal(5, nextValidId);
             ids.Add(5);
-            missing = ConnectionsPool.FindMissingConsecutive(ids);
-            Assert.Equal(7, missing);
 
+            nextValidId = ConnectionsPool.FindNextValidId(ids);
+            Assert.Equal(7, nextValidId);
             ids.Add(7);
-            missing = ConnectionsPool.FindMissingConsecutive(ids);
-            Assert.Equal(10, missing);
         }
     }
 }

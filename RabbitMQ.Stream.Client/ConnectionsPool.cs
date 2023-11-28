@@ -13,7 +13,8 @@ namespace RabbitMQ.Stream.Client;
 
 public class ConnectionPoolConfig
 {
-    public int MaxConnections { get; set; } = 0;
+    public int MaxProducersConnections { get; set; } = 0;
+    public int MaxConsumersConnections { get; set; } = 0;
     public byte ConsumersPerConnection { get; set; } = 1;
     public byte ProducersPerConnection { get; set; } = 1;
 }
@@ -86,7 +87,7 @@ public class ConnectionsPool
 {
     private static readonly object s_lock = new();
 
-    internal static byte FindMissingConsecutive(List<byte> ids)
+    internal static byte FindNextValidId(List<byte> ids)
     {
         lock (s_lock)
         {
@@ -95,12 +96,17 @@ public class ConnectionsPool
                 return 0;
             }
 
+            // we start with the recycle when we reach the max value
+            // in this way we can avoid to recycle the same ids in a short time
             ids.Sort();
-            for (var i = 0; i < ids.Count - 1; i++)
+            if (ids[^1] == byte.MaxValue)
             {
-                if (ids[i + 1] - ids[i] > 1)
+                for (var i = 0; i < ids.Count - 1; i++)
                 {
-                    return (byte)(ids[i] + 1);
+                    if (ids[i + 1] - ids[i] > 1)
+                    {
+                        return (byte)(ids[i] + 1);
+                    }
                 }
             }
 

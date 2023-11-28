@@ -18,7 +18,6 @@ public interface IConsumer
 
 public record IConsumerConfig : INamedEntity
 {
-
     private ushort _initialCredits = Consts.ConsumerInitialCredits;
 
     internal ConnectionsPool Pool { get; set; }
@@ -80,6 +79,7 @@ public record IConsumerConfig : INamedEntity
 public class ConsumerInfo : Info
 {
     public string Reference { get; }
+
     public ConsumerInfo(string stream, string reference) : base(stream)
     {
         Reference = reference;

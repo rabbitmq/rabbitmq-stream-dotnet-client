@@ -49,9 +49,9 @@ namespace RabbitMQ.Stream.Client
             _clientParameters = clientParameters;
             _client = client;
             _logger = logger ?? NullLogger<StreamSystem>.Instance;
-            PoolConsumers = new ConnectionsPool(connectionPoolConfig.MaxConnections / 2,
+            PoolConsumers = new ConnectionsPool(connectionPoolConfig.MaxConsumersConnections,
                 connectionPoolConfig.ConsumersPerConnection);
-            PoolProducers = new ConnectionsPool(connectionPoolConfig.MaxConnections / 2,
+            PoolProducers = new ConnectionsPool(connectionPoolConfig.MaxProducersConnections,
                 connectionPoolConfig.ProducersPerConnection);
         }
 

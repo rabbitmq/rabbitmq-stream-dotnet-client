@@ -32,8 +32,10 @@ RabbitMQ.Stream.Client.ConnectionPoolConfig
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ConnectionPoolConfig() -> void
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ConsumersPerConnection.get -> byte
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ConsumersPerConnection.set -> void
-RabbitMQ.Stream.Client.ConnectionPoolConfig.MaxConnections.get -> int
-RabbitMQ.Stream.Client.ConnectionPoolConfig.MaxConnections.set -> void
+RabbitMQ.Stream.Client.ConnectionPoolConfig.MaxConsumersConnections.get -> int
+RabbitMQ.Stream.Client.ConnectionPoolConfig.MaxConsumersConnections.set -> void
+RabbitMQ.Stream.Client.ConnectionPoolConfig.MaxProducersConnections.get -> int
+RabbitMQ.Stream.Client.ConnectionPoolConfig.MaxProducersConnections.set -> void
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ProducersPerConnection.get -> byte
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ProducersPerConnection.set -> void
 RabbitMQ.Stream.Client.ConnectionsPool

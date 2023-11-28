@@ -300,7 +300,7 @@ namespace RabbitMQ.Stream.Client
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                var publisherId = ConnectionsPool.FindMissingConsecutive(publishers.Keys.ToList());
+                var publisherId = ConnectionsPool.FindNextValidId(publishers.Keys.ToList());
                 publishers.Add(publisherId, (confirmCallback, errorCallback));
                 return (publisherId, await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
                     new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)).ConfigureAwait(false));
@@ -349,7 +349,7 @@ namespace RabbitMQ.Stream.Client
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                var subscriptionId = ConnectionsPool.FindMissingConsecutive(consumers.Keys.ToList());
+                var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList());
                 consumers.Add(subscriptionId,
                     new ConsumerEvents(
                         deliverHandler,
