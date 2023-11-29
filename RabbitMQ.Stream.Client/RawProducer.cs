@@ -4,7 +4,14 @@
 
 using System;
 using System.Collections.Generic;
+
+/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
+Before:
 using System.Diagnostics;
+using System.Linq;
+After:
+using System.Linq;
+*/
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -58,6 +65,14 @@ namespace RabbitMQ.Stream.Client
         private readonly ILogger _logger;
 
         public int PendingCount => _config.MaxInFlight - _semaphore.CurrentCount;
+
+        private string ProducerInfo()
+        {
+            return
+                $"Producer id {_publisherId} for stream: {_config.Stream}, reference: {_config.Reference}," +
+                $"Client ProvidedName {_config.ClientProvidedName}, " +
+                $"Token IsCancellationRequested: {Token.IsCancellationRequested} ";
+        }
 
         public static async Task<IProducer> Create(
             ClientParameters clientParameters,
@@ -138,8 +153,8 @@ namespace RabbitMQ.Stream.Client
                             // there could be an exception in the user code. 
                             // So here we log the exception and we continue.
 
-                            _logger.LogError(e, "Error during confirm handler, publishing id: {Id}. " +
-                                                "Hint: Check the user ConfirmHandler callback", id);
+                            _logger.LogError(e, "Error during confirm handler, publishing id: {Id}. {ProducerInfo} " +
+                                                "Hint: Check the user ConfirmHandler callback", id, ProducerInfo());
                         }
                     }
 
@@ -333,7 +348,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<ResponseCode> Close()
+        public override async Task<ResponseCode> Close()
         {
             // MaybeCancelToken This unlocks the semaphore so that the background task can exit
             // see SemaphoreAwaitAsync method and processBuffer method
@@ -358,52 +373,27 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error removing the producer id: {PublisherId} from the server", _publisherId);
+                _logger.LogError(e, "Error removing {ProducerInfo} from the server", ProducerInfo());
             }
 
             var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}",
                     _config.Stream, _config.Pool)
                 .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
-            _logger?.LogDebug("Publisher {PublisherId} closed", _publisherId);
+            _logger?.LogDebug("{ProducerInfo} closed", ProducerInfo());
             return result;
-        }
-
-        private void Dispose(bool disposing)
-        {
-            if (!disposing)
-            {
-                return;
-            }
-
-            if (_status == EntityStatus.Disposed)
-            {
-                return;
-            }
-
-            var closeProducer = Close();
-            if (!closeProducer.Wait(Consts.ShortWait))
-            {
-                Debug.WriteLine($"producer did not close within {Consts.ShortWait}");
-            }
-
-            _status = EntityStatus.Disposed;
-            ClientExceptions.MaybeThrowException(closeProducer.Result,
-                $"Error during remove producer. Producer: {_publisherId}");
         }
 
         public void Dispose()
         {
             try
             {
-                Dispose(true);
+                Dispose(true, ProducerInfo(), _logger);
             }
-            catch (Exception e)
+            finally
             {
-                _logger.LogError(e, "Error during disposing Consumer: {PublisherId}", _publisherId);
+                GC.SuppressFinalize(this);
             }
-
-            GC.SuppressFinalize(this);
         }
 
         public ProducerInfo Info { get; }

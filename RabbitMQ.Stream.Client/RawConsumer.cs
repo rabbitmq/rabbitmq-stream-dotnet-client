@@ -127,7 +127,7 @@ namespace RabbitMQ.Stream.Client
                 ? "No SuperStream"
                 : $"SuperStream {_config.SuperStream}";
             return
-                $"Consumer for stream: {_config.Stream}, reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
+                $"Consumer id {_subscriberId} for stream: {_config.Stream}, reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
                 $"Client ProvidedName {_config.ClientProvidedName}, " +
                 $"{superStream}, IsSingleActiveConsumer: {_config.IsSingleActiveConsumer}, " +
                 $"Token IsCancellationRequested: {Token.IsCancellationRequested} ";
@@ -562,7 +562,7 @@ namespace RabbitMQ.Stream.Client
             throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
         }
 
-        public async Task<ResponseCode> Close()
+        public override async Task<ResponseCode> Close()
         {
             // this unlock the consumer if it is waiting for a message
             // see DispatchMessage method where the token is used
@@ -592,8 +592,8 @@ namespace RabbitMQ.Stream.Client
             catch (Exception e)
             {
                 _logger.LogError(e,
-                    "Error removing the consumer id: {SubscriberId}, {ConsumerInfo} from the server",
-                    _subscriberId, ConsumerInfo());
+                    "Error removing {ConsumerInfo} from the server",
+                     ConsumerInfo());
             }
 
             var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}",
@@ -601,48 +601,14 @@ namespace RabbitMQ.Stream.Client
                 .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("{ConsumerInfo} is closed", ConsumerInfo());
-
             return result;
-        }
-
-        private void Dispose(bool disposing)
-        {
-            if (!disposing)
-            {
-                return;
-            }
-
-            if (_status == EntityStatus.Disposed)
-            {
-                return;
-            }
-
-            try
-            {
-                var closeConsumer = Close();
-                if (!closeConsumer.Wait(Consts.ShortWait))
-                {
-                    Debug.WriteLine($"consumer did not close within {Consts.ShortWait}");
-                }
-
-                ClientExceptions.MaybeThrowException(closeConsumer.Result,
-                    $"Error during remove producer. {ConsumerInfo()}");
-            }
-            finally
-            {
-                _status = EntityStatus.Disposed;
-            }
         }
 
         public void Dispose()
         {
             try
             {
-                Dispose(true);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Error during disposing of {ConsumerInfo}", ConsumerInfo());
+                Dispose(true, ConsumerInfo(), _logger);
             }
             finally
             {

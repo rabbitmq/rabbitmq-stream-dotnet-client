@@ -42,7 +42,7 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new();
 
-        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> {new IPEndPoint(IPAddress.Loopback, 5552)};
+        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
 
         public AddressResolver AddressResolver { get; set; }
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
@@ -95,7 +95,7 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with {Endpoint = endPoint}, logger)
+                    var client = await Client.Create(clientParams with { Endpoint = endPoint }, logger)
                         .ConfigureAwait(false);
                     if (!client.IsClosed)
                     {
@@ -202,7 +202,7 @@ namespace RabbitMQ.Stream.Client
 
             var r = RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
                 streamInfos,
-                _clientParameters with {ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName},
+                _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName },
                 logger);
             _logger?.LogDebug("Raw Producer: {ProducerReference} created for SuperStream: {SuperStream}",
                 rawSuperStreamProducerConfig.Reference,
@@ -253,7 +253,7 @@ namespace RabbitMQ.Stream.Client
 
             var s = RawSuperStreamConsumer.Create(rawSuperStreamConsumerConfig,
                 streamInfos,
-                _clientParameters with {ClientProvidedName = rawSuperStreamConsumerConfig.ClientProvidedName},
+                _clientParameters with { ClientProvidedName = rawSuperStreamConsumerConfig.ClientProvidedName },
                 logger);
             _logger?.LogDebug("Consumer: {Reference} created for SuperStream: {SuperStream}",
                 rawSuperStreamConsumerConfig.Reference, rawSuperStreamConsumerConfig.SuperStream);
@@ -282,7 +282,7 @@ namespace RabbitMQ.Stream.Client
                 await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
                 rawProducerConfig.Pool = PoolProducers;
                 var p = await RawProducer.Create(
-                    _clientParameters with {ClientProvidedName = rawProducerConfig.ClientProvidedName},
+                    _clientParameters with { ClientProvidedName = rawProducerConfig.ClientProvidedName },
                     rawProducerConfig, metaStreamInfo, logger).ConfigureAwait(false);
                 _logger?.LogDebug("Raw Producer: {Reference} created for Stream: {Stream}",
                     rawProducerConfig.Reference, rawProducerConfig.Stream);
@@ -307,7 +307,7 @@ namespace RabbitMQ.Stream.Client
                 var clientParametersEndpoint = _clientParameters.Endpoints[0];
                 switch (clientParametersEndpoint)
                 {
-                    case DnsEndPoint {Host: "localhost"} dnsEndPoint:
+                    case DnsEndPoint { Host: "localhost" } dnsEndPoint:
                         forceLocalHost = true;
                         localPort = dnsEndPoint.Port;
                         break;
@@ -324,12 +324,12 @@ namespace RabbitMQ.Stream.Client
                 // craft the metadata response to force using localhost
                 var leader = new Broker("localhost", (uint)localPort);
                 metaStreamInfo = new StreamInfo(streamName, ResponseCode.Ok, leader,
-                    new List<Broker>(1) {leader});
+                    new List<Broker>(1) { leader });
             }
             else
             {
                 await MayBeReconnectLocator().ConfigureAwait(false);
-                var meta = await _client.QueryMetadata(new[] {streamName}).ConfigureAwait(false);
+                var meta = await _client.QueryMetadata(new[] { streamName }).ConfigureAwait(false);
                 metaStreamInfo = meta.StreamInfos[streamName];
             }
 
@@ -430,7 +430,7 @@ namespace RabbitMQ.Stream.Client
             {
                 await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
                 rawConsumerConfig.Pool = PoolConsumers;
-                var s = _clientParameters with {ClientProvidedName = rawConsumerConfig.ClientProvidedName};
+                var s = _clientParameters with { ClientProvidedName = rawConsumerConfig.ClientProvidedName };
                 var c = await RawConsumer.Create(s,
                     rawConsumerConfig, metaStreamInfo, logger).ConfigureAwait(false);
                 _logger?.LogDebug("Raw Consumer: {Reference} created for Stream: {Stream}",

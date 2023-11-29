@@ -528,7 +528,6 @@ RabbitMQ.Stream.Client.QueryPublisherResponse.Sequence.get -> ulong
 RabbitMQ.Stream.Client.QueryPublisherResponse.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.QueryPublisherResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.RawConsumer
-RabbitMQ.Stream.Client.RawConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.RawConsumer.Dispose() -> void
 RabbitMQ.Stream.Client.RawConsumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.RawConsumerConfig
@@ -541,7 +540,6 @@ RabbitMQ.Stream.Client.RawConsumerConfig.OffsetSpec.set -> void
 RabbitMQ.Stream.Client.RawConsumerConfig.RawConsumerConfig(string stream) -> void
 RabbitMQ.Stream.Client.RawConsumerConfig.Stream.get -> string
 RabbitMQ.Stream.Client.RawProducer
-RabbitMQ.Stream.Client.RawProducer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.RawProducer.ConfirmFrames.get -> int
 RabbitMQ.Stream.Client.RawProducer.Dispose() -> void
 RabbitMQ.Stream.Client.RawProducer.GetLastPublishingId() -> System.Threading.Tasks.Task<ulong>

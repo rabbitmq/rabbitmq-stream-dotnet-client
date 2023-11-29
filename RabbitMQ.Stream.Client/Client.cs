@@ -715,7 +715,7 @@ namespace RabbitMQ.Stream.Client
             {
                 if (!string.IsNullOrEmpty(ClientId))
                 {
-                    _logger.LogInformation("Releasing connection {Connection}", ClientId);
+                    _logger.LogInformation("Releasing ids for the client id {ClientId}", ClientId);
                     pool.Release(ClientId, stream);
                 }
 
@@ -723,7 +723,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     if (!string.IsNullOrEmpty(ClientId))
                     {
-                        _logger.LogInformation("Close connection {Connection}", ClientId);
+                        _logger.LogInformation("Close connection for the {ClientId}", ClientId);
                         // pool.remove(ClientId)  is a duplicate call here but it is ok
                         // the client can be closed in an unexpected way so we need to remove it from the pool
                         // so you will find pool.remove(ClientId) also to the disconnect event
