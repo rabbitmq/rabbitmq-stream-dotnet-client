@@ -145,14 +145,14 @@ namespace RabbitMQ.Stream.Client
                     var buffer = result.Buffer;
                     if (buffer.Length == 0)
                     {
-                        Debug.WriteLine("TCP Connection Closed");
+                        Debug.WriteLine("TCP Connection Closed!");
                         // We're not going to receive any more bytes from the connection.
                         break;
                     }
 
                     // Let's try to read some frames!
 
-                    while (TryReadFrame(ref buffer, out var frame))
+                    while (TryReadFrame(ref buffer, out var frame) && !isClosed)
                     {
                         // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
 

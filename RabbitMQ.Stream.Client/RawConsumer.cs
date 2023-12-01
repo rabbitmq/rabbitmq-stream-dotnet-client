@@ -120,6 +120,12 @@ namespace RabbitMQ.Stream.Client
         private readonly ILogger _logger;
         private readonly Channel<Chunk> _chunksBuffer;
         private readonly ushort _initialCredits;
+        
+        // _completeSubscription is used to notify the ProcessChunks task
+        // that the subscription is completed and so it can start to process the chunks
+        // this is needed because the socket starts to receive the chunks before the subscription_id is 
+        // assigned. 
+        private readonly TaskCompletionSource _completeSubscription = new ();
 
         private string ConsumerInfo()
         {
@@ -192,6 +198,7 @@ namespace RabbitMQ.Stream.Client
             var client = await RoutingHelper<Routing>
                 .LookupRandomConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
+            logger?.LogInformation("Creating consumer {ConsumerInfo}", client.ClientId);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);
             return consumer;
@@ -304,6 +311,14 @@ namespace RabbitMQ.Stream.Client
                     }
                     catch (Exception e)
                     {
+                        if (Token.IsCancellationRequested)
+                        {
+                            _logger?.LogDebug(
+                                "Dispatching  {ConsumerInfo}, Cancellation Requested, the consumer is closing. ",
+                                ConsumerInfo());
+                            return;
+                        }
+
                         _logger?.LogError(e,
                             "Error while Dispatching message, ChunkId : {ChunkId} {ConsumerInfo}",
                             chunk.ChunkId, ConsumerInfo());
@@ -373,6 +388,7 @@ namespace RabbitMQ.Stream.Client
         {
             Task.Run(async () =>
             {
+                await _completeSubscription.Task.ConfigureAwait(false);
                 try
                 {
                     while (!Token.IsCancellationRequested &&
@@ -384,6 +400,7 @@ namespace RabbitMQ.Stream.Client
                             // we request the credit before process the check to keep the network busy
                             try
                             {
+
                                 await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
                             }
                             catch (InvalidOperationException)
@@ -488,7 +505,7 @@ namespace RabbitMQ.Stream.Client
             var chunkConsumed = 0;
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
-            var (consumerId, response) = await _client.Subscribe(
+            (_subscriberId, var response) = await _client.Subscribe(
                 _config,
                 _initialCredits,
                 consumerProperties,
@@ -553,7 +570,7 @@ namespace RabbitMQ.Stream.Client
             ).ConfigureAwait(false);
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                _subscriberId = consumerId;
+                _completeSubscription.SetResult();
                 _status = EntityStatus.Open;
                 return;
             }
@@ -567,12 +584,12 @@ namespace RabbitMQ.Stream.Client
             // this unlock the consumer if it is waiting for a message
             // see DispatchMessage method where the token is used
             MaybeCancelToken();
-
             if (!IsOpen())
             {
                 return ResponseCode.Ok;
             }
 
+            _status = EntityStatus.Closed;
             var result = ResponseCode.Ok;
             try
             {

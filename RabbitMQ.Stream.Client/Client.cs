@@ -713,21 +713,25 @@ namespace RabbitMQ.Stream.Client
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                if (!string.IsNullOrEmpty(ClientId))
-                {
-                    _logger.LogInformation("Releasing ids for the client id {ClientId}", ClientId);
-                    pool.Release(ClientId, stream);
-                }
-
                 if (!HasEntities())
                 {
                     if (!string.IsNullOrEmpty(ClientId))
                     {
                         _logger.LogInformation("Close connection for the {ClientId}", ClientId);
-                        // pool.remove(ClientId)  is a duplicate call here but it is ok
                         // the client can be closed in an unexpected way so we need to remove it from the pool
                         // so you will find pool.remove(ClientId) also to the disconnect event
+                        // pool.remove(ClientId) is a duplicate call here but it is ok. The pool is idempotent 
+                        pool.Remove(ClientId);
                         await Close(reason).ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    // we remove an id reference from the client
+                    // in case there are still active ids from the client and the stream 
+                    if (!string.IsNullOrEmpty(ClientId))
+                    {
+                        pool.Release(ClientId, stream);
                     }
                 }
 
