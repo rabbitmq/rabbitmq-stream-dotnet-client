@@ -99,14 +99,6 @@ public class ConnectionsPool
             // // we start with the recycle when we reach the max value
             // // in this way we can avoid to recycle the same ids in a short time
             ids.Sort();
-
-/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-Before:
-            if (ids[^1] != byte.MaxValue) return (byte)(ids[^1] + 1);
-After:
-            if (ids[^1] != byte.MaxValue)
-                return (byte)(ids[^1] + 1);
-*/
             if (ids[^1] != byte.MaxValue)
                 return (byte)(ids[^1] + 1);
 

@@ -120,12 +120,12 @@ namespace RabbitMQ.Stream.Client
         private readonly ILogger _logger;
         private readonly Channel<Chunk> _chunksBuffer;
         private readonly ushort _initialCredits;
-        
+
         // _completeSubscription is used to notify the ProcessChunks task
         // that the subscription is completed and so it can start to process the chunks
         // this is needed because the socket starts to receive the chunks before the subscription_id is 
         // assigned. 
-        private readonly TaskCompletionSource _completeSubscription = new ();
+        private readonly TaskCompletionSource _completeSubscription = new();
 
         private string ConsumerInfo()
         {
