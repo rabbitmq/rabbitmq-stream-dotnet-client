@@ -539,7 +539,6 @@ namespace Tests
             await client.Close("byte");
         }
 
-        
         /// <summary>
         /// In this test we need to check the pool consistency when there is an error during the creation of the producer or consumer
         /// and close the pending connections in case the pool is full.
