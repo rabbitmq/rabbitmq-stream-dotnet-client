@@ -50,7 +50,7 @@ namespace Tests
         /// New connection when we request a new connection with a different brokerInfo or when we reach the available ids
         /// </summary>
         [Fact]
-        public async void ValidatePoolConsistency()
+        public async void ValidatePoolConsistencyWithMultiBrokers()
         {
             var pool = new ConnectionsPool(0, 10);
 
@@ -536,6 +536,61 @@ namespace Tests
 
             await client.DeleteStream(Stream1);
             await client.DeleteStream(Stream2);
+            await client.Close("byte");
+        }
+
+        
+        /// <summary>
+        /// In this test we need to check the pool consistency when there is an error during the creation of the producer or consumer
+        /// and close the pending connections in case the pool is full.
+        /// </summary>
+        [Fact]
+        public async void PoolShouldBeConsistentWhenErrorDuringCreatingProducerOrConsumer()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "this_stream_does_not_exist";
+
+            var pool = new ConnectionsPool(0, 1);
+            var metaDataInfo =
+                new StreamInfo(Stream1, ResponseCode.Ok, new Broker("localhost", 5552), new List<Broker>());
+
+            await Assert.ThrowsAsync<CreateConsumerException>(async () => await RawConsumer.Create(
+                client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool },
+                metaDataInfo));
+            Assert.Equal(0, pool.ConnectionsCount);
+            Assert.Equal(0, pool.ActiveIdsCountForStream(Stream1));
+            Assert.Equal(0, pool.ActiveIdsCount);
+            Assert.Equal(0, client.consumers.Count);
+
+            await Assert.ThrowsAsync<CreateProducerException>(async () => await RawProducer.Create(
+                client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                metaDataInfo));
+            Assert.Equal(0, pool.ConnectionsCount);
+            Assert.Equal(0, pool.ActiveIdsCountForStream(Stream1));
+            Assert.Equal(0, pool.ActiveIdsCount);
+            Assert.Equal(0, client.consumers.Count);
+
+            const string Stream2 = "consistent_pool_in_case_of_error";
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+            var metaDataInfo2 = await client.QueryMetadata(new[] { Stream2 });
+            var c1 = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream2) { Pool = pool },
+                metaDataInfo2.StreamInfos[Stream2]);
+
+            Assert.Equal(1, pool.ConnectionsCount);
+            Assert.Equal(1, pool.ActiveIdsCountForStream(Stream2));
+            Assert.Equal(1, pool.ActiveIdsCount);
+            // try again to fail to see if the pool is still consistent
+            await Assert.ThrowsAsync<CreateConsumerException>(async () => await RawConsumer.Create(
+                client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool },
+                metaDataInfo));
+
+            Assert.Equal(1, pool.ConnectionsCount);
+            Assert.Equal(1, pool.ActiveIdsCountForStream(Stream2));
+            Assert.Equal(1, pool.ActiveIdsCount);
+            Assert.Single(ConsumersIdsPerConnection(c1));
+
+            await c1.Close();
+            await client.DeleteStream(Stream2).ConfigureAwait(false);
             await client.Close("byte");
         }
 

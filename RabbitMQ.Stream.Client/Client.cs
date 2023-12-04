@@ -295,20 +295,31 @@ namespace RabbitMQ.Stream.Client
         public async Task<(byte, DeclarePublisherResponse)> DeclarePublisher(string publisherRef,
             string stream,
             Action<ReadOnlyMemory<ulong>> confirmCallback,
-            Action<(ulong, ResponseCode)[]> errorCallback)
+            Action<(ulong, ResponseCode)[]> errorCallback, ConnectionsPool pool = null)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
+            var publisherId = ConnectionsPool.FindNextValidId(publishers.Keys.ToList());
+            DeclarePublisherResponse response;
+
             try
             {
-                var publisherId = ConnectionsPool.FindNextValidId(publishers.Keys.ToList());
                 publishers.Add(publisherId, (confirmCallback, errorCallback));
-                return (publisherId, await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
-                    new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)).ConfigureAwait(false));
+                response = await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
+                    new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)).ConfigureAwait(false);
             }
             finally
             {
                 _poolSemaphore.Release();
             }
+
+            if (response.ResponseCode == ResponseCode.Ok || pool == null)
+                return (publisherId, response);
+
+            // if the response code is not ok we need to remove the subscription
+            // and close the connection if necessary. 
+            publishers.Remove(publisherId);
+            await MaybeClose("Create Publisher Exception", stream, pool).ConfigureAwait(false);
+            return (publisherId, response);
         }
 
         public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
@@ -347,23 +358,32 @@ namespace RabbitMQ.Stream.Client
             Func<bool, Task<IOffsetType>> consumerUpdateHandler)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
+            var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList());
+            SubscribeResponse response;
             try
             {
-                var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList());
                 consumers.Add(subscriptionId,
                     new ConsumerEvents(
                         deliverHandler,
                         consumerUpdateHandler));
 
-                return (subscriptionId,
-                    await Request<SubscribeRequest, SubscribeResponse>(corr =>
-                        new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
-                            properties)).ConfigureAwait(false));
+                response = await Request<SubscribeRequest, SubscribeResponse>(corr =>
+                    new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
+                        properties)).ConfigureAwait(false);
             }
             finally
             {
                 _poolSemaphore.Release();
             }
+
+            if (response.ResponseCode == ResponseCode.Ok)
+                return (subscriptionId, response);
+
+            // if the response code is not ok we need to remove the subscription
+            // and close the connection if necessary. 
+            consumers.Remove(subscriptionId);
+            await MaybeClose("Create Consumer Exception", config.Stream, config.Pool).ConfigureAwait(false);
+            return (subscriptionId, response);
         }
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)

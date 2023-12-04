@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-
 /* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
 Before:
 using System.Diagnostics;
@@ -131,7 +130,7 @@ namespace RabbitMQ.Stream.Client
 
             _config.Validate();
 
-            var (pubId, response) = await _client.DeclarePublisher(
+            (_publisherId, var response) = await _client.DeclarePublisher(
                 _config.Reference,
                 _config.Stream,
                 publishingIds =>
@@ -168,16 +167,14 @@ namespace RabbitMQ.Stream.Client
                     }
 
                     _semaphore.Release(errors.Length);
-                }).ConfigureAwait(false);
+                }, _config.Pool).ConfigureAwait(false);
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                _publisherId = pubId;
                 _status = EntityStatus.Open;
                 return;
             }
 
-            _config.Pool.Release(_client.ClientId, _config.Stream);
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 

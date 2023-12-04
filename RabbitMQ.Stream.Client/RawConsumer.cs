@@ -575,7 +575,6 @@ namespace RabbitMQ.Stream.Client
                 return;
             }
 
-            _config.Pool.Release(_client.ClientId, _config.Stream);
             throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
         }
 
