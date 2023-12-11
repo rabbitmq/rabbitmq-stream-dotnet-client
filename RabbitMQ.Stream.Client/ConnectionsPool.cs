@@ -13,9 +13,22 @@ namespace RabbitMQ.Stream.Client;
 
 public class ConnectionPoolConfig
 {
-    public int MaxProducersConnections { get; set; } = 0;
-    public int MaxConsumersConnections { get; set; } = 0;
+    /// <summary>
+    /// A single TCP connection can handle multiple consumers.
+    /// From 1 to 255 consumers per connection.
+    /// The default value is 1. So one connection per consumer.
+    /// An high value can be useful to reduce the number of connections
+    /// but it is not the best for performance.
+    /// </summary>
     public byte ConsumersPerConnection { get; set; } = 1;
+
+    /// <summary>
+    /// A single TCP connection can handle multiple producers.
+    /// From 1 to 255 consumers per connection.
+    /// The default value is 1. So one connection per producer.
+    /// An high value can be useful to reduce the number of connections
+    /// but it is not the best for performance.
+    /// </summary>
     public byte ProducersPerConnection { get; set; } = 1;
 }
 
@@ -72,7 +85,7 @@ public class ConnectionItem
 /// <summary>
 /// ConnectionsPool is a pool of connections for producers and consumers.
 /// Each connection can have multiple producers and consumers.
-/// Each connection has only producers or consumers but not both/mixed.
+/// Each connection has only producers or consumers not both/mixed.
 /// Each IClient has a client id that is a GUID that is the key of the pool.
 /// We receive the broker info from the server, so we need to find if there is already a connection
 /// with the same broker info and with free slots for producers or consumers.
@@ -181,6 +194,12 @@ public class ConnectionsPool
         }
     }
 
+    /// <summary>
+    /// Acquire a StreamIds for the given client id and stream
+    /// Increase the active items for the given connection item
+    /// </summary>
+    /// <param name="clientId"> Client ID</param>
+    /// <param name="stream">The stream</param>
     private void Acquire(string clientId, string stream)
     {
         Connections.TryGetValue(clientId, out var connectionItem);
@@ -212,10 +231,7 @@ public class ConnectionsPool
             if (connectionItem != null)
             {
                 connectionItem.StreamIds.TryGetValue(stream, out var streamIds);
-                if (streamIds != null)
-                {
-                    streamIds.Release();
-                }
+                streamIds?.Release();
             }
         }
         finally

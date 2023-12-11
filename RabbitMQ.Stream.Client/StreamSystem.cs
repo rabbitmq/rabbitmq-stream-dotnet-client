@@ -20,16 +20,6 @@ namespace RabbitMQ.Stream.Client
             {
                 throw new ArgumentException("ConnectionPoolConfig can't be null");
             }
-
-            if (ConnectionPoolConfig.MaxConsumersConnections < 0)
-            {
-                throw new ArgumentException("MaxConsumersConnections can't be negative");
-            }
-
-            if (ConnectionPoolConfig.MaxProducersConnections < 0)
-            {
-                throw new ArgumentException("MaxProducersConnections can't be negative");
-            }
         }
 
         public string UserName { get; set; } = "guest";
@@ -49,6 +39,9 @@ namespace RabbitMQ.Stream.Client
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
 
+        /// <summary>
+        ///  Configure the connection pool for producers and consumers.
+        /// </summary>
         public ConnectionPoolConfig ConnectionPoolConfig { get; set; } = new();
     }
 
@@ -67,9 +60,12 @@ namespace RabbitMQ.Stream.Client
             _clientParameters = clientParameters;
             _client = client;
             _logger = logger ?? NullLogger<StreamSystem>.Instance;
-            PoolConsumers = new ConnectionsPool(connectionPoolConfig.MaxConsumersConnections,
+            // we don't expose the the max connections per producer/consumer
+            // for the moment. We can expose it in the future if needed
+            PoolConsumers = new ConnectionsPool(0,
                 connectionPoolConfig.ConsumersPerConnection);
-            PoolProducers = new ConnectionsPool(connectionPoolConfig.MaxProducersConnections,
+
+            PoolProducers = new ConnectionsPool(0,
                 connectionPoolConfig.ProducersPerConnection);
         }
 

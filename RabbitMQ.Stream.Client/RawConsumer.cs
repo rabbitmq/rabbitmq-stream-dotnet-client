@@ -388,6 +388,8 @@ namespace RabbitMQ.Stream.Client
         {
             Task.Run(async () =>
             {
+                // need to wait the subscription is completed 
+                // else the _subscriberId could be incorrect
                 await _completeSubscription.Task.ConfigureAwait(false);
                 try
                 {

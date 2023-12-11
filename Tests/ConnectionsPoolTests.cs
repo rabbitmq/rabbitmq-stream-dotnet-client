@@ -839,17 +839,6 @@ namespace Tests
             await Assert.ThrowsAsync<ArgumentException>(async () =>
                 await StreamSystem.Create(new StreamSystemConfig() { ConnectionPoolConfig = null }));
 
-            await Assert.ThrowsAsync<ArgumentException>(async () =>
-                await StreamSystem.Create(new StreamSystemConfig()
-                {
-                    ConnectionPoolConfig = new ConnectionPoolConfig() { MaxConsumersConnections = -1, }
-                }));
-
-            await Assert.ThrowsAsync<ArgumentException>(async () =>
-                await StreamSystem.Create(new StreamSystemConfig()
-                {
-                    ConnectionPoolConfig = new ConnectionPoolConfig() { MaxProducersConnections = -1, }
-                }));
         }
 
         /// The following tests are related to the FindMissingConsecutive method
