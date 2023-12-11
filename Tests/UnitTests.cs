@@ -24,9 +24,12 @@ namespace Tests
             return Task.FromResult(new CloseResponse());
         }
 
+        public string ClientId { get; init; }
+
         public FakeClient(ClientParameters clientParameters)
         {
             Parameters = clientParameters;
+            ClientId = Guid.NewGuid().ToString();
         }
     }
 
@@ -37,7 +40,7 @@ namespace Tests
         // Simulate a load-balancer access using random 
         // access to the advertisedHosts list
 
-        public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
+        public Task<IClient> CreateClient(ClientParameters clientParameters, Broker broker, ILogger logger = null)
         {
             var advId = Random.Shared.Next(0, advertisedHosts.Count);
 
@@ -58,7 +61,7 @@ namespace Tests
 
     public class MisconfiguredLoadBalancerRouting : IRouting
     {
-        public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
+        public Task<IClient> CreateClient(ClientParameters clientParameters, Broker broker, ILogger logger = null)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -78,7 +81,7 @@ namespace Tests
     //advertised_host is is missed
     public class MissingFieldsRouting : IRouting
     {
-        public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
+        public Task<IClient> CreateClient(ClientParameters clientParameters, Broker broker, ILogger logger = null)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -92,7 +95,7 @@ namespace Tests
 
     public class ReplicaRouting : IRouting
     {
-        public Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
+        public Task<IClient> CreateClient(ClientParameters clientParameters, Broker broker, ILogger logger = null)
         {
             var fake = new FakeClient(clientParameters)
             {
@@ -124,7 +127,8 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
                 new List<Broker>());
             await Assert.ThrowsAsync<AggregateException>(() =>
-                RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo));
+                RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1)));
         }
 
         [Fact]
@@ -136,7 +140,8 @@ namespace Tests
                 new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552), new List<Broker>());
             // run more than one time just to be sure to use all the IP with random
             await Assert.ThrowsAsync<RoutingClientException>(() =>
-                RoutingHelper<MissingFieldsRouting>.LookupLeaderConnection(clientParameters, metaDataInfo));
+                RoutingHelper<MissingFieldsRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1)));
         }
 
         [Fact]
@@ -149,7 +154,7 @@ namespace Tests
             // run more than one time just to be sure to use all the IP with random
             for (var i = 0; i < 4; i++)
             {
-                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo);
+                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, new ConnectionsPool(1, 1));
                 Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }
@@ -165,7 +170,7 @@ namespace Tests
             // run more than one time just to be sure to use all the IP with random
             for (var i = 0; i < 4; i++)
             {
-                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo);
+                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, new ConnectionsPool(1, 1));
                 Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }
@@ -192,7 +197,9 @@ namespace Tests
             var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552),
                 new List<Broker>());
-            var client = RoutingHelper<ReplicaRouting>.LookupRandomConnection(clientParameters, metaDataInfo);
+            var client =
+                RoutingHelper<ReplicaRouting>.LookupRandomConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1));
             Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             var res = (client.Result.ConnectionProperties["advertised_host"] == "leader" ||
                        client.Result.ConnectionProperties["advertised_host"] == "replica");

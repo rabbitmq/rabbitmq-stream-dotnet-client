@@ -406,7 +406,7 @@ namespace Tests
         public static void ResetSuperStreams()
         {
             var factory = new ConnectionFactory();
-            using var connection = factory.CreateConnection();
+            var connection = factory.CreateConnection();
             var channel = connection.CreateModel();
 
             channel.ExchangeDelete(InvoicesExchange);
@@ -438,6 +438,7 @@ namespace Tests
             channel.QueueBind(InvoicesStream2, InvoicesExchange, "2",
                 new Dictionary<string, object>() { { "x-stream-partition-order", "2" } });
 
+            channel.Close();
             connection.Close();
         }
     }

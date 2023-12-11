@@ -17,10 +17,13 @@ public class SuperStreamProducer
         var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddSimpleConsole();
+            
             builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
         });
+        
 
         var logger = loggerFactory.CreateLogger<Producer>();
+        
         var loggerMain = loggerFactory.CreateLogger<SuperStreamProducer>();
 
         loggerMain.LogInformation("Starting SuperStream Producer");
@@ -46,14 +49,14 @@ public class SuperStreamProducer
         const int NumberOfMessages = 1_000_000;
         for (var i = 0; i < NumberOfMessages; i++)
         {
-            var message = new Message(Encoding.Default.GetBytes($"hello{i}")) // <4>
+            var message = new Message(Encoding.Default.GetBytes($"my_invoice_number{i}")) // <4>
             {
-                Properties = new Properties() {MessageId = $"hello{i}"}
+                Properties = new Properties() {MessageId = $"id_{i}"}
             };
             await producer.Send(message).ConfigureAwait(false);
             // end::super-stream-producer[]
-            loggerMain.LogInformation("Super Stream Producer sent {I} messages to {StreamName}", i,
-                Costants.StreamName);
+            loggerMain.LogInformation("Sent {I} message to {StreamName}, id: {ID}", $"my_invoice_number{i}",
+                Costants.StreamName,  $"id_{i}");
             Thread.Sleep(TimeSpan.FromMilliseconds(1000));
         }
     }

@@ -13,7 +13,7 @@ namespace RabbitMQ.Stream.Client
 {
     public interface IRouting
     {
-        Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null);
+        Task<IClient> CreateClient(ClientParameters clientParameters, Broker metaInfoBroker, ILogger logger = null);
         bool ValidateDns { get; set; }
     }
 
@@ -21,9 +21,11 @@ namespace RabbitMQ.Stream.Client
     {
         public bool ValidateDns { get; set; } = true;
 
-        public async Task<IClient> CreateClient(ClientParameters clientParameters, ILogger logger = null)
+        public async Task<IClient> CreateClient(ClientParameters clientParameters, Broker metaInfoBroker,
+            ILogger logger = null)
         {
-            return await Client.Create(clientParameters, logger).ConfigureAwait(false);
+            var c = await Client.Create(clientParameters, logger).ConfigureAwait(false);
+            return c;
         }
     }
 
@@ -65,7 +67,7 @@ namespace RabbitMQ.Stream.Client
                 // In this case we just return the node (leader for producer, random for consumer)
                 // since there is not load balancer configuration
 
-                return await routing.CreateClient(clientParameters with { Endpoint = endPointNoLb }, logger)
+                return await routing.CreateClient(clientParameters with { Endpoint = endPointNoLb }, broker, logger)
                     .ConfigureAwait(false);
             }
 
@@ -73,7 +75,7 @@ namespace RabbitMQ.Stream.Client
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
             var endPoint = clientParameters.AddressResolver.EndPoint;
-            var client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, logger)
+            var client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, broker, logger)
                 .ConfigureAwait(false);
 
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
@@ -85,7 +87,7 @@ namespace RabbitMQ.Stream.Client
                 attemptNo++;
                 await client.Close("advertised_host or advertised_port doesn't match").ConfigureAwait(false);
 
-                client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, logger)
+                client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, broker, logger)
                     .ConfigureAwait(false);
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
@@ -152,17 +154,19 @@ namespace RabbitMQ.Stream.Client
         /// Gets the leader connection. The producer must connect to the leader. 
         /// </summary>
         public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
-            StreamInfo metaDataInfo, ILogger logger = null)
+            StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
-            return await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger)
-                .ConfigureAwait(false);
+            return await pool.GetOrCreateClient(metaDataInfo.Leader.ToString(), metaDataInfo.Stream,
+                async () =>
+                    await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger)
+                        .ConfigureAwait(false)).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Gets a random connection. The consumer can connect to a replica or leader.
         /// </summary>
         public static async Task<IClient> LookupRandomConnection(ClientParameters clientParameters,
-            StreamInfo metaDataInfo, ILogger logger = null)
+            StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
             var brokers = new List<Broker>() { metaDataInfo.Leader };
             brokers.AddRange(metaDataInfo.Replicas);
@@ -172,8 +176,10 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    return await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo), logger)
-                        .ConfigureAwait(false);
+                    return await pool.GetOrCreateClient(broker.ToString(), metaDataInfo.Stream,
+                        async () =>
+                            await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo), logger)
+                                .ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

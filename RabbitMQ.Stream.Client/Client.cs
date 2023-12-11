@@ -107,20 +107,16 @@ namespace RabbitMQ.Stream.Client
 
         private uint correlationId = 0; // allow for some pre-amble
 
-        private byte nextPublisherId = 0;
-
         private Connection connection;
-
-        private readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
-            publishers =
-                new ConcurrentDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>();
 
         private readonly ConcurrentDictionary<uint, IValueTaskSource> requests = new();
 
         private readonly TaskCompletionSource<TuneResponse> tuneReceived =
             new TaskCompletionSource<TuneResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        private byte nextSubscriptionId;
+        internal readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
+            publishers =
+                new ConcurrentDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>();
 
         internal readonly IDictionary<byte, ConsumerEvents> consumers =
             new ConcurrentDictionary<byte, ConsumerEvents>();
@@ -157,17 +153,12 @@ namespace RabbitMQ.Stream.Client
                 (int)parameters.Heartbeat.TotalSeconds);
             IsClosed = false;
             _logger = logger ?? NullLogger.Instance;
-        }
-
-        private byte GetNextSubscriptionId()
-        {
-            byte result;
-            lock (Obj)
+            ClientId = Guid.NewGuid().ToString();
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
             {
-                result = nextSubscriptionId++;
-            }
-
-            return result;
+                _logger.LogError(args.ExceptionObject as Exception, "Unhandled exception");
+                Parameters.UnhandledExceptionHandler(args.ExceptionObject as Exception);
+            };
         }
 
         public bool IsClosed
@@ -304,16 +295,36 @@ namespace RabbitMQ.Stream.Client
         public async Task<(byte, DeclarePublisherResponse)> DeclarePublisher(string publisherRef,
             string stream,
             Action<ReadOnlyMemory<ulong>> confirmCallback,
-            Action<(ulong, ResponseCode)[]> errorCallback)
+            Action<(ulong, ResponseCode)[]> errorCallback, ConnectionsPool pool = null)
         {
-            var publisherId = nextPublisherId++;
-            publishers.Add(publisherId, (confirmCallback, errorCallback));
-            return (publisherId, await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
-                new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)).ConfigureAwait(false));
+            await _poolSemaphore.WaitAsync().ConfigureAwait(false);
+            var publisherId = ConnectionsPool.FindNextValidId(publishers.Keys.ToList());
+            DeclarePublisherResponse response;
+
+            try
+            {
+                publishers.Add(publisherId, (confirmCallback, errorCallback));
+                response = await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
+                    new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)).ConfigureAwait(false);
+            }
+            finally
+            {
+                _poolSemaphore.Release();
+            }
+
+            if (response.ResponseCode == ResponseCode.Ok || pool == null)
+                return (publisherId, response);
+
+            // if the response code is not ok we need to remove the subscription
+            // and close the connection if necessary. 
+            publishers.Remove(publisherId);
+            await MaybeClose("Create Publisher Exception", stream, pool).ConfigureAwait(false);
+            return (publisherId, response);
         }
 
         public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
         {
+            await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
                 var result =
@@ -325,6 +336,7 @@ namespace RabbitMQ.Stream.Client
             finally
             {
                 publishers.Remove(publisherId);
+                _poolSemaphore.Release();
             }
         }
 
@@ -345,21 +357,38 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler)
         {
-            var subscriptionId = GetNextSubscriptionId();
+            await _poolSemaphore.WaitAsync().ConfigureAwait(false);
+            var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList());
+            SubscribeResponse response;
+            try
+            {
+                consumers.Add(subscriptionId,
+                    new ConsumerEvents(
+                        deliverHandler,
+                        consumerUpdateHandler));
 
-            consumers.Add(subscriptionId,
-                new ConsumerEvents(
-                    deliverHandler,
-                    consumerUpdateHandler));
-
-            return (subscriptionId,
-                await Request<SubscribeRequest, SubscribeResponse>(corr =>
+                response = await Request<SubscribeRequest, SubscribeResponse>(corr =>
                     new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
-                        properties)).ConfigureAwait(false));
+                        properties)).ConfigureAwait(false);
+            }
+            finally
+            {
+                _poolSemaphore.Release();
+            }
+
+            if (response.ResponseCode == ResponseCode.Ok)
+                return (subscriptionId, response);
+
+            // if the response code is not ok we need to remove the subscription
+            // and close the connection if necessary. 
+            consumers.Remove(subscriptionId);
+            await MaybeClose("Create Consumer Exception", config.Stream, config.Pool).ConfigureAwait(false);
+            return (subscriptionId, response);
         }
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
         {
+            await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
                 // here we reduce a bit the timeout to avoid waiting too much
@@ -377,6 +406,7 @@ namespace RabbitMQ.Stream.Client
                 _logger.LogDebug("Unsubscribe: {SubscriptionId}", subscriptionId);
                 // remove consumer after RPC returns, this should avoid uncorrelated data being sent
                 consumers.Remove(subscriptionId);
+                _poolSemaphore.Release();
             }
         }
 
@@ -640,6 +670,14 @@ namespace RabbitMQ.Stream.Client
             IsClosed = true;
         }
 
+        private bool HasEntities()
+        {
+            lock (Obj)
+            {
+                return publishers.Count > 0 || consumers.Count > 0;
+            }
+        }
+
         private async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
         {
             return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification)).ConfigureAwait(false);
@@ -652,6 +690,7 @@ namespace RabbitMQ.Stream.Client
                 return new CloseResponse(0, ResponseCode.Ok);
             }
 
+            InternalClose();
             try
             {
                 var result =
@@ -671,27 +710,61 @@ namespace RabbitMQ.Stream.Client
             }
             finally
             {
-                // even if the close fails we need to close the connection
-                InternalClose();
                 connection.Dispose();
             }
 
             return new CloseResponse(0, ResponseCode.Ok);
         }
 
-        // Safe close 
-        // the client can be closed only if the publishers are == 0
-        // not a public method used internally by producers and consumers
-        internal async Task<CloseResponse> MaybeClose(string reason)
-        {
-            if (publishers.Count == 0 && consumers.Count == 0)
-            {
-                await Close(reason).ConfigureAwait(false);
-            }
+        // _poolSemaphore is introduced here: https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/328 
+        // the MaybeClose can be called in different threads so we need to protect the pool
+        // the pool itself is thread safe but we need to protect the flow to be sure that the 
+        // connection is released only once
+        private readonly SemaphoreSlim _poolSemaphore = new(1, 1);
 
-            var result = new CloseResponse(0, ResponseCode.Ok);
-            return result;
+        // Safe close 
+        // the client can be closed only if HasEntities is false
+        // if the client has entities (publishers or consumers) it will be released from the pool
+        // Release will decrement the active ids for the connection
+        // if the active ids are 0 the connection will be closed
+
+        internal async Task<CloseResponse> MaybeClose(string reason, string stream, ConnectionsPool pool)
+        {
+            await _poolSemaphore.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                if (!HasEntities())
+                {
+                    if (!string.IsNullOrEmpty(ClientId))
+                    {
+                        _logger.LogInformation("Close connection for the {ClientId}", ClientId);
+                        // the client can be closed in an unexpected way so we need to remove it from the pool
+                        // so you will find pool.remove(ClientId) also to the disconnect event
+                        // pool.remove(ClientId) is a duplicate call here but it is ok. The pool is idempotent 
+                        pool.Remove(ClientId);
+                        await Close(reason).ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    // we remove an id reference from the client
+                    // in case there are still active ids from the client and the stream 
+                    if (!string.IsNullOrEmpty(ClientId))
+                    {
+                        pool.Release(ClientId, stream);
+                    }
+                }
+
+                var result = new CloseResponse(0, ResponseCode.Ok);
+                return result;
+            }
+            finally
+            {
+                _poolSemaphore.Release();
+            }
         }
+
+        public string ClientId { get; init; }
 
         public async ValueTask<QueryPublisherResponse> QueryPublisherSequence(string publisherRef, string stream)
         {

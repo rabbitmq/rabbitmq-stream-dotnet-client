@@ -142,7 +142,8 @@ public class SuperStreamProducerTests
             await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
-                Reference = "reference"
+                Reference = "reference",
+
             });
         Assert.True(streamProducer.MessagesSent == 0);
         Assert.True(streamProducer.ConfirmFrames == 0);

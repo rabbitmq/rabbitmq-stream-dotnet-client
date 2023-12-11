@@ -125,4 +125,12 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
+
+    public class TooManyConnectionsException : Exception
+    {
+        public TooManyConnectionsException(string s)
+            : base(s)
+        {
+        }
+    }
 }

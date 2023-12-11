@@ -115,12 +115,17 @@ namespace RabbitMQ.Stream.Client
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
     {
-        private bool _disposed;
         private readonly RawConsumerConfig _config;
         private byte _subscriberId;
         private readonly ILogger _logger;
         private readonly Channel<Chunk> _chunksBuffer;
         private readonly ushort _initialCredits;
+
+        // _completeSubscription is used to notify the ProcessChunks task
+        // that the subscription is completed and so it can start to process the chunks
+        // this is needed because the socket starts to receive the chunks before the subscription_id is 
+        // assigned. 
+        private readonly TaskCompletionSource _completeSubscription = new();
 
         private string ConsumerInfo()
         {
@@ -128,7 +133,7 @@ namespace RabbitMQ.Stream.Client
                 ? "No SuperStream"
                 : $"SuperStream {_config.SuperStream}";
             return
-                $"Consumer for stream: {_config.Stream}, reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
+                $"Consumer id {_subscriberId} for stream: {_config.Stream}, reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
                 $"Client ProvidedName {_config.ClientProvidedName}, " +
                 $"{superStream}, IsSingleActiveConsumer: {_config.IsSingleActiveConsumer}, " +
                 $"Token IsCancellationRequested: {Token.IsCancellationRequested} ";
@@ -190,8 +195,10 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
-            var client = await RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaStreamInfo, logger)
+            var client = await RoutingHelper<Routing>
+                .LookupRandomConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
+            logger?.LogInformation("Creating consumer {ConsumerInfo}", client.ClientId);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);
             return consumer;
@@ -304,6 +311,14 @@ namespace RabbitMQ.Stream.Client
                     }
                     catch (Exception e)
                     {
+                        if (Token.IsCancellationRequested)
+                        {
+                            _logger?.LogDebug(
+                                "Dispatching  {ConsumerInfo}, Cancellation Requested, the consumer is closing. ",
+                                ConsumerInfo());
+                            return;
+                        }
+
                         _logger?.LogError(e,
                             "Error while Dispatching message, ChunkId : {ChunkId} {ConsumerInfo}",
                             chunk.ChunkId, ConsumerInfo());
@@ -373,6 +388,9 @@ namespace RabbitMQ.Stream.Client
         {
             Task.Run(async () =>
             {
+                // need to wait the subscription is completed 
+                // else the _subscriberId could be incorrect
+                await _completeSubscription.Task.ConfigureAwait(false);
                 try
                 {
                     while (!Token.IsCancellationRequested &&
@@ -384,6 +402,7 @@ namespace RabbitMQ.Stream.Client
                             // we request the credit before process the check to keep the network busy
                             try
                             {
+
                                 await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
                             }
                             catch (InvalidOperationException)
@@ -443,12 +462,14 @@ namespace RabbitMQ.Stream.Client
 
             _client.ConnectionClosed += async reason =>
             {
+                _config.Pool.Remove(_client.ClientId);
                 await Close().ConfigureAwait(false);
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
             };
+
             if (_config.MetadataHandler != null)
             {
                 _client.Parameters.MetadataHandler += _config.MetadataHandler;
@@ -486,7 +507,7 @@ namespace RabbitMQ.Stream.Client
             var chunkConsumed = 0;
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
-            var (consumerId, response) = await _client.Subscribe(
+            (_subscriberId, var response) = await _client.Subscribe(
                 _config,
                 _initialCredits,
                 consumerProperties,
@@ -551,24 +572,25 @@ namespace RabbitMQ.Stream.Client
             ).ConfigureAwait(false);
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                _subscriberId = consumerId;
+                _completeSubscription.SetResult();
+                _status = EntityStatus.Open;
                 return;
             }
 
             throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
         }
 
-        public async Task<ResponseCode> Close()
+        public override async Task<ResponseCode> Close()
         {
             // this unlock the consumer if it is waiting for a message
             // see DispatchMessage method where the token is used
             MaybeCancelToken();
-
-            if (_client.IsClosed)
+            if (!IsOpen())
             {
                 return ResponseCode.Ok;
             }
 
+            _status = EntityStatus.Closed;
             var result = ResponseCode.Ok;
             try
             {
@@ -588,55 +610,23 @@ namespace RabbitMQ.Stream.Client
             catch (Exception e)
             {
                 _logger.LogError(e,
-                    "Error removing the consumer id: {SubscriberId}, {ConsumerInfo} from the server",
-                    _subscriberId, ConsumerInfo());
+                    "Error removing {ConsumerInfo} from the server",
+                     ConsumerInfo());
             }
 
-            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}").ConfigureAwait(false);
+            var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}",
+                    _config.Stream, _config.Pool)
+                .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-subscriber: {_subscriberId}");
             _logger.LogDebug("{ConsumerInfo} is closed", ConsumerInfo());
-
             return result;
-        }
-
-        private void Dispose(bool disposing)
-        {
-            if (!disposing)
-            {
-                return;
-            }
-
-            if (_disposed)
-            {
-                return;
-            }
-
-            try
-            {
-                var closeConsumer = Close();
-                if (!closeConsumer.Wait(Consts.ShortWait))
-                {
-                    Debug.WriteLine($"consumer did not close within {Consts.ShortWait}");
-                }
-
-                ClientExceptions.MaybeThrowException(closeConsumer.Result,
-                    $"Error during remove producer. {ConsumerInfo()}");
-            }
-            finally
-            {
-                _disposed = true;
-            }
         }
 
         public void Dispose()
         {
             try
             {
-                Dispose(true);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Error during disposing of {ConsumerInfo}", ConsumerInfo());
+                Dispose(true, ConsumerInfo(), _logger);
             }
             finally
             {
