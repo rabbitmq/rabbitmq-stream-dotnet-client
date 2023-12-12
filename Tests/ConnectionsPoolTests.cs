@@ -704,42 +704,39 @@ namespace Tests
         // // this test doesn't work since the client parameters metadata handler is not an event
         // // for the moment I won't change the code. Introduced a new event is a breaking change
         //
-        // // [Fact]
-        // // public async void TheProducerPoolShouldBeConsistentWhenAStreamIsDeleted()
-        // // {
-        // //     var client = await Client.Create(new ClientParameters() { });
-        // //     const string Stream1 = "pool_test_stream_1_multi_thread_producer";
-        // //     await client.CreateStream(Stream1, new Dictionary<string, string>());
-        // //     const int IdsPerConnection = 2;
-        // //     var pool = new ConnectionsPool(0, IdsPerConnection);
-        // //     var metaDataInfo = await client.QueryMetadata(new[] {Stream1});
-        // //     var producerList = new ConcurrentDictionary<string, IProducer>();
-        // //
-        // //     var tasksP = new List<Task>();
-        // //     for (var i = 0; i < (IdsPerConnection * 1); i++)
-        // //     {
-        // //         tasksP.Add(Task.Run(async () =>
-        // //         {
-        // //             var p = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1)
-        // //                 {
-        // //                     Pool = pool,
-        // //                 },
-        // //                 metaDataInfo.StreamInfos[Stream1]);
-        // //             producerList.TryAdd(Guid.NewGuid().ToString(), p);
-        // //         }));
-        // //     }
-        // //
-        // //     await Task.WhenAll(tasksP);
-        // //
-        // //     Assert.Equal(2, pool.Count);
-        // //     Assert.Equal(IdsPerConnection, pool.Connections.Values.First().ActiveIds);
-        // //     Assert.Equal(IdsPerConnection, pool.Connections.Values.Skip(1).First().ActiveIds);
-        // //
-        // //     await client.DeleteStream(Stream1);
-        // //
-        // //     SystemUtils.WaitUntil(() => pool.Count == 0);
-        // //     Assert.Equal(0, pool.Count);
-        // // }
+        [Fact]
+        public async void TheProducerPoolShouldBeConsistentWhenAStreamIsDeleted()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_delete_consumer";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            const int IdsPerConnection = 2;
+            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var metaDataInfo = await client.QueryMetadata(new[] {Stream1});
+            var iConsumers = new ConcurrentDictionary<string, IConsumer>();
+        
+            var tasksP = new List<Task>();
+            for (var i = 0; i < (IdsPerConnection * 1); i++)
+            {
+                tasksP.Add(Task.Run(async () =>
+                {
+                    var p = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream1)
+                        {
+                            Pool = pool,
+                        },
+                        metaDataInfo.StreamInfos[Stream1]);
+                    iConsumers.TryAdd(Guid.NewGuid().ToString(), p);
+                }));
+            }
+        
+            await Task.WhenAll(tasksP);
+        
+            Assert.Equal(1, pool.ConnectionsCount);
+        
+            await client.DeleteStream(Stream1);
+        
+            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+        }
         //
         /// <summary>
         /// The pool has 13 ids per connection.

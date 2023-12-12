@@ -54,6 +54,11 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
 
         public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+
+
+        public delegate void MetadataUpdateHandler(MetaDataUpdate update);
+
+        public event MetadataUpdateHandler OnMetadataUpdate;
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
         public TimeSpan Heartbeat { get; set; } = TimeSpan.FromMinutes(1);
 
@@ -71,6 +76,11 @@ namespace RabbitMQ.Stream.Client
         public AddressResolver AddressResolver { get; set; } = null;
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
+
+        internal void FireMetadataUpdate(MetaDataUpdate metaDataUpdate)
+        {
+            OnMetadataUpdate?.Invoke(metaDataUpdate);
+        }
     }
 
     internal readonly struct OutgoingMsg : ICommand
@@ -213,7 +223,8 @@ namespace RabbitMQ.Stream.Client
                     .ConfigureAwait(false);
             logger?.LogDebug("Sasl mechanism: {Mechanisms}", saslHandshakeResponse.Mechanisms);
 
-            var isValid = saslHandshakeResponse.Mechanisms.Contains(parameters.AuthMechanism.ToString().ToUpperInvariant(),
+            var isValid = saslHandshakeResponse.Mechanisms.Contains(
+                parameters.AuthMechanism.ToString().ToUpperInvariant(),
                 StringComparer.OrdinalIgnoreCase);
             if (!isValid)
             {
@@ -225,7 +236,8 @@ namespace RabbitMQ.Stream.Client
             var authResponse =
                 await client
                     .Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
-                        new SaslAuthenticateRequest(corr, parameters.AuthMechanism.ToString().ToUpperInvariant(), saslData))
+                        new SaslAuthenticateRequest(corr, parameters.AuthMechanism.ToString().ToUpperInvariant(),
+                            saslData))
                     .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
@@ -345,7 +357,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
+            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -512,7 +524,8 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case MetaDataUpdate.Key:
                     MetaDataUpdate.Read(frame, out var metaDataUpdate);
-                    Parameters.MetadataHandler(metaDataUpdate);
+                    // Parameters.MetadataHandler(metaDataUpdate);
+                    Parameters.FireMetadataUpdate(metaDataUpdate);
                     break;
                 case TuneResponse.Key:
                     TuneResponse.Read(frame, out var tuneResponse);
@@ -785,9 +798,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] { stream };
+            var streams = new[] {stream};
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is { Count: >= 1 } &&
+            return response.StreamInfos is {Count: >= 1} &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -834,7 +847,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
+                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
             }
         }
 

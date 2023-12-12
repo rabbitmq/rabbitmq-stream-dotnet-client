@@ -335,7 +335,6 @@ RabbitMQ.Stream.Client.ICompressionCodec.UnCompress(System.Buffers.ReadOnlySeque
 RabbitMQ.Stream.Client.ICompressionCodec.UnCompressedSize.get -> int
 RabbitMQ.Stream.Client.ICompressionCodec.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.IConsumer
-RabbitMQ.Stream.Client.IConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.IConsumer.Dispose() -> void
 RabbitMQ.Stream.Client.IConsumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.IConsumerConfig
@@ -357,7 +356,6 @@ RabbitMQ.Stream.Client.IOffsetType.OffsetType.get -> RabbitMQ.Stream.Client.Offs
 RabbitMQ.Stream.Client.IOffsetType.Size.get -> int
 RabbitMQ.Stream.Client.IOffsetType.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.IProducer
-RabbitMQ.Stream.Client.IProducer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.IProducer.ConfirmFrames.get -> int
 RabbitMQ.Stream.Client.IProducer.Dispose() -> void
 RabbitMQ.Stream.Client.IProducer.GetLastPublishingId() -> System.Threading.Tasks.Task<ulong>
@@ -559,7 +557,6 @@ RabbitMQ.Stream.Client.RawProducerConfig.MetadataHandler.set -> void
 RabbitMQ.Stream.Client.RawProducerConfig.RawProducerConfig(string stream) -> void
 RabbitMQ.Stream.Client.RawProducerConfig.Stream.get -> string
 RabbitMQ.Stream.Client.RawSuperStreamConsumer
-RabbitMQ.Stream.Client.RawSuperStreamConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.RawSuperStreamConsumer.Dispose() -> void
 RabbitMQ.Stream.Client.RawSuperStreamConsumer.StoreOffset(ulong offset) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.RawSuperStreamConsumerConfig
@@ -570,7 +567,6 @@ RabbitMQ.Stream.Client.RawSuperStreamConsumerConfig.OffsetSpec.set -> void
 RabbitMQ.Stream.Client.RawSuperStreamConsumerConfig.RawSuperStreamConsumerConfig(string superStream) -> void
 RabbitMQ.Stream.Client.RawSuperStreamConsumerConfig.SuperStream.get -> string
 RabbitMQ.Stream.Client.RawSuperStreamProducer
-RabbitMQ.Stream.Client.RawSuperStreamProducer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.RawSuperStreamProducer.ConfirmFrames.get -> int
 RabbitMQ.Stream.Client.RawSuperStreamProducer.Dispose() -> void
 RabbitMQ.Stream.Client.RawSuperStreamProducer.GetLastPublishingId() -> System.Threading.Tasks.Task<ulong>

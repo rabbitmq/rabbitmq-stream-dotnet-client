@@ -87,14 +87,14 @@ namespace RabbitMQ.Stream.Client
 
             switch (ConsumerFilter)
             {
-                case { PostFilter: null }:
+                case {PostFilter: null}:
                     throw new ArgumentException("PostFilter must be provided when Filter is set");
-                case { Values.Count: 0 }:
+                case {Values.Count: 0}:
                     throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
+        internal bool IsFiltering => ConsumerFilter is {Values.Count: > 0};
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -402,7 +402,6 @@ namespace RabbitMQ.Stream.Client
                             // we request the credit before process the check to keep the network busy
                             try
                             {
-
                                 await _client.Credit(_subscriberId, 1).ConfigureAwait(false);
                             }
                             catch (InvalidOperationException)
@@ -460,20 +459,9 @@ namespace RabbitMQ.Stream.Client
         {
             _config.Validate();
 
-            _client.ConnectionClosed += async reason =>
-            {
-                _config.Pool.Remove(_client.ClientId);
-                await Close().ConfigureAwait(false);
-                if (_config.ConnectionClosedHandler != null)
-                {
-                    await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
-                }
-            };
+            _client.ConnectionClosed += OnConnectionClosed();
+            _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
 
-            if (_config.MetadataHandler != null)
-            {
-                _client.Parameters.MetadataHandler += _config.MetadataHandler;
-            }
 
             var consumerProperties = new Dictionary<string, string>();
 
@@ -580,6 +568,24 @@ namespace RabbitMQ.Stream.Client
             throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
         }
 
+        private ClientParameters.MetadataUpdateHandler OnMetadataUpdate() =>
+            data =>
+            {
+                 Close().ConfigureAwait(false);
+                _config.MetadataHandler?.Invoke(data);
+            };
+
+        private Client.ConnectionCloseHandler OnConnectionClosed() =>
+            async reason =>
+            {
+                _config.Pool.Remove(_client.ClientId);
+                await Close().ConfigureAwait(false);
+                if (_config.ConnectionClosedHandler != null)
+                {
+                    await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
+                }
+            };
+
         public override async Task<ResponseCode> Close()
         {
             // this unlock the consumer if it is waiting for a message
@@ -591,7 +597,11 @@ namespace RabbitMQ.Stream.Client
             }
 
             _status = EntityStatus.Closed;
+            _client.ConnectionClosed -= OnConnectionClosed();
+            _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
+
             var result = ResponseCode.Ok;
+
             try
             {
                 var unsubscribeResponse =
@@ -611,7 +621,7 @@ namespace RabbitMQ.Stream.Client
             {
                 _logger.LogError(e,
                     "Error removing {ConsumerInfo} from the server",
-                     ConsumerInfo());
+                    ConsumerInfo());
             }
 
             var closed = await _client.MaybeClose($"_client-close-subscriber: {_subscriberId}",
