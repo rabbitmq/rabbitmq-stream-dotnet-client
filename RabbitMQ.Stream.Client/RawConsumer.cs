@@ -87,14 +87,14 @@ namespace RabbitMQ.Stream.Client
 
             switch (ConsumerFilter)
             {
-                case {PostFilter: null}:
+                case { PostFilter: null }:
                     throw new ArgumentException("PostFilter must be provided when Filter is set");
-                case {Values.Count: 0}:
+                case { Values.Count: 0 }:
                     throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => ConsumerFilter is {Values.Count: > 0};
+        internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -462,7 +462,6 @@ namespace RabbitMQ.Stream.Client
             _client.ConnectionClosed += OnConnectionClosed();
             _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
 
-
             var consumerProperties = new Dictionary<string, string>();
 
             if (!string.IsNullOrEmpty(_config.Reference))
@@ -569,24 +568,40 @@ namespace RabbitMQ.Stream.Client
         }
 
         private ClientParameters.MetadataUpdateHandler OnMetadataUpdate() =>
-            data =>
+            metaDataUpdate =>
             {
-                 Close().ConfigureAwait(false);
-                _config.MetadataHandler?.Invoke(data);
+                // the connection can handle different streams
+                // we need to check if the metadata update is for the stream
+                // where the consumer is consuming else can ignore the update
+                if (metaDataUpdate.Stream != _config.Stream)
+                    return;
+                // at this point the server has removed the consumer from the list 
+                // and the unsubscribe is not needed anymore (ignoreIfClosed = true)
+                // we call the Close to re-enter to the standard behavior
+                // ignoreIfClosed is an optimization to avoid to send the unsubscribe
+                _config.MetadataHandler?.Invoke(metaDataUpdate);
+                Close(true).ConfigureAwait(false);
+
+                // remove the event since the consumer is closed
+                // only if the stream is the valid
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
             };
 
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
             async reason =>
             {
                 _config.Pool.Remove(_client.ClientId);
-                await Close().ConfigureAwait(false);
+                await Close(true).ConfigureAwait(false);
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
+
+                // remove the event since the connection is closed
+                _client.ConnectionClosed -= OnConnectionClosed();
             };
 
-        public override async Task<ResponseCode> Close()
+        public override async Task<ResponseCode> Close(bool ignoreIfClosed = false)
         {
             // this unlock the consumer if it is waiting for a message
             // see DispatchMessage method where the token is used
@@ -597,15 +612,13 @@ namespace RabbitMQ.Stream.Client
             }
 
             _status = EntityStatus.Closed;
-            _client.ConnectionClosed -= OnConnectionClosed();
-            _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
 
             var result = ResponseCode.Ok;
 
             try
             {
                 var unsubscribeResponse =
-                    await _client.Unsubscribe(_subscriberId).ConfigureAwait(false);
+                    await _client.Unsubscribe(_subscriberId, ignoreIfClosed).ConfigureAwait(false);
                 result = unsubscribeResponse.ResponseCode;
             }
 

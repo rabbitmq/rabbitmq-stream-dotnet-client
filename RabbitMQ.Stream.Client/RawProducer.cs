@@ -48,7 +48,7 @@ namespace RabbitMQ.Stream.Client
 
         internal void Validate()
         {
-            if (Filter is {FilterValue: not null} && !AvailableFeaturesSingleton.Instance.PublishFilter)
+            if (Filter is { FilterValue: not null } && !AvailableFeaturesSingleton.Instance.PublishFilter)
             {
                 throw new UnsupportedOperationException(Consts.FilterNotSupported);
             }
@@ -113,22 +113,11 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
-            _client.ConnectionClosed += async reason =>
-            {
-                await Close().ConfigureAwait(false);
-                _config.Pool.Remove(_client.ClientId);
-                if (_config.ConnectionClosedHandler != null)
-                {
-                    await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
-                }
-            };
-
-            if (_config.MetadataHandler != null)
-            {
-                _client.Parameters.MetadataHandler += _config.MetadataHandler;
-            }
 
             _config.Validate();
+
+            _client.ConnectionClosed += OnConnectionClosed();
+            _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
 
             (_publisherId, var response) = await _client.DeclarePublisher(
                 _config.Reference,
@@ -141,7 +130,9 @@ namespace RabbitMQ.Stream.Client
                         {
                             _config.ConfirmHandler(new Confirmation
                             {
-                                PublishingId = id, Code = ResponseCode.Ok, Stream = _config.Stream
+                                PublishingId = id,
+                                Code = ResponseCode.Ok,
+                                Stream = _config.Stream
                             });
                         }
                         catch (Exception e)
@@ -161,7 +152,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     foreach (var (id, code) in errors)
                     {
-                        _config.ConfirmHandler(new Confirmation {PublishingId = id, Code = code,});
+                        _config.ConfirmHandler(new Confirmation { PublishingId = id, Code = code, });
                     }
 
                     _semaphore.Release(errors.Length);
@@ -176,7 +167,40 @@ namespace RabbitMQ.Stream.Client
             throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
         }
 
-        private bool IsFilteringEnabled => _config.Filter is {FilterValue: not null};
+        private Client.ConnectionCloseHandler OnConnectionClosed() =>
+            async reason =>
+            {
+                await Close().ConfigureAwait(false);
+                _config.Pool.Remove(_client.ClientId);
+                if (_config.ConnectionClosedHandler != null)
+                {
+                    await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
+                }
+                // remove the event since the connection is closed
+                _client.ConnectionClosed -= OnConnectionClosed();
+            };
+
+        private ClientParameters.MetadataUpdateHandler OnMetadataUpdate() =>
+            metaDataUpdate =>
+            {
+                // the connection can handle different streams
+                // we need to check if the metadata update is for the stream
+                // where the producer is sending the messages else can ignore the update
+                if (metaDataUpdate.Stream != _config.Stream)
+                    return;
+                // at this point the server has removed the producer from the list 
+                // and the DeletePublisher producer is not needed anymore (ignoreIfClosed = true)
+                // we call the Close to re-enter to the standard behavior
+                // ignoreIfClosed is an optimization to avoid to send the DeletePublisher
+                _config.MetadataHandler?.Invoke(metaDataUpdate);
+                Close(true).ConfigureAwait(false);
+
+                // remove the event since the producer is closed
+                // only if the stream is the valid
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
+            };
+
+        private bool IsFilteringEnabled => _config.Filter is { FilterValue: not null };
 
         /// <summary>
         /// SubEntry Batch send: Aggregate more messages under the same publishingId.
@@ -343,7 +367,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public override async Task<ResponseCode> Close()
+        public override async Task<ResponseCode> Close(bool ignoreIfClosed = false)
         {
             // MaybeCancelToken This unlocks the semaphore so that the background task can exit
             // see SemaphoreAwaitAsync method and processBuffer method
@@ -356,7 +380,6 @@ namespace RabbitMQ.Stream.Client
 
             _status = EntityStatus.Closed;
             var result = ResponseCode.Ok;
-
 
             try
             {

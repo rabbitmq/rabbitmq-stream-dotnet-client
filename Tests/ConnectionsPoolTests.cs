@@ -701,42 +701,130 @@ namespace Tests
             await client.Close("byte");
         }
 
-        // // this test doesn't work since the client parameters metadata handler is not an event
-        // // for the moment I won't change the code. Introduced a new event is a breaking change
-        //
+        /// <summary>
+        /// The pool has 3 ids per connection.
+        /// Here we test the metadata update event. One connection can handle different
+        /// Streams so we need to be sure the pool is consistent when the metadata update handler is raised.
+        /// By default the metadata update removes the consumer from the server so we need to remove the consumers
+        /// from the pool.
+        /// </summary>
         [Fact]
-        public async void TheProducerPoolShouldBeConsistentWhenAStreamIsDeleted()
+        public async void TheConsumersPoolShouldBeConsistentWhenAStreamIsDeleted()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "pool_test_stream_1_delete_consumer";
+            const string Stream2 = "pool_test_stream_2_delete_consumer";
             await client.CreateStream(Stream1, new Dictionary<string, string>());
-            const int IdsPerConnection = 2;
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+            const int IdsPerConnection = 3;
             var pool = new ConnectionsPool(0, IdsPerConnection);
-            var metaDataInfo = await client.QueryMetadata(new[] {Stream1});
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
             var iConsumers = new ConcurrentDictionary<string, IConsumer>();
-        
+
             var tasksP = new List<Task>();
-            for (var i = 0; i < (IdsPerConnection * 1); i++)
+            for (var i = 0; i < (IdsPerConnection * 2); i++)
             {
                 tasksP.Add(Task.Run(async () =>
                 {
-                    var p = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream1)
-                        {
-                            Pool = pool,
-                        },
+                    var p = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool, },
                         metaDataInfo.StreamInfos[Stream1]);
                     iConsumers.TryAdd(Guid.NewGuid().ToString(), p);
                 }));
+
+                tasksP.Add(Task.Run(async () =>
+                {
+                    var p2 = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream2) { Pool = pool, },
+                        metaDataInfo.StreamInfos[Stream2]);
+                    iConsumers.TryAdd(Guid.NewGuid().ToString(), p2);
+                }));
             }
-        
+
             await Task.WhenAll(tasksP);
-        
-            Assert.Equal(1, pool.ConnectionsCount);
-        
+
+            // Here we have 4 connections ( IdsPerConnection * 2)
+            // one per stream
+            Assert.Equal(4, pool.ConnectionsCount);
             await client.DeleteStream(Stream1);
-        
+            // removed one stream so we should not have active ids for this stream
+            // we don't check the connection pool since the connections can be random 
+            // so not sure how many connection can we have here. But it doesn't matter since we check the active ids
+            SystemUtils.WaitUntil(() => pool.ActiveIdsCountForStream(Stream1) == 0);
+            Assert.Equal(IdsPerConnection * 2, pool.ActiveIdsCount);
+
+            await client.DeleteStream(Stream2);
+            // here we can check the pool. however the connections  are distributed here must be 0
             SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            // no active ids for the stream2 since we removed the stream
+            Assert.Equal(0, pool.ActiveIdsCountForStream(Stream2));
+            Assert.Equal(0, pool.ActiveIdsCount);
+
+            // no active consumers to the internal consumers list
+            iConsumers.Values.ToList().ForEach(
+                x => Assert.Empty(ConsumersIdsPerConnection(x)));
         }
+
+        /// <summary>
+        /// The pool has 3 ids per connection.
+        /// Here we test the metadata update event. One connection can handle different
+        /// Streams so we need to be sure the pool is consistent when the metadata update handler is raised.
+        /// By default the metadata update removes the producer from the server so we need to remove the producers
+        /// from the pool.
+        /// </summary>
+        [Fact]
+        public async void TheProducersPoolShouldBeConsistentWhenAStreamIsDeleted()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_delete_producer";
+            const string Stream2 = "pool_test_stream_2_delete_producer";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+            await client.CreateStream(Stream2, new Dictionary<string, string>());
+            const int IdsPerConnection = 3;
+            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
+            var iProducers = new ConcurrentDictionary<string, IProducer>();
+
+            var tasksP = new List<Task>();
+            for (var i = 0; i < (IdsPerConnection * 2); i++)
+            {
+                tasksP.Add(Task.Run(async () =>
+                {
+                    var p = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool, },
+                        metaDataInfo.StreamInfos[Stream1]);
+                    iProducers.TryAdd(Guid.NewGuid().ToString(), p);
+                }));
+
+                tasksP.Add(Task.Run(async () =>
+                {
+                    var p2 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream2) { Pool = pool, },
+                        metaDataInfo.StreamInfos[Stream2]);
+                    iProducers.TryAdd(Guid.NewGuid().ToString(), p2);
+                }));
+            }
+
+            await Task.WhenAll(tasksP);
+
+            // Here we have 4 connections ( IdsPerConnection * 2)
+            // one per stream
+            Assert.Equal(4, pool.ConnectionsCount);
+            await client.DeleteStream(Stream1);
+            // removed one stream so we should not have active ids for this stream
+            // we don't check the connection pool since the connections can be random 
+            // so not sure how many connection can we have here. But it doesn't matter since we check the active ids
+            SystemUtils.WaitUntil(() => pool.ActiveIdsCountForStream(Stream1) == 0);
+            Assert.Equal(IdsPerConnection * 2, pool.ActiveIdsCount);
+
+            await client.DeleteStream(Stream2);
+            // here we can check the pool. however the connections  are distributed here must be 0
+            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            // no active ids for the stream2 since we removed the stream
+            Assert.Equal(0, pool.ActiveIdsCountForStream(Stream2));
+            Assert.Equal(0, pool.ActiveIdsCount);
+
+            // no active consumers to the internal producers list
+            iProducers.Values.ToList().ForEach(
+                x => Assert.Empty(ProducersIdsPerConnection(x)));
+        }
+
         //
         /// <summary>
         /// The pool has 13 ids per connection.
@@ -835,7 +923,6 @@ namespace Tests
         {
             await Assert.ThrowsAsync<ArgumentException>(async () =>
                 await StreamSystem.Create(new StreamSystemConfig() { ConnectionPoolConfig = null }));
-
         }
 
         /// The following tests are related to the FindMissingConsecutive method

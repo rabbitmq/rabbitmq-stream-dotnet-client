@@ -112,8 +112,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                 Thread.Sleep(500);
 
                 _streamInfos.Remove(update.Stream);
-                _consumers.TryRemove(update.Stream, out var consumerMetadata);
-                consumerMetadata?.Close();
+                _consumers.TryRemove(update.Stream, out _);
 
                 // this check is needed only for an edge case 
                 // when the system is closed and the connections for the steam are still open for
@@ -197,7 +196,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
         throw new NotImplementedException("use the store offset on the stream consumer, instead");
     }
 
-    public Task<ResponseCode> Close()
+    public Task<ResponseCode> Close(bool ignoreIfClosed = false)
     {
         if (_disposed)
         {

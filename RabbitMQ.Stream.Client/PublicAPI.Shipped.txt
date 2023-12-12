@@ -188,7 +188,6 @@ RabbitMQ.Stream.Client.Client.StoreOffset(string reference, string stream, ulong
 RabbitMQ.Stream.Client.Client.StreamExists(string stream) -> System.Threading.Tasks.Task<bool>
 RabbitMQ.Stream.Client.Client.Subscribe(RabbitMQ.Stream.Client.RawConsumerConfig config, ushort initialCredit, System.Collections.Generic.Dictionary<string, string> properties, System.Func<RabbitMQ.Stream.Client.Deliver, System.Threading.Tasks.Task> deliverHandler, System.Func<bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>> consumerUpdateHandler) -> System.Threading.Tasks.Task<(byte, RabbitMQ.Stream.Client.SubscribeResponse)>
 RabbitMQ.Stream.Client.Client.Subscribe(string stream, RabbitMQ.Stream.Client.IOffsetType offsetType, ushort initialCredit, System.Collections.Generic.Dictionary<string, string> properties, System.Func<RabbitMQ.Stream.Client.Deliver, System.Threading.Tasks.Task> deliverHandler, System.Func<bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>> consumerUpdateHandler = null) -> System.Threading.Tasks.Task<(byte, RabbitMQ.Stream.Client.SubscribeResponse)>
-RabbitMQ.Stream.Client.Client.Unsubscribe(byte subscriptionId) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.UnsubscribeResponse>
 RabbitMQ.Stream.Client.ClientParameters
 RabbitMQ.Stream.Client.ClientParameters.AddressResolver.get -> RabbitMQ.Stream.Client.AddressResolver
 RabbitMQ.Stream.Client.ClientParameters.AddressResolver.set -> void
@@ -198,8 +197,6 @@ RabbitMQ.Stream.Client.ClientParameters.Endpoint.get -> System.Net.EndPoint
 RabbitMQ.Stream.Client.ClientParameters.Endpoint.set -> void
 RabbitMQ.Stream.Client.ClientParameters.Heartbeat.get -> System.TimeSpan
 RabbitMQ.Stream.Client.ClientParameters.Heartbeat.set -> void
-RabbitMQ.Stream.Client.ClientParameters.MetadataHandler.get -> System.Action<RabbitMQ.Stream.Client.MetaDataUpdate>
-RabbitMQ.Stream.Client.ClientParameters.MetadataHandler.set -> void
 RabbitMQ.Stream.Client.ClientParameters.Password.get -> string
 RabbitMQ.Stream.Client.ClientParameters.Password.set -> void
 RabbitMQ.Stream.Client.ClientParameters.Properties.get -> System.Collections.Generic.IDictionary<string, string>

@@ -9,30 +9,35 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
-
     internal enum EntityStatus
     {
         Open,
         Closed,
         Disposed
     }
-    public abstract class AbstractEntity
+
+    public interface IClosable
+    {
+        public Task<ResponseCode> Close(bool ignoreIfClosed = false);
+    }
+
+    public abstract class AbstractEntity : IClosable
     {
         private readonly CancellationTokenSource _cancelTokenSource = new();
         protected CancellationToken Token => _cancelTokenSource.Token;
 
         internal EntityStatus _status = EntityStatus.Closed;
+
         // here the _cancelTokenSource is disposed and the token is cancelled
         // in producer is used to cancel the send task
         // in consumer is used to cancel the receive task
         protected void MaybeCancelToken()
         {
-
             if (!_cancelTokenSource.IsCancellationRequested)
                 _cancelTokenSource.Cancel();
         }
 
-        public abstract Task<ResponseCode> Close();
+        public abstract Task<ResponseCode> Close(bool ignoreIfClosed = false);
 
         protected void Dispose(bool disposing, string entityInfo, ILogger logger)
         {
@@ -70,6 +75,5 @@ namespace RabbitMQ.Stream.Client
         }
 
         internal Client _client;
-
     }
 }

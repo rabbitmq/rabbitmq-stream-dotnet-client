@@ -7,10 +7,9 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
-public interface IConsumer
+public interface IConsumer : IClosable
 {
     public Task StoreOffset(ulong offset);
-    public Task<ResponseCode> Close();
     public void Dispose();
 
     public ConsumerInfo Info { get; }

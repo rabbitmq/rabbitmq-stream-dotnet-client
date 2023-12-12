@@ -53,9 +53,6 @@ namespace RabbitMQ.Stream.Client
         public string VirtualHost { get; set; } = "/";
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
 
-        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
-
-
         public delegate void MetadataUpdateHandler(MetaDataUpdate update);
 
         public event MetadataUpdateHandler OnMetadataUpdate;
@@ -357,7 +354,7 @@ namespace RabbitMQ.Stream.Client
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) {OffsetSpec = offsetType},
+            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
                 initialCredit,
                 properties,
                 deliverHandler,
@@ -398,20 +395,24 @@ namespace RabbitMQ.Stream.Client
             return (subscriptionId, response);
         }
 
-        public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
+        public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId, bool ignoreIfAlreadyRemoved = false)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                // here we reduce a bit the timeout to avoid waiting too much
-                // if the client is busy with read operations it can take time to process the unsubscribe
-                // but the subscribe is removed.
-                var result =
-                    await Request<UnsubscribeRequest, UnsubscribeResponse>(corr =>
-                        new UnsubscribeRequest(corr, subscriptionId), TimeSpan.FromSeconds(5)).ConfigureAwait(false);
-                _logger.LogDebug("Unsubscribe request : {SubscriptionId}", subscriptionId);
+                if (!ignoreIfAlreadyRemoved)
+                {
+                    // here we reduce a bit the timeout to avoid waiting too much
+                    // if the client is busy with read operations it can take time to process the unsubscribe
+                    // but the subscribe is removed.
+                    var result =
+                        await Request<UnsubscribeRequest, UnsubscribeResponse>(corr =>
+                                new UnsubscribeRequest(corr, subscriptionId),
+                            TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                    _logger.LogDebug("Unsubscribe request : {SubscriptionId}", subscriptionId);
 
-                return result;
+                    return result;
+                }
             }
             finally
             {
@@ -420,6 +421,8 @@ namespace RabbitMQ.Stream.Client
                 consumers.Remove(subscriptionId);
                 _poolSemaphore.Release();
             }
+
+            return new UnsubscribeResponse();
         }
 
         public async Task<PartitionsQueryResponse> QueryPartition(string superStream)
@@ -798,9 +801,9 @@ namespace RabbitMQ.Stream.Client
 
         public async Task<bool> StreamExists(string stream)
         {
-            var streams = new[] {stream};
+            var streams = new[] { stream };
             var response = await QueryMetadata(streams).ConfigureAwait(false);
-            return response.StreamInfos is {Count: >= 1} &&
+            return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }
 
@@ -847,7 +850,7 @@ namespace RabbitMQ.Stream.Client
             }
             else
             {
-                return new ManualResetValueTaskSource<T>() {RunContinuationsAsynchronously = true};
+                return new ManualResetValueTaskSource<T>() { RunContinuationsAsynchronously = true };
             }
         }
 

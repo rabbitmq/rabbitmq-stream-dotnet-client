@@ -119,7 +119,6 @@ public class RawSuperStreamProducer : IProducer, IDisposable
                 }
 
                 _producers.TryRemove(update.Stream, out var producer);
-                producer?.Close();
             },
             ClientProvidedName = _config.ClientProvidedName,
             BatchSize = _config.BatchSize,
@@ -230,7 +229,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         }
     }
 
-    public Task<ResponseCode> Close()
+    public Task<ResponseCode> Close(bool ignoreIfClosed = false)
     {
         if (_disposed)
         {

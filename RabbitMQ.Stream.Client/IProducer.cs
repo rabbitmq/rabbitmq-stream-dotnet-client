@@ -15,7 +15,7 @@ namespace RabbitMQ.Stream.Client;
 // - Super-Stream producer
 // </summary>
 
-public interface IProducer
+public interface IProducer : IClosable
 {
     /// <summary>
     /// Send the message to the stream in asynchronous mode.
@@ -48,8 +48,6 @@ public interface IProducer
     /// <param name="compressionType"> Type of compression. By default the client supports GZIP and none</param>
     /// <returns></returns>
     public ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType);
-
-    public Task<ResponseCode> Close();
 
     /// <summary>
     /// Return the last publishing id.
