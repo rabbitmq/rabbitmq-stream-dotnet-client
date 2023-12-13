@@ -68,7 +68,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-v2-nuget-
       - name: Wait RabbitMQ is Up 
-        run: docker exec -it ${{ job.services.rabbitmq.id }} rabbitmqctl wait --pid 1 --timeout 60
+        run: docker exec ${{ job.services.rabbitmq.id }} rabbitmqctl wait --pid 1 --timeout 60
       - name: Enable RabbitMQ Plugins
         run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_stream rabbitmq_stream_management rabbitmq_amqp1_0
       - name: Restore
