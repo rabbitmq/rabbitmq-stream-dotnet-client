@@ -169,7 +169,6 @@ RabbitMQ.Stream.Client.Client.ConnectionCloseHandler
 RabbitMQ.Stream.Client.Client.ConnectionProperties.get -> System.Collections.Generic.IDictionary<string, string>
 RabbitMQ.Stream.Client.Client.CreateStream(string stream, System.Collections.Generic.IDictionary<string, string> args) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.CreateResponse>
 RabbitMQ.Stream.Client.Client.Credit(byte subscriptionId, ushort credit) -> System.Threading.Tasks.ValueTask<bool>
-RabbitMQ.Stream.Client.Client.DeletePublisher(byte publisherId) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.DeletePublisherResponse>
 RabbitMQ.Stream.Client.Client.DeleteStream(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.DeleteResponse>
 RabbitMQ.Stream.Client.Client.IncomingFrames.get -> int
 RabbitMQ.Stream.Client.Client.IsClosed.get -> bool

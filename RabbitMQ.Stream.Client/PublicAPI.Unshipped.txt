@@ -1,12 +1,19 @@
-abstract RabbitMQ.Stream.Client.AbstractEntity.Close(bool ignoreIfClosed = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+abstract RabbitMQ.Stream.Client.AbstractEntity.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+abstract RabbitMQ.Stream.Client.AbstractEntity.DeleteEntityFromTheServer(bool ignoreIfAlreadyDeleted = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+abstract RabbitMQ.Stream.Client.AbstractEntity.DumpEntityConfiguration() -> string
+abstract RabbitMQ.Stream.Client.AbstractEntity.GetStream() -> string
 const RabbitMQ.Stream.Client.RouteQueryResponse.Key = 24 -> ushort
 const RabbitMQ.Stream.Client.StreamStatsResponse.Key = 28 -> ushort
 override RabbitMQ.Stream.Client.Broker.ToString() -> string
-override RabbitMQ.Stream.Client.RawConsumer.Close(bool ignoreIfClosed = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
-override RabbitMQ.Stream.Client.RawProducer.Close(bool ignoreIfClosed = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
-RabbitMQ.Stream.Client.AbstractEntity.Dispose(bool disposing, string entityInfo, Microsoft.Extensions.Logging.ILogger logger) -> void
+override RabbitMQ.Stream.Client.RawConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+override RabbitMQ.Stream.Client.RawProducer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+RabbitMQ.Stream.Client.AbstractEntity.Dispose(bool disposing) -> void
+RabbitMQ.Stream.Client.AbstractEntity.EntityId.get -> byte
+RabbitMQ.Stream.Client.AbstractEntity.EntityId.set -> void
 RabbitMQ.Stream.Client.AbstractEntity.IsOpen() -> bool
-RabbitMQ.Stream.Client.AbstractEntity.MaybeCancelToken() -> void
+RabbitMQ.Stream.Client.AbstractEntity.Logger.get -> Microsoft.Extensions.Logging.ILogger
+RabbitMQ.Stream.Client.AbstractEntity.Logger.init -> void
+RabbitMQ.Stream.Client.AbstractEntity.Shutdown(RabbitMQ.Stream.Client.EntityCommonConfig config, bool ignoreIfAlreadyDeleted = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.AbstractEntity.Token.get -> System.Threading.CancellationToken
 RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.AuthMechanism.External = 1 -> RabbitMQ.Stream.Client.AuthMechanism
@@ -19,6 +26,7 @@ RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
 RabbitMQ.Stream.Client.Client.ClientId.get -> string
 RabbitMQ.Stream.Client.Client.ClientId.init -> void
 RabbitMQ.Stream.Client.Client.DeclarePublisher(string publisherRef, string stream, System.Action<System.ReadOnlyMemory<ulong>> confirmCallback, System.Action<(ulong, RabbitMQ.Stream.Client.ResponseCode)[]> errorCallback, RabbitMQ.Stream.Client.ConnectionsPool pool = null) -> System.Threading.Tasks.Task<(byte, RabbitMQ.Stream.Client.DeclarePublisherResponse)>
+RabbitMQ.Stream.Client.Client.DeletePublisher(byte publisherId, bool ignoreIfAlreadyRemoved = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.DeletePublisherResponse>
 RabbitMQ.Stream.Client.Client.ExchangeVersions() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CommandVersionsResponse>
 RabbitMQ.Stream.Client.Client.QueryRoute(string superStream, string routingKey) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.RouteQueryResponse>
 RabbitMQ.Stream.Client.Client.StreamStats(string stream) -> System.Threading.Tasks.ValueTask<RabbitMQ.Stream.Client.StreamStatsResponse>
@@ -63,11 +71,12 @@ RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference
 RabbitMQ.Stream.Client.ConsumerInfo.Reference.get -> string
 RabbitMQ.Stream.Client.CrcException
 RabbitMQ.Stream.Client.CrcException.CrcException(string s) -> void
+RabbitMQ.Stream.Client.EntityCommonConfig
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
 RabbitMQ.Stream.Client.IClient.ClientId.get -> string
 RabbitMQ.Stream.Client.IClient.ClientId.init -> void
 RabbitMQ.Stream.Client.IClosable
-RabbitMQ.Stream.Client.IClosable.Close(bool ignoreIfClosed = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+RabbitMQ.Stream.Client.IClosable.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.IConsumer.Info.get -> RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.IConsumerConfig.Crc32.get -> RabbitMQ.Stream.Client.ICrc32
 RabbitMQ.Stream.Client.IConsumerConfig.Crc32.set -> void
@@ -128,9 +137,9 @@ RabbitMQ.Stream.Client.PublishFilter.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.PublishFilter.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.RawConsumer.Info.get -> RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.RawProducer.Info.get -> RabbitMQ.Stream.Client.ProducerInfo
-RabbitMQ.Stream.Client.RawSuperStreamConsumer.Close(bool ignoreIfClosed = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+RabbitMQ.Stream.Client.RawSuperStreamConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.RawSuperStreamConsumer.Info.get -> RabbitMQ.Stream.Client.ConsumerInfo
-RabbitMQ.Stream.Client.RawSuperStreamProducer.Close(bool ignoreIfClosed = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+RabbitMQ.Stream.Client.RawSuperStreamProducer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.RawSuperStreamProducer.Info.get -> RabbitMQ.Stream.Client.ProducerInfo
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.set -> void

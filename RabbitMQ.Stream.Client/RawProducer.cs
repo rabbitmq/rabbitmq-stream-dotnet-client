@@ -57,18 +57,18 @@ namespace RabbitMQ.Stream.Client
 
     public class RawProducer : AbstractEntity, IProducer, IDisposable
     {
-        private byte _publisherId;
         private readonly RawProducerConfig _config;
         private readonly Channel<OutgoingMsg> _messageBuffer;
         private readonly SemaphoreSlim _semaphore;
-        private readonly ILogger _logger;
 
         public int PendingCount => _config.MaxInFlight - _semaphore.CurrentCount;
 
-        private string ProducerInfo()
+        protected override string GetStream() => _config.Stream;
+
+        protected override string DumpEntityConfiguration()
         {
             return
-                $"Producer id {_publisherId} for stream: {_config.Stream}, reference: {_config.Reference}," +
+                $"Producer id {EntityId} for stream: {_config.Stream}, reference: {_config.Reference}," +
                 $"Client ProvidedName {_config.ClientProvidedName}, " +
                 $"Token IsCancellationRequested: {Token.IsCancellationRequested} ";
         }
@@ -101,7 +101,7 @@ namespace RabbitMQ.Stream.Client
                 SingleWriter = false,
                 FullMode = BoundedChannelFullMode.Wait
             });
-            _logger = logger ?? NullLogger.Instance;
+            Logger = logger ?? NullLogger.Instance;
             Task.Run(ProcessBuffer);
             _semaphore = new SemaphoreSlim(config.MaxInFlight, config.MaxInFlight);
         }
@@ -113,13 +113,12 @@ namespace RabbitMQ.Stream.Client
 
         private async Task Init()
         {
-
             _config.Validate();
 
             _client.ConnectionClosed += OnConnectionClosed();
             _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
 
-            (_publisherId, var response) = await _client.DeclarePublisher(
+            (EntityId, var response) = await _client.DeclarePublisher(
                 _config.Reference,
                 _config.Stream,
                 publishingIds =>
@@ -141,8 +140,9 @@ namespace RabbitMQ.Stream.Client
                             // there could be an exception in the user code. 
                             // So here we log the exception and we continue.
 
-                            _logger.LogError(e, "Error during confirm handler, publishing id: {Id}. {ProducerInfo} " +
-                                                "Hint: Check the user ConfirmHandler callback", id, ProducerInfo());
+                            Logger.LogError(e, "Error during confirm handler, publishing id: {Id}. {ProducerInfo} " +
+                                               "Hint: Check the user ConfirmHandler callback", id,
+                                DumpEntityConfiguration());
                         }
                     }
 
@@ -170,12 +170,13 @@ namespace RabbitMQ.Stream.Client
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
             async reason =>
             {
-                await Close().ConfigureAwait(false);
                 _config.Pool.Remove(_client.ClientId);
+                await Shutdown(_config, true).ConfigureAwait(false);
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
+
                 // remove the event since the connection is closed
                 _client.ConnectionClosed -= OnConnectionClosed();
             };
@@ -193,7 +194,7 @@ namespace RabbitMQ.Stream.Client
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid to send the DeletePublisher
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
-                Close(true).ConfigureAwait(false);
+                Shutdown(_config, true).ConfigureAwait(false);
 
                 // remove the event since the producer is closed
                 // only if the stream is the valid
@@ -218,7 +219,7 @@ namespace RabbitMQ.Stream.Client
             {
                 await SemaphoreAwaitAsync().ConfigureAwait(false);
                 var publishTask =
-                    _client.Publish(new SubEntryPublish(_publisherId, publishingId,
+                    _client.Publish(new SubEntryPublish(EntityId, publishingId,
                         CompressionHelper.Compress(subEntryMessages, compressionType)));
                 await publishTask.ConfigureAwait(false);
             }
@@ -276,13 +277,13 @@ namespace RabbitMQ.Stream.Client
         {
             if (IsFilteringEnabled)
             {
-                await _client.Publish(new PublishFilter(_publisherId, messages, _config.Filter.FilterValue,
-                        _logger))
+                await _client.Publish(new PublishFilter(EntityId, messages, _config.Filter.FilterValue,
+                        Logger))
                     .ConfigureAwait(false);
             }
             else
             {
-                await _client.Publish(new Publish(_publisherId, messages)).ConfigureAwait(false);
+                await _client.Publish(new Publish(EntityId, messages)).ConfigureAwait(false);
             }
 
             if (clearMessagesList)
@@ -328,7 +329,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             await SemaphoreAwaitAsync().ConfigureAwait(false);
-            var msg = new OutgoingMsg(_publisherId, publishingId, message);
+            var msg = new OutgoingMsg(EntityId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait
             if (!_messageBuffer.Writer.TryWrite(msg))
@@ -363,52 +364,41 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "error while Process Buffer");
+                Logger.LogError(e, "error while Process Buffer");
             }
         }
 
-        public override async Task<ResponseCode> Close(bool ignoreIfClosed = false)
+        public override async Task<ResponseCode> Close()
         {
-            // MaybeCancelToken This unlocks the semaphore so that the background task can exit
-            // see SemaphoreAwaitAsync method and processBuffer method
-            MaybeCancelToken();
+            return await Shutdown(_config).ConfigureAwait(false);
+        }
 
-            if (!IsOpen()) // the client is already closed
-            {
-                return ResponseCode.Ok;
-            }
-
-            _status = EntityStatus.Closed;
-            var result = ResponseCode.Ok;
-
+        protected override async Task<ResponseCode> DeleteEntityFromTheServer(bool ignoreIfAlreadyDeleted = false)
+        {
             try
             {
                 // The  default timeout is usually 10 seconds 
                 // in this case we reduce the waiting time
                 // the producer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                var closeResponse = await _client.DeletePublisher(_publisherId).WaitAsync(TimeSpan.FromSeconds(3))
+                var closeResponse = await _client.DeletePublisher(EntityId, ignoreIfAlreadyDeleted)
+                    .WaitAsync(TimeSpan.FromSeconds(3))
                     .ConfigureAwait(false);
-                result = closeResponse.ResponseCode;
+                return closeResponse.ResponseCode;
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error removing {ProducerInfo} from the server", ProducerInfo());
+                Logger.LogError(e, "Error removing {ProducerInfo} from the server", DumpEntityConfiguration());
             }
 
-            var closed = await _client.MaybeClose($"client-close-publisher: {_publisherId}",
-                    _config.Stream, _config.Pool)
-                .ConfigureAwait(false);
-            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"client-close-publisher: {_publisherId}");
-            _logger?.LogDebug("{ProducerInfo} closed", ProducerInfo());
-            return result;
+            return ResponseCode.Ok;
         }
 
         public void Dispose()
         {
             try
             {
-                Dispose(true, ProducerInfo(), _logger);
+                Dispose(true);
             }
             finally
             {

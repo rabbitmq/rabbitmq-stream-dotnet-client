@@ -9,6 +9,12 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
+
+    public abstract record EntityCommonConfig
+    {
+        internal ConnectionsPool Pool { get; set; }
+    }
+
     internal enum EntityStatus
     {
         Open,
@@ -18,28 +24,73 @@ namespace RabbitMQ.Stream.Client
 
     public interface IClosable
     {
-        public Task<ResponseCode> Close(bool ignoreIfClosed = false);
+        public Task<ResponseCode> Close();
     }
 
     public abstract class AbstractEntity : IClosable
     {
         private readonly CancellationTokenSource _cancelTokenSource = new();
         protected CancellationToken Token => _cancelTokenSource.Token;
-
+        protected ILogger Logger { get; init; }
         internal EntityStatus _status = EntityStatus.Closed;
+
+        protected byte EntityId { get; set; }
+        protected abstract string GetStream();
+        protected abstract string DumpEntityConfiguration();
 
         // here the _cancelTokenSource is disposed and the token is cancelled
         // in producer is used to cancel the send task
         // in consumer is used to cancel the receive task
-        protected void MaybeCancelToken()
+        private void MaybeCancelToken()
         {
             if (!_cancelTokenSource.IsCancellationRequested)
                 _cancelTokenSource.Cancel();
         }
 
-        public abstract Task<ResponseCode> Close(bool ignoreIfClosed = false);
+        public abstract Task<ResponseCode> Close();
 
-        protected void Dispose(bool disposing, string entityInfo, ILogger logger)
+        /// <summary>
+        /// Remove the producer or consumer from the server
+        /// </summary>
+        /// <param name="ignoreIfAlreadyDeleted"> In case the producer or consumer is already removed from the server.
+        /// ex: metadata update </param>
+        /// <returns></returns>
+        protected abstract Task<ResponseCode> DeleteEntityFromTheServer(bool ignoreIfAlreadyDeleted = false);
+
+        /// <summary>
+        /// Internal close method. It is called by the public Close method.
+        /// Set the status to closed and remove the producer or consumer from the server ( if it is not already removed )
+        /// Close the TCP connection if it is not already closed or it is needed.
+        /// </summary>
+        /// <param name="config">The connection pool instance</param>
+        /// <param name="ignoreIfAlreadyDeleted"></param>
+        /// <returns></returns>
+        protected async Task<ResponseCode> Shutdown(EntityCommonConfig config, bool ignoreIfAlreadyDeleted = false)
+        {
+            MaybeCancelToken();
+
+            if (!IsOpen()) // the client is already closed
+            {
+                return ResponseCode.Ok;
+            }
+
+            _status = EntityStatus.Closed;
+            var result = await DeleteEntityFromTheServer(ignoreIfAlreadyDeleted).ConfigureAwait(false);
+
+            if (_client is { IsClosed: true })
+            {
+                return result;
+            }
+
+            var closed = await _client.MaybeClose($"closing: {EntityId}",
+                    GetStream(), config.Pool)
+                .ConfigureAwait(false);
+            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-Entity: {EntityId}");
+            Logger.LogDebug("{EntityInfo} is closed", DumpEntityConfiguration());
+            return result;
+        }
+
+        protected void Dispose(bool disposing)
         {
             if (!disposing)
             {
@@ -56,12 +107,12 @@ namespace RabbitMQ.Stream.Client
                 var closeTask = Close();
                 if (!closeTask.Wait(Consts.MidWait))
                 {
-                    logger.LogWarning("Failed to close {EntityInfo} in time", entityInfo);
+                    Logger?.LogWarning("Failed to close {EntityInfo} in time", DumpEntityConfiguration());
                 }
             }
             catch (Exception e)
             {
-                logger?.LogWarning("Failed to close {EntityInfo}, error {Error} ", entityInfo, e.Message);
+                Logger?.LogWarning("Failed to close {EntityInfo}, error {Error} ", DumpEntityConfiguration(), e.Message);
             }
             finally
             {

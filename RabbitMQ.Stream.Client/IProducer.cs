@@ -81,10 +81,8 @@ public record ProducerFilter
     public Func<Message, string> FilterValue { get; set; } = null;
 }
 
-public record IProducerConfig : INamedEntity
+public record IProducerConfig : EntityCommonConfig, INamedEntity
 {
-
-    internal ConnectionsPool Pool { get; set; }
 
     public string Reference { get; set; }
     public int MaxInFlight { get; set; } = 1_000;

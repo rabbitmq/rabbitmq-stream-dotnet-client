@@ -196,7 +196,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
         throw new NotImplementedException("use the store offset on the stream consumer, instead");
     }
 
-    public Task<ResponseCode> Close(bool ignoreIfClosed = false)
+    public Task<ResponseCode> Close()
     {
         if (_disposed)
         {

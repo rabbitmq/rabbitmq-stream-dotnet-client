@@ -229,7 +229,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         }
     }
 
-    public Task<ResponseCode> Close(bool ignoreIfClosed = false)
+    public Task<ResponseCode> Close()
     {
         if (_disposed)
         {
