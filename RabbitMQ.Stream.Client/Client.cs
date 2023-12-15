@@ -560,7 +560,6 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case MetaDataUpdate.Key:
                     MetaDataUpdate.Read(frame, out var metaDataUpdate);
-                    // Parameters.MetadataHandler(metaDataUpdate);
                     Parameters.FireMetadataUpdate(metaDataUpdate);
                     break;
                 case TuneResponse.Key:
