@@ -77,7 +77,12 @@ namespace Tests
         {
             var stream = Guid.NewGuid().ToString();
             var testPassed = new TaskCompletionSource<MetaDataUpdate>();
-            var clientParameters = new ClientParameters { MetadataHandler = m => testPassed.SetResult(m) };
+            var clientParameters = new ClientParameters();
+            clientParameters.OnMetadataUpdate += (update) =>
+            {
+                testPassed.SetResult(update);
+            };
+
             var client = await Client.Create(clientParameters);
             await client.CreateStream(stream, new Dictionary<string, string>());
             Action<ReadOnlyMemory<ulong>> confirmed = (pubIds) => { };

@@ -15,7 +15,7 @@ namespace RabbitMQ.Stream.Client;
 // - Super-Stream producer
 // </summary>
 
-public interface IProducer
+public interface IProducer : IClosable
 {
     /// <summary>
     /// Send the message to the stream in asynchronous mode.
@@ -49,8 +49,6 @@ public interface IProducer
     /// <returns></returns>
     public ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType);
 
-    public Task<ResponseCode> Close();
-
     /// <summary>
     /// Return the last publishing id.
     /// </summary>
@@ -83,10 +81,8 @@ public record ProducerFilter
     public Func<Message, string> FilterValue { get; set; } = null;
 }
 
-public record IProducerConfig : INamedEntity
+public record IProducerConfig : EntityCommonConfig, INamedEntity
 {
-
-    internal ConnectionsPool Pool { get; set; }
 
     public string Reference { get; set; }
     public int MaxInFlight { get; set; } = 1_000;

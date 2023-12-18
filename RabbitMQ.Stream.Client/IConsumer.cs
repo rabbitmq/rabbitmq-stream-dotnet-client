@@ -7,20 +7,17 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
-public interface IConsumer
+public interface IConsumer : IClosable
 {
     public Task StoreOffset(ulong offset);
-    public Task<ResponseCode> Close();
     public void Dispose();
 
     public ConsumerInfo Info { get; }
 }
 
-public record IConsumerConfig : INamedEntity
+public record IConsumerConfig : EntityCommonConfig, INamedEntity
 {
     private ushort _initialCredits = Consts.ConsumerInitialCredits;
-
-    internal ConnectionsPool Pool { get; set; }
 
     // StoredOffsetSpec configuration it is needed to keep the offset spec.
     // since the offset can be decided from the ConsumerConfig.OffsetSpec.

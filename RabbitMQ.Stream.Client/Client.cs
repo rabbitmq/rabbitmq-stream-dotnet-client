@@ -53,7 +53,9 @@ namespace RabbitMQ.Stream.Client
         public string VirtualHost { get; set; } = "/";
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
 
-        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+        public delegate void MetadataUpdateHandler(MetaDataUpdate update);
+
+        public event MetadataUpdateHandler OnMetadataUpdate;
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
         public TimeSpan Heartbeat { get; set; } = TimeSpan.FromMinutes(1);
 
@@ -71,6 +73,11 @@ namespace RabbitMQ.Stream.Client
         public AddressResolver AddressResolver { get; set; } = null;
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
+
+        internal void FireMetadataUpdate(MetaDataUpdate metaDataUpdate)
+        {
+            OnMetadataUpdate?.Invoke(metaDataUpdate);
+        }
     }
 
     internal readonly struct OutgoingMsg : ICommand
@@ -213,7 +220,8 @@ namespace RabbitMQ.Stream.Client
                     .ConfigureAwait(false);
             logger?.LogDebug("Sasl mechanism: {Mechanisms}", saslHandshakeResponse.Mechanisms);
 
-            var isValid = saslHandshakeResponse.Mechanisms.Contains(parameters.AuthMechanism.ToString().ToUpperInvariant(),
+            var isValid = saslHandshakeResponse.Mechanisms.Contains(
+                parameters.AuthMechanism.ToString().ToUpperInvariant(),
                 StringComparer.OrdinalIgnoreCase);
             if (!isValid)
             {
@@ -225,7 +233,8 @@ namespace RabbitMQ.Stream.Client
             var authResponse =
                 await client
                     .Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
-                        new SaslAuthenticateRequest(corr, parameters.AuthMechanism.ToString().ToUpperInvariant(), saslData))
+                        new SaslAuthenticateRequest(corr, parameters.AuthMechanism.ToString().ToUpperInvariant(),
+                            saslData))
                     .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(authResponse.ResponseCode, parameters.UserName);
 
@@ -322,22 +331,28 @@ namespace RabbitMQ.Stream.Client
             return (publisherId, response);
         }
 
-        public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId)
+        public async Task<DeletePublisherResponse> DeletePublisher(byte publisherId,
+            bool ignoreIfAlreadyRemoved = false)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                var result =
-                    await Request<DeletePublisherRequest, DeletePublisherResponse>(corr =>
-                        new DeletePublisherRequest(corr, publisherId)).ConfigureAwait(false);
+                if (!ignoreIfAlreadyRemoved)
+                {
+                    var result =
+                        await Request<DeletePublisherRequest, DeletePublisherResponse>(corr =>
+                            new DeletePublisherRequest(corr, publisherId)).ConfigureAwait(false);
 
-                return result;
+                    return result;
+                }
             }
             finally
             {
                 publishers.Remove(publisherId);
                 _poolSemaphore.Release();
             }
+
+            return new DeletePublisherResponse();
         }
 
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType,
@@ -386,20 +401,24 @@ namespace RabbitMQ.Stream.Client
             return (subscriptionId, response);
         }
 
-        public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId)
+        public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId, bool ignoreIfAlreadyRemoved = false)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                // here we reduce a bit the timeout to avoid waiting too much
-                // if the client is busy with read operations it can take time to process the unsubscribe
-                // but the subscribe is removed.
-                var result =
-                    await Request<UnsubscribeRequest, UnsubscribeResponse>(corr =>
-                        new UnsubscribeRequest(corr, subscriptionId), TimeSpan.FromSeconds(5)).ConfigureAwait(false);
-                _logger.LogDebug("Unsubscribe request : {SubscriptionId}", subscriptionId);
+                if (!ignoreIfAlreadyRemoved)
+                {
+                    // here we reduce a bit the timeout to avoid waiting too much
+                    // if the client is busy with read operations it can take time to process the unsubscribe
+                    // but the subscribe is removed.
+                    var result =
+                        await Request<UnsubscribeRequest, UnsubscribeResponse>(corr =>
+                                new UnsubscribeRequest(corr, subscriptionId),
+                            TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+                    _logger.LogDebug("Unsubscribe request : {SubscriptionId}", subscriptionId);
 
-                return result;
+                    return result;
+                }
             }
             finally
             {
@@ -408,6 +427,8 @@ namespace RabbitMQ.Stream.Client
                 consumers.Remove(subscriptionId);
                 _poolSemaphore.Release();
             }
+
+            return new UnsubscribeResponse();
         }
 
         public async Task<PartitionsQueryResponse> QueryPartition(string superStream)
@@ -477,12 +498,25 @@ namespace RabbitMQ.Stream.Client
                 case PublishConfirm.Key:
                     PublishConfirm.Read(frame, out var confirm);
                     confirmFrames += 1;
-                    var (confirmCallback, _) = publishers[confirm.PublisherId];
-                    confirmCallback(confirm.PublishingIds);
-                    if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out var confirmSegment))
+                    if (publishers.TryGetValue(confirm.PublisherId, out var publisherConf))
                     {
-                        if (confirmSegment.Array != null)
-                            ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
+                        var (confirmCallback, _) = publisherConf;
+                        confirmCallback(confirm.PublishingIds);
+                        if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out var confirmSegment))
+                        {
+                            if (confirmSegment.Array != null)
+                                ArrayPool<ulong>.Shared.Return(confirmSegment.Array);
+                        }
+                    }
+                    else
+                    {
+                        // the producer is not found, this can happen when the producer is closing
+                        // and there are still confirmation on the wire 
+                        // we can ignore the error since the producer does not exists anymore
+                        _logger?.LogDebug(
+                            "Could not find stream producer {ID} or producer is closing." +
+                            "A possible cause it that the producer was closed and the are still confirmation on the wire. ",
+                            confirm.PublisherId);
                     }
 
                     break;
@@ -507,12 +541,26 @@ namespace RabbitMQ.Stream.Client
                     break;
                 case PublishError.Key:
                     PublishError.Read(frame, out var error);
-                    var (_, errorCallback) = publishers[error.PublisherId];
-                    errorCallback(error.PublishingErrors);
+                    if (publishers.TryGetValue(error.PublisherId, out var publisher))
+                    {
+                        var (_, errorCallback) = publisher;
+                        errorCallback(error.PublishingErrors);
+                    }
+                    else
+                    {
+                        // the producer is not found, this can happen when the producer is closing
+                        // and there are still confirmation on the wire 
+                        // we can ignore the error since the producer does not exists anymore
+                        _logger?.LogDebug(
+                            "Could not find stream producer {ID} or producer is closing." +
+                            "A possible cause it that the producer was closed and the are still confirmation on the wire. ",
+                            error.PublisherId);
+                    }
+
                     break;
                 case MetaDataUpdate.Key:
                     MetaDataUpdate.Read(frame, out var metaDataUpdate);
-                    Parameters.MetadataHandler(metaDataUpdate);
+                    Parameters.FireMetadataUpdate(metaDataUpdate);
                     break;
                 case TuneResponse.Key:
                     TuneResponse.Read(frame, out var tuneResponse);
