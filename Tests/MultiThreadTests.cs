@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2023 VMware, Inc.
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -104,7 +105,14 @@ public class MultiThreadTests
             });
             for (var j = 0; j < 10000; j++)
             {
-                await producer.Send(new Message(new byte[3]));
+                try
+                {
+                    await producer.Send(new Message(new byte[3]));
+                }
+                catch (Exception e)
+                {
+                    Assert.True(e is AlreadyClosedException);
+                }
             }
 
             SystemUtils.WaitUntil(() => producers.TrueForAll(c => !c.IsOpen()));
