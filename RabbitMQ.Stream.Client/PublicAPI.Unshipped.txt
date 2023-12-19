@@ -14,7 +14,10 @@ RabbitMQ.Stream.Client.AbstractEntity.IsOpen() -> bool
 RabbitMQ.Stream.Client.AbstractEntity.Logger.get -> Microsoft.Extensions.Logging.ILogger
 RabbitMQ.Stream.Client.AbstractEntity.Logger.init -> void
 RabbitMQ.Stream.Client.AbstractEntity.Shutdown(RabbitMQ.Stream.Client.EntityCommonConfig config, bool ignoreIfAlreadyDeleted = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
+RabbitMQ.Stream.Client.AbstractEntity.ThrowIfClosed() -> void
 RabbitMQ.Stream.Client.AbstractEntity.Token.get -> System.Threading.CancellationToken
+RabbitMQ.Stream.Client.AlreadyClosedException
+RabbitMQ.Stream.Client.AlreadyClosedException.AlreadyClosedException(string s) -> void
 RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.AuthMechanism.External = 1 -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.AuthMechanism.Plain = 0 -> RabbitMQ.Stream.Client.AuthMechanism

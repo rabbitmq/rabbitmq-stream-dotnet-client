@@ -136,6 +136,14 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         return p;
     }
 
+    protected void ThrowIfClosed()
+    {
+        if (!IsOpen())
+        {
+            throw new AlreadyClosedException($"Super stream {_config.SuperStream} is closed.");
+        }
+    }
+
     private async Task<IProducer> GetProducer(string stream)
     {
         if (!_producers.ContainsKey(stream))
@@ -170,12 +178,14 @@ public class RawSuperStreamProducer : IProducer, IDisposable
 
     public async ValueTask Send(ulong publishingId, Message message)
     {
+        ThrowIfClosed();
         var producer = await GetProducerForMessage(message).ConfigureAwait(false);
         await producer.Send(publishingId, message).ConfigureAwait(false);
     }
 
     public async ValueTask Send(List<(ulong, Message)> messages)
     {
+        ThrowIfClosed();
         var aggregate = new List<(IProducer, List<(ulong, Message)>)>();
 
         // this part is not super-optimized
@@ -203,6 +213,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
 
     public async ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType)
     {
+        ThrowIfClosed();
         var aggregate = new List<(IProducer, List<Message>)>();
 
         // this part is not super-optimized

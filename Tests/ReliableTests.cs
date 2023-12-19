@@ -557,7 +557,7 @@ public class ReliableTests
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var c = new FakeThrowExceptionConsumer(new ConsumerConfig(system, stream),
             exception);
-        Assert.True(ReliableBase.IsAKnownException(exception));
+        Assert.True(ClientExceptions.IsAKnownException(exception));
         await c.Init(new BackOffReconnectStrategy());
         // Here the Consumer should be open
         // The exception is raised only the first time

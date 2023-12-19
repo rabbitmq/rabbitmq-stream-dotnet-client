@@ -3,7 +3,7 @@
 // Copyright (c) 2007-2023 VMware, Inc.
 
 using System;
-using System.Net.Sockets;
+
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -67,7 +67,7 @@ public abstract class ReliableBase
 
         catch (Exception e)
         {
-            reconnect = IsAKnownException(e);
+            reconnect = ClientExceptions.IsAKnownException(e);
             LogException(e);
             if (!reconnect)
             {
@@ -143,7 +143,8 @@ public abstract class ReliableBase
         await Task.Delay(500).ConfigureAwait(false);
         if (await system.StreamExists(stream).ConfigureAwait(false))
         {
-            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
+            BaseLogger.LogInformation(
+                "Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
                 stream,
                 ToString()
             );
@@ -164,31 +165,11 @@ public abstract class ReliableBase
         }
     }
 
-    // <summary>
-    /// IsAKnownException returns true if the exception is a known exception
-    /// We need it to reconnect when the producer/consumer.
-    /// - LeaderNotFoundException is a temporary exception
-    ///   It means that the leader is not available and the client can't reconnect.
-    ///   Especially the Producer that needs to know the leader.
-    /// - SocketException
-    ///   Client is trying to connect in a not ready endpoint.
-    ///   It is usually a temporary situation.
-    /// -  TimeoutException
-    ///    Some call went in timeout. Maybe a temporary DNS problem.
-    ///    In this case we can try to reconnect.
-    ///
-    ///  For the other kind of exception, we just throw back the exception.
-    //</summary>
-    internal static bool IsAKnownException(Exception exception)
-    {
-        return exception is (SocketException or TimeoutException or LeaderNotFoundException);
-    }
-
     private void LogException(Exception exception)
     {
         const string KnownExceptionTemplate = "{Identity} trying to reconnect due to exception";
         const string UnknownExceptionTemplate = "{Identity} received an exception during initialization";
-        if (IsAKnownException(exception))
+        if (ClientExceptions.IsAKnownException(exception))
         {
             BaseLogger.LogError(exception, KnownExceptionTemplate, ToString());
         }
