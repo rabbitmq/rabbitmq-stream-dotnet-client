@@ -21,7 +21,7 @@ namespace RabbitMQ.Stream.Client
         ///   Client is trying to connect in a not ready endpoint.
         ///   It is usually a temporary situation.
         /// -  TimeoutException
-        ///    Some call went in timeout. Maybe a temporary DNS problem.
+        ///    Network call timed out. It is often a temporary situation and we should retry.
         ///    In this case we can try to reconnect.
         ///
         ///  For the other kind of exception, we just throw back the exception.
