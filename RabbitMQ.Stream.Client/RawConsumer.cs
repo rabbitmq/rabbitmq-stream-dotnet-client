@@ -87,14 +87,14 @@ namespace RabbitMQ.Stream.Client
 
             switch (ConsumerFilter)
             {
-                case { PostFilter: null }:
+                case {PostFilter: null}:
                     throw new ArgumentException("PostFilter must be provided when Filter is set");
-                case { Values.Count: 0 }:
+                case {Values.Count: 0}:
                     throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
+        internal bool IsFiltering => ConsumerFilter is {Values.Count: > 0};
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -177,6 +177,7 @@ namespace RabbitMQ.Stream.Client
         {
             return _config.Stream;
         }
+
         public async Task StoreOffset(ulong offset)
         {
             await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
@@ -528,7 +529,8 @@ namespace RabbitMQ.Stream.Client
                         {
                             Logger?.LogError(
                                 "CRC32 does not match, server crc: {Crc}, local crc: {CrcCalculated}, {EntityInfo}, " +
-                                "Chunk Consumed {ChunkConsumed}", deliver.Chunk.Crc, crcCalculated, DumpEntityConfiguration(),
+                                "Chunk Consumed {ChunkConsumed}", deliver.Chunk.Crc, crcCalculated,
+                                DumpEntityConfiguration(),
                                 chunkConsumed);
 
                             throw new CrcException(
@@ -537,7 +539,20 @@ namespace RabbitMQ.Stream.Client
                         }
                     }
 
-                    await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
+                    try
+                    {
+                        await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // The consumer is closing from the user but some chunks are still in the buffer
+                        // simply skip the chunk since the Token.IsCancellationRequested is true
+                        // the catch is needed to avoid to propagate the exception to the socket thread.
+                        Logger?.LogWarning(
+                            "OperationCanceledException. {EntityInfo} has been closed while consuming messages. " +
+                            "Token.IsCancellationRequested: {IsCancellationRequested}",
+                            DumpEntityConfiguration(), Token.IsCancellationRequested);
+                    }
                 }, async promotedAsActive =>
                 {
                     if (_config.ConsumerUpdateListener != null)
@@ -628,11 +643,14 @@ namespace RabbitMQ.Stream.Client
             }
 
             return ResponseCode.Ok;
-
         }
 
         public override async Task<ResponseCode> Close()
         {
+            // when the consumer is closed we must be sure that the 
+            // the subscription is completed to avoid problems with the connection
+            // It could happen when the closing is called just after the creation
+            await _completeSubscription.Task.ConfigureAwait(false);
             return await Shutdown(_config).ConfigureAwait(false);
         }
 
