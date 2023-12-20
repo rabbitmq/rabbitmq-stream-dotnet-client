@@ -142,6 +142,14 @@ public class Producer : ProducerFactory
         _logger = logger ?? NullLogger<Producer>.Instance;
     }
 
+    private void ThrowIfClosed()
+    {
+        if (!_isOpen)
+        {
+            throw new AlreadyClosedException("Producer is closed");
+        }
+    }
+
     /// <summary>
     /// Create a new Producer.
     /// <param name="producerConfig">Producer Configuration. Where StreamSystem and Stream are mandatory.</param>
@@ -241,6 +249,7 @@ public class Producer : ProducerFactory
 
     internal async ValueTask SendInternal(ulong publishingId, Message message)
     {
+        ThrowIfClosed();
         _confirmationPipe.AddUnConfirmedMessage(publishingId, message);
         try
         {
@@ -249,9 +258,16 @@ public class Producer : ProducerFactory
             // In this case it skips the publish until
             // the producer is connected. Messages are safe since are stored 
             // on the _waitForConfirmation list. The user will get Timeout Error
-            if (!(_inReconnection))
+            if (!_inReconnection)
             {
-                await _producer.Send(publishingId, message).ConfigureAwait(false);
+                if (_producer.IsOpen())
+                {
+                    await _producer.Send(publishingId, message).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger?.LogDebug("The internal producer is closed. Message will be timed out");
+                }
             }
         }
 
@@ -284,6 +300,7 @@ public class Producer : ProducerFactory
     /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
+        ThrowIfClosed();
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         Interlocked.Increment(ref _publishingId);
         _confirmationPipe.AddUnConfirmedMessage(_publishingId, messages);
@@ -291,7 +308,14 @@ public class Producer : ProducerFactory
         {
             if (!_inReconnection)
             {
-                await _producer.Send(_publishingId, messages, compressionType).ConfigureAwait(false);
+                if (_producer.IsOpen())
+                {
+                    await _producer.Send(_publishingId, messages, compressionType).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger?.LogDebug("The internal producer is closed. Message will be timed out");
+                }
             }
         }
 
@@ -330,6 +354,7 @@ public class Producer : ProducerFactory
     /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(List<Message> messages)
     {
+        ThrowIfClosed();
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         var messagesToSend = new List<(ulong, Message)>();
         foreach (var message in messages)
@@ -352,7 +377,14 @@ public class Producer : ProducerFactory
             // on the _waitForConfirmation list. The user will get Timeout Error
             if (!(_inReconnection))
             {
-                await _producer.Send(messagesToSend).ConfigureAwait(false);
+                if (_producer.IsOpen())
+                {
+                    await _producer.Send(messagesToSend).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger?.LogDebug("The internal producer is closed. Message will be timed out");
+                }
             }
         }
 

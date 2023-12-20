@@ -38,6 +38,14 @@ namespace RabbitMQ.Stream.Client
         protected abstract string GetStream();
         protected abstract string DumpEntityConfiguration();
 
+        protected void ThrowIfClosed()
+        {
+            if (!IsOpen())
+            {
+                throw new AlreadyClosedException($"{DumpEntityConfiguration()} is closed.");
+            }
+        }
+
         // here the _cancelTokenSource is disposed and the token is cancelled
         // in producer is used to cancel the send task
         // in consumer is used to cancel the receive task

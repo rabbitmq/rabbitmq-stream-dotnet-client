@@ -3,11 +3,42 @@
 // Copyright (c) 2007-2023 VMware, Inc.
 
 using System;
+using System.Linq;
+using System.Net.Sockets;
 
 namespace RabbitMQ.Stream.Client
 {
     internal static class ClientExceptions
     {
+
+        // <summary>
+        /// IsAKnownException returns true if the exception is a known exception
+        /// We need it to reconnect when the producer/consumer.
+        /// - LeaderNotFoundException is a temporary exception
+        ///   It means that the leader is not available and the client can't reconnect.
+        ///   Especially the Producer that needs to know the leader.
+        /// - SocketException
+        ///   Client is trying to connect in a not ready endpoint.
+        ///   It is usually a temporary situation.
+        /// -  TimeoutException
+        ///    Network call timed out. It is often a temporary situation and we should retry.
+        ///    In this case we can try to reconnect.
+        ///
+        ///  For the other kind of exception, we just throw back the exception.
+        //</summary>
+        internal static bool IsAKnownException(Exception exception)
+        {
+            if (exception is AggregateException aggregateException)
+            {
+                var x = aggregateException.InnerExceptions.Select(x =>
+                    x.GetType() == typeof(SocketException) || x.GetType() == typeof(TimeoutException) ||
+                    x.GetType() == typeof(LeaderNotFoundException));
+                return x.Any();
+            }
+
+            return exception is (SocketException or TimeoutException or LeaderNotFoundException);
+        }
+
         public static void MaybeThrowException(ResponseCode responseCode, string message)
         {
             if (responseCode is ResponseCode.Ok)
@@ -24,6 +55,14 @@ namespace RabbitMQ.Stream.Client
                 //TODO Implement for all the response code
                 _ => new GenericProtocolException(responseCode, message)
             };
+        }
+    }
+
+    public class AlreadyClosedException : Exception
+    {
+        public AlreadyClosedException(string s)
+            : base(s)
+        {
         }
     }
 

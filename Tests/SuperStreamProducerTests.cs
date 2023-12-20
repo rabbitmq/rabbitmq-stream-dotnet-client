@@ -459,50 +459,6 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void ShouldRaiseAObjectDisposedExceptionWhenClose()
-    {
-        SystemUtils.ResetSuperStreams();
-
-        // This test is for OpenClose Status 
-        // When the producer is closed it should raise ObjectDisposedException
-        var system = await StreamSystem.Create(new StreamSystemConfig());
-        var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
-            {
-                Routing = message1 => message1.Properties.MessageId.ToString()
-            });
-        Assert.True(streamProducer.IsOpen());
-        Assert.True(await streamProducer.Close() == ResponseCode.Ok);
-        Assert.False(streamProducer.IsOpen());
-        await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
-        {
-            await streamProducer.Send(1, new Message(Encoding.Default.GetBytes("hello")));
-        });
-    }
-
-    [Fact]
-    public async void ShouldRaiseAObjectDisposedExceptionWhenCloseWhitDispose()
-    {
-        SystemUtils.ResetSuperStreams();
-
-        // This test is for using and Dispose  
-        var system = await StreamSystem.Create(new StreamSystemConfig());
-        var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
-            {
-                Routing = message1 => message1.Properties.MessageId.ToString()
-            });
-        Assert.True(streamProducer.IsOpen());
-        streamProducer.Dispose();
-        Assert.True(await streamProducer.Close() == ResponseCode.Ok);
-        Assert.False(streamProducer.IsOpen());
-        await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
-        {
-            await streamProducer.Send(1, new Message(Encoding.Default.GetBytes("hello")));
-        });
-    }
-
-    [Fact]
     public async void HandleConfirmationToSuperStream()
     {
         SystemUtils.ResetSuperStreams();

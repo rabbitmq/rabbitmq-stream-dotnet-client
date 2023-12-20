@@ -215,6 +215,7 @@ namespace RabbitMQ.Stream.Client
         /// <param name="compressionType">No Compression, Gzip Compression. Other types are not provided by default</param>
         public async ValueTask Send(ulong publishingId, List<Message> subEntryMessages, CompressionType compressionType)
         {
+            ThrowIfClosed();
             if (subEntryMessages.Count != 0)
             {
                 await SemaphoreAwaitAsync().ConfigureAwait(false);
@@ -239,6 +240,7 @@ namespace RabbitMQ.Stream.Client
         /// <param name="messages"></param>
         public async ValueTask Send(List<(ulong, Message)> messages)
         {
+            ThrowIfClosed();
             PreValidateBatch(messages);
             await InternalBatchSend(messages).ConfigureAwait(false);
         }
@@ -275,6 +277,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task SendMessages(List<(ulong, Message)> messages, bool clearMessagesList = true)
         {
+            ThrowIfClosed();
             if (IsFilteringEnabled)
             {
                 await _client.Publish(new PublishFilter(EntityId, messages, _config.Filter.FilterValue,
@@ -322,6 +325,7 @@ namespace RabbitMQ.Stream.Client
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async ValueTask Send(ulong publishingId, Message message)
         {
+            ThrowIfClosed();
             if (message.Size > _client.MaxFrameSize)
             {
                 throw new InvalidOperationException($"Message size is to big. " +

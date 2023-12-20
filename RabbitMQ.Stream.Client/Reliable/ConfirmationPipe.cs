@@ -113,6 +113,7 @@ public class ConfirmationPipe
 
     internal void Stop()
     {
+        FlushPendingMessages();
         _invalidateTimer.Enabled = false;
         _waitForConfirmationActionBlock.Complete();
     }
@@ -123,6 +124,15 @@ public class ConfirmationPipe
             (DateTime.Now - pair.Value.InsertDateTime).TotalSeconds > _messageTimeout.TotalSeconds);
 
         foreach (var pair in timedOutMessages)
+        {
+            await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private async void FlushPendingMessages()
+    {
+        foreach (var pair in _waitForConfirmation)
         {
             await RemoveUnConfirmedMessage(ConfirmationStatus.ClientTimeoutError, pair.Value.PublishingId, null)
                 .ConfigureAwait(false);
