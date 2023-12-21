@@ -134,7 +134,7 @@ namespace RabbitMQ.Stream.Client
         private readonly uint correlationId;
         private readonly ResponseCode responseCode;
 
-        private SubscribeResponse(uint correlationId, ResponseCode responseCode)
+        internal SubscribeResponse(uint correlationId, ResponseCode responseCode)
         {
             this.correlationId = correlationId;
             this.responseCode = responseCode;

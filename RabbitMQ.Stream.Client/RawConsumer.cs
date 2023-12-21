@@ -87,14 +87,14 @@ namespace RabbitMQ.Stream.Client
 
             switch (ConsumerFilter)
             {
-                case {PostFilter: null}:
+                case { PostFilter: null }:
                     throw new ArgumentException("PostFilter must be provided when Filter is set");
-                case {Values.Count: 0}:
+                case { Values.Count: 0 }:
                     throw new ArgumentException("Values must be provided when Filter is set");
             }
         }
 
-        internal bool IsFiltering => ConsumerFilter is {Values.Count: > 0};
+        internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
 
         // it is needed to be able to add the subscriptions arguments
         // see consumerProperties["super-stream"] = SuperStream;
@@ -406,6 +406,8 @@ namespace RabbitMQ.Stream.Client
                             // we request the credit before process the check to keep the network busy
                             try
                             {
+                                if (Token.IsCancellationRequested)
+                                    break;
                                 await _client.Credit(EntityId, 1).ConfigureAwait(false);
                             }
                             catch (InvalidOperationException)
@@ -504,43 +506,43 @@ namespace RabbitMQ.Stream.Client
                 consumerProperties,
                 async deliver =>
                 {
-                    chunkConsumed++;
-                    // Send the chunk to the _chunksBuffer
-                    // in this way the chunks are processed in a separate thread
-                    // this wont' block the socket thread
-                    // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
-                    if (Token.IsCancellationRequested)
-                    {
-                        // the consumer is closing from the user but some chunks are still in the buffer
-                        // simply skip the chunk
-                        Logger?.LogTrace(
-                            "CancellationToken requested. The {EntityInfo} " +
-                            "The chunk won't be processed",
-                            DumpEntityConfiguration());
-                        return;
-                    }
-
-                    if (_config.Crc32 is not null)
-                    {
-                        var crcCalculated = BitConverter.ToUInt32(
-                            _config.Crc32.Hash(deliver.Chunk.Data.ToArray())
-                        );
-                        if (crcCalculated != deliver.Chunk.Crc)
-                        {
-                            Logger?.LogError(
-                                "CRC32 does not match, server crc: {Crc}, local crc: {CrcCalculated}, {EntityInfo}, " +
-                                "Chunk Consumed {ChunkConsumed}", deliver.Chunk.Crc, crcCalculated,
-                                DumpEntityConfiguration(),
-                                chunkConsumed);
-
-                            throw new CrcException(
-                                $"CRC32 does not match, server crc: {deliver.Chunk.Crc}, local crc: {crcCalculated}, {DumpEntityConfiguration()}, " +
-                                $"Chunk Consumed {chunkConsumed}");
-                        }
-                    }
-
                     try
                     {
+                        chunkConsumed++;
+                        // Send the chunk to the _chunksBuffer
+                        // in this way the chunks are processed in a separate thread
+                        // this wont' block the socket thread
+                        // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
+                        if (Token.IsCancellationRequested)
+                        {
+                            // the consumer is closing from the user but some chunks are still in the buffer
+                            // simply skip the chunk
+                            Logger?.LogTrace(
+                                "CancellationToken requested. The {EntityInfo} " +
+                                "The chunk won't be processed",
+                                DumpEntityConfiguration());
+                            return;
+                        }
+
+                        if (_config.Crc32 is not null)
+                        {
+                            var crcCalculated = BitConverter.ToUInt32(
+                                _config.Crc32.Hash(deliver.Chunk.Data.ToArray())
+                            );
+                            if (crcCalculated != deliver.Chunk.Crc)
+                            {
+                                Logger?.LogError(
+                                    "CRC32 does not match, server crc: {Crc}, local crc: {CrcCalculated}, {EntityInfo}, " +
+                                    "Chunk Consumed {ChunkConsumed}", deliver.Chunk.Crc, crcCalculated,
+                                    DumpEntityConfiguration(),
+                                    chunkConsumed);
+
+                                throw new CrcException(
+                                    $"CRC32 does not match, server crc: {deliver.Chunk.Crc}, local crc: {crcCalculated}, {DumpEntityConfiguration()}, " +
+                                    $"Chunk Consumed {chunkConsumed}");
+                            }
+                        }
+
                         await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
@@ -575,6 +577,7 @@ namespace RabbitMQ.Stream.Client
                     return _config.StoredOffsetSpec;
                 }
             ).ConfigureAwait(false);
+
             if (response.ResponseCode == ResponseCode.Ok)
             {
                 _completeSubscription.SetResult();

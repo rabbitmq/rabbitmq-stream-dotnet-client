@@ -207,7 +207,6 @@ namespace RabbitMQ.Stream.Client
             client.connection = await Connection
                 .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl, logger)
                 .ConfigureAwait(false);
-
             // exchange properties
             var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                 new PeerPropertiesRequest(corr, parameters.Properties)).ConfigureAwait(false);
@@ -374,31 +373,41 @@ namespace RabbitMQ.Stream.Client
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList());
-            SubscribeResponse response;
+
             try
             {
-                consumers.Add(subscriptionId,
-                    new ConsumerEvents(
-                        deliverHandler,
-                        consumerUpdateHandler));
+                SubscribeResponse response;
+                try
+                {
+                    consumers.Add(subscriptionId,
+                        new ConsumerEvents(
+                            deliverHandler,
+                            consumerUpdateHandler));
 
-                response = await Request<SubscribeRequest, SubscribeResponse>(corr =>
-                    new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
-                        properties)).ConfigureAwait(false);
+                    response = await Request<SubscribeRequest, SubscribeResponse>(corr =>
+                        new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
+                            properties)).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _poolSemaphore.Release();
+                }
+
+                if (response.ResponseCode == ResponseCode.Ok)
+                    return (subscriptionId, response);
+
+                ClientExceptions.MaybeThrowException(response.ResponseCode, $"Error while creating consumer for stream {config.Stream}");
             }
-            finally
+            catch (Exception e)
             {
-                _poolSemaphore.Release();
+                // if the response code is not ok we need to remove the subscription
+                // and close the connection if necessary. 
+                consumers.Remove(subscriptionId);
+                await MaybeClose("Create Consumer Exception", config.Stream, config.Pool).ConfigureAwait(false);
+                throw new CreateConsumerException($"Error while creating consumer for stream {config.Stream}, error: {e.Message}");
             }
 
-            if (response.ResponseCode == ResponseCode.Ok)
-                return (subscriptionId, response);
-
-            // if the response code is not ok we need to remove the subscription
-            // and close the connection if necessary. 
-            consumers.Remove(subscriptionId);
-            await MaybeClose("Create Consumer Exception", config.Stream, config.Pool).ConfigureAwait(false);
-            return (subscriptionId, response);
+            return (subscriptionId, new SubscribeResponse(subscriptionId, ResponseCode.InternalError));
         }
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId, bool ignoreIfAlreadyRemoved = false)
@@ -715,7 +724,7 @@ namespace RabbitMQ.Stream.Client
         private void InternalClose()
         {
             _heartBeatHandler.Close();
-            IsClosed = true;
+            // IsClosed = true;
         }
 
         private bool HasEntities()
@@ -738,7 +747,6 @@ namespace RabbitMQ.Stream.Client
                 return new CloseResponse(0, ResponseCode.Ok);
             }
 
-            InternalClose();
             try
             {
                 var result =
@@ -760,6 +768,8 @@ namespace RabbitMQ.Stream.Client
             {
                 connection.Dispose();
             }
+
+            InternalClose();
 
             return new CloseResponse(0, ResponseCode.Ok);
         }

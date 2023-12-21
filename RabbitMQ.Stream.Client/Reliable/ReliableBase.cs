@@ -3,7 +3,6 @@
 // Copyright (c) 2007-2023 VMware, Inc.
 
 using System;
-
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -37,7 +36,7 @@ public record ReliableConfig
 public abstract class ReliableBase
 {
     protected readonly SemaphoreSlim SemaphoreSlim = new(1);
-
+    private readonly object _lock = new();
     protected bool _isOpen;
     protected bool _inReconnection;
 
@@ -61,8 +60,11 @@ public abstract class ReliableBase
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
-            _isOpen = true;
             await CreateNewEntity(boot).ConfigureAwait(false);
+            lock (_lock)
+            {
+                _isOpen = true;
+            }
         }
 
         catch (Exception e)
@@ -73,7 +75,11 @@ public abstract class ReliableBase
             {
                 // We consider the client as closed
                 // since the exception is raised to the caller
-                _isOpen = false;
+                lock (_lock)
+                {
+                    _isOpen = false;
+                }
+
                 throw;
             }
         }
@@ -107,7 +113,7 @@ public abstract class ReliableBase
         _inReconnection = true;
         try
         {
-            switch (await reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false) && _isOpen)
+            switch (await reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false) && IsOpen())
             {
                 case true:
                     BaseLogger.LogInformation("{Identity} is disconnected. Client will try reconnect", ToString());
@@ -195,6 +201,9 @@ public abstract class ReliableBase
 
     public bool IsOpen()
     {
-        return _isOpen;
+        lock (_lock)
+        {
+            return _isOpen;
+        }
     }
 }

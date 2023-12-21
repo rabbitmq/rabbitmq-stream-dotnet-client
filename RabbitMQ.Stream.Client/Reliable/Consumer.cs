@@ -211,7 +211,8 @@ public class Consumer : ConsumerFactory
 
     public override string ToString()
     {
-        return $"Consumer reference: {_consumerConfig.Reference}, stream: {_consumerConfig.Stream} ";
+        return $"Consumer reference: {_consumerConfig.Reference}, stream: {_consumerConfig.Stream}, " +
+               $"client name: {_consumerConfig.ClientProvidedName} ";
     }
 
     public ConsumerInfo Info { get; }

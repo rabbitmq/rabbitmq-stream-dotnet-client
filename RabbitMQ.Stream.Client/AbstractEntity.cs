@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
-
     public abstract record EntityCommonConfig
     {
         internal ConnectionsPool Pool { get; set; }
@@ -65,6 +64,8 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         protected abstract Task<ResponseCode> DeleteEntityFromTheServer(bool ignoreIfAlreadyDeleted = false);
 
+        private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
+
         /// <summary>
         /// Internal close method. It is called by the public Close method.
         /// Set the status to closed and remove the producer or consumer from the server ( if it is not already removed )
@@ -75,27 +76,35 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         protected async Task<ResponseCode> Shutdown(EntityCommonConfig config, bool ignoreIfAlreadyDeleted = false)
         {
-            MaybeCancelToken();
-
-            if (!IsOpen()) // the client is already closed
+            await _writeLock.WaitAsync().ConfigureAwait(false);
+            try
             {
-                return ResponseCode.Ok;
-            }
+                MaybeCancelToken();
 
-            _status = EntityStatus.Closed;
-            var result = await DeleteEntityFromTheServer(ignoreIfAlreadyDeleted).ConfigureAwait(false);
+                if (!IsOpen()) // the client is already closed
+                {
+                    return ResponseCode.Ok;
+                }
 
-            if (_client is { IsClosed: true })
-            {
+                _status = EntityStatus.Closed;
+                var result = await DeleteEntityFromTheServer(ignoreIfAlreadyDeleted).ConfigureAwait(false);
+
+                if (_client is { IsClosed: true })
+                {
+                    return result;
+                }
+
+                var closed = await _client.MaybeClose($"closing: {EntityId}",
+                        GetStream(), config.Pool)
+                    .ConfigureAwait(false);
+                ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-Entity: {EntityId}");
+                Logger.LogDebug("{EntityInfo} is closed", DumpEntityConfiguration());
                 return result;
             }
-
-            var closed = await _client.MaybeClose($"closing: {EntityId}",
-                    GetStream(), config.Pool)
-                .ConfigureAwait(false);
-            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-Entity: {EntityId}");
-            Logger.LogDebug("{EntityInfo} is closed", DumpEntityConfiguration());
-            return result;
+            finally
+            {
+                _writeLock.Release();
+            }
         }
 
         protected void Dispose(bool disposing)
@@ -120,7 +129,8 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                Logger?.LogWarning("Failed to close {EntityInfo}, error {Error} ", DumpEntityConfiguration(), e.Message);
+                Logger?.LogWarning("Failed to close {EntityInfo}, error {Error} ", DumpEntityConfiguration(),
+                    e.Message);
             }
             finally
             {
