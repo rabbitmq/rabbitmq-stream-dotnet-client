@@ -396,7 +396,8 @@ namespace RabbitMQ.Stream.Client
                 if (response.ResponseCode == ResponseCode.Ok)
                     return (subscriptionId, response);
 
-                ClientExceptions.MaybeThrowException(response.ResponseCode, $"Error while creating consumer for stream {config.Stream}");
+                ClientExceptions.MaybeThrowException(response.ResponseCode,
+                    $"Error while creating consumer for stream {config.Stream}");
             }
             catch (Exception e)
             {
@@ -404,7 +405,8 @@ namespace RabbitMQ.Stream.Client
                 // and close the connection if necessary. 
                 consumers.Remove(subscriptionId);
                 await MaybeClose("Create Consumer Exception", config.Stream, config.Pool).ConfigureAwait(false);
-                throw new CreateConsumerException($"Error while creating consumer for stream {config.Stream}, error: {e.Message}");
+                throw new CreateConsumerException(
+                    $"Error while creating consumer for stream {config.Stream}, error: {e.Message}");
             }
 
             return (subscriptionId, new SubscribeResponse(subscriptionId, ResponseCode.InternalError));
@@ -724,7 +726,7 @@ namespace RabbitMQ.Stream.Client
         private void InternalClose()
         {
             _heartBeatHandler.Close();
-            // IsClosed = true;
+            IsClosed = true;
         }
 
         private bool HasEntities()
@@ -747,6 +749,7 @@ namespace RabbitMQ.Stream.Client
                 return new CloseResponse(0, ResponseCode.Ok);
             }
 
+            InternalClose();
             try
             {
                 var result =
@@ -768,8 +771,6 @@ namespace RabbitMQ.Stream.Client
             {
                 connection.Dispose();
             }
-
-            InternalClose();
 
             return new CloseResponse(0, ResponseCode.Ok);
         }

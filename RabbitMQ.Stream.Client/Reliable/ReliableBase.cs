@@ -60,11 +60,12 @@ public abstract class ReliableBase
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
-            await CreateNewEntity(boot).ConfigureAwait(false);
             lock (_lock)
             {
                 _isOpen = true;
             }
+
+            await CreateNewEntity(boot).ConfigureAwait(false);
         }
 
         catch (Exception e)
