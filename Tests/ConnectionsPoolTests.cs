@@ -539,6 +539,36 @@ namespace Tests
             await client.Close("byte");
         }
 
+        [Fact]
+        public async void ValidateTheRecycleIDs()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "pool_test_stream_1_validate_ids";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+
+            var pool = new ConnectionsPool(0, 50);
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
+            var p = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]);
+
+            for (var i = 0; i < 30; i++)
+            {
+                var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                    metaDataInfo.StreamInfos[Stream1]);
+                Assert.Equal(1, pool.ConnectionsCount);
+                Assert.Equal(2, pool.ActiveIdsCountForStream(Stream1));
+                Assert.Equal(2, pool.ActiveIdsCount);
+                Assert.NotEmpty(ProducersIdsPerConnection(p1).ToList());
+                var l = ProducersIdsPerConnection(p1).ToList();
+                Assert.Equal(i + 1, l[1]);
+                await p1.Close();
+            }
+
+            await p.Close();
+            await client.DeleteStream(Stream1).ConfigureAwait(false);
+            await client.Close("byte");
+        }
+
         /// <summary>
         /// In this test we need to check the pool consistency when there is an error during the creation of the producer or consumer
         /// and close the pending connections in case the pool is full.
@@ -942,6 +972,27 @@ namespace Tests
         }
 
         [Fact]
+        public void FindNextValidIdShouldReturnTheSameIdGivenEmptyList()
+        {
+            var ids = new List<byte>();
+            var missing = ConnectionsPool.FindNextValidId(ids, 5);
+            Assert.Equal(5, missing);
+        }
+
+        [Fact]
+        public void FindNextValidIdShouldReturnTheNextGivenAStartId()
+        {
+            var ids = new List<byte>();
+            var id = ConnectionsPool.FindNextValidId(ids, 255);
+            ids.Add(id);
+            Assert.Equal(255, id);
+            var next = ConnectionsPool.FindNextValidId(ids);
+            ids.Add(next);
+            Assert.Equal(0, next);
+            Assert.Equal(1, ConnectionsPool.FindNextValidId(ids));
+        }
+
+        [Fact]
         public void FindNextValidIdShouldReturnOne()
         {
             var ids = new List<byte>() { 0 };
@@ -1009,6 +1060,54 @@ namespace Tests
             nextValidId = ConnectionsPool.FindNextValidId(ids);
             Assert.Equal(7, nextValidId);
             ids.Add(7);
+        }
+
+        // The ids needs to be always consecutive even there are missing ids
+        [Fact]
+        public void RecycleIdsWhenTheMaxIsReachedAndStartWithAnId()
+        {
+            var ids = new List<byte>()
+            {
+                0,
+                1,
+                2,
+                // 3 is missing
+                4,
+                // 5 is missing
+                6,
+                // 7 is missing
+                8,
+                9
+            };
+            // even there are missing ids the next valid id is the next one
+            var nextValidId = ConnectionsPool.FindNextValidId(ids, 200);
+            Assert.Equal(200, nextValidId);
+
+            // even we start from 3 the next valid id is 10, since we start from the end
+            nextValidId = ConnectionsPool.FindNextValidId(ids, 3);
+            ids.Add(nextValidId);
+            Assert.Equal(10, nextValidId);
+
+            nextValidId = ConnectionsPool.FindNextValidId(ids, 255);
+            ids.Add(nextValidId);
+            Assert.Equal(255, nextValidId);
+
+            nextValidId = ConnectionsPool.FindNextValidId(ids, 0);
+            ids.Add(nextValidId);
+            Assert.Equal(3, nextValidId);
+
+            nextValidId = ConnectionsPool.FindNextValidId(ids, 3);
+            ids.Add(nextValidId);
+            Assert.Equal(5, nextValidId);
+
+            nextValidId = ConnectionsPool.FindNextValidId(ids, 5);
+            ids.Add(nextValidId);
+            Assert.Equal(7, nextValidId);
+
+            nextValidId = ConnectionsPool.FindNextValidId(ids, 0);
+            ids.Add(nextValidId);
+            Assert.Equal(11, nextValidId);
+
         }
     }
 }

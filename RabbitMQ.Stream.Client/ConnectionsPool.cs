@@ -100,30 +100,35 @@ public class ConnectionsPool
 {
     private static readonly object s_lock = new();
 
-    internal static byte FindNextValidId(List<byte> ids)
+    internal static byte FindNextValidId(List<byte> ids, byte nextId = 0)
     {
         lock (s_lock)
         {
-            if (ids.Count == 0)
-            {
-                return 0;
-            }
-
             // // we start with the recycle when we reach the max value
             // // in this way we can avoid to recycle the same ids in a short time
             ids.Sort();
-            if (ids[^1] != byte.MaxValue)
-                return (byte)(ids[^1] + 1);
+            var l = ids.Where(b => b >= nextId).ToList();
+            l.Sort();
+            if (l.Count == 0)
+            {
+                // not necessary to start from 0 because the ids are recycled
+                // nextid is passed as parameter to avoid to start from 0
+                // see client:IncrementEntityId/0
+                return nextId;
+            }
+
+            if (l[^1] != byte.MaxValue)
+                return (byte)(l[^1] + 1);
 
             for (var i = 0; i < ids.Count - 1; i++)
             {
-                if (ids[i + 1] - ids[i] > 1)
+                if (l[i + 1] - l[i] > 1)
                 {
-                    return (byte)(ids[i] + 1);
+                    return (byte)(l[i] + 1);
                 }
             }
 
-            return (byte)(ids[^1] + 1);
+            return (byte)(l[^1] + 1);
         }
     }
 

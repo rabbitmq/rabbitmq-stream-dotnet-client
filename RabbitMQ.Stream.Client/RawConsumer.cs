@@ -266,7 +266,20 @@ namespace RabbitMQ.Stream.Client
                                 // it is useful only in single active consumer
                                 if (IsPromotedAsActive)
                                 {
-                                    var canDispatch = true;
+                                    if (_status != EntityStatus.Open)
+                                    {
+                                        Logger?.LogDebug(
+                                            "{EntityInfo} is not active. message won't dispatched",
+                                            DumpEntityConfiguration());
+                                    }
+
+                                    // can dispatch only if the consumer is active
+                                    // it usually at this point the consumer is active
+                                    // but in rare case where the consumer is closed and open in a short
+                                    // time the ids could be the same to not problem we need just to skip the message
+                                    // Given the way how the ids are generated it is very rare to have the same ids
+                                    // it is just a safety check
+                                    var canDispatch = _status == EntityStatus.Open;
 
                                     if (_config.IsFiltering)
                                     {
@@ -280,7 +293,7 @@ namespace RabbitMQ.Stream.Client
                                         }
                                         catch (Exception e)
                                         {
-                                            Logger.LogError(e,
+                                            Logger?.LogError(e,
                                                 "Error while filtering message. Message  with offset {MessageOffset} won't be dispatched."
                                                 + "Suggestion: review the PostFilter value function"
                                                 + "{EntityInfo}",
@@ -394,7 +407,7 @@ namespace RabbitMQ.Stream.Client
             {
                 // need to wait the subscription is completed 
                 // else the _subscriberId could be incorrect
-                await _completeSubscription.Task.ConfigureAwait(false);
+                _completeSubscription.Task.Wait();
                 try
                 {
                     while (!Token.IsCancellationRequested &&
@@ -500,6 +513,7 @@ namespace RabbitMQ.Stream.Client
             var chunkConsumed = 0;
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
+            _status = EntityStatus.Initializing;
             (EntityId, var response) = await _client.Subscribe(
                 _config,
                 _initialCredits,
@@ -580,8 +594,9 @@ namespace RabbitMQ.Stream.Client
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                _completeSubscription.SetResult();
                 _status = EntityStatus.Open;
+                // the subscription is completed so the parsechunk can start to process the chunks
+                _completeSubscription.SetResult();
                 return;
             }
 
@@ -653,12 +668,13 @@ namespace RabbitMQ.Stream.Client
             // when the consumer is closed we must be sure that the 
             // the subscription is completed to avoid problems with the connection
             // It could happen when the closing is called just after the creation
-            await _completeSubscription.Task.ConfigureAwait(false);
+            _completeSubscription.Task.Wait();
             return await Shutdown(_config).ConfigureAwait(false);
         }
 
         public void Dispose()
         {
+            _completeSubscription.Task.Wait();
             try
             {
                 Dispose(true);

@@ -18,7 +18,8 @@ namespace RabbitMQ.Stream.Client
     {
         Open,
         Closed,
-        Disposed
+        Disposed,
+        Initializing
     }
 
     public interface IClosable
@@ -64,7 +65,7 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         protected abstract Task<ResponseCode> DeleteEntityFromTheServer(bool ignoreIfAlreadyDeleted = false);
 
-        private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
+        // private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// Internal close method. It is called by the public Close method.
@@ -76,35 +77,27 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         protected async Task<ResponseCode> Shutdown(EntityCommonConfig config, bool ignoreIfAlreadyDeleted = false)
         {
-            await _writeLock.WaitAsync().ConfigureAwait(false);
-            try
+            if (!IsOpen()) // the client is already closed
             {
-                MaybeCancelToken();
+                return ResponseCode.Ok;
+            }
 
-                if (!IsOpen()) // the client is already closed
-                {
-                    return ResponseCode.Ok;
-                }
+            MaybeCancelToken();
 
-                _status = EntityStatus.Closed;
-                var result = await DeleteEntityFromTheServer(ignoreIfAlreadyDeleted).ConfigureAwait(false);
+            _status = EntityStatus.Closed;
+            var result = await DeleteEntityFromTheServer(ignoreIfAlreadyDeleted).ConfigureAwait(false);
 
-                if (_client is { IsClosed: true })
-                {
-                    return result;
-                }
-
-                var closed = await _client.MaybeClose($"closing: {EntityId}",
-                        GetStream(), config.Pool)
-                    .ConfigureAwait(false);
-                ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-Entity: {EntityId}");
-                Logger.LogDebug("{EntityInfo} is closed", DumpEntityConfiguration());
+            if (_client is { IsClosed: true })
+            {
                 return result;
             }
-            finally
-            {
-                _writeLock.Release();
-            }
+
+            var closed = await _client.MaybeClose($"closing: {EntityId}",
+                    GetStream(), config.Pool)
+                .ConfigureAwait(false);
+            ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-Entity: {EntityId}");
+            Logger.LogDebug("{EntityInfo} is closed", DumpEntityConfiguration());
+            return result;
         }
 
         protected void Dispose(bool disposing)
