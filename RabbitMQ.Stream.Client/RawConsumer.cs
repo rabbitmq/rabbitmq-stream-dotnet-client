@@ -177,6 +177,7 @@ namespace RabbitMQ.Stream.Client
         {
             return _config.Stream;
         }
+
         public async Task StoreOffset(ulong offset)
         {
             await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
@@ -265,7 +266,20 @@ namespace RabbitMQ.Stream.Client
                                 // it is useful only in single active consumer
                                 if (IsPromotedAsActive)
                                 {
-                                    var canDispatch = true;
+                                    if (_status != EntityStatus.Open)
+                                    {
+                                        Logger?.LogDebug(
+                                            "{EntityInfo} is not active. message won't dispatched",
+                                            DumpEntityConfiguration());
+                                    }
+
+                                    // can dispatch only if the consumer is active
+                                    // it usually at this point the consumer is active
+                                    // but in rare case where the consumer is closed and open in a short
+                                    // time the ids could be the same to not problem we need just to skip the message
+                                    // Given the way how the ids are generated it is very rare to have the same ids
+                                    // it is just a safety check
+                                    var canDispatch = _status == EntityStatus.Open;
 
                                     if (_config.IsFiltering)
                                     {
@@ -279,7 +293,7 @@ namespace RabbitMQ.Stream.Client
                                         }
                                         catch (Exception e)
                                         {
-                                            Logger.LogError(e,
+                                            Logger?.LogError(e,
                                                 "Error while filtering message. Message  with offset {MessageOffset} won't be dispatched."
                                                 + "Suggestion: review the PostFilter value function"
                                                 + "{EntityInfo}",
@@ -393,7 +407,7 @@ namespace RabbitMQ.Stream.Client
             {
                 // need to wait the subscription is completed 
                 // else the _subscriberId could be incorrect
-                await _completeSubscription.Task.ConfigureAwait(false);
+                _completeSubscription.Task.Wait();
                 try
                 {
                     while (!Token.IsCancellationRequested &&
@@ -405,6 +419,8 @@ namespace RabbitMQ.Stream.Client
                             // we request the credit before process the check to keep the network busy
                             try
                             {
+                                if (Token.IsCancellationRequested)
+                                    break;
                                 await _client.Credit(EntityId, 1).ConfigureAwait(false);
                             }
                             catch (InvalidOperationException)
@@ -497,47 +513,62 @@ namespace RabbitMQ.Stream.Client
             var chunkConsumed = 0;
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
+            _status = EntityStatus.Initializing;
             (EntityId, var response) = await _client.Subscribe(
                 _config,
                 _initialCredits,
                 consumerProperties,
                 async deliver =>
                 {
-                    chunkConsumed++;
-                    // Send the chunk to the _chunksBuffer
-                    // in this way the chunks are processed in a separate thread
-                    // this wont' block the socket thread
-                    // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
-                    if (Token.IsCancellationRequested)
+                    try
                     {
-                        // the consumer is closing from the user but some chunks are still in the buffer
-                        // simply skip the chunk
-                        Logger?.LogTrace(
-                            "CancellationToken requested. The {EntityInfo} " +
-                            "The chunk won't be processed",
-                            DumpEntityConfiguration());
-                        return;
-                    }
-
-                    if (_config.Crc32 is not null)
-                    {
-                        var crcCalculated = BitConverter.ToUInt32(
-                            _config.Crc32.Hash(deliver.Chunk.Data.ToArray())
-                        );
-                        if (crcCalculated != deliver.Chunk.Crc)
+                        chunkConsumed++;
+                        // Send the chunk to the _chunksBuffer
+                        // in this way the chunks are processed in a separate thread
+                        // this wont' block the socket thread
+                        // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
+                        if (Token.IsCancellationRequested)
                         {
-                            Logger?.LogError(
-                                "CRC32 does not match, server crc: {Crc}, local crc: {CrcCalculated}, {EntityInfo}, " +
-                                "Chunk Consumed {ChunkConsumed}", deliver.Chunk.Crc, crcCalculated, DumpEntityConfiguration(),
-                                chunkConsumed);
-
-                            throw new CrcException(
-                                $"CRC32 does not match, server crc: {deliver.Chunk.Crc}, local crc: {crcCalculated}, {DumpEntityConfiguration()}, " +
-                                $"Chunk Consumed {chunkConsumed}");
+                            // the consumer is closing from the user but some chunks are still in the buffer
+                            // simply skip the chunk
+                            Logger?.LogTrace(
+                                "CancellationToken requested. The {EntityInfo} " +
+                                "The chunk won't be processed",
+                                DumpEntityConfiguration());
+                            return;
                         }
-                    }
 
-                    await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
+                        if (_config.Crc32 is not null)
+                        {
+                            var crcCalculated = BitConverter.ToUInt32(
+                                _config.Crc32.Hash(deliver.Chunk.Data.ToArray())
+                            );
+                            if (crcCalculated != deliver.Chunk.Crc)
+                            {
+                                Logger?.LogError(
+                                    "CRC32 does not match, server crc: {Crc}, local crc: {CrcCalculated}, {EntityInfo}, " +
+                                    "Chunk Consumed {ChunkConsumed}", deliver.Chunk.Crc, crcCalculated,
+                                    DumpEntityConfiguration(),
+                                    chunkConsumed);
+
+                                throw new CrcException(
+                                    $"CRC32 does not match, server crc: {deliver.Chunk.Crc}, local crc: {crcCalculated}, {DumpEntityConfiguration()}, " +
+                                    $"Chunk Consumed {chunkConsumed}");
+                            }
+                        }
+
+                        await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // The consumer is closing from the user but some chunks are still in the buffer
+                        // simply skip the chunk since the Token.IsCancellationRequested is true
+                        // the catch is needed to avoid to propagate the exception to the socket thread.
+                        Logger?.LogWarning(
+                            "OperationCanceledException. {EntityInfo} has been closed while consuming messages. " +
+                            "Token.IsCancellationRequested: {IsCancellationRequested}",
+                            DumpEntityConfiguration(), Token.IsCancellationRequested);
+                    }
                 }, async promotedAsActive =>
                 {
                     if (_config.ConsumerUpdateListener != null)
@@ -560,10 +591,12 @@ namespace RabbitMQ.Stream.Client
                     return _config.StoredOffsetSpec;
                 }
             ).ConfigureAwait(false);
+
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                _completeSubscription.SetResult();
                 _status = EntityStatus.Open;
+                // the subscription is completed so the parsechunk can start to process the chunks
+                _completeSubscription.SetResult();
                 return;
             }
 
@@ -628,16 +661,20 @@ namespace RabbitMQ.Stream.Client
             }
 
             return ResponseCode.Ok;
-
         }
 
         public override async Task<ResponseCode> Close()
         {
+            // when the consumer is closed we must be sure that the 
+            // the subscription is completed to avoid problems with the connection
+            // It could happen when the closing is called just after the creation
+            _completeSubscription.Task.Wait();
             return await Shutdown(_config).ConfigureAwait(false);
         }
 
         public void Dispose()
         {
+            _completeSubscription.Task.Wait();
             try
             {
                 Dispose(true);

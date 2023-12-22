@@ -33,7 +33,7 @@ namespace RabbitMQ.Stream.Client
         private CancellationToken Token => _cancelTokenSource.Token;
 
         internal int NumFrames => numFrames;
-
+        internal string ClientId { get; set; }
         public bool IsClosed => isClosed;
 
         private static System.IO.Stream MaybeTcpUpgrade(NetworkStream networkStream, SslOption sslOption)
@@ -191,6 +191,8 @@ namespace RabbitMQ.Stream.Client
             finally
             {
                 isClosed = true;
+                _logger?.LogDebug("TCP Connection Closed ClientId: {ClientId} is IsCancellationRequested {Token} ",
+                    ClientId, Token.IsCancellationRequested);
                 // Mark the PipeReader as complete
                 await reader.CompleteAsync(caught).ConfigureAwait(false);
                 var t = closedCallback?.Invoke("TCP Connection Closed")!;

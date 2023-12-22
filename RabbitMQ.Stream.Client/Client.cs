@@ -207,7 +207,7 @@ namespace RabbitMQ.Stream.Client
             client.connection = await Connection
                 .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl, logger)
                 .ConfigureAwait(false);
-
+            client.connection.ClientId = client.ClientId;
             // exchange properties
             var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                 new PeerPropertiesRequest(corr, parameters.Properties)).ConfigureAwait(false);
@@ -307,7 +307,7 @@ namespace RabbitMQ.Stream.Client
             Action<(ulong, ResponseCode)[]> errorCallback, ConnectionsPool pool = null)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
-            var publisherId = ConnectionsPool.FindNextValidId(publishers.Keys.ToList());
+            var publisherId = ConnectionsPool.FindNextValidId(publishers.Keys.ToList(), IncrementEntityId());
             DeclarePublisherResponse response;
 
             try
@@ -321,7 +321,7 @@ namespace RabbitMQ.Stream.Client
                 _poolSemaphore.Release();
             }
 
-            if (response.ResponseCode == ResponseCode.Ok || pool == null)
+            if (response.ResponseCode == ResponseCode.Ok)
                 return (publisherId, response);
 
             // if the response code is not ok we need to remove the subscription
@@ -358,13 +358,31 @@ namespace RabbitMQ.Stream.Client
         public async Task<(byte, SubscribeResponse)> Subscribe(string stream, IOffsetType offsetType,
             ushort initialCredit,
             Dictionary<string, string> properties, Func<Deliver, Task> deliverHandler,
-            Func<bool, Task<IOffsetType>> consumerUpdateHandler = null)
+            Func<bool, Task<IOffsetType>> consumerUpdateHandler = null, ConnectionsPool pool = null)
         {
-            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType },
+            return await Subscribe(new RawConsumerConfig(stream) { OffsetSpec = offsetType, Pool = pool },
                 initialCredit,
                 properties,
                 deliverHandler,
                 consumerUpdateHandler).ConfigureAwait(false);
+        }
+
+        private byte _nextEntityId = 0;
+
+        // the entity id is a byte so we need to increment it and reset it when it reaches the max value
+        // to avoid to use always the same ids when producers and consumers are created 
+        // so even there is a connection with one producer or consumer we need to increment the id 
+        private byte IncrementEntityId()
+        {
+            lock (Obj)
+            {
+                var current = _nextEntityId;
+                _nextEntityId++;
+                if (_nextEntityId != byte.MaxValue)
+                    return current;
+                _nextEntityId = 0;
+                return _nextEntityId;
+            }
         }
 
         public async Task<(byte, SubscribeResponse)> Subscribe(RawConsumerConfig config,
@@ -373,7 +391,7 @@ namespace RabbitMQ.Stream.Client
             Func<bool, Task<IOffsetType>> consumerUpdateHandler)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
-            var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList());
+            var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList(), IncrementEntityId());
             SubscribeResponse response;
             try
             {
@@ -788,7 +806,6 @@ namespace RabbitMQ.Stream.Client
                         _logger.LogInformation("Close connection for the {ClientId}", ClientId);
                         // the client can be closed in an unexpected way so we need to remove it from the pool
                         // so you will find pool.remove(ClientId) also to the disconnect event
-                        // pool.remove(ClientId) is a duplicate call here but it is ok. The pool is idempotent 
                         pool.Remove(ClientId);
                         await Close(reason).ConfigureAwait(false);
                     }

@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
-
     public abstract record EntityCommonConfig
     {
         internal ConnectionsPool Pool { get; set; }
@@ -19,7 +18,8 @@ namespace RabbitMQ.Stream.Client
     {
         Open,
         Closed,
-        Disposed
+        Disposed,
+        Initializing
     }
 
     public interface IClosable
@@ -65,6 +65,8 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         protected abstract Task<ResponseCode> DeleteEntityFromTheServer(bool ignoreIfAlreadyDeleted = false);
 
+        // private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
+
         /// <summary>
         /// Internal close method. It is called by the public Close method.
         /// Set the status to closed and remove the producer or consumer from the server ( if it is not already removed )
@@ -75,12 +77,12 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         protected async Task<ResponseCode> Shutdown(EntityCommonConfig config, bool ignoreIfAlreadyDeleted = false)
         {
-            MaybeCancelToken();
-
             if (!IsOpen()) // the client is already closed
             {
                 return ResponseCode.Ok;
             }
+
+            MaybeCancelToken();
 
             _status = EntityStatus.Closed;
             var result = await DeleteEntityFromTheServer(ignoreIfAlreadyDeleted).ConfigureAwait(false);
@@ -120,7 +122,8 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                Logger?.LogWarning("Failed to close {EntityInfo}, error {Error} ", DumpEntityConfiguration(), e.Message);
+                Logger?.LogWarning("Failed to close {EntityInfo}, error {Error} ", DumpEntityConfiguration(),
+                    e.Message);
             }
             finally
             {

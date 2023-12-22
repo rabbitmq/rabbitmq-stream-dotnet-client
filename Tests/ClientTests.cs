@@ -78,10 +78,7 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var testPassed = new TaskCompletionSource<MetaDataUpdate>();
             var clientParameters = new ClientParameters();
-            clientParameters.OnMetadataUpdate += (update) =>
-            {
-                testPassed.SetResult(update);
-            };
+            clientParameters.OnMetadataUpdate += (update) => { testPassed.SetResult(update); };
 
             var client = await Client.Create(clientParameters);
             await client.CreateStream(stream, new Dictionary<string, string>());
@@ -110,8 +107,21 @@ namespace Tests
             var publisherRef = Guid.NewGuid().ToString();
 
             var (publisherId, result) =
-                await client.DeclarePublisher(publisherRef, "this-stream-does-not-exist", confirmed, errored);
+                await client.DeclarePublisher(publisherRef, "this-stream-does-not-exist", confirmed, errored,
+                    new ConnectionsPool(0, 1));
             Assert.Equal(ResponseCode.StreamDoesNotExist, result.ResponseCode);
+            await client.Close("done");
+        }
+
+        [Fact]
+        public async void DeclareConsumerShouldReturnErrorCode()
+        {
+            var clientParameters = new ClientParameters { };
+            var client = await Client.Create(clientParameters);
+            var (subId, subscribeResponse) = await client.Subscribe(
+                "this-stream-does-not-exist", new OffsetTypeLast(), 1,
+                new Dictionary<string, string>(), null, null, new ConnectionsPool(0, 1));
+            Assert.Equal(ResponseCode.StreamDoesNotExist, subscribeResponse.ResponseCode);
             await client.Close("done");
         }
 
