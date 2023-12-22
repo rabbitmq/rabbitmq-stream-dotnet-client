@@ -275,10 +275,9 @@ namespace RabbitMQ.Stream.Client
 
                                     // can dispatch only if the consumer is active
                                     // it usually at this point the consumer is active
-                                    // but in rare case where the consumer is closed and open in a short
-                                    // time the ids could be the same to not problem we need just to skip the message
                                     // Given the way how the ids are generated it is very rare to have the same ids
-                                    // it is just a safety check
+                                    // it is just a safety check. 
+                                    // If the consumer is not open we can just skip the messages
                                     var canDispatch = _status == EntityStatus.Open;
 
                                     if (_config.IsFiltering)
