@@ -229,7 +229,7 @@ dotnet_diagnostic.CA2007.severity = warning
 
 # IDE0073: File header
 dotnet_diagnostic.IDE0073.severity = warning
-file_header_template =  This source code is dual-licensed under the Apache License, version\n2.0, and the Mozilla Public License, version 2.0.\nCopyright (c) 2007-2023 VMware, Inc.
+file_header_template =  This source code is dual-licensed under the Apache License, version\n2.0, and the Mozilla Public License, version 2.0.\nCopyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 # IDE0035: Remove unreachable code
 dotnet_diagnostic.IDE0035.severity = warning

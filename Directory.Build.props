@@ -3,9 +3,9 @@
 
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)rabbit.snk</AssemblyOriginatorKeyFile>
-    <Authors>VMware</Authors>
-    <Company>VMware, Inc. or its affiliates.</Company>
-    <Copyright>Copyright © 2007-$([System.DateTime]::Now.Year) VMware, Inc. or its affiliates.</Copyright>
+    <Authors>Broadcom</Authors>
+    <Company>Broadcom Inc. and/or its subsidiaries.</Company>
+    <Copyright>Copyright © 2017-$([System.DateTime]::Now.Year) Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.</Copyright>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>embedded</DebugType>
     <DefaultLanguage>en-US</DefaultLanguage>

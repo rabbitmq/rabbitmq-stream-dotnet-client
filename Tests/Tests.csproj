@@ -3,6 +3,9 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <MinVerSkip>true</MinVerSkip>
+    <Copyright>Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.</Copyright>
+    <Authors>Broadcom</Authors>
+    <Company>Broadcom Inc. and/or its subsidiaries.</Company>
   </PropertyGroup>
 
   <ItemGroup>
