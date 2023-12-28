@@ -87,7 +87,7 @@ Write-Host '[INFO] Installing and starting RabbitMQ with default config...'
 & $rabbitmq_installer_path '/S' | Out-Null
 (Get-Service -Name RabbitMQ).Status
 
-$rabbitmq_base_path = (Get-ItemProperty -Name Install_Dir -Path 'HKLM:\SOFTWARE\WOW6432Node\VMware, Inc.\RabbitMQ Server').Install_Dir
+$rabbitmq_base_path = (Get-ItemProperty -Name Install_Dir -Path 'HKLM:\SOFTWARE\WOW6432Node\Broadcom, Inc.\RabbitMQ Server').Install_Dir
 $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\RabbitMQ'
 if (Test-Path 'HKLM:\SOFTWARE\WOW6432Node\')
 {
