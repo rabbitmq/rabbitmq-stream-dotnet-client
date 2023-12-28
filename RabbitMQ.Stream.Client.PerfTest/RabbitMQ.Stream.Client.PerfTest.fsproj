@@ -7,7 +7,7 @@
     <RootNamespace>RabbitMQ.Stream.Client.Cmd</RootNamespace>
     <Copyright>Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.</Copyright>
     <Authors>Broadcom</Authors>
-    <Company>Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.</Company>
+    <Company>Broadcom Inc. and/or its subsidiaries.</Company>
   </PropertyGroup>
 
   <ItemGroup>
