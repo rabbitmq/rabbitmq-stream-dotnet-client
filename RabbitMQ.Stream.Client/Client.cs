@@ -286,13 +286,13 @@ namespace RabbitMQ.Stream.Client
             var authResponse =
                 await Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
                         new SaslAuthenticateRequest(
-                            corr, 
+                            corr,
                             Parameters.AuthMechanism.ToString().ToUpperInvariant(),
                             saslData))
                     .ConfigureAwait(false);
 
             ClientExceptions.MaybeThrowException(
-                authResponse.ResponseCode, 
+                authResponse.ResponseCode,
                 "Error while updating secret: the secret will not be updated.");
         }
 
