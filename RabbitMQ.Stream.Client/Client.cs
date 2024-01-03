@@ -114,7 +114,7 @@ namespace RabbitMQ.Stream.Client
 
         private uint correlationId = 0; // allow for some pre-amble
 
-        private Connection connection;
+        private Connection _connection;
 
         private readonly ConcurrentDictionary<uint, IValueTaskSource> requests = new();
 
@@ -144,7 +144,7 @@ namespace RabbitMQ.Stream.Client
 
         public int ConfirmFrames => confirmFrames;
 
-        public int IncomingFrames => connection.NumFrames;
+        public int IncomingFrames => _connection.NumFrames;
 
         //public int IncomingChannelCount => this.incoming.Reader.Count;
         private static readonly object Obj = new();
@@ -172,7 +172,7 @@ namespace RabbitMQ.Stream.Client
         {
             get
             {
-                if (connection.IsClosed)
+                if (_connection.IsClosed)
                 {
                     isClosed = true;
                 }
@@ -204,10 +204,10 @@ namespace RabbitMQ.Stream.Client
         public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
         {
             var client = new Client(parameters, logger);
-            client.connection = await Connection
+            client._connection = await Connection
                 .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl, logger)
                 .ConfigureAwait(false);
-            client.connection.ClientId = client.ClientId;
+            client._connection.ClientId = client.ClientId;
             // exchange properties
             var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                 new PeerPropertiesRequest(corr, parameters.Properties)).ConfigureAwait(false);
@@ -279,6 +279,23 @@ namespace RabbitMQ.Stream.Client
             return client;
         }
 
+        internal async Task UpdateSecret(string newSecret)
+        {
+            var saslData = Encoding.UTF8.GetBytes($"\0{Parameters.UserName}\0{newSecret}");
+
+            var authResponse =
+                await Request<SaslAuthenticateRequest, SaslAuthenticateResponse>(corr =>
+                        new SaslAuthenticateRequest(
+                            corr, 
+                            Parameters.AuthMechanism.ToString().ToUpperInvariant(),
+                            saslData))
+                    .ConfigureAwait(false);
+
+            ClientExceptions.MaybeThrowException(
+                authResponse.ResponseCode, 
+                "Error while updating secret: the secret will not be updated.");
+        }
+
         public async ValueTask<bool> Publish(Publish publishMsg)
         {
             var publishTask = await Publish<Publish>(publishMsg).ConfigureAwait(false);
@@ -292,7 +309,7 @@ namespace RabbitMQ.Stream.Client
         {
             try
             {
-                return connection.Write(msg);
+                return _connection.Write(msg);
             }
             catch (Exception e)
             {
@@ -772,11 +789,11 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "An error occurred while calling {CalledFunction}", nameof(connection.Dispose));
+                _logger.LogError(e, "An error occurred while calling {CalledFunction}", nameof(_connection.Dispose));
             }
             finally
             {
-                connection.Dispose();
+                _connection.Dispose();
             }
 
             return new CloseResponse(0, ResponseCode.Ok);
