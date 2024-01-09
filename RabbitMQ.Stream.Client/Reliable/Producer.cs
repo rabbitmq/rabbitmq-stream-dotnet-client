@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using RabbitMQ.Stream.Client.Reconnect;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -144,7 +145,7 @@ public class Producer : ProducerFactory
 
     private void ThrowIfClosed()
     {
-        if (!_isOpen)
+        if (!IsOpen())
         {
             throw new AlreadyClosedException("Producer is closed");
         }
@@ -158,8 +159,10 @@ public class Producer : ProducerFactory
     public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
+        producerConfig.ResourceAvailableReconnectStrategy ??= new ResourceAvailableBackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
-        await rProducer.Init(producerConfig.ReconnectStrategy).ConfigureAwait(false);
+        await rProducer.Init(producerConfig.ReconnectStrategy, producerConfig.ResourceAvailableReconnectStrategy)
+            .ConfigureAwait(false);
         logger?.LogDebug(
             "Producer: {Reference} created for Stream: {Stream}",
             producerConfig.Reference,
@@ -204,10 +207,16 @@ public class Producer : ProducerFactory
 
     public override async Task Close()
     {
+        if (ReliableEntityStatus.Initialization == _status)
+        {
+            UpdateStatus(ReliableEntityStatus.Closed);
+            return;
+        }
+
+        UpdateStatus(ReliableEntityStatus.Closed);
         await SemaphoreSlim.WaitAsync(Consts.ShortWait).ConfigureAwait(false);
         try
         {
-            _isOpen = false;
             _confirmationPipe.Stop();
             if (_producer != null)
             {
@@ -258,16 +267,13 @@ public class Producer : ProducerFactory
             // In this case it skips the publish until
             // the producer is connected. Messages are safe since are stored 
             // on the _waitForConfirmation list. The user will get Timeout Error
-            if (!_inReconnection)
+            if (_producer.IsOpen())
             {
-                if (_producer.IsOpen())
-                {
-                    await _producer.Send(publishingId, message).ConfigureAwait(false);
-                }
-                else
-                {
-                    _logger?.LogDebug("The internal producer is closed. Message will be timed out");
-                }
+                await _producer.Send(publishingId, message).ConfigureAwait(false);
+            }
+            else
+            {
+                _logger?.LogDebug("The internal producer is closed. Message will be timed out");
             }
         }
 
@@ -306,16 +312,13 @@ public class Producer : ProducerFactory
         _confirmationPipe.AddUnConfirmedMessage(_publishingId, messages);
         try
         {
-            if (!_inReconnection)
+            if (_producer.IsOpen())
             {
-                if (_producer.IsOpen())
-                {
-                    await _producer.Send(_publishingId, messages, compressionType).ConfigureAwait(false);
-                }
-                else
-                {
-                    _logger?.LogDebug("The internal producer is closed. Message will be timed out");
-                }
+                await _producer.Send(_publishingId, messages, compressionType).ConfigureAwait(false);
+            }
+            else
+            {
+                _logger?.LogDebug("The internal producer is closed. Message will be timed out");
             }
         }
 
@@ -375,16 +378,13 @@ public class Producer : ProducerFactory
             // In this case it skips the publish until
             // the producer is connected. Messages are safe since are stored 
             // on the _waitForConfirmation list. The user will get Timeout Error
-            if (!(_inReconnection))
+            if (_producer.IsOpen())
             {
-                if (_producer.IsOpen())
-                {
-                    await _producer.Send(messagesToSend).ConfigureAwait(false);
-                }
-                else
-                {
-                    _logger?.LogDebug("The internal producer is closed. Message will be timed out");
-                }
+                await _producer.Send(messagesToSend).ConfigureAwait(false);
+            }
+            else
+            {
+                _logger?.LogDebug("The internal producer is closed. Message will be timed out");
             }
         }
 

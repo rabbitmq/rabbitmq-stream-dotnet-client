@@ -73,7 +73,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             ConsumerFilter = _config.ConsumerFilter,
             Pool = _config.Pool,
             Crc32 = _config.Crc32,
-            ConnectionClosedHandler = async (string s) =>
+            ConnectionClosedHandler = async (s) =>
             {
                 // if the stream is still in the consumer list
                 // means that the consumer was not closed voluntarily
@@ -112,7 +112,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                 Thread.Sleep(500);
 
                 _streamInfos.Remove(update.Stream);
-                _consumers.TryRemove(update.Stream, out _);
+                _consumers.TryRemove(update.Stream, out var consumer);
 
                 // this check is needed only for an edge case 
                 // when the system is closed and the connections for the steam are still open for
@@ -122,14 +122,16 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                     return;
                 }
 
-                var exists = _config.Client.StreamExists(update.Stream);
-                if (!exists.Result)
+                var exists = await _config.Client.StreamExists(update.Stream).ConfigureAwait(false);
+                if (!exists)
                 {
                     // The stream doesn't exist anymore
                     // but this condition should be avoided since the hash routing 
                     // can be compromised
                     _logger.LogWarning("SuperStream Consumer. Stream {StreamIdentifier} is not available anymore",
                         update.Stream);
+                    consumer?.Close();
+
                 }
                 else
                 {
@@ -157,8 +159,8 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
 
     private async Task<IConsumer> InitConsumer(string stream)
     {
-        var c = await RawConsumer.Create(
-            _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
+
+        var c = await RawConsumer.Create(_clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
         _logger?.LogDebug("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference,
             stream);

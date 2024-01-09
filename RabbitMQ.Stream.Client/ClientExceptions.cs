@@ -10,7 +10,6 @@ namespace RabbitMQ.Stream.Client
 {
     internal static class ClientExceptions
     {
-
         // <summary>
         /// IsAKnownException returns true if the exception is a known exception
         /// We need it to reconnect when the producer/consumer.
@@ -32,11 +31,19 @@ namespace RabbitMQ.Stream.Client
             {
                 var x = aggregateException.InnerExceptions.Select(x =>
                     x.GetType() == typeof(SocketException) || x.GetType() == typeof(TimeoutException) ||
-                    x.GetType() == typeof(LeaderNotFoundException));
+                    x.GetType() == typeof(LeaderNotFoundException) || x.GetType() == typeof(InvalidOperationException));
                 return x.Any();
             }
 
-            return exception is (SocketException or TimeoutException or LeaderNotFoundException);
+            return exception is (SocketException or TimeoutException or LeaderNotFoundException or InvalidOperationException) ||
+                   IsStreamNotAvailable(exception);
+        }
+
+        internal static bool IsStreamNotAvailable(Exception exception)
+        {
+            // StreamNotAvailable is a temporary exception it can happen when the stream is just created and
+            // it is not ready yet to all the nodes. In this case we can try to reconnect.
+            return exception is CreateException { ResponseCode: ResponseCode.StreamNotAvailable };
         }
 
         public static void MaybeThrowException(ResponseCode responseCode, string message)

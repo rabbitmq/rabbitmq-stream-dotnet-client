@@ -12,6 +12,7 @@ namespace RabbitMQ.Stream.Client
     public abstract record EntityCommonConfig
     {
         internal ConnectionsPool Pool { get; set; }
+        public Func<MetaDataUpdate, Task> MetadataHandler { get; set; }
     }
 
     internal enum EntityStatus
@@ -49,10 +50,11 @@ namespace RabbitMQ.Stream.Client
         // here the _cancelTokenSource is disposed and the token is cancelled
         // in producer is used to cancel the send task
         // in consumer is used to cancel the receive task
-        private void MaybeCancelToken()
+        protected void UpdateStatusToClosed()
         {
             if (!_cancelTokenSource.IsCancellationRequested)
                 _cancelTokenSource.Cancel();
+            _status = EntityStatus.Closed;
         }
 
         public abstract Task<ResponseCode> Close();
@@ -82,9 +84,7 @@ namespace RabbitMQ.Stream.Client
                 return ResponseCode.Ok;
             }
 
-            MaybeCancelToken();
-
-            _status = EntityStatus.Closed;
+            UpdateStatusToClosed();
             var result = await DeleteEntityFromTheServer(ignoreIfAlreadyDeleted).ConfigureAwait(false);
 
             if (_client is { IsClosed: true })

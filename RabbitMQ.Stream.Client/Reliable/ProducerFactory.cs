@@ -2,8 +2,16 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+
+/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
+Before:
 using System.Threading;
 using System.Threading.Tasks;
+After:
+using System.Threading.Tasks;
+*/
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -68,21 +76,19 @@ public abstract class ProducerFactory : ReliableBase
             Reference = _producerConfig.Reference,
             MaxInFlight = _producerConfig.MaxInFlight,
             Filter = _producerConfig.Filter,
-            MetadataHandler = update =>
+            MetadataHandler = async _ =>
             {
-                // This is Async since the MetadataHandler is called from the Socket connection thread
-                // HandleMetaDataMaybeReconnect/2 could go in deadlock.
-
-                Task.Run(() =>
-                {
-                    // intentionally fire & forget
-                    HandleMetaDataMaybeReconnect(update.Stream,
-                        _producerConfig.StreamSystem).WaitAsync(CancellationToken.None);
-                });
+                await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream).ConfigureAwait(false);
             },
-            ConnectionClosedHandler = async _ =>
+            ConnectionClosedHandler = async (closeReason) =>
             {
-                await TryToReconnect(_producerConfig.ReconnectStrategy).ConfigureAwait(false);
+                if (closeReason == ConnectionClosedReason.Normal)
+                {
+                    BaseLogger.LogInformation("Reconnect is skipped. {Identity} is closed normally", ToString());
+                    return;
+                }
+
+                await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream).ConfigureAwait(false);
             },
             ConfirmHandler = confirmation =>
             {

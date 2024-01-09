@@ -6,6 +6,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using RabbitMQ.Stream.Client.Reconnect;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -156,7 +157,7 @@ public record ConsumerConfig : ReliableConfig
 /// </summary>
 public class Consumer : ConsumerFactory
 {
-    private IConsumer _consumer;
+
     private readonly ILogger<Consumer> _logger;
 
     protected override ILogger BaseLogger => _logger;
@@ -171,11 +172,11 @@ public class Consumer : ConsumerFactory
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
         consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
+        consumerConfig.ResourceAvailableReconnectStrategy ??= new ResourceAvailableBackOffReconnectStrategy(logger);
         var rConsumer = new Consumer(consumerConfig, logger);
-        await rConsumer.Init(consumerConfig.ReconnectStrategy).ConfigureAwait(false);
+        await rConsumer.Init(consumerConfig.ReconnectStrategy, consumerConfig.ResourceAvailableReconnectStrategy).ConfigureAwait(false);
         logger?.LogDebug("Consumer: {Reference} created for Stream: {Stream}",
             consumerConfig.Reference, consumerConfig.Stream);
-
         return rConsumer;
     }
 
@@ -204,9 +205,15 @@ public class Consumer : ConsumerFactory
 
     public override async Task Close()
     {
-        _isOpen = false;
+        if (_status == ReliableEntityStatus.Initialization)
+        {
+            UpdateStatus(ReliableEntityStatus.Closed);
+            return;
+        }
+
+        UpdateStatus(ReliableEntityStatus.Closed);
         await CloseEntity().ConfigureAwait(false);
-        _logger?.LogDebug("Consumer closed for stream {Stream}", _consumerConfig.Stream);
+        _logger?.LogDebug("Consumer {Identity} closed", ToString());
     }
 
     public override string ToString()

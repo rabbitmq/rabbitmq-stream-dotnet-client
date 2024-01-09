@@ -81,4 +81,9 @@ public class ConsumerInfo : Info
     {
         Reference = reference;
     }
+
+    public override string ToString()
+    {
+        return $"{base.ToString()}, Reference: {Reference}";
+    }
 }

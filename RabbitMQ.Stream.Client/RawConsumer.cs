@@ -5,6 +5,14 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+
+/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
+Before:
+using System.Data;
+using System.Diagnostics;
+After:
+using System.Diagnostics;
+*/
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
@@ -41,7 +49,7 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    internal struct ConsumerEvents
+    public struct ConsumerEvents
     {
         public ConsumerEvents(Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler)
@@ -109,8 +117,6 @@ namespace RabbitMQ.Stream.Client
         public string Stream { get; }
 
         public Func<RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
-
-        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
     }
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
@@ -202,7 +208,6 @@ namespace RabbitMQ.Stream.Client
             var client = await RoutingHelper<Routing>
                 .LookupRandomConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
-            logger?.LogInformation("Creating consumer {ConsumerInfo}", client.ClientId);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);
             return consumer;
@@ -473,12 +478,9 @@ namespace RabbitMQ.Stream.Client
             }, Token);
         }
 
-        private async Task Init()
+        internal async Task Init()
         {
             _config.Validate();
-
-            _client.ConnectionClosed += OnConnectionClosed();
-            _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
 
             var consumerProperties = new Dictionary<string, string>();
 
@@ -593,46 +595,51 @@ namespace RabbitMQ.Stream.Client
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
+                _client.AttachEventsToTheClient(OnConnectionClosed(), OnMetadataUpdate());
                 _status = EntityStatus.Open;
                 // the subscription is completed so the parsechunk can start to process the chunks
                 _completeSubscription.SetResult();
                 return;
             }
 
-            throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
+            throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}",
+                response.ResponseCode);
         }
 
         private ClientParameters.MetadataUpdateHandler OnMetadataUpdate() =>
-            metaDataUpdate =>
+            async metaDataUpdate =>
             {
                 // the connection can handle different streams
                 // we need to check if the metadata update is for the stream
                 // where the consumer is consuming else can ignore the update
                 if (metaDataUpdate.Stream != _config.Stream)
                     return;
+                // remove the event since the consumer is closed
+                // only if the stream is the valid
+
+                _client.DetachEventsFromTheClient(OnConnectionClosed(), OnMetadataUpdate());
+
                 // at this point the server has removed the consumer from the list 
                 // and the unsubscribe is not needed anymore (ignoreIfClosed = true)
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid to send the unsubscribe
+                _config.Pool.RemoveConsumerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
-                Shutdown(_config, true).ConfigureAwait(false);
-                // remove the event since the consumer is closed
-                // only if the stream is the valid
-                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
+                await Close().ConfigureAwait(false);
+                return;
             };
 
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
             async reason =>
             {
+                _client.DetachEventsFromTheClient(OnConnectionClosed(), OnMetadataUpdate());
+                // remove the event since the connection is closed
                 _config.Pool.Remove(_client.ClientId);
-                await Shutdown(_config, true).ConfigureAwait(false);
+                UpdateStatusToClosed();
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
-
-                // remove the event since the connection is closed
-                _client.ConnectionClosed -= OnConnectionClosed();
             };
 
         protected override async Task<ResponseCode> DeleteEntityFromTheServer(bool ignoreIfAlreadyDeleted = false)
