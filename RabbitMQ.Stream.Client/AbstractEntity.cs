@@ -92,8 +92,7 @@ namespace RabbitMQ.Stream.Client
                 return result;
             }
 
-            var closed = await _client.MaybeClose($"closing: {EntityId}",
-                    GetStream(), config.Pool)
+            var closed = await _client.MaybeClose($"closing: {EntityId}", config.Pool)
                 .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-Entity: {EntityId}");
             Logger.LogDebug("{EntityInfo} is closed", DumpEntityConfiguration());

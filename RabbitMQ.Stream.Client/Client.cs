@@ -813,7 +813,7 @@ namespace RabbitMQ.Stream.Client
         // Release will decrement the active ids for the connection
         // if the active ids are 0 the connection will be closed
 
-        internal async Task<CloseResponse> MaybeClose(string reason, string stream, ConnectionsPool pool)
+        internal async Task<CloseResponse> MaybeClose(string reason, ConnectionsPool pool)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
