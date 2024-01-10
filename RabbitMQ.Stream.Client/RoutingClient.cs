@@ -156,7 +156,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
-            return await pool.GetOrCreateClient(metaDataInfo.Leader.ToString(), metaDataInfo.Stream,
+            return await pool.GetOrCreateClient(metaDataInfo.Leader.ToString(),
                 async () =>
                     await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger)
                         .ConfigureAwait(false)).ConfigureAwait(false);
@@ -177,7 +177,7 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    return await pool.GetOrCreateClient(broker.ToString(), metaDataInfo.Stream,
+                    return await pool.GetOrCreateClient(broker.ToString(),
                         async () =>
                             await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo), logger)
                                 .ConfigureAwait(false)).ConfigureAwait(false);

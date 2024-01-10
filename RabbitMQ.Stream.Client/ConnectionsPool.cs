@@ -137,7 +137,7 @@ public class ConnectionsPool
     /// The broker info is the string representation of the broker ip and port.
     /// See Metadata.cs Broker.ToString() method, ex: Broker(localhost,5552) is "localhost:5552" 
     /// </summary>
-    internal async Task<IClient> GetOrCreateClient(string brokerInfo, string stream, Func<Task<IClient>> createClient)
+    internal async Task<IClient> GetOrCreateClient(string brokerInfo, Func<Task<IClient>> createClient)
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
