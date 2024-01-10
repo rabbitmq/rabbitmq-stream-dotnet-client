@@ -205,26 +205,6 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private readonly SemaphoreSlim _attachSemaphore = new(1, 1);
-
-        public void AttachEventsToTheClient(ConnectionCloseHandler connectionCloseHandler,
-            ClientParameters.MetadataUpdateHandler metadataUpdateHandler)
-        {
-            _attachSemaphore.Wait();
-            ConnectionClosed += connectionCloseHandler;
-            Parameters.OnMetadataUpdate += metadataUpdateHandler;
-            _attachSemaphore.Release();
-        }
-
-        public void DetachEventsFromTheClient(ConnectionCloseHandler connectionCloseHandler,
-            ClientParameters.MetadataUpdateHandler metadataUpdateHandler)
-        {
-            _attachSemaphore.Wait();
-            ConnectionClosed -= connectionCloseHandler;
-            Parameters.OnMetadataUpdate -= metadataUpdateHandler;
-            _attachSemaphore.Release();
-        }
-
         public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
         {
             var client = new Client(parameters, logger);

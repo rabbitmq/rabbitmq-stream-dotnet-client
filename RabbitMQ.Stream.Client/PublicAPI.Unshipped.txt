@@ -28,13 +28,11 @@ RabbitMQ.Stream.Client.AuthMechanismNotSupportedException.AuthMechanismNotSuppor
 RabbitMQ.Stream.Client.Chunk.Crc.get -> uint
 RabbitMQ.Stream.Client.Chunk.Data.get -> System.ReadOnlyMemory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
-RabbitMQ.Stream.Client.Client.AttachEventsToTheClient(RabbitMQ.Stream.Client.Client.ConnectionCloseHandler connectionCloseHandler, RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler metadataUpdateHandler) -> void
 RabbitMQ.Stream.Client.Client.ClientId.get -> string
 RabbitMQ.Stream.Client.Client.ClientId.init -> void
 RabbitMQ.Stream.Client.Client.Consumers.get -> System.Collections.Generic.IDictionary<byte, (string, RabbitMQ.Stream.Client.ConsumerEvents)>
 RabbitMQ.Stream.Client.Client.DeclarePublisher(string publisherRef, string stream, System.Action<System.ReadOnlyMemory<ulong>> confirmCallback, System.Action<(ulong, RabbitMQ.Stream.Client.ResponseCode)[]> errorCallback, RabbitMQ.Stream.Client.ConnectionsPool pool = null) -> System.Threading.Tasks.Task<(byte, RabbitMQ.Stream.Client.DeclarePublisherResponse)>
 RabbitMQ.Stream.Client.Client.DeletePublisher(byte publisherId, bool ignoreIfAlreadyRemoved = false) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.DeletePublisherResponse>
-RabbitMQ.Stream.Client.Client.DetachEventsFromTheClient(RabbitMQ.Stream.Client.Client.ConnectionCloseHandler connectionCloseHandler, RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler metadataUpdateHandler) -> void
 RabbitMQ.Stream.Client.Client.ExchangeVersions() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CommandVersionsResponse>
 RabbitMQ.Stream.Client.Client.Publishers.get -> System.Collections.Generic.IDictionary<byte, (string, (System.Action<System.ReadOnlyMemory<ulong>>, System.Action<(ulong, RabbitMQ.Stream.Client.ResponseCode)[]>))>
 RabbitMQ.Stream.Client.Client.QueryRoute(string superStream, string routingKey) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.RouteQueryResponse>

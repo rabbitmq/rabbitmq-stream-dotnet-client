@@ -587,7 +587,9 @@ namespace RabbitMQ.Stream.Client
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                _client.AttachEventsToTheClient(OnConnectionClosed(), OnMetadataUpdate());
+                _client.ConnectionClosed += OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
+
                 _status = EntityStatus.Open;
                 // the subscription is completed so the parsechunk can start to process the chunks
                 _completeSubscription.SetResult();
@@ -609,7 +611,8 @@ namespace RabbitMQ.Stream.Client
                 // remove the event since the consumer is closed
                 // only if the stream is the valid
 
-                _client.DetachEventsFromTheClient(OnConnectionClosed(), OnMetadataUpdate());
+                _client.ConnectionClosed -= OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
 
                 // at this point the server has removed the consumer from the list 
                 // and the unsubscribe is not needed anymore (ignoreIfClosed = true)
@@ -623,7 +626,9 @@ namespace RabbitMQ.Stream.Client
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
             async reason =>
             {
-                _client.DetachEventsFromTheClient(OnConnectionClosed(), OnMetadataUpdate());
+                _client.ConnectionClosed -= OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
+
                 // remove the event since the connection is closed
                 _config.Pool.Remove(_client.ClientId);
                 UpdateStatusToClosed();

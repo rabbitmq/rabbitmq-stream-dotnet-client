@@ -151,7 +151,8 @@ namespace RabbitMQ.Stream.Client
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
-                _client.AttachEventsToTheClient(OnConnectionClosed(), OnMetadataUpdate());
+                _client.ConnectionClosed += OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
                 _status = EntityStatus.Open;
                 return;
             }
@@ -183,7 +184,8 @@ namespace RabbitMQ.Stream.Client
                 if (metaDataUpdate.Stream != _config.Stream)
                     return;
 
-                _client.DetachEventsFromTheClient(OnConnectionClosed(), OnMetadataUpdate());
+                _client.ConnectionClosed -= OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
 
                 _config.Pool.RemoveProducerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
 

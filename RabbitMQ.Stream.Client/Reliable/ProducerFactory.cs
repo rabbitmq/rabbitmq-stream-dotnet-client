@@ -75,7 +75,7 @@ public abstract class ProducerFactory : ReliableBase
             {
                 if (closeReason == ConnectionClosedReason.Normal)
                 {
-                    BaseLogger.LogInformation("Reconnect is skipped. {Identity} is closed normally", ToString());
+                    BaseLogger.LogInformation("{Identity} is closed normally", ToString());
                     return;
                 }
 
