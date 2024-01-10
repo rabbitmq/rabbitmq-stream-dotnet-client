@@ -180,7 +180,11 @@ public class ConnectionsPool
         _semaphoreSlim.Wait();
         try
         {
-            Connections.TryRemove(clientId, out _);
+            Connections.TryRemove(clientId, out var connectionItem);
+            if (connectionItem == null)
+                return;
+            connectionItem.Client.Consumers.Clear();
+            connectionItem.Client.Publishers.Clear();
         }
         finally
         {
@@ -231,10 +235,9 @@ public class ConnectionsPool
                 return;
             }
 
-            var l = connectionItem.Client.Consumers.Where(x =>
-                    x.Key == id && x.Value.Item1 == stream).ToList();
-
-            l.ForEach(x => connectionItem.Client.Consumers.Remove(x.Key));
+            connectionItem.Client.Consumers.Where(x =>
+                    x.Key == id && x.Value.Item1 == stream).ToList()
+                .ForEach(x => connectionItem.Client.Consumers.Remove(x.Key));
         }
         finally
         {

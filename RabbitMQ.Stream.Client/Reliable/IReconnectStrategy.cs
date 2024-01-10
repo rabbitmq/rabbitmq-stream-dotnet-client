@@ -70,7 +70,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
     public ValueTask WhenConnected(string connectionIdentifier)
     {
         Tentatives = 1;
-        _logger.LogInformation("{ConnectionIdentifier} reconnected successfully", connectionIdentifier);
+        _logger.LogInformation("{ConnectionIdentifier} connected successfully", connectionIdentifier);
         return ValueTask.CompletedTask;
     }
 }
@@ -111,7 +111,7 @@ internal class ResourceAvailableBackOffReconnectStrategy : IReconnectStrategy
     public ValueTask WhenConnected(string resourceIdentifier)
     {
         Tentatives = 1;
-        _logger.LogInformation("{ResourceIdentifier} created successfully", resourceIdentifier);
+        _logger.LogInformation("{ResourceIdentifier} is available", resourceIdentifier);
         return ValueTask.CompletedTask;
     }
 }

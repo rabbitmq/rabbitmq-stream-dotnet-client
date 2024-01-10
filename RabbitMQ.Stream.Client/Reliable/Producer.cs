@@ -343,7 +343,7 @@ public class Producer : ProducerFactory
 
     public override string ToString()
     {
-        return $"Producer reference: {_producerConfig.Reference}, stream: {_producerConfig.Stream} ";
+        return $"Producer stream: {_producerConfig.Stream}, client name: {_producerConfig.ClientProvidedName}";
     }
 
     /// <summary>

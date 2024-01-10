@@ -3,14 +3,6 @@
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System.Collections.Concurrent;
-
-/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-Before:
-using System.Threading;
-using System.Threading.Tasks;
-After:
-using System.Threading.Tasks;
-*/
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -51,7 +43,7 @@ public abstract class ConsumerFactory : ReliableBase
             offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_consumerConfig.Stream] + 1);
         }
 
-        var x = await _consumerConfig.StreamSystem.CreateRawConsumer(new RawConsumerConfig(_consumerConfig.Stream)
+        return await _consumerConfig.StreamSystem.CreateRawConsumer(new RawConsumerConfig(_consumerConfig.Stream)
         {
             ClientProvidedName = _consumerConfig.ClientProvidedName,
             Reference = _consumerConfig.Reference,
@@ -86,8 +78,6 @@ public abstract class ConsumerFactory : ReliableBase
                 }
             },
         }, BaseLogger).ConfigureAwait(false);
-
-        return x;
     }
 
     private async Task<IConsumer> SuperConsumer(bool boot)

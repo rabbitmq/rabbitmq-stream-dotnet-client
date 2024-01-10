@@ -4,13 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-Before:
-using System.Diagnostics;
-using System.Linq;
-After:
-using System.Linq;
-*/
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -200,7 +193,6 @@ namespace RabbitMQ.Stream.Client
                 // ignoreIfClosed is an optimization to avoid to send the DeletePublisher
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
                 await Shutdown(_config, true).ConfigureAwait(false);
-
             };
 
         private bool IsFilteringEnabled => _config.Filter is { FilterValue: not null };

@@ -224,7 +224,7 @@ namespace RabbitMQ.Stream.Client
             Parameters.OnMetadataUpdate -= metadataUpdateHandler;
             _attachSemaphore.Release();
         }
-        
+
         public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
         {
             var client = new Client(parameters, logger);

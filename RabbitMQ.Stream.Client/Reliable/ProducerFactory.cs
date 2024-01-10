@@ -1,15 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
-
-
-/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-Before:
-using System.Threading;
-using System.Threading.Tasks;
-After:
-using System.Threading.Tasks;
-*/
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 

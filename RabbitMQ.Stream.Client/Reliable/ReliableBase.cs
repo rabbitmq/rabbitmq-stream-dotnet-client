@@ -109,8 +109,6 @@ public abstract class ReliableBase
             }
 
             reconnect = ClientExceptions.IsAKnownException(e);
-            if (e is CreateException { ResponseCode: ResponseCode.StreamNotAvailable })
-                BaseLogger.LogInformation("streamNotAvailable {Identity}", ToString());
 
             LogException(e);
             if (!reconnect)
@@ -174,7 +172,7 @@ public abstract class ReliableBase
             try
             {
                 exists = await system.StreamExists(stream).ConfigureAwait(false);
-                await _resourceAvailableReconnectStrategy.WhenConnected(ToString()).ConfigureAwait(false);
+                await _resourceAvailableReconnectStrategy.WhenConnected(stream).ConfigureAwait(false);
                 break;
             }
             catch (Exception e)
@@ -232,7 +230,6 @@ public abstract class ReliableBase
     private async Task TryToReconnect()
     {
         UpdateStatus(ReliableEntityStatus.Reconnecting);
-        BaseLogger.LogInformation("{Identity} is disconnected. Client will try reconnect", ToString());
         await MaybeInit(false).ConfigureAwait(false);
     }
 

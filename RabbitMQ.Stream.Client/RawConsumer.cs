@@ -5,14 +5,6 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-
-/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-Before:
-using System.Data;
-using System.Diagnostics;
-After:
-using System.Diagnostics;
-*/
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
@@ -626,7 +618,6 @@ namespace RabbitMQ.Stream.Client
                 _config.Pool.RemoveConsumerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
                 await Close().ConfigureAwait(false);
-                return;
             };
 
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
