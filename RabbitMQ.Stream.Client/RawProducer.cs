@@ -4,13 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-/* Unmerged change from project 'RabbitMQ.Stream.Client(net7.0)'
-Before:
-using System.Diagnostics;
-using System.Linq;
-After:
-using System.Linq;
-*/
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -34,7 +27,6 @@ namespace RabbitMQ.Stream.Client
         public string Stream { get; }
         public Func<string, Task> ConnectionClosedHandler { get; set; }
         public Action<Confirmation> ConfirmHandler { get; set; } = _ => { };
-        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
 
         public RawProducerConfig(string stream)
         {
@@ -81,7 +73,9 @@ namespace RabbitMQ.Stream.Client
         )
         {
             var client = await RoutingHelper<Routing>
-                .LookupLeaderConnection(clientParameters, metaStreamInfo, config.Pool, logger)
+                .LookupLeaderConnection(
+                    clientParameters,
+                    metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
 
             var producer = new RawProducer((Client)client, config, logger);
@@ -114,9 +108,6 @@ namespace RabbitMQ.Stream.Client
         private async Task Init()
         {
             _config.Validate();
-
-            _client.ConnectionClosed += OnConnectionClosed();
-            _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
 
             (EntityId, var response) = await _client.DeclarePublisher(
                 _config.Reference,
@@ -160,15 +151,18 @@ namespace RabbitMQ.Stream.Client
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
+                _client.ConnectionClosed += OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
                 _status = EntityStatus.Open;
                 return;
             }
 
-            throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}");
+            throw new CreateProducerException($"producer could not be created code: {response.ResponseCode}",
+                response.ResponseCode);
         }
 
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
-            async reason =>
+            async (reason) =>
             {
                 _config.Pool.Remove(_client.ClientId);
                 await Shutdown(_config, true).ConfigureAwait(false);
@@ -182,23 +176,25 @@ namespace RabbitMQ.Stream.Client
             };
 
         private ClientParameters.MetadataUpdateHandler OnMetadataUpdate() =>
-            metaDataUpdate =>
+            async metaDataUpdate =>
             {
                 // the connection can handle different streams
                 // we need to check if the metadata update is for the stream
                 // where the producer is sending the messages else can ignore the update
                 if (metaDataUpdate.Stream != _config.Stream)
                     return;
+
+                _client.ConnectionClosed -= OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
+
+                _config.Pool.RemoveProducerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
+
                 // at this point the server has removed the producer from the list 
                 // and the DeletePublisher producer is not needed anymore (ignoreIfClosed = true)
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid to send the DeletePublisher
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
-                Shutdown(_config, true).ConfigureAwait(false);
-
-                // remove the event since the producer is closed
-                // only if the stream is the valid
-                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
+                await Shutdown(_config, true).ConfigureAwait(false);
             };
 
         private bool IsFilteringEnabled => _config.Filter is { FilterValue: not null };
@@ -385,9 +381,8 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the producer could be removed because of stream deleted 
                 // so it is not necessary to wait.
-                var closeResponse = await _client.DeletePublisher(EntityId, ignoreIfAlreadyDeleted)
-                    .WaitAsync(TimeSpan.FromSeconds(3))
-                    .ConfigureAwait(false);
+                var closeResponse =
+                    await _client.DeletePublisher(EntityId, ignoreIfAlreadyDeleted).ConfigureAwait(false);
                 return closeResponse.ResponseCode;
             }
             catch (Exception e)

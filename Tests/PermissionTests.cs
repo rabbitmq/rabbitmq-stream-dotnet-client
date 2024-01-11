@@ -40,6 +40,14 @@ namespace Tests
                 }
             );
 
+            await Assert.ThrowsAsync<CreateProducerException>(
+                async () =>
+                {
+                    await Producer.Create(
+                        new ProducerConfig(system, stream));
+                }
+            );
+
             Producer producer = null;
             try
             {

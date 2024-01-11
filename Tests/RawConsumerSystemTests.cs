@@ -603,6 +603,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var testPassed = new TaskCompletionSource<bool>();
+
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
@@ -613,11 +614,14 @@ namespace Tests
                         {
                             testPassed.SetResult(true);
                         }
+
+                        return Task.CompletedTask;
                     }
                 });
             SystemUtils.Wait();
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            Assert.False(((RawConsumer)rawConsumer).IsOpen());
             await rawConsumer.Close();
             await system.Close();
         }

@@ -89,7 +89,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             MaxInFlight = _config.MaxInFlight,
             Filter = _config.Filter,
             Pool = _config.Pool,
-            ConnectionClosedHandler = s =>
+            ConnectionClosedHandler = (s) =>
             {
                 // In case of connection closed, we need to remove the producer from the list
                 // We hide the behavior of the producer to the user
@@ -119,6 +119,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
                 }
 
                 _producers.TryRemove(update.Stream, out var producer);
+                return Task.CompletedTask;
             },
             ClientProvidedName = _config.ClientProvidedName,
             BatchSize = _config.BatchSize,
@@ -129,7 +130,10 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var p = await RawProducer.Create(_clientParameters, FromStreamConfig(stream), _streamInfos[stream], _logger)
+        var p = await RawProducer.Create(_clientParameters with { ClientProvidedName = _config.ClientProvidedName },
+                FromStreamConfig(stream),
+                _streamInfos[stream],
+                _logger)
             .ConfigureAwait(false);
         _logger?.LogDebug("Producer {ProducerReference} created for Stream {StreamIdentifier}", _config.Reference,
             stream);

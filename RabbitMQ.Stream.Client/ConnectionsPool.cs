@@ -32,28 +32,6 @@ public class ConnectionPoolConfig
     public byte ProducersPerConnection { get; set; } = 1;
 }
 
-public class StreamIds
-{
-    public StreamIds(string stream)
-    {
-        Stream = stream;
-    }
-
-    internal void Acquire()
-    {
-        Count++;
-    }
-
-    internal void Release()
-    {
-        Count--;
-    }
-
-    public int Count { get; private set; } = 0;
-
-    public string Stream { get; }
-}
-
 public class ConnectionItem
 {
     public ConnectionItem(string brokerInfo, byte idsPerConnection, IClient client)
@@ -67,16 +45,16 @@ public class ConnectionItem
     public IClient Client { get; }
     public string BrokerInfo { get; }
 
-    public Dictionary<string, StreamIds> StreamIds { get; } = new();
-
     public bool Available
     {
         get
         {
-            var c = StreamIds.Values.Sum(streamIdsValue => streamIdsValue.Count);
+            var c = Client.Consumers.Count + Client.Publishers.Count;
             return c < IdsPerConnection;
         }
     }
+
+    public int EntitiesCount => Client.Consumers.Count + Client.Publishers.Count;
 
     public byte IdsPerConnection { get; }
     public DateTime LastUsed { get; set; }
@@ -159,7 +137,7 @@ public class ConnectionsPool
     /// The broker info is the string representation of the broker ip and port.
     /// See Metadata.cs Broker.ToString() method, ex: Broker(localhost,5552) is "localhost:5552" 
     /// </summary>
-    internal async Task<IClient> GetOrCreateClient(string brokerInfo, string stream, Func<Task<IClient>> createClient)
+    internal async Task<IClient> GetOrCreateClient(string brokerInfo, Func<Task<IClient>> createClient)
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
@@ -176,7 +154,6 @@ public class ConnectionsPool
                 // TODO: we can improve this by getting the connection with the less active items
                 var connectionItem = Connections.Values.First(x => x.BrokerInfo == brokerInfo && x.Available);
                 connectionItem.LastUsed = DateTime.UtcNow;
-                Acquire(connectionItem.Client.ClientId, stream);
                 return connectionItem.Client;
             }
 
@@ -190,54 +167,7 @@ public class ConnectionsPool
             var client = await createClient().ConfigureAwait(false);
             // the connection give us the client id that is a GUID
             Connections.TryAdd(client.ClientId, new ConnectionItem(brokerInfo, _idsPerConnection, client));
-            Acquire(client.ClientId, stream);
             return client;
-        }
-        finally
-        {
-            _semaphoreSlim.Release();
-        }
-    }
-
-    /// <summary>
-    /// Acquire a StreamIds for the given client id and stream
-    /// Increase the active items for the given connection item
-    /// </summary>
-    /// <param name="clientId"> Client ID</param>
-    /// <param name="stream">The stream</param>
-    private void Acquire(string clientId, string stream)
-    {
-        Connections.TryGetValue(clientId, out var connectionItem);
-
-        if (connectionItem != null)
-        {
-            connectionItem.StreamIds.TryGetValue(stream, out var streamIds);
-            if (streamIds == null)
-            {
-                streamIds = new StreamIds(stream);
-                connectionItem.StreamIds.Add(stream, streamIds);
-            }
-
-            streamIds.Acquire();
-        }
-    }
-
-    public void Release(string clientId, string stream)
-    {
-        _semaphoreSlim.Wait();
-        try
-        {
-            // given a client id we need to decrement the active items for this connection item
-            Connections.TryGetValue(clientId, out var connectionItem);
-
-            // it can be null if the connection is closed in unexpected way
-            // so the connection does not exist anymore in the pool
-            // we can ignore this case
-            if (connectionItem != null)
-            {
-                connectionItem.StreamIds.TryGetValue(stream, out var streamIds);
-                streamIds?.Release();
-            }
         }
         finally
         {
@@ -250,6 +180,36 @@ public class ConnectionsPool
         _semaphoreSlim.Wait();
         try
         {
+            Connections.TryRemove(clientId, out var connectionItem);
+            if (connectionItem == null)
+                return;
+            connectionItem.Client.Consumers.Clear();
+            connectionItem.Client.Publishers.Clear();
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
+    }
+
+    public void MaybeClose(string clientId, string reason)
+    {
+        _semaphoreSlim.Wait();
+        try
+        {
+            if (!Connections.TryGetValue(clientId, out var connectionItem))
+            {
+                return;
+            }
+
+            if (connectionItem.EntitiesCount > 0)
+            {
+                return;
+            }
+
+            // close the connection
+            connectionItem.Client.Close(reason);
+
             // remove the connection from the pool
             // it means that the connection is closed
             // we don't care if it is called two times for the same connection
@@ -261,20 +221,54 @@ public class ConnectionsPool
         }
     }
 
+    /// <summary>
+    /// Removes the consumer entity from the client.
+    /// When the metadata update is called we need to remove the consumer entity from the client.
+    /// </summary>
+    public void RemoveConsumerEntityFromStream(string clientId, byte id, string stream)
+    {
+        _semaphoreSlim.Wait();
+        try
+        {
+            if (!Connections.TryGetValue(clientId, out var connectionItem))
+            {
+                return;
+            }
+
+            connectionItem.Client.Consumers.Where(x =>
+                    x.Key == id && x.Value.Item1 == stream).ToList()
+                .ForEach(x => connectionItem.Client.Consumers.Remove(x.Key));
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
+    }
+
+    /// <summary>
+    /// Removes the producer entity from the client.
+    /// When the metadata update is called we need to remove the consumer entity from the client.
+    /// </summary>
+    public void RemoveProducerEntityFromStream(string clientId, byte id, string stream)
+    {
+        _semaphoreSlim.Wait();
+        try
+        {
+            if (!Connections.TryGetValue(clientId, out var connectionItem))
+            {
+                return;
+            }
+
+            var l = connectionItem.Client.Publishers.Where(x =>
+                x.Key == id && x.Value.Item1 == stream).ToList();
+
+            l.ForEach(x => connectionItem.Client.Consumers.Remove(x.Key));
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
+    }
+
     public int ConnectionsCount => Connections.Count;
-
-    public int ActiveIdsCount => Connections.Values.Sum(x => x.StreamIds.Values.Sum(y => y.Count));
-
-    public int ActiveIdsCountForStream(string stream) => Connections.Values.Sum(x =>
-        x.StreamIds.TryGetValue(stream, out var streamIds) ? streamIds.Count : 0);
-
-    public int ActiveIdsCountForClient(string clientId) => Connections.TryGetValue(clientId, out var connectionItem)
-        ? connectionItem.StreamIds.Values.Sum(y => y.Count)
-        : 0;
-
-    public int ActiveIdsCountForClientAndStream(string clientId, string stream) =>
-        Connections.TryGetValue(clientId, out var connectionItem) &&
-        connectionItem.StreamIds.TryGetValue(stream, out var streamIds)
-            ? streamIds.Count
-            : 0;
 }

@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.Reconnect;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
@@ -208,8 +209,7 @@ public class ReliableTests
         // connection an become inactive.
         await system.DeleteStream(stream);
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(5));
-        Assert.False(producer.IsOpen());
+        SystemUtils.WaitUntil(() => !producer.IsOpen());
         await system.Close();
     }
 
@@ -230,7 +230,7 @@ public class ReliableTests
         );
 
         Assert.True(producer.IsOpen());
-        await producer.HandleMetaDataMaybeReconnect(stream, system);
+        await producer.OnEntityClosed(system, stream);
         SystemUtils.Wait();
         Assert.True(producer.IsOpen());
         await system.DeleteStream(stream);
@@ -398,6 +398,7 @@ public class ReliableTests
         Assert.True(consumer.IsOpen());
         await consumer.Close();
         Assert.False(consumer.IsOpen());
+
         await system.DeleteStream(stream);
         await system.Close();
     }
@@ -415,8 +416,7 @@ public class ReliableTests
         // When the stream is deleted the consumer has to close the 
         // connection an become inactive.
         await system.DeleteStream(stream);
-        SystemUtils.Wait(TimeSpan.FromSeconds(3));
-        Assert.False(consumer.IsOpen());
+        SystemUtils.WaitUntil(() => !consumer.IsOpen());
         await system.Close();
     }
 
@@ -429,9 +429,9 @@ public class ReliableTests
             _testOutputHelper = testOutputHelper;
         }
 
-        ValueTask<bool> IReconnectStrategy.WhenDisconnected(string connectionIdentifier)
+        ValueTask<bool> IReconnectStrategy.WhenDisconnected(string resourceIdentifier)
         {
-            _testOutputHelper.WriteLine($"MyReconnection WhenDisconnected {connectionIdentifier}");
+            _testOutputHelper.WriteLine($"MyReconnection WhenDisconnected {resourceIdentifier}");
             return ValueTask.FromResult(false);
         }
 
@@ -512,6 +512,7 @@ public class ReliableTests
                 return Task.CompletedTask;
             }
 
+            UpdateStatus(ReliableEntityStatus.Open);
             // raise the exception only one time
             // to avoid loops
             _firstTime = false;
@@ -534,7 +535,8 @@ public class ReliableTests
         var c = new FakeThrowExceptionConsumer(new ConsumerConfig(system, stream),
             new Exception("Fake Exception"));
 
-        await Assert.ThrowsAsync<Exception>(() => c.Init(new BackOffReconnectStrategy()));
+        await Assert.ThrowsAsync<Exception>(() =>
+            c.Init(new BackOffReconnectStrategy(), new ResourceAvailableBackOffReconnectStrategy()));
 
         Assert.False(c.IsOpen());
 
@@ -552,18 +554,23 @@ public class ReliableTests
     // it could be a temporary problem so the Consumer should try to
     // reconnect.
     //</summary>
-    public async void RConsumerShouldBeOpenWhenThrowKnownException(Exception exception)
+    public async void ConsumerShouldFailFast(Exception exception)
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var c = new FakeThrowExceptionConsumer(new ConsumerConfig(system, stream),
             exception);
         Assert.True(ClientExceptions.IsAKnownException(exception));
-        await c.Init(new BackOffReconnectStrategy());
-        // Here the Consumer should be open
-        // The exception is raised only the first time
-        // so it is not propagated to the caller
-        Assert.True(c.IsOpen());
-        await c.Close();
+
+        try
+        {
+            await c.Init(new BackOffReconnectStrategy(),
+                new ResourceAvailableBackOffReconnectStrategy());
+        }
+        catch (Exception e)
+        {
+            Assert.True(ClientExceptions.IsAKnownException(e));
+        }
+
         Assert.False(c.IsOpen());
         await system.DeleteStream(stream);
         await system.Close();

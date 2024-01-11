@@ -6,12 +6,15 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RabbitMQ.Stream.Client.Reconnect;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
 public record ReliableConfig
 {
     public IReconnectStrategy ReconnectStrategy { get; set; }
+    public IReconnectStrategy ResourceAvailableReconnectStrategy { get; set; }
+
     public StreamSystem StreamSystem { get; }
     public string Stream { get; }
 
@@ -29,69 +32,125 @@ public record ReliableConfig
     }
 }
 
+public enum ReliableEntityStatus
+{
+    Initialization,
+    Open,
+    Reconnecting,
+    Closed,
+}
+
 /// <summary>
 /// Base class for Reliable producer/ consumer
 /// With the term Entity we mean a Producer or a Consumer
 /// </summary>
 public abstract class ReliableBase
 {
-    protected readonly SemaphoreSlim SemaphoreSlim = new(1);
+    protected readonly SemaphoreSlim SemaphoreSlim = new(1, 1);
     private readonly object _lock = new();
-    protected bool _isOpen;
-    protected bool _inReconnection;
+    protected ReliableEntityStatus _status = ReliableEntityStatus.Initialization;
 
-    protected abstract ILogger BaseLogger { get; }
-
-    internal async Task Init(IReconnectStrategy reconnectStrategy)
+    protected void UpdateStatus(ReliableEntityStatus status)
     {
-        await Init(true, reconnectStrategy).ConfigureAwait(false);
+        lock (_lock)
+        {
+            _status = status;
+        }
     }
 
-    // <summary>
-    /// Init the reliable client
-    /// <param name="boot"> If it is the First boot for the reliable P/C </param>
-    /// <param name="reconnectStrategy">IReconnectStrategy</param>
-    /// Try to Init the Entity, if it fails, it will try to reconnect
-    /// only if the exception is a known exception
-    // </summary>
-    private async Task Init(bool boot, IReconnectStrategy reconnectStrategy)
+    protected bool CompareStatus(ReliableEntityStatus toTest)
+    {
+        lock (_lock)
+        {
+            return _status == toTest;
+        }
+    }
+
+    protected bool IsValidStatus()
+    {
+        lock (_lock)
+        {
+            return _status is ReliableEntityStatus.Open or ReliableEntityStatus.Reconnecting
+                or ReliableEntityStatus.Initialization;
+        }
+    }
+
+    protected abstract ILogger BaseLogger { get; }
+    private IReconnectStrategy _reconnectStrategy;
+    private IReconnectStrategy _resourceAvailableReconnectStrategy;
+
+    internal async Task Init(IReconnectStrategy reconnectStrategy,
+        IReconnectStrategy resourceAvailableReconnectStrategy)
+    {
+        _reconnectStrategy = reconnectStrategy;
+        _resourceAvailableReconnectStrategy = resourceAvailableReconnectStrategy;
+        await Init(true).ConfigureAwait(false);
+    }
+
+    private async Task MaybeInit(bool boot)
     {
         var reconnect = false;
-        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
-            lock (_lock)
-            {
-                _isOpen = true;
-            }
-
             await CreateNewEntity(boot).ConfigureAwait(false);
+            // if the createNewEntity is successful we can set the status to Open
+            // else there are two ways:
+            // - the exception is a known exception and the client will try to reconnect
+            // - the exception is not a known exception and the client will throw the exception
+            UpdateStatus(ReliableEntityStatus.Open);
         }
-
         catch (Exception e)
         {
+            if (boot)
+            {
+                // if it is the first boot we don't need to reconnect
+                UpdateStatus(ReliableEntityStatus.Closed);
+                throw;
+            }
+
             reconnect = ClientExceptions.IsAKnownException(e);
+
             LogException(e);
             if (!reconnect)
             {
                 // We consider the client as closed
                 // since the exception is raised to the caller
-                lock (_lock)
-                {
-                    _isOpen = false;
-                }
-
+                UpdateStatus(ReliableEntityStatus.Closed);
                 throw;
             }
-        }
-        finally
-        {
-            SemaphoreSlim.Release();
         }
 
         if (reconnect)
         {
-            await TryToReconnect(reconnectStrategy).ConfigureAwait(false);
+            await MaybeReconnect().ConfigureAwait(false);
+        }
+    }
+
+    // <summary>
+    /// Init the reliable client
+    /// <param name="boot"> If it is the First boot for the reliable P/C </param>
+    // </summary>
+    private async Task Init(bool boot)
+    {
+        if (!boot && !IsValidStatus())
+        {
+            BaseLogger.LogInformation("{Identity} is already closed", ToString());
+            return;
+        }
+
+        // each time that the client is initialized, we need to reset the status
+        // if we hare here it means that the entity is not open for some reason like:
+        // first time initialization or reconnect due of a IsAKnownException
+        UpdateStatus(ReliableEntityStatus.Initialization);
+
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await MaybeInit(boot).ConfigureAwait(false);
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
         }
     }
 
@@ -102,34 +161,76 @@ public abstract class ReliableBase
     /// </summary>
     internal abstract Task CreateNewEntity(bool boot);
 
+    protected async Task<bool> CheckIfStreamIsAvailable(string stream, StreamSystem system)
+    {
+
+        await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
+        var exists = false;
+        var tryAgain = true;
+        while (tryAgain)
+        {
+            try
+            {
+                exists = await system.StreamExists(stream).ConfigureAwait(false);
+                await _resourceAvailableReconnectStrategy.WhenConnected(stream).ConfigureAwait(false);
+                break;
+            }
+            catch (Exception e)
+            {
+                tryAgain = await _resourceAvailableReconnectStrategy
+                    .WhenDisconnected($"Stream {stream} for {ToString()}. Error: {e.Message} ").ConfigureAwait(false);
+            }
+        }
+
+        if (!exists)
+        {
+            // In this case the stream doesn't exist anymore
+            // the  Entity is just closed.
+            BaseLogger.LogInformation(
+                "Meta data update stream: {StreamIdentifier}. The stream doesn't exist anymore {Identity} will be closed",
+                stream,
+                ToString()
+            );
+        }
+
+        return exists;
+    }
+
     // <summary>
     /// Try to reconnect to the broker
     /// Based on the retry strategy
-    /// <param name="reconnectStrategy"> The Strategy for the reconnection
-    /// by default it is exponential backoff.
-    /// It it possible to change implementing the IReconnectStrategy interface </param>
-    // </summary>
-    protected async Task TryToReconnect(IReconnectStrategy reconnectStrategy)
+// </summary>
+    protected async Task MaybeReconnect()
     {
-        _inReconnection = true;
-        try
+        var reconnect = await _reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false);
+        if (!reconnect)
         {
-            switch (await reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false) && IsOpen())
-            {
-                case true:
-                    BaseLogger.LogInformation("{Identity} is disconnected. Client will try reconnect", ToString());
-                    await Init(false, reconnectStrategy).ConfigureAwait(false);
-                    break;
-                case false:
-                    BaseLogger.LogInformation("{Identity} is asked to be closed", ToString());
-                    await Close().ConfigureAwait(false);
-                    break;
-            }
+            UpdateStatus(ReliableEntityStatus.Closed);
+            return;
         }
-        finally
+
+        switch (IsOpen())
         {
-            _inReconnection = false;
+            case true:
+                await TryToReconnect().ConfigureAwait(false);
+                break;
+            case false:
+                if (CompareStatus(ReliableEntityStatus.Reconnecting))
+                {
+                    BaseLogger.LogInformation("{Identity} is in Reconnecting", ToString());
+                }
+
+                break;
         }
+    }
+
+    /// <summary>
+    ///  Try to reconnect to the broker
+    /// </summary>
+    private async Task TryToReconnect()
+    {
+        UpdateStatus(ReliableEntityStatus.Reconnecting);
+        await MaybeInit(false).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -143,42 +244,13 @@ public abstract class ReliableBase
     /// and try to reconnect.
     /// (internal because it is needed for tests)
     /// </summary>
-    internal async Task HandleMetaDataMaybeReconnect(string stream, StreamSystem system)
-    {
-        // This sleep is needed. When a stream is deleted it takes sometime.
-        // The StreamExists/1 could return true even the stream doesn't exist anymore.
-        await Task.Delay(500).ConfigureAwait(false);
-        if (await system.StreamExists(stream).ConfigureAwait(false))
-        {
-            BaseLogger.LogInformation(
-                "Meta data update stream: {StreamIdentifier}. The stream still exists. Client: {Identity}",
-                stream,
-                ToString()
-            );
-            // Here we just close the producer connection
-            // the func TryToReconnect/0 will be called. 
-
-            await CloseEntity().ConfigureAwait(false);
-        }
-        else
-        {
-            // In this case the stream doesn't exist anymore
-            // the ReliableProducer is just closed.
-            BaseLogger.LogInformation("Meta data update stream: {StreamIdentifier}. {Identity} will be closed",
-                stream,
-                ToString()
-            );
-            await Close().ConfigureAwait(false);
-        }
-    }
-
     private void LogException(Exception exception)
     {
-        const string KnownExceptionTemplate = "{Identity} trying to reconnect due to exception";
+        const string KnownExceptionTemplate = "{Identity} trying to reconnect due to exception {Err}";
         const string UnknownExceptionTemplate = "{Identity} received an exception during initialization";
         if (ClientExceptions.IsAKnownException(exception))
         {
-            BaseLogger.LogError(exception, KnownExceptionTemplate, ToString());
+            BaseLogger.LogError(KnownExceptionTemplate, ToString(), exception.Message);
         }
         else
         {
@@ -195,6 +267,30 @@ public abstract class ReliableBase
     /// </summary>
     protected abstract Task CloseEntity();
 
+    internal async Task OnEntityClosed(StreamSystem system, string stream)
+    {
+        var streamExists = false;
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            streamExists = await CheckIfStreamIsAvailable(stream, system)
+                .ConfigureAwait(false);
+            if (streamExists)
+            {
+                await MaybeReconnect().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
+
+        if (!streamExists)
+        {
+            await Close().ConfigureAwait(false);
+        }
+    }
+
     // <summary>
     /// Close the Reliable(Producer/Consumer) instance.
     // </summary>
@@ -204,7 +300,8 @@ public abstract class ReliableBase
     {
         lock (_lock)
         {
-            return _isOpen;
+            return _status is ReliableEntityStatus.Open or ReliableEntityStatus.Reconnecting
+                or ReliableEntityStatus.Initialization;
         }
     }
 }

@@ -3,8 +3,8 @@
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System.Collections.Concurrent;
-using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -15,6 +15,7 @@ namespace RabbitMQ.Stream.Client.Reliable;
 public abstract class ConsumerFactory : ReliableBase
 {
     protected ConsumerConfig _consumerConfig;
+    protected IConsumer _consumer;
 
     // this list contains the map between the stream and last consumed offset 
     // standard consumer is just one 
@@ -52,19 +53,19 @@ public abstract class ConsumerFactory : ReliableBase
             OffsetSpec = offsetSpec,
             ConsumerFilter = _consumerConfig.Filter,
             Crc32 = _consumerConfig.Crc32,
-            ConnectionClosedHandler = async _ =>
+            ConnectionClosedHandler = async (closeReason) =>
             {
-                await TryToReconnect(_consumerConfig.ReconnectStrategy).ConfigureAwait(false);
-            },
-            MetadataHandler = update =>
-            {
-                // This is Async since the MetadataHandler is called from the Socket connection thread
-                // HandleMetaDataMaybeReconnect/2 could go in deadlock.
-                Task.Run(() =>
+                if (closeReason == ConnectionClosedReason.Normal)
                 {
-                    HandleMetaDataMaybeReconnect(update.Stream,
-                        _consumerConfig.StreamSystem).WaitAsync(CancellationToken.None);
-                });
+                    BaseLogger.LogInformation("{Identity} is closed normally", ToString());
+                    return;
+                }
+
+                await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream).ConfigureAwait(false);
+            },
+            MetadataHandler = async _ =>
+            {
+                await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream).ConfigureAwait(false);
             },
             MessageHandler = async (consumer, ctx, message) =>
             {

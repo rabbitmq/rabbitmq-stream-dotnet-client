@@ -14,6 +14,12 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client
 {
+    internal static class ConnectionClosedReason
+    {
+        public const string Normal = "TCP connection closed normal";
+        public const string Unexpected = "TCP connection closed unexpected";
+    }
+
     public class Connection : IDisposable
     {
         private readonly Socket socket;
@@ -25,6 +31,7 @@ namespace RabbitMQ.Stream.Client
         private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
         private int numFrames;
         private bool isClosed = false;
+        private string _closedReason = ConnectionClosedReason.Unexpected;
         private bool _disposedValue;
         private readonly ILogger _logger;
 
@@ -35,6 +42,10 @@ namespace RabbitMQ.Stream.Client
         internal int NumFrames => numFrames;
         internal string ClientId { get; set; }
         public bool IsClosed => isClosed;
+        public void UpdateCloseStatus(string reason)
+        {
+            _closedReason = reason;
+        }
 
         private static System.IO.Stream MaybeTcpUpgrade(NetworkStream networkStream, SslOption sslOption)
         {
@@ -191,14 +202,12 @@ namespace RabbitMQ.Stream.Client
             finally
             {
                 isClosed = true;
-                _logger?.LogDebug("TCP Connection Closed ClientId: {ClientId} is IsCancellationRequested {Token} ",
-                    ClientId, Token.IsCancellationRequested);
+                _logger?.LogDebug(
+                    "TCP Connection Closed ClientId: {ClientId}, Reason {Reason}. IsCancellationRequested {Token} ",
+                    ClientId, _closedReason, Token.IsCancellationRequested);
                 // Mark the PipeReader as complete
                 await reader.CompleteAsync(caught).ConfigureAwait(false);
-                var t = closedCallback?.Invoke("TCP Connection Closed")!;
-                if (t != null)
-                    await t.ConfigureAwait(false);
-                _logger?.LogDebug("TCP Connection Closed");
+                closedCallback?.Invoke(_closedReason)!.ConfigureAwait(false);
             }
         }
 
@@ -231,6 +240,7 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
+                    UpdateCloseStatus(ConnectionClosedReason.Normal);
                     if (!_cancelTokenSource.IsCancellationRequested)
                     {
                         _cancelTokenSource.Cancel();

@@ -246,11 +246,14 @@ namespace Tests
                         {
                             testPassed.SetResult(true);
                         }
+
+                        return Task.CompletedTask;
                     }
                 });
             SystemUtils.Wait();
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            Assert.False(((RawProducer)rawProducer).IsOpen());
             await rawProducer.Close();
             await system.Close();
         }

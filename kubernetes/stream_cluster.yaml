@@ -7,10 +7,10 @@ apiVersion: rabbitmq.com/v1beta1
 kind: RabbitmqCluster
 metadata:
   name: tls
-  namespace: stream-clients-test
+  namespace: stream-clients-test-1
 spec:
   replicas: 3
-  image: rabbitmq:3.12.6-management
+  image: rabbitmq:3.13-rc-management
   service:
     type: LoadBalancer
   tls:

@@ -25,6 +25,7 @@ public class RawClasses
                 MetadataHandler = update => // <3>
                 {
                     Console.WriteLine($"Metadata Stream updated: {update.Stream}");
+                    return Task.CompletedTask;
                 },
                 ConfirmHandler = confirmation => // <4>
                 {
