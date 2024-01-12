@@ -157,7 +157,6 @@ public record ConsumerConfig : ReliableConfig
 /// </summary>
 public class Consumer : ConsumerFactory
 {
-
     private readonly ILogger<Consumer> _logger;
 
     protected override ILogger BaseLogger => _logger;
@@ -174,13 +173,14 @@ public class Consumer : ConsumerFactory
         consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         consumerConfig.ResourceAvailableReconnectStrategy ??= new ResourceAvailableBackOffReconnectStrategy(logger);
         var rConsumer = new Consumer(consumerConfig, logger);
-        await rConsumer.Init(consumerConfig.ReconnectStrategy, consumerConfig.ResourceAvailableReconnectStrategy).ConfigureAwait(false);
+        await rConsumer.Init(consumerConfig.ReconnectStrategy, consumerConfig.ResourceAvailableReconnectStrategy)
+            .ConfigureAwait(false);
         logger?.LogDebug("Consumer: {Reference} created for Stream: {Stream}",
             consumerConfig.Reference, consumerConfig.Stream);
         return rConsumer;
     }
 
-    internal override async Task CreateNewEntity(bool boot)
+    protected override async Task CreateNewEntity(bool boot)
     {
         _consumer = await CreateConsumer(boot).ConfigureAwait(false);
         await _consumerConfig.ReconnectStrategy.WhenConnected(ToString()).ConfigureAwait(false);

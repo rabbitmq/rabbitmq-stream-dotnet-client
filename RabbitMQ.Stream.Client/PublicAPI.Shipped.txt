@@ -335,8 +335,6 @@ RabbitMQ.Stream.Client.IConsumer.StoreOffset(ulong offset) -> System.Threading.T
 RabbitMQ.Stream.Client.IConsumerConfig
 RabbitMQ.Stream.Client.IConsumerConfig.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.IConsumerConfig.ClientProvidedName.set -> void
-RabbitMQ.Stream.Client.IConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
-RabbitMQ.Stream.Client.IConsumerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.get -> System.Func<string, string, bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>>
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerUpdateListener.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.IsSingleActiveConsumer.get -> bool

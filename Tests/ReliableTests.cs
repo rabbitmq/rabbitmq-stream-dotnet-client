@@ -505,7 +505,7 @@ public class ReliableTests
             _exceptionType = exceptionType;
         }
 
-        internal override Task CreateNewEntity(bool boot)
+        protected override Task CreateNewEntity(bool boot)
         {
             if (!_firstTime)
             {

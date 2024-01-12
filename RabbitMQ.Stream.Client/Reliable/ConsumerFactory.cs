@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -87,9 +88,9 @@ public abstract class ConsumerFactory : ReliableBase
         // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume from the next)
         if (!boot && _consumedFirstTime)
         {
-            foreach (var (stream, offset) in _lastOffsetConsumed)
+            foreach (var (streamOff, offset) in _lastOffsetConsumed)
             {
-                offsetSpecs[stream] = new OffsetTypeOffset(offset + 1);
+                offsetSpecs[streamOff] = new OffsetTypeOffset(offset + 1);
             }
         }
         else
@@ -103,27 +104,79 @@ public abstract class ConsumerFactory : ReliableBase
             }
         }
 
-        return await _consumerConfig.StreamSystem.CreateSuperStreamConsumer(
-            new RawSuperStreamConsumerConfig(_consumerConfig.Stream)
-            {
-                ClientProvidedName = _consumerConfig.ClientProvidedName,
-                Reference = _consumerConfig.Reference,
-                ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
-                IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
-                InitialCredits = _consumerConfig.InitialCredits,
-                ConsumerFilter = _consumerConfig.Filter,
-                Crc32 = _consumerConfig.Crc32,
-                OffsetSpec = offsetSpecs,
-                MessageHandler = async (stream, consumer, ctx, message) =>
+        if (boot)
+        {
+            return await _consumerConfig.StreamSystem.CreateSuperStreamConsumer(
+                new RawSuperStreamConsumerConfig(_consumerConfig.Stream)
                 {
-                    _consumedFirstTime = true;
-                    _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
-                    if (_consumerConfig.MessageHandler != null)
+                    ClientProvidedName = _consumerConfig.ClientProvidedName,
+                    Reference = _consumerConfig.Reference,
+                    ConsumerUpdateListener = _consumerConfig.ConsumerUpdateListener,
+                    IsSingleActiveConsumer = _consumerConfig.IsSingleActiveConsumer,
+                    InitialCredits = _consumerConfig.InitialCredits,
+                    ConsumerFilter = _consumerConfig.Filter,
+                    Crc32 = _consumerConfig.Crc32,
+                    OffsetSpec = offsetSpecs,
+                    ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
-                        await _consumerConfig.MessageHandler(stream, consumer, ctx,
-                            message).ConfigureAwait(false);
-                    }
-                },
-            }, BaseLogger).ConfigureAwait(false);
+                        if (closeReason == ConnectionClosedReason.Normal)
+                        {
+                            BaseLogger.LogInformation("{Identity} is closed normally", ToString());
+                            return;
+                        }
+
+                        await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream,
+                                _ => MaybeReconnectPartition(partitionStream))
+                            .ConfigureAwait(false);
+                    },
+                    MetadataHandler = async update =>
+                    {
+                        await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream,
+                                _ => MaybeReconnectPartition(update.Stream))
+                            .ConfigureAwait(false);
+                    },
+                    MessageHandler = async (partitionStream, consumer, ctx, message) =>
+                    {
+                        _consumedFirstTime = true;
+                        _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+                        if (_consumerConfig.MessageHandler != null)
+                        {
+                            await _consumerConfig.MessageHandler(partitionStream, consumer, ctx,
+                                message).ConfigureAwait(false);
+                        }
+                    },
+                }, BaseLogger).ConfigureAwait(false);
+        }
+
+        return _consumer;
+
+        async Task MaybeReconnectPartition(string stream)
+        {
+            var reconnect = await _reconnectStrategy
+                .WhenDisconnected($"Super Stream partition: {stream} for {_consumer.Info}").ConfigureAwait(false);
+
+            if (!reconnect)
+            {
+                UpdateStatus(ReliableEntityStatus.Closed);
+                return;
+            }
+
+            try
+            {
+                UpdateStatus(ReliableEntityStatus.Reconnecting);
+                await ((RawSuperStreamConsumer)_consumer)!.ReconnectPartition(stream).ConfigureAwait(false);
+                UpdateStatus(ReliableEntityStatus.Open);
+                await _reconnectStrategy.WhenConnected(
+                    $"Super Stream partition: {stream} for {_consumer.Info}").ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                LogException(e);
+                if (ClientExceptions.IsAKnownException(e))
+                {
+                    await MaybeReconnectPartition(stream).ConfigureAwait(false);
+                }
+            }
+        }
     }
 }

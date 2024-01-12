@@ -42,8 +42,6 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
 
     public string Reference { get; set; }
 
-    public Func<string, Task> ConnectionClosedHandler { get; set; }
-
     public ConsumerFilter ConsumerFilter { get; set; } = null;
 
     // InitialCredits is the initial credits to be used for the consumer.

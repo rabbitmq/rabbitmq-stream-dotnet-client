@@ -76,7 +76,7 @@ public abstract class ReliableBase
     }
 
     protected abstract ILogger BaseLogger { get; }
-    private IReconnectStrategy _reconnectStrategy;
+    protected IReconnectStrategy _reconnectStrategy;
     private IReconnectStrategy _resourceAvailableReconnectStrategy;
 
     internal async Task Init(IReconnectStrategy reconnectStrategy,
@@ -159,11 +159,10 @@ public abstract class ReliableBase
     /// <param name="boot"> If it is the First boot for the reliable P/C </param>
     /// Called by Init method
     /// </summary>
-    internal abstract Task CreateNewEntity(bool boot);
+    protected abstract Task CreateNewEntity(bool boot);
 
-    protected async Task<bool> CheckIfStreamIsAvailable(string stream, StreamSystem system)
+    private async Task<bool> CheckIfStreamIsAvailable(string stream, StreamSystem system)
     {
-
         await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
         var exists = false;
         var tryAgain = true;
@@ -172,7 +171,9 @@ public abstract class ReliableBase
             try
             {
                 exists = await system.StreamExists(stream).ConfigureAwait(false);
-                await _resourceAvailableReconnectStrategy.WhenConnected(stream).ConfigureAwait(false);
+                var available = exists ? "available" : "not available";
+                await _resourceAvailableReconnectStrategy.WhenConnected($"{stream} is {available}")
+                    .ConfigureAwait(false);
                 break;
             }
             catch (Exception e)
@@ -199,8 +200,8 @@ public abstract class ReliableBase
     // <summary>
     /// Try to reconnect to the broker
     /// Based on the retry strategy
-// </summary>
-    protected async Task MaybeReconnect()
+    // </summary>
+    private async Task MaybeReconnect()
     {
         var reconnect = await _reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false);
         if (!reconnect)
@@ -212,7 +213,8 @@ public abstract class ReliableBase
         switch (IsOpen())
         {
             case true:
-                await TryToReconnect().ConfigureAwait(false);
+                UpdateStatus(ReliableEntityStatus.Reconnecting);
+                await MaybeInit(false).ConfigureAwait(false);
                 break;
             case false:
                 if (CompareStatus(ReliableEntityStatus.Reconnecting))
@@ -222,15 +224,6 @@ public abstract class ReliableBase
 
                 break;
         }
-    }
-
-    /// <summary>
-    ///  Try to reconnect to the broker
-    /// </summary>
-    private async Task TryToReconnect()
-    {
-        UpdateStatus(ReliableEntityStatus.Reconnecting);
-        await MaybeInit(false).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -244,7 +237,7 @@ public abstract class ReliableBase
     /// and try to reconnect.
     /// (internal because it is needed for tests)
     /// </summary>
-    private void LogException(Exception exception)
+    protected void LogException(Exception exception)
     {
         const string KnownExceptionTemplate = "{Identity} trying to reconnect due to exception {Err}";
         const string UnknownExceptionTemplate = "{Identity} received an exception during initialization";
@@ -266,6 +259,30 @@ public abstract class ReliableBase
     /// leader changes.
     /// </summary>
     protected abstract Task CloseEntity();
+
+    internal async Task OnEntityClosed(StreamSystem system, string stream, Func<string, Task> reconnectFunc)
+    {
+        var streamExists = false;
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            streamExists = await CheckIfStreamIsAvailable(stream, system)
+                .ConfigureAwait(false);
+            if (streamExists)
+            {
+                await reconnectFunc(stream).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
+
+        if (!streamExists)
+        {
+            await Close().ConfigureAwait(false);
+        }
+    }
 
     internal async Task OnEntityClosed(StreamSystem system, string stream)
     {

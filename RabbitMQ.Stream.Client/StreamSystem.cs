@@ -350,7 +350,15 @@ namespace RabbitMQ.Stream.Client
         public async Task<bool> StreamExists(string stream)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
-            return await _client.StreamExists(stream).ConfigureAwait(false);
+            await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                return await _client.StreamExists(stream).ConfigureAwait(false);
+            }
+            finally
+            {
+                _semClientProvidedName.Release();
+            }
         }
 
         private static void MaybeThrowQueryException(string reference, string stream)

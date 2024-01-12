@@ -172,7 +172,7 @@ public class Producer : ProducerFactory
         return rProducer;
     }
 
-    internal override async Task CreateNewEntity(bool boot)
+    protected override async Task CreateNewEntity(bool boot)
     {
         _producer = await CreateProducer().ConfigureAwait(false);
 

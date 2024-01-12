@@ -105,13 +105,13 @@ internal class ResourceAvailableBackOffReconnectStrategy : IReconnectStrategy
         );
         await Task.Delay(TimeSpan.FromSeconds(Tentatives)).ConfigureAwait(false);
         MaybeResetTentatives();
-        return Tentatives < 4;
+        return Tentatives < 5;
     }
 
     public ValueTask WhenConnected(string resourceIdentifier)
     {
         Tentatives = 1;
-        _logger.LogInformation("{ResourceIdentifier} is available", resourceIdentifier);
+        _logger.LogInformation("{ResourceIdentifier}", resourceIdentifier);
         return ValueTask.CompletedTask;
     }
 }
