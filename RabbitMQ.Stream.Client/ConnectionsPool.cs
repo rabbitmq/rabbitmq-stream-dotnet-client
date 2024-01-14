@@ -154,6 +154,16 @@ public class ConnectionsPool
                 // TODO: we can improve this by getting the connection with the less active items
                 var connectionItem = Connections.Values.First(x => x.BrokerInfo == brokerInfo && x.Available);
                 connectionItem.LastUsed = DateTime.UtcNow;
+                if ((Client)(connectionItem.Client) is not {IsClosed: true}) return connectionItem.Client;
+              
+                // the connection is closed
+                // let's remove it from the pool
+                Connections.TryRemove(connectionItem.Client.ClientId, out _);
+                // let's create a new one
+                connectionItem = new ConnectionItem(brokerInfo, _idsPerConnection, await createClient().ConfigureAwait(false));
+                Connections.TryAdd(connectionItem.Client.ClientId, connectionItem);
+
+
                 return connectionItem.Client;
             }
 

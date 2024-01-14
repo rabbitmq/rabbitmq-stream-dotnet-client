@@ -621,8 +621,7 @@ namespace RabbitMQ.Stream.Client
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid to send the unsubscribe
                 _config.Pool.RemoveConsumerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
-                await Close().ConfigureAwait(false);
-
+                await Shutdown(_config, true).ConfigureAwait(false);
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
             };
 

@@ -225,6 +225,36 @@ public abstract class ReliableBase
                 break;
         }
     }
+    
+    
+    protected async Task MaybeReconnectPartition(string stream, string info, Func<string, Task> reconnectPartitionFunc)
+    {
+        var reconnect = await _reconnectStrategy
+            .WhenDisconnected($"Super Stream partition: {stream} for {info}").ConfigureAwait(false);
+
+        if (!reconnect)
+        {
+            UpdateStatus(ReliableEntityStatus.Closed);
+            return;
+        }
+
+        try
+        {
+            UpdateStatus(ReliableEntityStatus.Reconnecting);
+            await reconnectPartitionFunc(stream).ConfigureAwait(false);
+            UpdateStatus(ReliableEntityStatus.Open);
+            await _reconnectStrategy.WhenConnected(
+                $"Super Stream partition: {stream} for {info}").ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            LogException(e);
+            if (ClientExceptions.IsAKnownException(e))
+            {
+                await MaybeReconnectPartition(stream, info, reconnectPartitionFunc).ConfigureAwait(false);
+            }
+        }
+    }
 
     /// <summary>
     /// When the clients receives a meta data update, it doesn't know
@@ -260,7 +290,7 @@ public abstract class ReliableBase
     /// </summary>
     protected abstract Task CloseEntity();
 
-    internal async Task OnEntityClosed(StreamSystem system, string stream, Func<string, Task> reconnectFunc)
+    internal async Task OnEntityClosed(StreamSystem system, string stream, Func<string, Task> reconnectPartitionFunc)
     {
         var streamExists = false;
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
@@ -270,7 +300,8 @@ public abstract class ReliableBase
                 .ConfigureAwait(false);
             if (streamExists)
             {
-                await reconnectFunc(stream).ConfigureAwait(false);
+                await MaybeReconnectPartition(stream, ToString(), reconnectPartitionFunc).ConfigureAwait(false);
+                
             }
         }
         finally

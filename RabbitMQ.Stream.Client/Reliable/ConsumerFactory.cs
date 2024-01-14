@@ -124,15 +124,16 @@ public abstract class ConsumerFactory : ReliableBase
                             BaseLogger.LogInformation("{Identity} is closed normally", ToString());
                             return;
                         }
-
-                        await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream,
-                                _ => MaybeReconnectPartition(partitionStream))
+                        
+                        var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
+                        await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r)
                             .ConfigureAwait(false);
+
                     },
                     MetadataHandler = async update =>
                     {
-                        await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream,
-                                _ => MaybeReconnectPartition(update.Stream))
+                        var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
+                        await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r)
                             .ConfigureAwait(false);
                     },
                     MessageHandler = async (partitionStream, consumer, ctx, message) =>
@@ -150,33 +151,6 @@ public abstract class ConsumerFactory : ReliableBase
 
         return _consumer;
 
-        async Task MaybeReconnectPartition(string stream)
-        {
-            var reconnect = await _reconnectStrategy
-                .WhenDisconnected($"Super Stream partition: {stream} for {_consumer.Info}").ConfigureAwait(false);
-
-            if (!reconnect)
-            {
-                UpdateStatus(ReliableEntityStatus.Closed);
-                return;
-            }
-
-            try
-            {
-                UpdateStatus(ReliableEntityStatus.Reconnecting);
-                await ((RawSuperStreamConsumer)_consumer)!.ReconnectPartition(stream).ConfigureAwait(false);
-                UpdateStatus(ReliableEntityStatus.Open);
-                await _reconnectStrategy.WhenConnected(
-                    $"Super Stream partition: {stream} for {_consumer.Info}").ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                LogException(e);
-                if (ClientExceptions.IsAKnownException(e))
-                {
-                    await MaybeReconnectPartition(stream).ConfigureAwait(false);
-                }
-            }
-        }
+        
     }
 }

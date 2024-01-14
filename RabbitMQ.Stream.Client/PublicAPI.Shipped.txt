@@ -634,7 +634,6 @@ RabbitMQ.Stream.Client.Reliable.ProducerConfig.SuperStreamConfig.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.TimeoutMessageAfter.get -> System.TimeSpan
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.TimeoutMessageAfter.init -> void
 RabbitMQ.Stream.Client.Reliable.ProducerFactory
-RabbitMQ.Stream.Client.Reliable.ProducerFactory.CreateProducer() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
 RabbitMQ.Stream.Client.Reliable.ProducerFactory.ProducerFactory() -> void
 RabbitMQ.Stream.Client.Reliable.ProducerFactory._confirmationPipe -> RabbitMQ.Stream.Client.Reliable.ConfirmationPipe
 RabbitMQ.Stream.Client.Reliable.ProducerFactory._producerConfig -> RabbitMQ.Stream.Client.Reliable.ProducerConfig

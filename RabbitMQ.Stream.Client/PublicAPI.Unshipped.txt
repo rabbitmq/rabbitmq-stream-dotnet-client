@@ -170,6 +170,9 @@ RabbitMQ.Stream.Client.RawSuperStreamConsumerConfig.ConnectionClosedHandler.get 
 RabbitMQ.Stream.Client.RawSuperStreamConsumerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.RawSuperStreamProducer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.RawSuperStreamProducer.Info.get -> RabbitMQ.Stream.Client.ProducerInfo
+RabbitMQ.Stream.Client.RawSuperStreamProducer.ReconnectPartition(string stream) -> System.Threading.Tasks.Task
+RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.ConnectionClosedHandler.get -> System.Func<string, string, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.set -> void
 RabbitMQ.Stream.Client.Reconnect.IReconnectStrategy
@@ -195,9 +198,12 @@ RabbitMQ.Stream.Client.Reliable.Producer.Info.get -> RabbitMQ.Stream.Client.Prod
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.get -> RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
+RabbitMQ.Stream.Client.Reliable.ProducerFactory.CreateProducer(bool boot) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
+RabbitMQ.Stream.Client.Reliable.ProducerFactory._producer -> RabbitMQ.Stream.Client.IProducer
 RabbitMQ.Stream.Client.Reliable.ReliableBase.CompareStatus(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus toTest) -> bool
 RabbitMQ.Stream.Client.Reliable.ReliableBase.IsValidStatus() -> bool
 RabbitMQ.Stream.Client.Reliable.ReliableBase.LogException(System.Exception exception) -> void
+RabbitMQ.Stream.Client.Reliable.ReliableBase.MaybeReconnectPartition(string stream, string info, System.Func<string, System.Threading.Tasks.Task> reconnectPartitionFunc) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.ReliableBase.UpdateStatus(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus status) -> void
 RabbitMQ.Stream.Client.Reliable.ReliableBase._reconnectStrategy -> RabbitMQ.Stream.Client.Reconnect.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.ReliableBase._status -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus

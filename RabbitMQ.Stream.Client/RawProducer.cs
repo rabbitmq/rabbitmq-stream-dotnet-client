@@ -164,6 +164,8 @@ namespace RabbitMQ.Stream.Client
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
             async (reason) =>
             {
+                _client.ConnectionClosed -= OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
                 _config.Pool.Remove(_client.ClientId);
                 await Shutdown(_config, true).ConfigureAwait(false);
                 if (_config.ConnectionClosedHandler != null)
@@ -171,8 +173,6 @@ namespace RabbitMQ.Stream.Client
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
 
-                // remove the event since the connection is closed
-                _client.ConnectionClosed -= OnConnectionClosed();
             };
 
         private ClientParameters.MetadataUpdateHandler OnMetadataUpdate() =>
@@ -193,8 +193,8 @@ namespace RabbitMQ.Stream.Client
                 // and the DeletePublisher producer is not needed anymore (ignoreIfClosed = true)
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid to send the DeletePublisher
-                _config.MetadataHandler?.Invoke(metaDataUpdate);
                 await Shutdown(_config, true).ConfigureAwait(false);
+                _config.MetadataHandler?.Invoke(metaDataUpdate);
             };
 
         private bool IsFilteringEnabled => _config.Filter is { FilterValue: not null };

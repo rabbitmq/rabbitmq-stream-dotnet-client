@@ -81,6 +81,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             ConnectionClosedHandler = async (reason) =>
             {
                 _consumers.TryRemove(stream, out var consumer);
+                consumer?.Close();
                 if (consumer != null)
                 {
                     _logger.LogInformation(
@@ -94,7 +95,6 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                         await _config.ConnectionClosedHandler(reason, stream).ConfigureAwait(false);
                     }
 
-                    // await GetConsumer(stream).ConfigureAwait(false);
                 }
             },
             MessageHandler = async (consumer, context, message) =>
@@ -131,7 +131,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
         return c;
     }
 
-    private async Task GetConsumer(string stream)
+    private async Task MaybeAddConsumer(string stream)
     {
         if (!_consumers.ContainsKey(stream))
         {
@@ -144,7 +144,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     {
         foreach (var stream in _streamInfos.Keys)
         {
-            await GetConsumer(stream).ConfigureAwait(false);
+            await MaybeAddConsumer(stream).ConfigureAwait(false);
         }
     }
 
@@ -155,7 +155,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
         {
             _consumers.TryRemove(stream, out var consumer);
             consumer?.Close();
-            await GetConsumer(stream).ConfigureAwait(false);
+            await MaybeAddConsumer(stream).ConfigureAwait(false);
         }
         finally
         {
