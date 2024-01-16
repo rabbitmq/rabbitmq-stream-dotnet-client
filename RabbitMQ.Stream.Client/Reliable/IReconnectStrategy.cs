@@ -56,17 +56,28 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
 
     public async ValueTask<bool> WhenDisconnected(string connectionIdentifier)
     {
+
         Tentatives <<= 1;
-        var next = Random.Shared.Next(Tentatives * 1000, Tentatives * 2000);
         _logger.LogInformation(
             "{ConnectionIdentifier} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms",
             connectionIdentifier,
-            next
+            Tentatives * 100
         );
-        
-        await Task.Delay(TimeSpan.FromMilliseconds(next)).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100)).ConfigureAwait(false);
         MaybeResetTentatives();
         return true;
+        // this will be in another commit
+        // Tentatives <<= 1;
+        // var next = Random.Shared.Next(Tentatives * 1000, Tentatives * 2000);
+        // _logger.LogInformation(
+        //     "{ConnectionIdentifier} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms",
+        //     connectionIdentifier,
+        //     next
+        // );
+        //
+        // await Task.Delay(TimeSpan.FromMilliseconds(next)).ConfigureAwait(false);
+        // MaybeResetTentatives();
+        // return true;
     }
 
     public ValueTask WhenConnected(string connectionIdentifier)

@@ -81,20 +81,29 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             ConnectionClosedHandler = async (reason) =>
             {
                 _consumers.TryRemove(stream, out var consumer);
-                consumer?.Close();
-                if (consumer != null)
+                if (reason == ConnectionClosedReason.Normal)
                 {
-                    _logger.LogInformation(
-                        "Consumer {ConsumerReference} is disconnected from {StreamIdentifier} reason {Reason}",
-                        _config.Reference,
+                    _logger.LogDebug(
+                        "Super Stream consumer {@ConsumerInfo} is closed normally from {StreamIdentifier}",
+                        consumer?.Info,
+                        stream
+                    );
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Super Stream consumer {@ConsumerInfo} is disconnected from {StreamIdentifier} reason: {Reason}",
+                        consumer?.Info,
                         stream, reason
                     );
+                }
 
-                    if (_config.ConnectionClosedHandler != null)
-                    {
-                        await _config.ConnectionClosedHandler(reason, stream).ConfigureAwait(false);
-                    }
+                consumer?.Dispose();
+                _streamInfos.TryRemove(stream, out _);
 
+                if (_config.ConnectionClosedHandler != null)
+                {
+                    await _config.ConnectionClosedHandler(reason, stream).ConfigureAwait(false);
                 }
             },
             MessageHandler = async (consumer, context, message) =>
@@ -112,6 +121,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             {
                 _consumers.TryRemove(update.Stream, out var consumer);
                 consumer?.Close();
+                _streamInfos.TryRemove(update.Stream, out _);
                 if (_config.MetadataHandler != null)
                 {
                     await _config.MetadataHandler(update).ConfigureAwait(false);
@@ -126,7 +136,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
         var c = await RawConsumer.Create(
             _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
             FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
-        _logger?.LogDebug("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference,
+        _logger?.LogDebug("Super stream consumer {ConsumerReference} created for Stream {StreamIdentifier}", c.Info,
             stream);
         return c;
     }
@@ -148,14 +158,15 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
         }
     }
 
-    public async Task ReconnectPartition(string stream)
+    public async Task ReconnectPartition(StreamInfo streamInfo)
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
-            _consumers.TryRemove(stream, out var consumer);
-            consumer?.Close();
-            await MaybeAddConsumer(stream).ConfigureAwait(false);
+            _consumers.TryRemove(streamInfo.Stream, out var consumer);
+            consumer?.Dispose();
+            _streamInfos.TryAdd(streamInfo.Stream, streamInfo); // add the new stream infos
+            await MaybeAddConsumer(streamInfo.Stream).ConfigureAwait(false);
         }
         finally
         {

@@ -175,8 +175,6 @@ public class Consumer : ConsumerFactory
         var rConsumer = new Consumer(consumerConfig, logger);
         await rConsumer.Init(consumerConfig.ReconnectStrategy, consumerConfig.ResourceAvailableReconnectStrategy)
             .ConfigureAwait(false);
-        logger?.LogDebug("Consumer: {Reference} created for Stream: {Stream}",
-            consumerConfig.Reference, consumerConfig.Stream);
         return rConsumer;
     }
 

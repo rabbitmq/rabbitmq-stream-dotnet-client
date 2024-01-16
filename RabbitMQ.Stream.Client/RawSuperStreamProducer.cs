@@ -39,7 +39,9 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // For example:
     // invoices(super_stream) -> invoices-0, invoices-1, invoices-2
     // Streams contains the configuration for each stream but not the connection
+
     private readonly IDictionary<string, StreamInfo> _streamInfos;
+
     private readonly ClientParameters _clientParameters;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
@@ -92,8 +94,20 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             Pool = _config.Pool,
             ConnectionClosedHandler = async (reason) =>
             {
-                _producers.TryRemove(stream, out var producer);
-                producer?.Close();
+                _producers.TryGetValue(stream, out var producer);
+                if (reason == ConnectionClosedReason.Normal)
+                {
+                    _logger.LogDebug("Super Stream producer {@ProducerInfo} is closed normally", producer?.Info);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Super Stream producer {@ProducerInfo} is disconnected from {StreamIdentifier} reason: {Reason}",
+                        producer?.Info,
+                        stream, reason
+                    );
+                }
+
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason, stream).ConfigureAwait(false);
@@ -101,8 +115,6 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             },
             MetadataHandler = async update =>
             {
-                _producers.TryRemove(update.Stream, out var producer);
-                producer?.Close();
                 if (_config.MetadataHandler != null)
                 {
                     await _config.MetadataHandler(update).ConfigureAwait(false);
@@ -117,17 +129,18 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var p = await RawProducer.Create(_clientParameters with {ClientProvidedName = _config.ClientProvidedName},
+        var index = _streamInfos.Keys.Select((item, index) => new { Item = item, Index = index }).First(i => i.Item == stream).Index;
+        var p = await RawProducer.Create(_clientParameters with { ClientProvidedName = $"{_config.ClientProvidedName}_{index}" },
                 FromStreamConfig(stream),
                 _streamInfos[stream],
                 _logger)
             .ConfigureAwait(false);
-        _logger?.LogDebug("Producer {ProducerReference} created for Stream {StreamIdentifier}", _config.Reference,
+        _logger?.LogDebug("Super stream producer {@ProducerReference} created for Stream {StreamIdentifier}", p.Info,
             stream);
         return p;
     }
 
-    protected void ThrowIfClosed()
+    private void ThrowIfClosed()
     {
         if (!IsOpen())
         {
@@ -146,15 +159,19 @@ public class RawSuperStreamProducer : IProducer, IDisposable
         return _producers[stream];
     }
 
-
-    public async Task ReconnectPartition(string stream)
+    public async Task ReconnectPartition(StreamInfo streamInfo)
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
-            _producers.TryRemove(stream, out var producer);
+            _producers.TryRemove(streamInfo.Stream, out var producer);
             producer?.Close();
-            await MaybeAddAndGetProducer(stream).ConfigureAwait(false);
+            if (!_streamInfos.TryGetValue(streamInfo.Stream, out _))
+            {
+                _streamInfos.TryAdd(streamInfo.Stream, streamInfo);
+            }
+
+            await MaybeAddAndGetProducer(streamInfo.Stream).ConfigureAwait(false);
         }
         finally
         {
@@ -175,7 +192,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
 
         // we should always have a route
         // but in case of stream KEY the routing could not exist
-        if (routes is not {Count: > 0})
+        if (routes is not { Count: > 0 })
         {
             throw new RouteNotFoundException("No route found for the message to any stream");
         }
@@ -195,7 +212,15 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     {
         ThrowIfClosed();
         var producer = await GetProducerForMessage(message).ConfigureAwait(false);
-        await producer.Send(publishingId, message).ConfigureAwait(false);
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await producer.Send(publishingId, message).ConfigureAwait(false);
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
     }
 
     public async ValueTask Send(List<(ulong, Message)> messages)
@@ -216,7 +241,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             }
             else
             {
-                aggregate.Add((p, new List<(ulong, Message)>() {(subMessage.Item1, subMessage.Item2)}));
+                aggregate.Add((p, new List<(ulong, Message)>() { (subMessage.Item1, subMessage.Item2) }));
             }
         }
 
@@ -243,7 +268,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             }
             else
             {
-                aggregate.Add((p, new List<Message>() {subMessage}));
+                aggregate.Add((p, new List<Message>() { subMessage }));
             }
         }
 
@@ -291,7 +316,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     {
         foreach (var (_, iProducer) in _producers)
         {
-            iProducer.Close();
+            iProducer.Dispose();
         }
 
         _disposed = true;
@@ -338,7 +363,6 @@ public record RawSuperStreamProducerConfig : IProducerConfig
 
     public Func<string, string, Task> ConnectionClosedHandler { get; set; }
 
-
     internal Client Client { get; set; }
 }
 
@@ -381,7 +405,7 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
         var index = BitConverter.ToUInt32(hash, 0) % (uint)partitions.Count;
-        var r = new List<string>() {partitions[(int)index]};
+        var r = new List<string>() { partitions[(int)index] };
         return Task.FromResult(r);
     }
 
@@ -414,8 +438,8 @@ public class KeyRoutingStrategy : IRoutingStrategy
         var c = await _routingKeyQFunc(_superStream, key).ConfigureAwait(false);
         _cacheStream[key] = c.Streams;
         return (from resultStream in c.Streams
-            where partitions.Contains(resultStream)
-            select new List<string>() {resultStream}).FirstOrDefault();
+                where partitions.Contains(resultStream)
+                select new List<string>() { resultStream }).FirstOrDefault();
     }
 
     public KeyRoutingStrategy(Func<Message, string> routingKeyExtractor,

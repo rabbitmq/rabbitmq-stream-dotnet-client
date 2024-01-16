@@ -2,7 +2,6 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
-using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -43,6 +42,10 @@ public abstract class ConsumerFactory : ReliableBase
         {
             offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_consumerConfig.Stream] + 1);
         }
+
+        // before creating a new consumer, the old one is disposed
+        // This is just a safety check, the consumer should be already disposed
+        _consumer?.Dispose();
 
         return await _consumerConfig.StreamSystem.CreateRawConsumer(new RawConsumerConfig(_consumerConfig.Stream)
         {
@@ -124,11 +127,10 @@ public abstract class ConsumerFactory : ReliableBase
                             BaseLogger.LogInformation("{Identity} is closed normally", ToString());
                             return;
                         }
-                        
+
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r)
                             .ConfigureAwait(false);
-
                     },
                     MetadataHandler = async update =>
                     {
@@ -150,7 +152,5 @@ public abstract class ConsumerFactory : ReliableBase
         }
 
         return _consumer;
-
-        
     }
 }

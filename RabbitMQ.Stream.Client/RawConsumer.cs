@@ -143,7 +143,7 @@ namespace RabbitMQ.Stream.Client
             Logger = logger ?? NullLogger.Instance;
             _initialCredits = config.InitialCredits;
             _config = config;
-            Logger.LogDebug("Creating... {ConsumerInfo}", DumpEntityConfiguration());
+            Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
             Info = new ConsumerInfo(_config.Stream, _config.Reference);
             // _chunksBuffer is a channel that is used to buffer the chunks
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
@@ -472,7 +472,7 @@ namespace RabbitMQ.Stream.Client
             }, Token);
         }
 
-        internal async Task Init()
+        private async Task Init()
         {
             _config.Validate();
 

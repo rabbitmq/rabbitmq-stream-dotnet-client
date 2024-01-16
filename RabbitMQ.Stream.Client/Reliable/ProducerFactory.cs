@@ -34,8 +34,6 @@ public abstract class ProducerFactory : ReliableBase
         if (boot)
         {
 
-            
-
             return await _producerConfig.StreamSystem.CreateRawSuperStreamProducer(
                 new RawSuperStreamProducerConfig(_producerConfig.Stream)
                 {
@@ -50,7 +48,7 @@ public abstract class ProducerFactory : ReliableBase
                     {
                         if (closeReason == ConnectionClosedReason.Normal)
                         {
-                            BaseLogger.LogInformation("{Identity} is closed normally", ToString());
+                            BaseLogger.LogDebug("{Identity} is closed normally", ToString());
                             return;
                         }
 
@@ -83,11 +81,16 @@ public abstract class ProducerFactory : ReliableBase
                     }
                 }, BaseLogger).ConfigureAwait(false);
         }
+
         return _producer;
     }
 
     private async Task<IProducer> StandardProducer()
     {
+        // before creating a new producer, the old one is disposed
+        // This is just a safety check, the producer should be already disposed
+        _producer?.Dispose();
+
         return await _producerConfig.StreamSystem.CreateRawProducer(new RawProducerConfig(_producerConfig.Stream)
         {
             ClientProvidedName = _producerConfig.ClientProvidedName,
@@ -102,7 +105,7 @@ public abstract class ProducerFactory : ReliableBase
             {
                 if (closeReason == ConnectionClosedReason.Normal)
                 {
-                    BaseLogger.LogInformation("{Identity} is closed normally", ToString());
+                    BaseLogger.LogDebug("{Identity} is closed normally", ToString());
                     return;
                 }
 

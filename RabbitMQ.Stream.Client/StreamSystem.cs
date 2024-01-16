@@ -284,8 +284,6 @@ namespace RabbitMQ.Stream.Client
 
                 var p = await RawProducer.Create(s,
                     rawProducerConfig, metaStreamInfo, logger).ConfigureAwait(false);
-                _logger?.LogDebug("Raw Producer: {Reference} created for Stream: {Stream}",
-                    rawProducerConfig.Reference, rawProducerConfig.Stream);
                 return p;
             }
             finally
@@ -294,7 +292,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private async Task<StreamInfo> StreamInfo(string streamName)
+        public async Task<StreamInfo> StreamInfo(string streamName)
         {
             // force localhost connection for single node clusters and when address resolver is not provided
             // when theres 1 endpoint and an address resolver, there could be a cluster behind a load balancer

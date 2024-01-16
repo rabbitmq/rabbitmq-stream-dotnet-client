@@ -27,5 +27,7 @@ namespace RabbitMQ.Stream.Client
 
         IDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))> Publishers { get; }
         IDictionary<byte, (string, ConsumerEvents)> Consumers { get; }
+
+        public bool IsClosed { get; }
     }
 }

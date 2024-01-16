@@ -163,12 +163,6 @@ public class Producer : ProducerFactory
         var rProducer = new Producer(producerConfig, logger);
         await rProducer.Init(producerConfig.ReconnectStrategy, producerConfig.ResourceAvailableReconnectStrategy)
             .ConfigureAwait(false);
-        logger?.LogDebug(
-            "Producer: {Reference} created for Stream: {Stream}",
-            producerConfig.Reference,
-            producerConfig.Stream
-        );
-
         return rProducer;
     }
 
