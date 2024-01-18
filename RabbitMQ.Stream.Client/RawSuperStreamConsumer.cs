@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -23,7 +24,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
     //  Contains the info about the streams (one per partition)
-    private readonly ConcurrentDictionary<string, StreamInfo> _streamInfos;
+    private readonly IDictionary<string, StreamInfo> _streamInfos;
     private readonly ClientParameters _clientParameters;
     private readonly ILogger _logger;
 
@@ -53,12 +54,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     )
     {
         _config = config;
-        _streamInfos = new ConcurrentDictionary<string, StreamInfo>(streamInfos);
-        foreach (var keyValuePair in streamInfos)
-        {
-            _streamInfos.TryAdd(keyValuePair.Key, keyValuePair.Value);
-        }
-
+        _streamInfos = streamInfos;
         _clientParameters = clientParameters;
         _logger = logger ?? NullLogger.Instance;
         Info = new ConsumerInfo(_config.SuperStream, _config.Reference);
@@ -99,7 +95,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                 }
 
                 consumer?.Dispose();
-                _streamInfos.TryRemove(stream, out _);
+                _streamInfos.Remove(stream);
 
                 if (_config.ConnectionClosedHandler != null)
                 {
@@ -121,7 +117,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             {
                 _consumers.TryRemove(update.Stream, out var consumer);
                 consumer?.Close();
-                _streamInfos.TryRemove(update.Stream, out _);
+                _streamInfos.Remove(update.Stream);
                 if (_config.MetadataHandler != null)
                 {
                     await _config.MetadataHandler(update).ConfigureAwait(false);
@@ -133,8 +129,11 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
 
     private async Task<IConsumer> InitConsumer(string stream)
     {
+        var index = _streamInfos.Keys.Select((item, index) => new {Item = item, Index = index})
+            .First(i => i.Item == stream).Index;
+
         var c = await RawConsumer.Create(
-            _clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
+            _clientParameters with {ClientProvidedName = $"{_clientParameters.ClientProvidedName}_{index}"},
             FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
         _logger?.LogDebug("Super stream consumer {ConsumerReference} created for Stream {StreamIdentifier}", c.Info,
             stream);
