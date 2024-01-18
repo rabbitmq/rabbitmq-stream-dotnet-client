@@ -125,7 +125,7 @@ public record ProducerConfig : ReliableConfig
 /// </summary>
 public class Producer : ProducerFactory
 {
-    private IProducer _producer;
+
     private ulong _publishingId;
     private readonly ILogger<Producer> _logger;
 
@@ -163,18 +163,12 @@ public class Producer : ProducerFactory
         var rProducer = new Producer(producerConfig, logger);
         await rProducer.Init(producerConfig.ReconnectStrategy, producerConfig.ResourceAvailableReconnectStrategy)
             .ConfigureAwait(false);
-        logger?.LogDebug(
-            "Producer: {Reference} created for Stream: {Stream}",
-            producerConfig.Reference,
-            producerConfig.Stream
-        );
-
         return rProducer;
     }
 
-    internal override async Task CreateNewEntity(bool boot)
+    protected override async Task CreateNewEntity(bool boot)
     {
-        _producer = await CreateProducer().ConfigureAwait(false);
+        _producer = await CreateProducer(boot).ConfigureAwait(false);
 
         await _producerConfig.ReconnectStrategy.WhenConnected(ToString()).ConfigureAwait(false);
 
@@ -191,7 +185,7 @@ public class Producer : ProducerFactory
 
     protected override async Task CloseEntity()
     {
-        await SemaphoreSlim.WaitAsync(Consts.LongWait).ConfigureAwait(false);
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_producer != null)
@@ -214,7 +208,7 @@ public class Producer : ProducerFactory
         }
 
         UpdateStatus(ReliableEntityStatus.Closed);
-        await SemaphoreSlim.WaitAsync(Consts.ShortWait).ConfigureAwait(false);
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
             _confirmationPipe.Stop();

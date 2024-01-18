@@ -843,6 +843,13 @@ namespace RabbitMQ.Stream.Client
         {
             var streams = new[] { stream };
             var response = await QueryMetadata(streams).ConfigureAwait(false);
+            if (response.StreamInfos is { Count: >= 1 } &&
+                response.StreamInfos[stream].ResponseCode == ResponseCode.StreamNotAvailable)
+            {
+
+                ClientExceptions.MaybeThrowException(ResponseCode.StreamNotAvailable, stream);
+            }
+
             return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }

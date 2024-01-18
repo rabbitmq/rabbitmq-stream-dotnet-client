@@ -30,12 +30,15 @@ namespace RabbitMQ.Stream.Client
             if (exception is AggregateException aggregateException)
             {
                 var x = aggregateException.InnerExceptions.Select(x =>
-                    x.GetType() == typeof(SocketException) || x.GetType() == typeof(TimeoutException) ||
-                    x.GetType() == typeof(LeaderNotFoundException) || x.GetType() == typeof(InvalidOperationException));
+                    x.GetType() == typeof(SocketException) ||
+                    x.GetType() == typeof(TimeoutException) ||
+                    x.GetType() == typeof(LeaderNotFoundException) ||
+                    x.GetType() == typeof(OperationCanceledException) ||
+                    x.GetType() == typeof(InvalidOperationException));
                 return x.Any();
             }
 
-            return exception is (SocketException or TimeoutException or LeaderNotFoundException or InvalidOperationException) ||
+            return exception is (SocketException or TimeoutException or LeaderNotFoundException or InvalidOperationException or OperationCanceledException) ||
                    IsStreamNotAvailable(exception);
         }
 

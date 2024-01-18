@@ -66,7 +66,7 @@ public abstract class ReliableBase
         }
     }
 
-    protected bool IsValidStatus()
+    private bool IsValidStatus()
     {
         lock (_lock)
         {
@@ -103,27 +103,20 @@ public abstract class ReliableBase
         {
             if (boot)
             {
+                BaseLogger.LogError("{Identity} Error during the first boot {EMessage}",
+                    ToString(), e.Message);
                 // if it is the first boot we don't need to reconnect
                 UpdateStatus(ReliableEntityStatus.Closed);
                 throw;
             }
 
-            reconnect = ClientExceptions.IsAKnownException(e);
-
+            reconnect = true;
             LogException(e);
-            if (!reconnect)
-            {
-                // We consider the client as closed
-                // since the exception is raised to the caller
-                UpdateStatus(ReliableEntityStatus.Closed);
-                throw;
-            }
+
         }
 
         if (reconnect)
-        {
             await MaybeReconnect().ConfigureAwait(false);
-        }
     }
 
     // <summary>
@@ -134,10 +127,9 @@ public abstract class ReliableBase
     {
         if (!boot && !IsValidStatus())
         {
-            BaseLogger.LogInformation("{Identity} is already closed", ToString());
+            BaseLogger.LogDebug("{Identity} is already closed. The init will be skipped", ToString());
             return;
         }
-
         // each time that the client is initialized, we need to reset the status
         // if we hare here it means that the entity is not open for some reason like:
         // first time initialization or reconnect due of a IsAKnownException
@@ -159,11 +151,18 @@ public abstract class ReliableBase
     /// <param name="boot"> If it is the First boot for the reliable P/C </param>
     /// Called by Init method
     /// </summary>
-    internal abstract Task CreateNewEntity(bool boot);
+    protected abstract Task CreateNewEntity(bool boot);
 
-    protected async Task<bool> CheckIfStreamIsAvailable(string stream, StreamSystem system)
+    /// <summary>
+    /// When the clients receives a meta data update, it doesn't know
+    /// If the stream exists or not. It just knows that the stream topology has changed.
+    /// the method CheckIfStreamIsAvailable checks if the stream exists.
+    /// </summary>
+    /// <param name="stream">stream name</param>
+    /// <param name="system">stream system</param>
+    /// <returns></returns>
+    private async Task<bool> CheckIfStreamIsAvailable(string stream, StreamSystem system)
     {
-
         await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
         var exists = false;
         var tryAgain = true;
@@ -172,7 +171,9 @@ public abstract class ReliableBase
             try
             {
                 exists = await system.StreamExists(stream).ConfigureAwait(false);
-                await _resourceAvailableReconnectStrategy.WhenConnected(stream).ConfigureAwait(false);
+                var available = exists ? "available" : "not available";
+                await _resourceAvailableReconnectStrategy.WhenConnected($"{stream} is {available}")
+                    .ConfigureAwait(false);
                 break;
             }
             catch (Exception e)
@@ -182,29 +183,32 @@ public abstract class ReliableBase
             }
         }
 
-        if (!exists)
-        {
-            // In this case the stream doesn't exist anymore
-            // the  Entity is just closed.
-            BaseLogger.LogInformation(
-                "Meta data update stream: {StreamIdentifier}. The stream doesn't exist anymore {Identity} will be closed",
-                stream,
-                ToString()
-            );
-        }
+        if (exists)
+            return true;
+        // In this case the stream doesn't exist anymore or it failed to check if the stream exists
+        // too many tentatives for the reconnection strategy
+        // the  Entity is just closed.
+        var msg = tryAgain ? "The stream doesn't exist anymore" : "Failed to check if the stream exists";
 
-        return exists;
+        BaseLogger.LogInformation(
+            "Meta data update stream: {StreamIdentifier}. {Msg} {Identity} will be closed",
+            stream, msg,
+            ToString()
+        );
+
+        return false;
     }
 
     // <summary>
     /// Try to reconnect to the broker
     /// Based on the retry strategy
-// </summary>
-    protected async Task MaybeReconnect()
+    // </summary>
+    private async Task MaybeReconnect()
     {
         var reconnect = await _reconnectStrategy.WhenDisconnected(ToString()).ConfigureAwait(false);
         if (!reconnect)
         {
+            BaseLogger.LogDebug("{Identity} is closed due of reconnect strategy", ToString());
             UpdateStatus(ReliableEntityStatus.Closed);
             return;
         }
@@ -212,38 +216,46 @@ public abstract class ReliableBase
         switch (IsOpen())
         {
             case true:
-                await TryToReconnect().ConfigureAwait(false);
+                UpdateStatus(ReliableEntityStatus.Reconnecting);
+                await MaybeInit(false).ConfigureAwait(false);
                 break;
             case false:
                 if (CompareStatus(ReliableEntityStatus.Reconnecting))
                 {
-                    BaseLogger.LogInformation("{Identity} is in Reconnecting", ToString());
+                    BaseLogger.LogDebug("{Identity} is in Reconnecting", ToString());
                 }
 
                 break;
         }
     }
 
-    /// <summary>
-    ///  Try to reconnect to the broker
-    /// </summary>
-    private async Task TryToReconnect()
+    private async Task MaybeReconnectPartition(StreamInfo streamInfo, string info, Func<StreamInfo, Task> reconnectPartitionFunc)
     {
-        UpdateStatus(ReliableEntityStatus.Reconnecting);
-        await MaybeInit(false).ConfigureAwait(false);
+        var reconnect = await _reconnectStrategy
+            .WhenDisconnected($"Super Stream partition: {streamInfo.Stream} for {info}").ConfigureAwait(false);
+
+        if (!reconnect)
+        {
+            BaseLogger.LogDebug("{Identity} partition is closed due of reconnect strategy", ToString());
+            UpdateStatus(ReliableEntityStatus.Closed);
+            return;
+        }
+
+        try
+        {
+            UpdateStatus(ReliableEntityStatus.Reconnecting);
+            await reconnectPartitionFunc(streamInfo).ConfigureAwait(false);
+            UpdateStatus(ReliableEntityStatus.Open);
+            await _reconnectStrategy.WhenConnected(
+                $"Super Stream partition: {streamInfo.Stream} for {info}").ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            LogException(e);
+            await MaybeReconnectPartition(streamInfo, info, reconnectPartitionFunc).ConfigureAwait(false);
+        }
     }
 
-    /// <summary>
-    /// When the clients receives a meta data update, it doesn't know
-    /// the reason.
-    /// Metadata update can be raised when:
-    /// - stream is deleted
-    /// - change the stream topology (ex: add a follower)
-    ///
-    /// HandleMetaDataMaybeReconnect checks if the stream still exists
-    /// and try to reconnect.
-    /// (internal because it is needed for tests)
-    /// </summary>
     private void LogException(Exception exception)
     {
         const string KnownExceptionTemplate = "{Identity} trying to reconnect due to exception {Err}";
@@ -267,6 +279,42 @@ public abstract class ReliableBase
     /// </summary>
     protected abstract Task CloseEntity();
 
+    /// <summary>
+    /// Handle the partition reconnection in case of super stream entity
+    /// </summary>
+    /// <param name="system">Stream System</param>
+    /// <param name="stream">Partition Stream</param>
+    /// <param name="reconnectPartitionFunc">Function to reconnect the partition</param>
+    internal async Task OnEntityClosed(StreamSystem system, string stream, Func<StreamInfo, Task> reconnectPartitionFunc)
+    {
+        var streamExists = false;
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            streamExists = await CheckIfStreamIsAvailable(stream, system)
+                .ConfigureAwait(false);
+            if (streamExists)
+            {
+                var streamInfo = await system.StreamInfo(stream).ConfigureAwait(false);
+                await MaybeReconnectPartition(streamInfo, ToString(), reconnectPartitionFunc).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
+
+        if (!streamExists)
+        {
+            await Close().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Handle the regular stream reconnection 
+    /// </summary>
+    /// <param name="system">Stream system</param>
+    /// <param name="stream">Stream</param>
     internal async Task OnEntityClosed(StreamSystem system, string stream)
     {
         var streamExists = false;

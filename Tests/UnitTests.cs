@@ -32,10 +32,12 @@ namespace Tests
         }
 
         public IDictionary<byte, (string, ConsumerEvents)> Consumers { get; }
+        public bool IsClosed { get; }
 
         public FakeClient(ClientParameters clientParameters)
         {
             Parameters = clientParameters;
+            IsClosed = false;
             Publishers =
                 new Dictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))>();
             Consumers = new Dictionary<byte, (string, ConsumerEvents)>();

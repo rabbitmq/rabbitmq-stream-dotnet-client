@@ -57,7 +57,7 @@ namespace RabbitMQ.Stream.Client
 
         protected override string GetStream() => _config.Stream;
 
-        protected override string DumpEntityConfiguration()
+        protected sealed override string DumpEntityConfiguration()
         {
             return
                 $"Producer id {EntityId} for stream: {_config.Stream}, reference: {_config.Reference}," +
@@ -88,6 +88,8 @@ namespace RabbitMQ.Stream.Client
             _client = client;
             _config = config;
             Info = new ProducerInfo(_config.Stream, _config.Reference);
+            Logger = logger ?? NullLogger.Instance;
+            Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
             _messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)
             {
                 AllowSynchronousContinuations = false,
@@ -95,7 +97,6 @@ namespace RabbitMQ.Stream.Client
                 SingleWriter = false,
                 FullMode = BoundedChannelFullMode.Wait
             });
-            Logger = logger ?? NullLogger.Instance;
             Task.Run(ProcessBuffer);
             _semaphore = new SemaphoreSlim(config.MaxInFlight, config.MaxInFlight);
         }
@@ -164,15 +165,14 @@ namespace RabbitMQ.Stream.Client
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
             async (reason) =>
             {
+                _client.ConnectionClosed -= OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
                 _config.Pool.Remove(_client.ClientId);
-                await Shutdown(_config, true).ConfigureAwait(false);
+                UpdateStatusToClosed();
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
-
-                // remove the event since the connection is closed
-                _client.ConnectionClosed -= OnConnectionClosed();
             };
 
         private ClientParameters.MetadataUpdateHandler OnMetadataUpdate() =>
@@ -187,14 +187,13 @@ namespace RabbitMQ.Stream.Client
                 _client.ConnectionClosed -= OnConnectionClosed();
                 _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
 
-                _config.Pool.RemoveProducerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
-
                 // at this point the server has removed the producer from the list 
                 // and the DeletePublisher producer is not needed anymore (ignoreIfClosed = true)
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid to send the DeletePublisher
-                _config.MetadataHandler?.Invoke(metaDataUpdate);
+                _config.Pool.RemoveProducerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
                 await Shutdown(_config, true).ConfigureAwait(false);
+                _config.MetadataHandler?.Invoke(metaDataUpdate);
             };
 
         private bool IsFilteringEnabled => _config.Filter is { FilterValue: not null };
@@ -364,7 +363,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "error while Process Buffer");
+                Logger.LogError(e, "{DumpEntityConfiguration} Error while Process Buffer", DumpEntityConfiguration());
             }
         }
 

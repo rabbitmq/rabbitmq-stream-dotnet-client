@@ -7,6 +7,11 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
+public interface ISuperStreamConsumer : IConsumer
+{
+    public Task ReconnectPartition(StreamInfo streamInfo);
+}
+
 public interface IConsumer : IClosable
 {
     public Task StoreOffset(ulong offset);
@@ -41,8 +46,6 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
 
     public string Reference { get; set; }
-
-    public Func<string, Task> ConnectionClosedHandler { get; set; }
 
     public ConsumerFilter ConsumerFilter { get; set; } = null;
 

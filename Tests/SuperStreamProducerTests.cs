@@ -143,7 +143,6 @@ public class SuperStreamProducerTests
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference",
-
             });
         Assert.True(streamProducer.MessagesSent == 0);
         Assert.True(streamProducer.ConfirmFrames == 0);
@@ -421,16 +420,26 @@ public class SuperStreamProducerTests
         SystemUtils.ResetSuperStreams();
         // This test validates that the super stream producer is able to recreate the connection
         // if the connection is killed
-        // It is NOT meant to test the availability of the super stream producer
-        // just the reconnect mechanism
+        // we use the connection closed handler to recreate the connection
+        // the method ReconnectPartition is used to reconnect the partition
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientName = Guid.NewGuid().ToString();
-        var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
-            {
-                Routing = message1 => message1.Properties.MessageId.ToString(),
-                ClientProvidedName = clientName
-            });
+
+        var c = new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+        {
+            Routing = message1 => message1.Properties.MessageId.ToString(),
+            ClientProvidedName = clientName,
+        };
+        var completed = new TaskCompletionSource<bool>();
+        var streamProducer = await system.CreateRawSuperStreamProducer(c);
+        c.ConnectionClosedHandler = async (reason, stream) =>
+        {
+            var streamInfo = await system.StreamInfo(stream);
+            await streamProducer.ReconnectPartition(streamInfo);
+            SystemUtils.Wait();
+            completed.SetResult(true);
+        };
+
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
@@ -440,8 +449,8 @@ public class SuperStreamProducerTests
 
             if (i == 10)
             {
-                SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientName).Result == 3);
-                // We just decide to close the connections
+                SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientName}_0").Result == 1);
+                completed.Task.Wait();
             }
 
             // Here the connection _must_ be recreated  and the send the message 
@@ -453,7 +462,7 @@ public class SuperStreamProducerTests
         // according to the routing strategy hello{i} that must be the correct routing
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
@@ -533,7 +542,7 @@ public class SuperStreamProducerTests
                     }
                 }
             });
-        for (ulong i = 0; i < 10; i++)
+        for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
             {
@@ -549,12 +558,21 @@ public class SuperStreamProducerTests
             }
 
             Thread.Sleep(200);
-
-            await streamProducer.Send(i, message);
+            try
+            {
+                await streamProducer.Send(i, message);
+            }
+            catch (Exception e)
+            {
+                Assert.True(e is AlreadyClosedException);
+            }
         }
 
         SystemUtils.Wait();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        // even we removed a stream the producer should be able to send messages and maintain the hash routing
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
@@ -750,13 +768,29 @@ public class SuperStreamProducerTests
         // just the reconnect mechanism
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientName = Guid.NewGuid().ToString();
+        var testPassed = new TaskCompletionSource<bool>() { };
+        var received = 0;
+        var error = 0;
         var streamProducer = await Producer.Create(new ProducerConfig(system, SystemUtils.InvoicesExchange)
         {
-            SuperStreamConfig = new SuperStreamConfig()
+            SuperStreamConfig =
+                new SuperStreamConfig() { Routing = message1 => message1.Properties.MessageId.ToString() },
+            TimeoutMessageAfter = TimeSpan.FromSeconds(1),
+            ConfirmationHandler = async confirmation =>
             {
-                Routing = message1 => message1.Properties.MessageId.ToString()
+                if (confirmation.Status != ConfirmationStatus.Confirmed)
+                {
+                    Interlocked.Increment(ref error);
+                }
+
+                if (Interlocked.Increment(ref received) == 20)
+                {
+                    testPassed.SetResult(true);
+                }
+
+                await Task.CompletedTask;
             },
-            ClientProvidedName = clientName
+            ClientProvidedName = clientName,
         });
         for (ulong i = 0; i < 20; i++)
         {
@@ -764,14 +798,11 @@ public class SuperStreamProducerTests
             {
                 Properties = new Properties() { MessageId = $"hello{i}" }
             };
-
             if (i == 10)
             {
-                SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientName).Result == 3);
                 // We just decide to close the connections
-                // we just wait a bit to be sure that the connections 
-                // will be re-opened
-                SystemUtils.Wait(TimeSpan.FromSeconds(1));
+                // The messages will go in time out since not confirmed
+                SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientName}_0").Result == 1);
             }
 
             // Here the connection _must_ be recreated  and the message sent
@@ -779,11 +810,13 @@ public class SuperStreamProducerTests
         }
 
         SystemUtils.Wait();
-        // Total messages must be 20
-        // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        // killed the connection for the InvoicesStream0. So received + error must be 9
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) + error == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+
+        await streamProducer.Close();
         await system.Close();
     }
 }

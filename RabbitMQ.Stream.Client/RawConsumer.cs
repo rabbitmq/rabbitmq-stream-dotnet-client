@@ -109,6 +109,8 @@ namespace RabbitMQ.Stream.Client
         public string Stream { get; }
 
         public Func<RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
+
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
     }
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
@@ -141,7 +143,7 @@ namespace RabbitMQ.Stream.Client
             Logger = logger ?? NullLogger.Instance;
             _initialCredits = config.InitialCredits;
             _config = config;
-            Logger.LogDebug("Creating... {ConsumerInfo}", DumpEntityConfiguration());
+            Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
             Info = new ConsumerInfo(_config.Stream, _config.Reference);
             // _chunksBuffer is a channel that is used to buffer the chunks
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
@@ -470,7 +472,7 @@ namespace RabbitMQ.Stream.Client
             }, Token);
         }
 
-        internal async Task Init()
+        private async Task Init()
         {
             _config.Validate();
 
@@ -619,8 +621,8 @@ namespace RabbitMQ.Stream.Client
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid to send the unsubscribe
                 _config.Pool.RemoveConsumerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
+                await Shutdown(_config, true).ConfigureAwait(false);
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
-                await Close().ConfigureAwait(false);
             };
 
         private Client.ConnectionCloseHandler OnConnectionClosed() =>

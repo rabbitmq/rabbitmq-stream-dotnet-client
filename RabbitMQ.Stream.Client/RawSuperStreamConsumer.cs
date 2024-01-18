@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -12,7 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client;
 
-public class RawSuperStreamConsumer : IConsumer, IDisposable
+public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
 {
     // ConcurrentDictionary because the consumer can be closed from another thread
     // The send operations will check if the producer exists and if not it will be created
@@ -20,6 +21,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     private bool _disposed;
 
     private readonly RawSuperStreamConsumerConfig _config;
+    private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
     //  Contains the info about the streams (one per partition)
     private readonly IDictionary<string, StreamInfo> _streamInfos;
@@ -34,7 +36,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     /// <param name="clientParameters"></param>
     /// <param name="logger"></param>
     /// <returns></returns>
-    public static IConsumer Create(
+    public static ISuperStreamConsumer Create(
         RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
@@ -61,7 +63,6 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     }
 
     // We need to copy the config from the super consumer to the standard consumer
-
     private RawConsumerConfig FromStreamConfig(string stream)
     {
         return new RawConsumerConfig(stream)
@@ -73,21 +74,32 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             ConsumerFilter = _config.ConsumerFilter,
             Pool = _config.Pool,
             Crc32 = _config.Crc32,
-            ConnectionClosedHandler = async (s) =>
+            ConnectionClosedHandler = async (reason) =>
             {
-                // if the stream is still in the consumer list
-                // means that the consumer was not closed voluntarily
-                // and it is needed to recreate it.
-                // The stream will be removed from the list when the consumer is closed
-                if (_consumers.ContainsKey(stream))
+                _consumers.TryRemove(stream, out var consumer);
+                if (reason == ConnectionClosedReason.Normal)
                 {
-                    _logger.LogInformation(
-                        "Consumer {ConsumerReference} is disconnected from {StreamIdentifier}. Client will try reconnect",
-                        _config.Reference,
+                    _logger.LogDebug(
+                        "Super Stream consumer {@ConsumerInfo} is closed normally from {StreamIdentifier}",
+                        consumer?.Info,
                         stream
                     );
-                    _consumers.TryRemove(stream, out _);
-                    await GetConsumer(stream).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Super Stream consumer {@ConsumerInfo} is disconnected from {StreamIdentifier} reason: {Reason}",
+                        consumer?.Info,
+                        stream, reason
+                    );
+                }
+
+                consumer?.Dispose();
+                _streamInfos.Remove(stream);
+
+                if (_config.ConnectionClosedHandler != null)
+                {
+                    await _config.ConnectionClosedHandler(reason, stream).ConfigureAwait(false);
                 }
             },
             MessageHandler = async (consumer, context, message) =>
@@ -95,6 +107,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
                 // in the message handler we need to add also the source stream
                 // since there could be multiple streams (one per partition)
                 // it is useful client side to know from which stream the message is coming from
+                _config.OffsetSpec[stream] = new OffsetTypeOffset(context.Offset);
                 if (_config.MessageHandler != null)
                 {
                     await _config.MessageHandler(stream, consumer, context, message).ConfigureAwait(false);
@@ -102,55 +115,12 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
             },
             MetadataHandler = async update =>
             {
-                // In case of stream update we remove the producer from the list
-                // We hide the behavior of the producer to the user
-                // if needed the connection will be created again
-                // we "should" always have the stream
-
-                // but we have to handle the case¬
-                // We need to wait a bit it can take some time to update the configuration
-                Thread.Sleep(500);
-
-                _streamInfos.Remove(update.Stream);
                 _consumers.TryRemove(update.Stream, out var consumer);
-
-                // this check is needed only for an edge case 
-                // when the system is closed and the connections for the steam are still open for
-                // some reason. So if the Client IsClosed we can't operate on it
-                if (_config.Client.IsClosed || _disposed)
+                consumer?.Close();
+                _streamInfos.Remove(update.Stream);
+                if (_config.MetadataHandler != null)
                 {
-                    return;
-                }
-
-                var exists = await _config.Client.StreamExists(update.Stream).ConfigureAwait(false);
-                if (!exists)
-                {
-                    // The stream doesn't exist anymore
-                    // but this condition should be avoided since the hash routing 
-                    // can be compromised
-                    _logger.LogWarning("SuperStream Consumer. Stream {StreamIdentifier} is not available anymore",
-                        update.Stream);
-                    consumer?.Close();
-
-                }
-                else
-                {
-                    await Task.Run(async () =>
-                    {
-                        // this is an edge case when the user remove a replica for the stream
-                        // s0 the topology is changed and the consumer is disconnected
-                        // this is why in this case we need to query the QueryMetadata again
-                        // most of the time this code is not executed
-                        _logger.LogInformation(
-                            "Consumer: {ConsumerReference}. Metadata update for stream {StreamIdentifier}. Client will try reconnect",
-                            _config.Reference,
-                            update.Stream
-                        );
-                        var x = await _config.Client.QueryMetadata(new[] { update.Stream }).ConfigureAwait(false);
-                        x.StreamInfos.TryGetValue(update.Stream, out var streamInfo);
-                        _streamInfos.Add(update.Stream, streamInfo);
-                        await GetConsumer(update.Stream).ConfigureAwait(false);
-                    }).ConfigureAwait(false);
+                    await _config.MetadataHandler(update).ConfigureAwait(false);
                 }
             },
             OffsetSpec = _config.OffsetSpec.TryGetValue(stream, out var value) ? value : new OffsetTypeNext(),
@@ -159,30 +129,47 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
 
     private async Task<IConsumer> InitConsumer(string stream)
     {
+        var index = _streamInfos.Keys.Select((item, index) => new { Item = item, Index = index })
+            .First(i => i.Item == stream).Index;
 
-        var c = await RawConsumer.Create(_clientParameters with { ClientProvidedName = _clientParameters.ClientProvidedName },
+        var c = await RawConsumer.Create(
+            _clientParameters with { ClientProvidedName = $"{_clientParameters.ClientProvidedName}_{index}" },
             FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
-        _logger?.LogDebug("Consumer {ConsumerReference} created for Stream {StreamIdentifier}", _config.Reference,
+        _logger?.LogDebug("Super stream consumer {ConsumerReference} created for Stream {StreamIdentifier}", c.Info,
             stream);
         return c;
     }
 
-    private async Task<IConsumer> GetConsumer(string stream)
+    private async Task MaybeAddConsumer(string stream)
     {
         if (!_consumers.ContainsKey(stream))
         {
             var p = await InitConsumer(stream).ConfigureAwait(false);
             _consumers.TryAdd(stream, p);
         }
-
-        return _consumers[stream];
     }
 
     private async Task StartConsumers()
     {
         foreach (var stream in _streamInfos.Keys)
         {
-            await GetConsumer(stream).ConfigureAwait(false);
+            await MaybeAddConsumer(stream).ConfigureAwait(false);
+        }
+    }
+
+    public async Task ReconnectPartition(StreamInfo streamInfo)
+    {
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            _consumers.TryRemove(streamInfo.Stream, out var consumer);
+            consumer?.Dispose();
+            _streamInfos.TryAdd(streamInfo.Stream, streamInfo); // add the new stream infos
+            await MaybeAddConsumer(streamInfo.Stream).ConfigureAwait(false);
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
         }
     }
 
@@ -248,6 +235,7 @@ public record RawSuperStreamConsumerConfig : IConsumerConfig
     /// </summary>
     public Func<string, RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
+    public Func<string, string, Task> ConnectionClosedHandler { get; set; }
     public string SuperStream { get; }
 
     internal Client Client { get; set; }

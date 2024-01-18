@@ -170,16 +170,17 @@ namespace RabbitMQ.Stream.Client
         {
             var brokers = new List<Broker>() { metaDataInfo.Leader };
             brokers.AddRange(metaDataInfo.Replicas);
-            // brokers.Sort((_, _) => Random.Shared.Next(-1, 1));
-            var br = brokers.OrderBy(x => Random.Shared.Next()).ToList();
             var exceptions = new List<Exception>();
+            var br = brokers.OrderBy(x => Random.Shared.Next()).ToList();
+
             foreach (var broker in br)
             {
                 try
                 {
                     return await pool.GetOrCreateClient(broker.ToString(),
                         async () =>
-                            await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo), logger)
+                            await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo),
+                                    logger)
                                 .ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 catch (Exception ex)

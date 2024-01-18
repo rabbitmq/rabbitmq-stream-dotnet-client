@@ -48,7 +48,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
     // else the backoff will be too long
     private void MaybeResetTentatives()
     {
-        if (Tentatives > 1000)
+        if (Tentatives > 5)
         {
             Tentatives = 1;
         }
@@ -56,6 +56,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
 
     public async ValueTask<bool> WhenDisconnected(string connectionIdentifier)
     {
+
         Tentatives <<= 1;
         _logger.LogInformation(
             "{ConnectionIdentifier} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms",
@@ -65,6 +66,18 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
         await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100)).ConfigureAwait(false);
         MaybeResetTentatives();
         return true;
+        // this will be in another commit
+        // Tentatives <<= 1;
+        // var next = Random.Shared.Next(Tentatives * 1000, Tentatives * 2000);
+        // _logger.LogInformation(
+        //     "{ConnectionIdentifier} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms",
+        //     connectionIdentifier,
+        //     next
+        // );
+        //
+        // await Task.Delay(TimeSpan.FromMilliseconds(next)).ConfigureAwait(false);
+        // MaybeResetTentatives();
+        // return true;
     }
 
     public ValueTask WhenConnected(string connectionIdentifier)
@@ -105,13 +118,13 @@ internal class ResourceAvailableBackOffReconnectStrategy : IReconnectStrategy
         );
         await Task.Delay(TimeSpan.FromSeconds(Tentatives)).ConfigureAwait(false);
         MaybeResetTentatives();
-        return Tentatives < 4;
+        return Tentatives < 5;
     }
 
     public ValueTask WhenConnected(string resourceIdentifier)
     {
         Tentatives = 1;
-        _logger.LogInformation("{ResourceIdentifier} is available", resourceIdentifier);
+        _logger.LogInformation("{ResourceIdentifier}", resourceIdentifier);
         return ValueTask.CompletedTask;
     }
 }

@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
+public interface ISuperStreamProducer : IProducer
+{
+    public Task ReconnectPartition(StreamInfo streamInfo);
+}
 // <summary>
 // Producer interface for sending messages to a stream.
 // There are different types of producers:
@@ -83,7 +87,6 @@ public record ProducerFilter
 
 public record IProducerConfig : EntityCommonConfig, INamedEntity
 {
-
     public string Reference { get; set; }
     public int MaxInFlight { get; set; } = 1_000;
     public string ClientProvidedName { get; set; } = "dotnet-stream-raw-producer";

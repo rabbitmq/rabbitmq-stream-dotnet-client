@@ -162,7 +162,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<IProducer> CreateRawSuperStreamProducer(
+        public async Task<ISuperStreamProducer> CreateRawSuperStreamProducer(
             RawSuperStreamProducerConfig rawSuperStreamProducerConfig, ILogger logger = null)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
@@ -222,7 +222,7 @@ namespace RabbitMQ.Stream.Client
             return partitions.Streams;
         }
 
-        public async Task<IConsumer> CreateSuperStreamConsumer(
+        public async Task<ISuperStreamConsumer> CreateSuperStreamConsumer(
             RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig,
             ILogger logger = null)
         {
@@ -284,8 +284,6 @@ namespace RabbitMQ.Stream.Client
 
                 var p = await RawProducer.Create(s,
                     rawProducerConfig, metaStreamInfo, logger).ConfigureAwait(false);
-                _logger?.LogDebug("Raw Producer: {Reference} created for Stream: {Stream}",
-                    rawProducerConfig.Reference, rawProducerConfig.Stream);
                 return p;
             }
             finally
@@ -294,7 +292,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private async Task<StreamInfo> StreamInfo(string streamName)
+        public async Task<StreamInfo> StreamInfo(string streamName)
         {
             // force localhost connection for single node clusters and when address resolver is not provided
             // when theres 1 endpoint and an address resolver, there could be a cluster behind a load balancer
@@ -350,7 +348,15 @@ namespace RabbitMQ.Stream.Client
         public async Task<bool> StreamExists(string stream)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
-            return await _client.StreamExists(stream).ConfigureAwait(false);
+            await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                return await _client.StreamExists(stream).ConfigureAwait(false);
+            }
+            finally
+            {
+                _semClientProvidedName.Release();
+            }
         }
 
         private static void MaybeThrowQueryException(string reference, string stream)

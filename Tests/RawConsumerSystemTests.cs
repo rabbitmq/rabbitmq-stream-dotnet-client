@@ -621,7 +621,7 @@ namespace Tests
             SystemUtils.Wait();
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            Assert.False(((RawConsumer)rawConsumer).IsOpen());
+            SystemUtils.WaitUntil(() => ((RawConsumer)rawConsumer).IsOpen() == false);
             await rawConsumer.Close();
             await system.Close();
         }
