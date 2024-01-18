@@ -23,7 +23,7 @@ namespace RabbitMQ.Stream.Client;
 /// When a message is sent to a stream, the producer will be selected based on the stream name and the partition key.
 /// SuperStreamProducer uses lazy initialization for the producers, when it starts there are no producers until the first message is sent.
 /// </summary>
-public class RawSuperStreamProducer : IProducer, IDisposable
+public class RawSuperStreamProducer : ISuperStreamProducer, IDisposable
 {
     private bool _disposed;
 
@@ -46,7 +46,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
-    public static IProducer Create(
+    public static ISuperStreamProducer Create(
         RawSuperStreamProducerConfig rawSuperStreamProducerConfig,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
@@ -129,10 +129,10 @@ public class RawSuperStreamProducer : IProducer, IDisposable
     // The producer is created on demand when a message is sent to a stream
     private async Task<IProducer> InitProducer(string stream)
     {
-        var index = _streamInfos.Keys.Select((item, index) => new { Item = item, Index = index })
+        var index = _streamInfos.Keys.Select((item, index) => new {Item = item, Index = index})
             .First(i => i.Item == stream).Index;
         var p = await RawProducer.Create(
-                _clientParameters with { ClientProvidedName = $"{_config.ClientProvidedName}_{index}" },
+                _clientParameters with {ClientProvidedName = $"{_config.ClientProvidedName}_{index}"},
                 FromStreamConfig(stream),
                 _streamInfos[stream],
                 _logger)
@@ -190,7 +190,7 @@ public class RawSuperStreamProducer : IProducer, IDisposable
 
         // we should always have a route
         // but in case of stream KEY the routing could not exist
-        if (routes is not { Count: > 0 })
+        if (routes is not {Count: > 0})
         {
             throw new RouteNotFoundException("No route found for the message to any stream");
         }
@@ -239,13 +239,21 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             }
             else
             {
-                aggregate.Add((p, new List<(ulong, Message)>() { (subMessage.Item1, subMessage.Item2) }));
+                aggregate.Add((p, new List<(ulong, Message)>() {(subMessage.Item1, subMessage.Item2)}));
             }
         }
 
-        foreach (var (producer, list) in aggregate)
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
         {
-            await producer.Send(list).ConfigureAwait(false);
+            foreach (var (producer, list) in aggregate)
+            {
+                await producer.Send(list).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
         }
     }
 
@@ -266,15 +274,23 @@ public class RawSuperStreamProducer : IProducer, IDisposable
             }
             else
             {
-                aggregate.Add((p, new List<Message>() { subMessage }));
+                aggregate.Add((p, new List<Message>() {subMessage}));
             }
         }
 
-        // Here we send the messages to the right producer
-        // sub aggregate is a list of messages that have to be sent to the same producer
-        foreach (var (producer, messages) in aggregate)
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
         {
-            await producer.Send(publishingId, messages, compressionType).ConfigureAwait(false);
+            // Here we send the messages to the right producer
+            // sub aggregate is a list of messages that have to be sent to the same producer
+            foreach (var (producer, messages) in aggregate)
+            {
+                await producer.Send(publishingId, messages, compressionType).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
         }
     }
 
@@ -403,7 +419,7 @@ public class HashRoutingMurmurStrategy : IRoutingStrategy
         var key = _routingKeyExtractor(message);
         var hash = new Murmur32ManagedX86(Seed).ComputeHash(Encoding.UTF8.GetBytes(key));
         var index = BitConverter.ToUInt32(hash, 0) % (uint)partitions.Count;
-        var r = new List<string>() { partitions[(int)index] };
+        var r = new List<string>() {partitions[(int)index]};
         return Task.FromResult(r);
     }
 
@@ -436,8 +452,8 @@ public class KeyRoutingStrategy : IRoutingStrategy
         var c = await _routingKeyQFunc(_superStream, key).ConfigureAwait(false);
         _cacheStream[key] = c.Streams;
         return (from resultStream in c.Streams
-                where partitions.Contains(resultStream)
-                select new List<string>() { resultStream }).FirstOrDefault();
+            where partitions.Contains(resultStream)
+            select new List<string>() {resultStream}).FirstOrDefault();
     }
 
     public KeyRoutingStrategy(Func<Message, string> routingKeyExtractor,

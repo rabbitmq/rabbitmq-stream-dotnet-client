@@ -7,6 +7,11 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
+public interface ISuperStreamConsumer : IConsumer
+{
+    public Task ReconnectPartition(StreamInfo streamInfo);
+}
+
 public interface IConsumer : IClosable
 {
     public Task StoreOffset(ulong offset);

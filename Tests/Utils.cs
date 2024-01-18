@@ -200,13 +200,10 @@ namespace Tests
                     Routing = message1 => message1.Properties.MessageId.ToString(),
                     ConfirmHandler = _ =>
                     {
-                        count++;
-                        if (count != numberOfMessages)
+                        if (Interlocked.Increment(ref count) == numberOfMessages)
                         {
-                            return;
+                            testPassed.SetResult(count);
                         }
-
-                        testPassed.SetResult(count);
                     }
                 });
 

@@ -424,7 +424,6 @@ public class SuperStreamProducerTests
         // the method ReconnectPartition is used to reconnect the partition
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientName = Guid.NewGuid().ToString();
-        RawSuperStreamProducer streamProducer = null;
 
         var c = new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
         {
@@ -432,7 +431,7 @@ public class SuperStreamProducerTests
             ClientProvidedName = clientName,
         };
         var completed = new TaskCompletionSource<bool>();
-        streamProducer = (RawSuperStreamProducer)await system.CreateRawSuperStreamProducer(c);
+        var streamProducer = await system.CreateRawSuperStreamProducer(c);
         c.ConnectionClosedHandler = async (reason, stream) =>
         {
             var streamInfo = await system.StreamInfo(stream);

@@ -162,7 +162,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public async Task<IProducer> CreateRawSuperStreamProducer(
+        public async Task<ISuperStreamProducer> CreateRawSuperStreamProducer(
             RawSuperStreamProducerConfig rawSuperStreamProducerConfig, ILogger logger = null)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
@@ -222,7 +222,7 @@ namespace RabbitMQ.Stream.Client
             return partitions.Streams;
         }
 
-        public async Task<IConsumer> CreateSuperStreamConsumer(
+        public async Task<ISuperStreamConsumer> CreateSuperStreamConsumer(
             RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig,
             ILogger logger = null)
         {

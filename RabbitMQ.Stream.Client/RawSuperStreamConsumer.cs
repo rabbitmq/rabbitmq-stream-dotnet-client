@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RabbitMQ.Stream.Client;
 
-public class RawSuperStreamConsumer : IConsumer, IDisposable
+public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
 {
     // ConcurrentDictionary because the consumer can be closed from another thread
     // The send operations will check if the producer exists and if not it will be created
@@ -36,7 +36,7 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
     /// <param name="clientParameters"></param>
     /// <param name="logger"></param>
     /// <returns></returns>
-    public static IConsumer Create(
+    public static ISuperStreamConsumer Create(
         RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig,
         IDictionary<string, StreamInfo> streamInfos,
         ClientParameters clientParameters,
@@ -129,11 +129,11 @@ public class RawSuperStreamConsumer : IConsumer, IDisposable
 
     private async Task<IConsumer> InitConsumer(string stream)
     {
-        var index = _streamInfos.Keys.Select((item, index) => new {Item = item, Index = index})
+        var index = _streamInfos.Keys.Select((item, index) => new { Item = item, Index = index })
             .First(i => i.Item == stream).Index;
 
         var c = await RawConsumer.Create(
-            _clientParameters with {ClientProvidedName = $"{_clientParameters.ClientProvidedName}_{index}"},
+            _clientParameters with { ClientProvidedName = $"{_clientParameters.ClientProvidedName}_{index}" },
             FromStreamConfig(stream), _streamInfos[stream], _logger).ConfigureAwait(false);
         _logger?.LogDebug("Super stream consumer {ConsumerReference} created for Stream {StreamIdentifier}", c.Info,
             stream);
