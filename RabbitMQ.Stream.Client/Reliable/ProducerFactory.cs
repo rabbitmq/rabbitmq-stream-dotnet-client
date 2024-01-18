@@ -2,8 +2,6 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
-using System;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -21,7 +19,6 @@ public abstract class ProducerFactory : ReliableBase
     protected IProducer _producer;
     protected ProducerConfig _producerConfig;
     protected ConfirmationPipe _confirmationPipe;
-    private static readonly ManualResetEvent s_reconnect = new ManualResetEvent(false);
 
     protected async Task<IProducer> CreateProducer(bool boot)
     {
@@ -50,8 +47,6 @@ public abstract class ProducerFactory : ReliableBase
                     Filter = _producerConfig.Filter,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
-                        s_reconnect.WaitOne(TimeSpan.FromSeconds(1));
-
                         if (closeReason == ConnectionClosedReason.Normal)
                         {
                             BaseLogger.LogDebug("{Identity} is closed normally", ToString());
@@ -61,8 +56,6 @@ public abstract class ProducerFactory : ReliableBase
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
                         await OnEntityClosed(_producerConfig.StreamSystem, partitionStream, r)
                             .ConfigureAwait(false);
-                        s_reconnect.Set();
-                        s_reconnect.Reset();
                     },
                     MetadataHandler = async update =>
                     {
