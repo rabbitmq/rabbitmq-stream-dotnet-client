@@ -10,7 +10,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
-using RabbitMQ.Stream.Client.Reconnect;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
@@ -165,7 +164,9 @@ public class ReliableTests
                     }
 
                     return Task.CompletedTask;
-                }
+                },
+                ReconnectStrategy = new TestBackOffReconnectStrategy()
+
             }
         );
         for (var i = 0; i < 5; i++)
@@ -338,7 +339,9 @@ public class ReliableTests
 
                 Assert.Equal(stream, streamC);
                 await Task.CompletedTask;
-            }
+            },
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
+
         });
         // in this case we kill the connection before consume consume any message
         // so it should use the selected   OffsetSpec in this case = new OffsetTypeFirst(),
@@ -385,7 +388,8 @@ public class ReliableTests
 
                 Assert.Equal(stream, streamC);
                 await Task.CompletedTask;
-            }
+            },
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
         });
         // kill the first time 
         SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
@@ -409,7 +413,11 @@ public class ReliableTests
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
         var consumer = await Consumer.Create(
-            new ConsumerConfig(system, stream) { ClientProvidedName = clientProviderName, }
+            new ConsumerConfig(system, stream)
+            {
+                ClientProvidedName = clientProviderName,
+                ReconnectStrategy = new TestBackOffReconnectStrategy()
+            }
         );
 
         Assert.True(consumer.IsOpen());

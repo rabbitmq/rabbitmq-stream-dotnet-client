@@ -153,15 +153,6 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private static void CheckLeader(StreamInfo metaStreamInfo)
-        {
-            if (metaStreamInfo.Leader.Equals(default(Broker)))
-            {
-                throw new LeaderNotFoundException(
-                    $"No leader found for streams {string.Join(" ", metaStreamInfo.Stream)}");
-            }
-        }
-
         public async Task<ISuperStreamProducer> CreateRawSuperStreamProducer(
             RawSuperStreamProducerConfig rawSuperStreamProducerConfig, ILogger logger = null)
         {
@@ -195,6 +186,11 @@ namespace RabbitMQ.Stream.Client
             foreach (var partitionsStream in partitions.Streams)
             {
                 streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
+            }
+
+            foreach (var (_, value) in streamInfos)
+            {
+                ClientExceptions.CheckLeader(value);
             }
 
             var r = RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
@@ -273,7 +269,7 @@ namespace RabbitMQ.Stream.Client
                 throw new CreateProducerException($"producer could not be created code: {metaStreamInfo.ResponseCode}");
             }
 
-            CheckLeader(metaStreamInfo);
+            ClientExceptions.CheckLeader(metaStreamInfo);
 
             try
             {
@@ -432,7 +428,7 @@ namespace RabbitMQ.Stream.Client
                     metaStreamInfo.ResponseCode);
             }
 
-            CheckLeader(metaStreamInfo);
+            ClientExceptions.CheckLeader(metaStreamInfo);
 
             try
             {

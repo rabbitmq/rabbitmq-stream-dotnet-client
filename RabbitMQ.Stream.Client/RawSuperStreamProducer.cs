@@ -163,6 +163,7 @@ public class RawSuperStreamProducer : ISuperStreamProducer, IDisposable
 
     public async Task ReconnectPartition(StreamInfo streamInfo)
     {
+        ClientExceptions.CheckLeader(streamInfo);
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {

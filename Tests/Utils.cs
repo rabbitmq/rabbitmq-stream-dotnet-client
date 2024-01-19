@@ -17,12 +17,40 @@ using System.Threading.Tasks;
 using RabbitMQ.Client;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
+using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
 namespace Tests
 {
+    internal class TestBackOffReconnectStrategy : IReconnectStrategy
+    {
+        private int Tentatives { get; set; } = 1;
+
+        private void MaybeResetTentatives()
+        {
+            if (Tentatives > 5)
+            {
+                Tentatives = 1;
+            }
+        }
+
+        public async ValueTask<bool> WhenDisconnected(string itemIdentifier)
+        {
+            Tentatives <<= 1;
+            await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100)).ConfigureAwait(false);
+            MaybeResetTentatives();
+            return true;
+        }
+
+        public ValueTask WhenConnected(string itemIdentifier)
+        {
+            Tentatives = 1;
+            return ValueTask.CompletedTask;
+        }
+    }
+
     public class Utils<TResult>
     {
         private readonly ITestOutputHelper testOutputHelper;

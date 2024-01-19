@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -122,6 +123,7 @@ public abstract class ConsumerFactory : ReliableBase
                     OffsetSpec = offsetSpecs,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
+                        await RandomWait().ConfigureAwait(false);
                         if (closeReason == ConnectionClosedReason.Normal)
                         {
                             BaseLogger.LogInformation("{Identity} is closed normally", ToString());
@@ -134,6 +136,7 @@ public abstract class ConsumerFactory : ReliableBase
                     },
                     MetadataHandler = async update =>
                     {
+                        await RandomWait().ConfigureAwait(false);
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r)
                             .ConfigureAwait(false);

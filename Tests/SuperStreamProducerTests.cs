@@ -40,7 +40,7 @@ public class SuperStreamProducerTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
 
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig("does-not-exist") { }));
+            system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig("does-not-exist")));
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig("")));
@@ -112,7 +112,7 @@ public class SuperStreamProducerTests
         };
         // this test validates that the key routing strategy is working as expected
         var keyRoutingStrategy = new KeyRoutingStrategy(message => message.Properties.MessageId.ToString(),
-            (superStream, key) =>
+            (_, key) =>
             {
                 if (key == "italy")
                 {
@@ -434,6 +434,11 @@ public class SuperStreamProducerTests
         var streamProducer = await system.CreateRawSuperStreamProducer(c);
         c.ConnectionClosedHandler = async (reason, stream) =>
         {
+            if (reason == ConnectionClosedReason.Normal)
+            {
+                return;
+            }
+
             var streamInfo = await system.StreamInfo(stream);
             await streamProducer.ReconnectPartition(streamInfo);
             SystemUtils.Wait();
@@ -791,6 +796,7 @@ public class SuperStreamProducerTests
                 await Task.CompletedTask;
             },
             ClientProvidedName = clientName,
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
         });
         for (ulong i = 0; i < 20; i++)
         {
