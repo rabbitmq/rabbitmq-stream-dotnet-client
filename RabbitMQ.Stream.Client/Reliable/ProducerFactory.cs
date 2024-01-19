@@ -47,6 +47,7 @@ public abstract class ProducerFactory : ReliableBase
                     Filter = _producerConfig.Filter,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
+                        await RandomWait().ConfigureAwait(false);
                         if (closeReason == ConnectionClosedReason.Normal)
                         {
                             BaseLogger.LogDebug("{Identity} is closed normally", ToString());
@@ -59,6 +60,7 @@ public abstract class ProducerFactory : ReliableBase
                     },
                     MetadataHandler = async update =>
                     {
+                        await RandomWait().ConfigureAwait(false);
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
                         await OnEntityClosed(_producerConfig.StreamSystem, update.Stream, r)
                             .ConfigureAwait(false);
@@ -99,10 +101,12 @@ public abstract class ProducerFactory : ReliableBase
             Filter = _producerConfig.Filter,
             MetadataHandler = async _ =>
             {
+                await RandomWait().ConfigureAwait(false);
                 await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream).ConfigureAwait(false);
             },
             ConnectionClosedHandler = async (closeReason) =>
             {
+                await RandomWait().ConfigureAwait(false);
                 if (closeReason == ConnectionClosedReason.Normal)
                 {
                     BaseLogger.LogDebug("{Identity} is closed normally", ToString());

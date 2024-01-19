@@ -122,6 +122,7 @@ public abstract class ConsumerFactory : ReliableBase
                     OffsetSpec = offsetSpecs,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
+                        await RandomWait().ConfigureAwait(false);
                         if (closeReason == ConnectionClosedReason.Normal)
                         {
                             BaseLogger.LogInformation("{Identity} is closed normally", ToString());
@@ -134,6 +135,7 @@ public abstract class ConsumerFactory : ReliableBase
                     },
                     MetadataHandler = async update =>
                     {
+                        await RandomWait().ConfigureAwait(false);
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r)
                             .ConfigureAwait(false);

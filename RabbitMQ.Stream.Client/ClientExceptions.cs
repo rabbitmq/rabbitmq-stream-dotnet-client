@@ -49,6 +49,15 @@ namespace RabbitMQ.Stream.Client
             return exception is CreateException { ResponseCode: ResponseCode.StreamNotAvailable };
         }
 
+        internal static void CheckLeader(StreamInfo metaStreamInfo)
+        {
+            if (metaStreamInfo.Leader.Equals(default(Broker)))
+            {
+                throw new LeaderNotFoundException(
+                    $"No leader found for streams {string.Join(" ", metaStreamInfo.Stream)}");
+            }
+        }
+
         public static void MaybeThrowException(ResponseCode responseCode, string message)
         {
             if (responseCode is ResponseCode.Ok)

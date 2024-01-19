@@ -83,8 +83,10 @@ public class SuperStreamConsumerTests
             {
                 Crc32 = _crc32,
                 ClientProvidedName = clientProvidedName,
-                OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange, new OffsetTypeFirst()),
-                MessageHandler = (stream, consumer1, context, message) =>
+                OffsetSpec =
+                    await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange,
+                        new OffsetTypeFirst()),
+                MessageHandler = (stream, _, _, _) =>
                 {
                     listConsumed.Add(stream);
                     Interlocked.Increment(ref consumedMessages);
@@ -274,7 +276,8 @@ public class SuperStreamConsumerTests
         const int NumberOfMessages = 20;
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var publishToSuperStreamTask =
-            SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, NumberOfMessages, "", _testOutputHelper);
+            SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, NumberOfMessages, "",
+                _testOutputHelper);
         if (await Task.WhenAny(publishToSuperStreamTask, Task.Delay(20000)) != publishToSuperStreamTask)
         {
             Assert.Fail("timeout waiting to publish messages");
@@ -321,7 +324,7 @@ public class SuperStreamConsumerTests
                         await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
                     IsSingleActiveConsumer = consumerExpected.IsSingleActiveConsumer,
                     Reference = "super_stream_consumer_name",
-                    MessageHandler = (stream, consumer1, context, message) =>
+                    MessageHandler = (stream, _, _, _) =>
                     {
                         listConsumed.Add(stream);
                         return Task.CompletedTask;
@@ -353,7 +356,7 @@ public class SuperStreamConsumerTests
         {
             OffsetSpec = new OffsetTypeFirst(),
             IsSuperStream = true,
-            MessageHandler = (stream, consumer1, context, message) =>
+            MessageHandler = (stream, _, _, _) =>
             {
                 listConsumed.Add(stream);
                 if (listConsumed.Count == 20)
@@ -409,7 +412,7 @@ public class SuperStreamConsumerTests
                 IsSuperStream = true,
                 IsSingleActiveConsumer = true,
                 ConsumerUpdateListener = consumerUpdateListener,
-                MessageHandler = async (stream, consumer1, context, message) =>
+                MessageHandler = async (stream, consumer1, context, _) =>
                 {
                     await consumer1.StoreOffset(context.Offset);
 
@@ -418,7 +421,8 @@ public class SuperStreamConsumerTests
                     {
                         consumerMessageReceived.SetResult(true);
                     }
-                }
+                },
+                ReconnectStrategy = new TestBackOffReconnectStrategy()
             });
         }
 
@@ -431,7 +435,7 @@ public class SuperStreamConsumerTests
         for (var i = 0; i < 2; i++)
         {
             var consumer = await NewReliableConsumer(reference, Guid.NewGuid().ToString(),
-                (consumerRef, stream, arg3) => { return new Task<IOffsetType>(() => new OffsetTypeFirst()); });
+                (_, _, _) => { return new Task<IOffsetType>(() => new OffsetTypeFirst()); });
             consumers.Add(consumer);
         }
 
@@ -493,7 +497,7 @@ public class SuperStreamConsumerTests
             IsSuperStream = true,
             IsSingleActiveConsumer = true,
             Reference = Reference,
-            MessageHandler = (stream, consumer1, context, message) =>
+            MessageHandler = (stream, _, _, _) =>
             {
                 listConsumed.Add(stream);
                 if (listConsumed.Count == 20)
@@ -520,7 +524,7 @@ public class SuperStreamConsumerTests
             IsSuperStream = true,
             IsSingleActiveConsumer = true,
             Reference = Reference,
-            MessageHandler = (stream, consumer1, context, message) =>
+            MessageHandler = (stream, _, _, _) =>
             {
                 listSecondConsumed.Add(stream);
                 // When the second consumer joins the group it consumes only from one partition

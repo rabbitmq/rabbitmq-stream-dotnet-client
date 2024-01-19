@@ -95,7 +95,6 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
                 }
 
                 consumer?.Dispose();
-                _streamInfos.Remove(stream);
 
                 if (_config.ConnectionClosedHandler != null)
                 {
@@ -117,7 +116,6 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
             {
                 _consumers.TryRemove(update.Stream, out var consumer);
                 consumer?.Close();
-                _streamInfos.Remove(update.Stream);
                 if (_config.MetadataHandler != null)
                 {
                     await _config.MetadataHandler(update).ConfigureAwait(false);
@@ -159,12 +157,13 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
 
     public async Task ReconnectPartition(StreamInfo streamInfo)
     {
+        ClientExceptions.CheckLeader(streamInfo);
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
             _consumers.TryRemove(streamInfo.Stream, out var consumer);
             consumer?.Dispose();
-            _streamInfos.TryAdd(streamInfo.Stream, streamInfo); // add the new stream infos
+            _streamInfos[streamInfo.Stream] = streamInfo;
             await MaybeAddConsumer(streamInfo.Stream).ConfigureAwait(false);
         }
         finally

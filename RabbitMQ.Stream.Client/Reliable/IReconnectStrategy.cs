@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace RabbitMQ.Stream.Client.Reconnect;
+namespace RabbitMQ.Stream.Client.Reliable;
 
 /// <summary>
 /// IReconnectStrategy is the interface to reconnect the TCP client
@@ -48,7 +48,7 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
     // else the backoff will be too long
     private void MaybeResetTentatives()
     {
-        if (Tentatives > 5)
+        if (Tentatives > 4)
         {
             Tentatives = 1;
         }
@@ -56,28 +56,16 @@ internal class BackOffReconnectStrategy : IReconnectStrategy
 
     public async ValueTask<bool> WhenDisconnected(string connectionIdentifier)
     {
-
         Tentatives <<= 1;
+        var next = Random.Shared.Next(Tentatives * 1000, Tentatives * 3000);
         _logger.LogInformation(
             "{ConnectionIdentifier} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms",
             connectionIdentifier,
-            Tentatives * 100
+            next
         );
-        await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100)).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromMilliseconds(next)).ConfigureAwait(false);
         MaybeResetTentatives();
         return true;
-        // this will be in another commit
-        // Tentatives <<= 1;
-        // var next = Random.Shared.Next(Tentatives * 1000, Tentatives * 2000);
-        // _logger.LogInformation(
-        //     "{ConnectionIdentifier} disconnected, check if reconnection needed in {ReconnectionDelayMs} ms",
-        //     connectionIdentifier,
-        //     next
-        // );
-        //
-        // await Task.Delay(TimeSpan.FromMilliseconds(next)).ConfigureAwait(false);
-        // MaybeResetTentatives();
-        // return true;
     }
 
     public ValueTask WhenConnected(string connectionIdentifier)
@@ -112,7 +100,7 @@ internal class ResourceAvailableBackOffReconnectStrategy : IReconnectStrategy
     {
         Tentatives <<= 1;
         _logger.LogInformation(
-            "{ConnectionIdentifier} resource not available, retry in {ReconnectionDelayMs} seconds",
+            "{ConnectionIdentifier} resource not available, retry in {ReconnectionDelayS} seconds",
             resourceIdentifier,
             Tentatives
         );

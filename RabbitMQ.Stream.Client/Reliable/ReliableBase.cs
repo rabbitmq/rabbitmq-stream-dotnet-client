@@ -6,7 +6,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using RabbitMQ.Stream.Client.Reconnect;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -49,6 +48,11 @@ public abstract class ReliableBase
     protected readonly SemaphoreSlim SemaphoreSlim = new(1, 1);
     private readonly object _lock = new();
     protected ReliableEntityStatus _status = ReliableEntityStatus.Initialization;
+
+    protected static async Task RandomWait()
+    {
+        await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
+    }
 
     protected void UpdateStatus(ReliableEntityStatus status)
     {
@@ -112,7 +116,6 @@ public abstract class ReliableBase
 
             reconnect = true;
             LogException(e);
-
         }
 
         if (reconnect)
@@ -130,6 +133,7 @@ public abstract class ReliableBase
             BaseLogger.LogDebug("{Identity} is already closed. The init will be skipped", ToString());
             return;
         }
+
         // each time that the client is initialized, we need to reset the status
         // if we hare here it means that the entity is not open for some reason like:
         // first time initialization or reconnect due of a IsAKnownException
@@ -156,7 +160,8 @@ public abstract class ReliableBase
     /// <summary>
     /// When the clients receives a meta data update, it doesn't know
     /// If the stream exists or not. It just knows that the stream topology has changed.
-    /// the method CheckIfStreamIsAvailable checks if the stream exists.
+    /// the method CheckIfStreamIsAvailable checks if the stream exists
+    /// and if the leader is available.
     /// </summary>
     /// <param name="stream">stream name</param>
     /// <param name="system">stream system</param>
@@ -172,7 +177,16 @@ public abstract class ReliableBase
             {
                 exists = await system.StreamExists(stream).ConfigureAwait(false);
                 var available = exists ? "available" : "not available";
-                await _resourceAvailableReconnectStrategy.WhenConnected($"{stream} is {available}")
+                if (exists)
+                {
+                    // It is not enough to check if the stream exists
+                    // we need to check if the stream has the leader
+                    var streamInfo = await system.StreamInfo(stream).ConfigureAwait(false);
+                    ClientExceptions.CheckLeader(streamInfo);
+                    available += " and has a valid leader";
+                }
+
+                await _resourceAvailableReconnectStrategy.WhenConnected($"{stream} for {ToString()} is {available}")
                     .ConfigureAwait(false);
                 break;
             }
@@ -229,7 +243,8 @@ public abstract class ReliableBase
         }
     }
 
-    private async Task MaybeReconnectPartition(StreamInfo streamInfo, string info, Func<StreamInfo, Task> reconnectPartitionFunc)
+    private async Task MaybeReconnectPartition(StreamInfo streamInfo, string info,
+        Func<StreamInfo, Task> reconnectPartitionFunc)
     {
         var reconnect = await _reconnectStrategy
             .WhenDisconnected($"Super Stream partition: {streamInfo.Stream} for {info}").ConfigureAwait(false);
@@ -285,7 +300,8 @@ public abstract class ReliableBase
     /// <param name="system">Stream System</param>
     /// <param name="stream">Partition Stream</param>
     /// <param name="reconnectPartitionFunc">Function to reconnect the partition</param>
-    internal async Task OnEntityClosed(StreamSystem system, string stream, Func<StreamInfo, Task> reconnectPartitionFunc)
+    internal async Task OnEntityClosed(StreamSystem system, string stream,
+        Func<StreamInfo, Task> reconnectPartitionFunc)
     {
         var streamExists = false;
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
