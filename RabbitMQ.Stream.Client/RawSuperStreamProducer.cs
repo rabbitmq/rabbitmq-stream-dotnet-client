@@ -65,7 +65,7 @@ public class RawSuperStreamProducer : ISuperStreamProducer, IDisposable
         _config = config;
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
-        Info = new ProducerInfo(config.SuperStream, config.Reference);
+        Info = new ProducerInfo(config.SuperStream, config.Reference, config.Identifier);
         _defaultRoutingConfiguration.RoutingStrategy = _config.RoutingStrategyType switch
         {
             RoutingStrategyType.Key => new KeyRoutingStrategy(_config.Routing,
@@ -92,6 +92,7 @@ public class RawSuperStreamProducer : ISuperStreamProducer, IDisposable
             MaxInFlight = _config.MaxInFlight,
             Filter = _config.Filter,
             Pool = _config.Pool,
+            Identifier = _config.Identifier,
             ConnectionClosedHandler = async (reason) =>
             {
                 _producers.TryGetValue(stream, out var producer);

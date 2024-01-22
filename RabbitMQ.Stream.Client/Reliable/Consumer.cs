@@ -164,7 +164,7 @@ public class Consumer : ConsumerFactory
     {
         _logger = logger ?? NullLogger<Consumer>.Instance;
         _consumerConfig = consumerConfig;
-        Info = new ConsumerInfo(consumerConfig.Stream, consumerConfig.Reference);
+        Info = new ConsumerInfo(consumerConfig.Stream, consumerConfig.Reference, consumerConfig.Identifier);
     }
 
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
@@ -215,7 +215,9 @@ public class Consumer : ConsumerFactory
 
     public override string ToString()
     {
-        return $"Consumer reference: {_consumerConfig.Reference}, stream: {_consumerConfig.Stream}, " +
+        return $"Consumer reference: {_consumerConfig.Reference}, " +
+               $"stream: {_consumerConfig.Stream}, " +
+               $"identifier: {_consumerConfig.Identifier}, " +
                $"client name: {_consumerConfig.ClientProvidedName} ";
     }
 

@@ -114,8 +114,13 @@ public class ProducerInfo : Info
 {
     public string Reference { get; }
 
-    public ProducerInfo(string stream, string reference) : base(stream)
+    public ProducerInfo(string stream, string reference, string identifier) : base(stream, identifier)
     {
         Reference = reference;
+    }
+
+    public override string ToString()
+    {
+        return $"ProducerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier})";
     }
 }

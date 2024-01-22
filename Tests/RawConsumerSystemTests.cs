@@ -37,12 +37,15 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
             var rawProducer = await system.CreateRawProducer(
                 new RawProducerConfig(stream) { Reference = "producer" });
+            var identifierReceived = "";
             var consumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    MessageHandler = async (consumer, ctx, message) =>
+                    Identifier = "consumer_identifier_999",
+                    MessageHandler = async (sourceConsumer, ctx, message) =>
                     {
+                        identifierReceived = sourceConsumer.Info.Identifier;
                         testPassed.SetResult(message.Data);
                         await Task.CompletedTask;
                     }
@@ -55,6 +58,7 @@ namespace Tests
             new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
+            Assert.Equal("consumer_identifier_999", identifierReceived);
             rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);

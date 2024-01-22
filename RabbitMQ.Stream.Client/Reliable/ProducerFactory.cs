@@ -45,6 +45,7 @@ public abstract class ProducerFactory : ReliableBase
                     Routing = _producerConfig.SuperStreamConfig.Routing,
                     RoutingStrategyType = _producerConfig.SuperStreamConfig.RoutingStrategyType,
                     Filter = _producerConfig.Filter,
+                    Identifier = _producerConfig.Identifier,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
                         await RandomWait().ConfigureAwait(false);
@@ -99,6 +100,7 @@ public abstract class ProducerFactory : ReliableBase
             Reference = _producerConfig.Reference,
             MaxInFlight = _producerConfig.MaxInFlight,
             Filter = _producerConfig.Filter,
+            Identifier = _producerConfig.Identifier,
             MetadataHandler = async _ =>
             {
                 await RandomWait().ConfigureAwait(false);

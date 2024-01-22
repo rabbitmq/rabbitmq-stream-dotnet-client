@@ -143,6 +143,7 @@ public class SuperStreamProducerTests
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference",
+                Identifier = "my_super_producer_908",
             });
         Assert.True(streamProducer.MessagesSent == 0);
         Assert.True(streamProducer.ConfirmFrames == 0);
@@ -157,12 +158,13 @@ public class SuperStreamProducerTests
             await streamProducer.Send(i, message);
         }
 
+        Assert.Equal("my_super_producer_908", streamProducer.Info.Identifier);
         SystemUtils.Wait();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount("invoices-2") == 4);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         Assert.Equal((ulong)10, await streamProducer.GetLastPublishingId());
 
         Assert.True(streamProducer.MessagesSent == 20);

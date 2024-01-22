@@ -182,25 +182,33 @@ namespace RabbitMQ.Stream.Client
                 throw new CreateProducerException($"producer could not be created code: {partitions.ResponseCode}");
             }
 
-            IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
-            foreach (var partitionsStream in partitions.Streams)
+            await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
+            try
             {
-                streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
-            }
+                IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
+                foreach (var partitionsStream in partitions.Streams)
+                {
+                    streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
+                }
 
-            foreach (var (_, value) in streamInfos)
+                foreach (var (_, value) in streamInfos)
+                {
+                    ClientExceptions.CheckLeader(value);
+                }
+
+                var r = RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
+                    streamInfos,
+                    _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName },
+                    logger);
+                _logger?.LogDebug("Raw Producer: {ProducerReference} created for SuperStream: {SuperStream}",
+                    rawSuperStreamProducerConfig.Reference,
+                    rawSuperStreamProducerConfig.SuperStream);
+                return r;
+            }
+            finally
             {
-                ClientExceptions.CheckLeader(value);
+                _semClientProvidedName.Release();
             }
-
-            var r = RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
-                streamInfos,
-                _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName },
-                logger);
-            _logger?.LogDebug("Raw Producer: {ProducerReference} created for SuperStream: {SuperStream}",
-                rawSuperStreamProducerConfig.Reference,
-                rawSuperStreamProducerConfig.SuperStream);
-            return r;
         }
 
         /// <summary>
@@ -239,20 +247,28 @@ namespace RabbitMQ.Stream.Client
                     partitions.ResponseCode);
             }
 
-            IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
-            foreach (var partitionsStream in partitions.Streams)
+            await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
+            try
             {
-                streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
+                IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
+                foreach (var partitionsStream in partitions.Streams)
+                {
+                    streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
+                }
+
+                var s = RawSuperStreamConsumer.Create(rawSuperStreamConsumerConfig,
+                    streamInfos,
+                    _clientParameters with { ClientProvidedName = rawSuperStreamConsumerConfig.ClientProvidedName },
+                    logger);
+                _logger?.LogDebug("Consumer: {Reference} created for SuperStream: {SuperStream}",
+                    rawSuperStreamConsumerConfig.Reference, rawSuperStreamConsumerConfig.SuperStream);
+
+                return s;
             }
-
-            var s = RawSuperStreamConsumer.Create(rawSuperStreamConsumerConfig,
-                streamInfos,
-                _clientParameters with { ClientProvidedName = rawSuperStreamConsumerConfig.ClientProvidedName },
-                logger);
-            _logger?.LogDebug("Consumer: {Reference} created for SuperStream: {SuperStream}",
-                rawSuperStreamConsumerConfig.Reference, rawSuperStreamConsumerConfig.SuperStream);
-
-            return s;
+            finally
+            {
+                _semClientProvidedName.Release();
+            }
         }
 
         public async Task<IProducer> CreateRawProducer(RawProducerConfig rawProducerConfig,

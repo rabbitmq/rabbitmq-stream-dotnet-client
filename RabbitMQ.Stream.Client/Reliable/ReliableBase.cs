@@ -14,6 +14,8 @@ public record ReliableConfig
     public IReconnectStrategy ReconnectStrategy { get; set; }
     public IReconnectStrategy ResourceAvailableReconnectStrategy { get; set; }
 
+    public string Identifier { get; set; }
+
     public StreamSystem StreamSystem { get; }
     public string Stream { get; }
 

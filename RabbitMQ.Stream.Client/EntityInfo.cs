@@ -6,10 +6,12 @@ namespace RabbitMQ.Stream.Client;
 
 public abstract class Info
 {
+    public string Identifier { get; }
     public string Stream { get; }
 
-    protected Info(string stream)
+    protected Info(string stream, string identifier)
     {
         Stream = stream;
+        Identifier = identifier;
     }
 }

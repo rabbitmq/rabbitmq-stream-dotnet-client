@@ -80,13 +80,13 @@ public class ConsumerInfo : Info
 {
     public string Reference { get; }
 
-    public ConsumerInfo(string stream, string reference) : base(stream)
+    public ConsumerInfo(string stream, string reference, string identifier) : base(stream, identifier)
     {
         Reference = reference;
     }
 
     public override string ToString()
     {
-        return $"{base.ToString()}, Reference: {Reference}";
+        return $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier})";
     }
 }

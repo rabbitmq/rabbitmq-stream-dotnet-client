@@ -13,6 +13,8 @@ namespace RabbitMQ.Stream.Client
     {
         internal ConnectionsPool Pool { get; set; }
         public Func<MetaDataUpdate, Task> MetadataHandler { get; set; }
+
+        public string Identifier { get; set; }
     }
 
     internal enum EntityStatus
