@@ -14,6 +14,12 @@ namespace RabbitMQ.Stream.Client
         internal ConnectionsPool Pool { get; set; }
         public Func<MetaDataUpdate, Task> MetadataHandler { get; set; }
 
+        /// <summary>
+        /// The Identifier does not have any effect on the server.
+        /// It is used to identify the entity in the logs and on the UI (only for the consumer)
+        /// It is possible to retrieve the entity info using the Info.Identifier method form the
+        /// raw* instances.
+        /// </summary>
         public string Identifier { get; set; }
     }
 
