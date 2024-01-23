@@ -7,6 +7,7 @@ const RabbitMQ.Stream.Client.RouteQueryResponse.Key = 24 -> ushort
 const RabbitMQ.Stream.Client.StreamStatsResponse.Key = 28 -> ushort
 override RabbitMQ.Stream.Client.Broker.ToString() -> string
 override RabbitMQ.Stream.Client.ConsumerInfo.ToString() -> string
+override RabbitMQ.Stream.Client.ProducerInfo.ToString() -> string
 override RabbitMQ.Stream.Client.RawConsumer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 override RabbitMQ.Stream.Client.RawProducer.Close() -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ResponseCode>
 RabbitMQ.Stream.Client.AbstractEntity.Dispose(bool disposing) -> void
@@ -80,7 +81,7 @@ RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.set -> void
 RabbitMQ.Stream.Client.ConsumerFilter.Values.get -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
 RabbitMQ.Stream.Client.ConsumerInfo
-RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference) -> void
+RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference, string identifier) -> void
 RabbitMQ.Stream.Client.ConsumerInfo.Reference.get -> string
 RabbitMQ.Stream.Client.CrcException
 RabbitMQ.Stream.Client.CrcException.CrcException(string s) -> void
@@ -92,6 +93,8 @@ RabbitMQ.Stream.Client.CreateException.ResponseCode.get -> RabbitMQ.Stream.Clien
 RabbitMQ.Stream.Client.CreateException.ResponseCode.init -> void
 RabbitMQ.Stream.Client.CreateProducerException.CreateProducerException(string s, RabbitMQ.Stream.Client.ResponseCode responseCode) -> void
 RabbitMQ.Stream.Client.EntityCommonConfig
+RabbitMQ.Stream.Client.EntityCommonConfig.Identifier.get -> string
+RabbitMQ.Stream.Client.EntityCommonConfig.Identifier.set -> void
 RabbitMQ.Stream.Client.EntityCommonConfig.MetadataHandler.get -> System.Func<RabbitMQ.Stream.Client.MetaDataUpdate, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.EntityCommonConfig.MetadataHandler.set -> void
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
@@ -133,7 +136,8 @@ RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.ICrc32
 RabbitMQ.Stream.Client.ICrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.Info
-RabbitMQ.Stream.Client.Info.Info(string stream) -> void
+RabbitMQ.Stream.Client.Info.Identifier.get -> string
+RabbitMQ.Stream.Client.Info.Info(string stream, string identifier) -> void
 RabbitMQ.Stream.Client.Info.Stream.get -> string
 RabbitMQ.Stream.Client.IProducer.Info.get -> RabbitMQ.Stream.Client.ProducerInfo
 RabbitMQ.Stream.Client.IProducerConfig.Filter.get -> RabbitMQ.Stream.Client.ProducerFilter
@@ -154,7 +158,7 @@ RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.set -> void
 RabbitMQ.Stream.Client.ProducerInfo
-RabbitMQ.Stream.Client.ProducerInfo.ProducerInfo(string stream, string reference) -> void
+RabbitMQ.Stream.Client.ProducerInfo.ProducerInfo(string stream, string reference, string identifier) -> void
 RabbitMQ.Stream.Client.ProducerInfo.Reference.get -> string
 RabbitMQ.Stream.Client.PublishFilter
 RabbitMQ.Stream.Client.PublishFilter.Command.get -> ushort
@@ -205,9 +209,10 @@ RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerFactory.CreateProducer(bool boot) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
 RabbitMQ.Stream.Client.Reliable.ProducerFactory._producer -> RabbitMQ.Stream.Client.IProducer
-RabbitMQ.Stream.Client.Reliable.ReliableBase.CompareStatus(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus toTest) -> bool
 RabbitMQ.Stream.Client.Reliable.ReliableBase.UpdateStatus(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus status) -> void
 RabbitMQ.Stream.Client.Reliable.ReliableBase._status -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
+RabbitMQ.Stream.Client.Reliable.ReliableConfig.Identifier.get -> string
+RabbitMQ.Stream.Client.Reliable.ReliableConfig.Identifier.set -> void
 RabbitMQ.Stream.Client.Reliable.ReliableConfig.ReconnectStrategy.get -> RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.ReliableConfig.ResourceAvailableReconnectStrategy.get -> RabbitMQ.Stream.Client.Reliable.IReconnectStrategy
 RabbitMQ.Stream.Client.Reliable.ReliableConfig.ResourceAvailableReconnectStrategy.set -> void

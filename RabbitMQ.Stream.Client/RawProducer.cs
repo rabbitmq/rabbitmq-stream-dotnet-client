@@ -60,7 +60,9 @@ namespace RabbitMQ.Stream.Client
         protected sealed override string DumpEntityConfiguration()
         {
             return
-                $"Producer id {EntityId} for stream: {_config.Stream}, reference: {_config.Reference}," +
+                $"Producer id {EntityId} for stream: {_config.Stream}, " +
+                $"identifier: {_config.Identifier}" +
+                $"reference: {_config.Reference}," +
                 $"Client ProvidedName {_config.ClientProvidedName}, " +
                 $"Token IsCancellationRequested: {Token.IsCancellationRequested} ";
         }
@@ -87,7 +89,7 @@ namespace RabbitMQ.Stream.Client
         {
             _client = client;
             _config = config;
-            Info = new ProducerInfo(_config.Stream, _config.Reference);
+            Info = new ProducerInfo(_config.Stream, _config.Reference, config.Identifier);
             Logger = logger ?? NullLogger.Instance;
             Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
             _messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)

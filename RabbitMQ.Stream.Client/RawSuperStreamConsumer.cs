@@ -57,7 +57,7 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
         _logger = logger ?? NullLogger.Instance;
-        Info = new ConsumerInfo(_config.SuperStream, _config.Reference);
+        Info = new ConsumerInfo(_config.SuperStream, _config.Reference, config.Identifier);
 
         StartConsumers().Wait(CancellationToken.None);
     }
@@ -74,6 +74,7 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
             ConsumerFilter = _config.ConsumerFilter,
             Pool = _config.Pool,
             Crc32 = _config.Crc32,
+            Identifier = _config.Identifier,
             ConnectionClosedHandler = async (reason) =>
             {
                 _consumers.TryRemove(stream, out var consumer);
@@ -199,8 +200,8 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
     {
         foreach (var stream in _consumers.Keys)
         {
-            _consumers.TryRemove(stream, out var consumer);
-            consumer?.Close();
+            _consumers.TryGetValue(stream, out var consumer);
+            consumer?.Dispose();
         }
 
         _disposed = true;

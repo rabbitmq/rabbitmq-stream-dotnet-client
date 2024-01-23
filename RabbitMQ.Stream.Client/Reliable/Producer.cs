@@ -124,7 +124,6 @@ public record ProducerConfig : ReliableConfig
 /// </summary>
 public class Producer : ProducerFactory
 {
-
     private ulong _publishingId;
     private readonly ILogger<Producer> _logger;
 
@@ -138,7 +137,7 @@ public class Producer : ProducerFactory
             producerConfig.TimeoutMessageAfter,
             producerConfig.MaxInFlight
         );
-        Info = new ProducerInfo(producerConfig.Stream, producerConfig.Reference);
+        Info = new ProducerInfo(producerConfig.Stream, producerConfig.Reference, producerConfig.Identifier);
         _logger = logger ?? NullLogger<Producer>.Instance;
     }
 
@@ -336,7 +335,9 @@ public class Producer : ProducerFactory
 
     public override string ToString()
     {
-        return $"Producer stream: {_producerConfig.Stream}, client name: {_producerConfig.ClientProvidedName}";
+        return $"Producer stream: {_producerConfig.Stream}, " +
+               $"identifier: {_producerConfig.Identifier}, " +
+               $"client name: {_producerConfig.ClientProvidedName}";
     }
 
     /// <summary>

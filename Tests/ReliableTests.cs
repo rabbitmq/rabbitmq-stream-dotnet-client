@@ -98,6 +98,7 @@ public class ReliableTests
             new ProducerConfig(system, stream)
             {
                 MessagesBufferSize = 150,
+                Identifier = "my_producer_0874",
                 ConfirmationHandler = _ =>
                 {
                     if (Interlocked.Increment(ref count) ==
@@ -133,6 +134,7 @@ public class ReliableTests
         await producer.Send(messages);
 
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        Assert.Equal("my_producer_0874", producer.Info.Identifier);
         await producer.Close();
         await system.Close();
     }

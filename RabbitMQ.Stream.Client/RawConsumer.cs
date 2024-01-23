@@ -132,7 +132,9 @@ namespace RabbitMQ.Stream.Client
                 ? "No SuperStream"
                 : $"SuperStream {_config.SuperStream}";
             return
-                $"Consumer id {EntityId} for stream: {_config.Stream}, reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
+                $"Consumer id {EntityId} for stream: {_config.Stream}, " +
+                $"identifier: {_config.Identifier}, " +
+                $"reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
                 $"Client ProvidedName {_config.ClientProvidedName}, " +
                 $"{superStream}, IsSingleActiveConsumer: {_config.IsSingleActiveConsumer}, " +
                 $"Token IsCancellationRequested: {Token.IsCancellationRequested} ";
@@ -144,7 +146,7 @@ namespace RabbitMQ.Stream.Client
             _initialCredits = config.InitialCredits;
             _config = config;
             Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
-            Info = new ConsumerInfo(_config.Stream, _config.Reference);
+            Info = new ConsumerInfo(_config.Stream, _config.Reference, _config.Identifier);
             // _chunksBuffer is a channel that is used to buffer the chunks
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
             {
@@ -481,6 +483,11 @@ namespace RabbitMQ.Stream.Client
             if (!string.IsNullOrEmpty(_config.Reference))
             {
                 consumerProperties["name"] = _config.Reference;
+            }
+
+            if (!string.IsNullOrEmpty(_config.Identifier))
+            {
+                consumerProperties["identifier"] = _config.Identifier;
             }
 
             if (_config.IsFiltering)

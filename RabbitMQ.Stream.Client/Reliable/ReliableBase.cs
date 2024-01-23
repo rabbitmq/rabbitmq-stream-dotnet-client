@@ -11,8 +11,26 @@ namespace RabbitMQ.Stream.Client.Reliable;
 
 public record ReliableConfig
 {
+    /// <summary>
+    /// The interface to reconnect the entity to the server.
+    /// By default it uses a BackOff pattern. See <see cref="BackOffReconnectStrategy"/>
+    /// </summary>
     public IReconnectStrategy ReconnectStrategy { get; set; }
+
+    /// <summary>
+    /// The interface to check if the resource is available.
+    /// A stream could be not fully ready during the restarting.
+    /// By default it uses a BackOff pattern. See <see cref="ResourceAvailableBackOffReconnectStrategy"/>
+    /// </summary>
     public IReconnectStrategy ResourceAvailableReconnectStrategy { get; set; }
+
+    /// <summary>
+    /// The Identifier does not have any effect on the server.
+    /// It is used to identify the entity in the logs and on the UI (only for the consumer)
+    /// It is possible to retrieve the entity info using the Info.Identifier method form the
+    /// Producer/Consumer instances.
+    /// </summary>
+    public string Identifier { get; set; }
 
     public StreamSystem StreamSystem { get; }
     public string Stream { get; }
@@ -31,12 +49,15 @@ public record ReliableConfig
     }
 }
 
+/// <summary>
+/// The ReliableEntityStatus is used to check the status of the ReliableEntity.
+/// </summary>
 public enum ReliableEntityStatus
 {
-    Initialization,
-    Open,
-    Reconnecting,
-    Closed,
+    Initialization,// the entity is initializing
+    Open, // the entity is open and ready to use
+    Reconnecting,// the entity is reconnecting but still can be used
+    Closed,// the entity is closed and cannot be used anymore
 }
 
 /// <summary>
@@ -62,7 +83,7 @@ public abstract class ReliableBase
         }
     }
 
-    protected bool CompareStatus(ReliableEntityStatus toTest)
+    private bool CompareStatus(ReliableEntityStatus toTest)
     {
         lock (_lock)
         {

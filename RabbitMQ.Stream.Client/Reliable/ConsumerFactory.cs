@@ -57,6 +57,7 @@ public abstract class ConsumerFactory : ReliableBase
             OffsetSpec = offsetSpec,
             ConsumerFilter = _consumerConfig.Filter,
             Crc32 = _consumerConfig.Crc32,
+            Identifier = _consumerConfig.Identifier,
             ConnectionClosedHandler = async (closeReason) =>
             {
                 if (closeReason == ConnectionClosedReason.Normal)
@@ -120,6 +121,7 @@ public abstract class ConsumerFactory : ReliableBase
                     ConsumerFilter = _consumerConfig.Filter,
                     Crc32 = _consumerConfig.Crc32,
                     OffsetSpec = offsetSpecs,
+                    Identifier = _consumerConfig.Identifier,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
                         await RandomWait().ConfigureAwait(false);

@@ -37,8 +37,9 @@ public class SuperStreamConsumerTests
             new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
             {
                 ClientProvidedName = clientProvidedName,
+                Identifier = "super_stream_consumer_88888",
                 OffsetSpec =
-                    await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst())
+                    await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange, new OffsetTypeFirst())
             });
 
         Assert.NotNull(consumer);
@@ -51,6 +52,7 @@ public class SuperStreamConsumerTests
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 0);
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 0);
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 0);
+        Assert.Equal("super_stream_consumer_88888", consumer.Info.Identifier);
 
         await system.Close();
     }
@@ -62,6 +64,7 @@ public class SuperStreamConsumerTests
 
         var testPassed = new TaskCompletionSource<int>();
         var listConsumed = new ConcurrentBag<string>();
+        var identifierReceived = "";
 
         var consumedMessages = 0;
         const int NumberOfMessages = 20;
@@ -83,11 +86,13 @@ public class SuperStreamConsumerTests
             {
                 Crc32 = _crc32,
                 ClientProvidedName = clientProvidedName,
+                Identifier = "super_stream_consumer_24680",
                 OffsetSpec =
                     await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange,
                         new OffsetTypeFirst()),
-                MessageHandler = (stream, _, _, _) =>
+                MessageHandler = (stream, sourceConsumer, _, _) =>
                 {
+                    identifierReceived = sourceConsumer.Info.Identifier;
                     listConsumed.Add(stream);
                     Interlocked.Increment(ref consumedMessages);
                     if (consumedMessages == NumberOfMessages)
@@ -98,14 +103,15 @@ public class SuperStreamConsumerTests
                     return Task.CompletedTask;
                 }
             });
-
         Assert.NotNull(consumer);
         SystemUtils.Wait();
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        Assert.Equal("super_stream_consumer_24680", identifierReceived);
         Assert.Equal(9, listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
         Assert.Equal(7, listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
         Assert.Equal(4, listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
         Assert.Equal(ResponseCode.Ok, await consumer.Close());
+
         await system.Close();
     }
 
