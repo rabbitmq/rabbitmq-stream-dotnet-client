@@ -159,7 +159,7 @@ public class Producer : ProducerFactory
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         producerConfig.ResourceAvailableReconnectStrategy ??= new ResourceAvailableBackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
-        await rProducer.Init(producerConfig.ReconnectStrategy, producerConfig.ResourceAvailableReconnectStrategy)
+        await rProducer.Init(producerConfig)
             .ConfigureAwait(false);
         return rProducer;
     }

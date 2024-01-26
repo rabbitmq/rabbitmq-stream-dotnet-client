@@ -182,20 +182,20 @@ namespace RabbitMQ.Stream.Client
                 throw new CreateProducerException($"producer could not be created code: {partitions.ResponseCode}");
             }
 
+            IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
+            foreach (var partitionsStream in partitions.Streams)
+            {
+                streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
+            }
+
+            foreach (var (_, value) in streamInfos)
+            {
+                ClientExceptions.CheckLeader(value);
+            }
+
             await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
             try
             {
-                IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
-                foreach (var partitionsStream in partitions.Streams)
-                {
-                    streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
-                }
-
-                foreach (var (_, value) in streamInfos)
-                {
-                    ClientExceptions.CheckLeader(value);
-                }
-
                 var r = RawSuperStreamProducer.Create(rawSuperStreamProducerConfig,
                     streamInfos,
                     _clientParameters with { ClientProvidedName = rawSuperStreamProducerConfig.ClientProvidedName },
@@ -247,15 +247,15 @@ namespace RabbitMQ.Stream.Client
                     partitions.ResponseCode);
             }
 
+            IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
+            foreach (var partitionsStream in partitions.Streams)
+            {
+                streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
+            }
+
             await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
             try
             {
-                IDictionary<string, StreamInfo> streamInfos = new Dictionary<string, StreamInfo>();
-                foreach (var partitionsStream in partitions.Streams)
-                {
-                    streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
-                }
-
                 var s = RawSuperStreamConsumer.Create(rawSuperStreamConsumerConfig,
                     streamInfos,
                     _clientParameters with { ClientProvidedName = rawSuperStreamConsumerConfig.ClientProvidedName },
@@ -287,9 +287,9 @@ namespace RabbitMQ.Stream.Client
 
             ClientExceptions.CheckLeader(metaStreamInfo);
 
+            await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
             try
             {
-                await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
                 rawProducerConfig.Pool = PoolProducers;
 
                 var s = _clientParameters with { ClientProvidedName = rawProducerConfig.ClientProvidedName };

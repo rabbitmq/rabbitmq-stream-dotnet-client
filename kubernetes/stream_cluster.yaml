@@ -7,7 +7,7 @@ apiVersion: rabbitmq.com/v1beta1
 kind: RabbitmqCluster
 metadata:
   name: tls
-  namespace: stream-clients-test-1
+  namespace: stream-clients-test
 spec:
   replicas: 3
   image: rabbitmq:3.13-rc-management
@@ -17,10 +17,10 @@ spec:
     secretName: tls-secret
   resources:
     requests:
-      cpu: 500m
+      cpu: 1
       memory: 1Gi
     limits:
-      cpu: 800m
+      cpu: 1
       memory: 1Gi
   rabbitmq:
     additionalPlugins:

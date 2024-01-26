@@ -22,7 +22,7 @@ public abstract class ProducerFactory : ReliableBase
 
     protected async Task<IProducer> CreateProducer(bool boot)
     {
-        if (_producerConfig.SuperStreamConfig is { Enabled: true })
+        if (_producerConfig.SuperStreamConfig is {Enabled: true})
         {
             return await SuperStreamProducer(boot).ConfigureAwait(false);
         }
@@ -34,7 +34,6 @@ public abstract class ProducerFactory : ReliableBase
     {
         if (boot)
         {
-
             return await _producerConfig.StreamSystem.CreateRawSuperStreamProducer(
                 new RawSuperStreamProducerConfig(_producerConfig.Stream)
                 {
@@ -56,14 +55,16 @@ public abstract class ProducerFactory : ReliableBase
                         }
 
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
-                        await OnEntityClosed(_producerConfig.StreamSystem, partitionStream, r)
+                        await OnEntityClosed(_producerConfig.StreamSystem, partitionStream, r,
+                                ReliableEntityStatus.ReconnectionDueOfUnexpectedlyDisconnected)
                             .ConfigureAwait(false);
                     },
                     MetadataHandler = async update =>
                     {
                         await RandomWait().ConfigureAwait(false);
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
-                        await OnEntityClosed(_producerConfig.StreamSystem, update.Stream, r)
+                        await OnEntityClosed(_producerConfig.StreamSystem, update.Stream, r,
+                                ReliableEntityStatus.ReconnectionDueOfMetaDataUpdate)
                             .ConfigureAwait(false);
                     },
                     ConfirmHandler = confirmationHandler =>
@@ -104,7 +105,8 @@ public abstract class ProducerFactory : ReliableBase
             MetadataHandler = async _ =>
             {
                 await RandomWait().ConfigureAwait(false);
-                await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream).ConfigureAwait(false);
+                await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream,
+                    ReliableEntityStatus.ReconnectionDueOfMetaDataUpdate).ConfigureAwait(false);
             },
             ConnectionClosedHandler = async (closeReason) =>
             {
@@ -115,7 +117,8 @@ public abstract class ProducerFactory : ReliableBase
                     return;
                 }
 
-                await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream).ConfigureAwait(false);
+                await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream,
+                    ReliableEntityStatus.ReconnectionDueOfUnexpectedlyDisconnected).ConfigureAwait(false);
             },
             ConfirmHandler = confirmation =>
             {

@@ -62,15 +62,18 @@ public abstract class ConsumerFactory : ReliableBase
             {
                 if (closeReason == ConnectionClosedReason.Normal)
                 {
+                    //  we don't update the status here since it happens when Close() is called in a normal way
                     BaseLogger.LogInformation("{Identity} is closed normally", ToString());
                     return;
                 }
 
-                await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream).ConfigureAwait(false);
+                await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
+                    ReliableEntityStatus.ReconnectionDueOfUnexpectedlyDisconnected).ConfigureAwait(false);
             },
             MetadataHandler = async _ =>
             {
-                await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream).ConfigureAwait(false);
+                await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
+                    ReliableEntityStatus.ReconnectionDueOfMetaDataUpdate).ConfigureAwait(false);
             },
             MessageHandler = async (consumer, ctx, message) =>
             {
@@ -127,19 +130,22 @@ public abstract class ConsumerFactory : ReliableBase
                         await RandomWait().ConfigureAwait(false);
                         if (closeReason == ConnectionClosedReason.Normal)
                         {
+                            //  we don't update the status here since it happens when Close() is called in a normal way
                             BaseLogger.LogInformation("{Identity} is closed normally", ToString());
                             return;
                         }
 
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
-                        await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r)
+                        await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r,
+                                ReliableEntityStatus.ReconnectionDueOfUnexpectedlyDisconnected)
                             .ConfigureAwait(false);
                     },
                     MetadataHandler = async update =>
                     {
                         await RandomWait().ConfigureAwait(false);
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
-                        await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r)
+                        await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r,
+                                ReliableEntityStatus.ReconnectionDueOfMetaDataUpdate)
                             .ConfigureAwait(false);
                     },
                     MessageHandler = async (partitionStream, consumer, ctx, message) =>
