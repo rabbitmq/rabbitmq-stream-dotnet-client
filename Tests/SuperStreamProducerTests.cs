@@ -728,8 +728,9 @@ public class SuperStreamProducerTests
         var testPassed = new TaskCompletionSource<bool>();
         var confirmedList = new ConcurrentBag<(string, Message)>();
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        var streamProducer = await Producer.Create(new ProducerConfig(system, SystemUtils.InvoicesExchange)
+        var config = new ProducerConfig(system, SystemUtils.InvoicesExchange)
         {
+            Identifier = "my_super_producer_908",
             SuperStreamConfig =
                 new SuperStreamConfig() { Routing = message1 => message1.Properties.MessageId.ToString() },
             ConfirmationHandler = confirmation =>
@@ -746,7 +747,11 @@ public class SuperStreamProducerTests
 
                 return Task.CompletedTask;
             }
-        });
+        };
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status => { statusInfoReceived.Add(status); };
+
+        var streamProducer = await Producer.Create(config);
 
         for (ulong i = 0; i < 20; i++)
         {
@@ -762,6 +767,17 @@ public class SuperStreamProducerTests
         Assert.Equal(9, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream0));
         Assert.Equal(7, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream1));
         Assert.Equal(4, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream2));
+        await streamProducer.Close();
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[1].To);
+
+        Assert.Equal("my_super_producer_908", statusInfoReceived[0].Identifier);
+        Assert.Equal("my_super_producer_908", statusInfoReceived[1].Identifier);
+
+        Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[0].Stream);
+        Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
         await system.Close();
     }
 
@@ -776,9 +792,10 @@ public class SuperStreamProducerTests
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientName = Guid.NewGuid().ToString();
         var testPassed = new TaskCompletionSource<bool>() { };
+        var statusCompleted = new TaskCompletionSource<bool>() { };
         var received = 0;
         var error = 0;
-        var streamProducer = await Producer.Create(new ProducerConfig(system, SystemUtils.InvoicesExchange)
+        var config = new ProducerConfig(system, SystemUtils.InvoicesExchange)
         {
             SuperStreamConfig =
                 new SuperStreamConfig() { Routing = message1 => message1.Properties.MessageId.ToString() },
@@ -799,7 +816,19 @@ public class SuperStreamProducerTests
             },
             ClientProvidedName = clientName,
             ReconnectStrategy = new TestBackOffReconnectStrategy()
-        });
+        };
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 3)
+            {
+                statusCompleted.SetResult(true);
+            }
+        };
+
+        var streamProducer = await Producer.Create(config);
+
         for (ulong i = 0; i < 20; i++)
         {
             var message = new Message(Encoding.Default.GetBytes("hello"))
@@ -824,7 +853,24 @@ public class SuperStreamProducerTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
 
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected, statusInfoReceived[1].To);
+
+        Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
+        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partition);
+
+        Assert.Equal(ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected, statusInfoReceived[2].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
+
         await streamProducer.Close();
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[3].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[3].To);
+
         await system.Close();
     }
 }

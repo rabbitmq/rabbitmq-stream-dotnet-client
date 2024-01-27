@@ -54,9 +54,19 @@ public class RClient
             var lc = loggerFactory.CreateLogger<Consumer>();
 
             var ep = new IPEndPoint(IPAddress.Loopback, config.Port);
+
             if (config.Host != "localhost")
             {
-                ep = new IPEndPoint(IPAddress.Parse(config.Host), config.Port);
+                switch (Uri.CheckHostName(config.Host))
+                {
+                    case UriHostNameType.IPv4:
+                        ep = new IPEndPoint(IPAddress.Parse(config.Host), config.Port);
+                        break;
+                    case UriHostNameType.Dns:
+                        var addresses = await Dns.GetHostAddressesAsync(config.Host).ConfigureAwait(false);
+                        ep = new IPEndPoint(addresses[0], config.Port);
+                        break;
+                }
             }
 
             var streamConf = new StreamSystemConfig()
@@ -78,8 +88,8 @@ public class RClient
                 streamConf = new StreamSystemConfig()
                 {
                     AddressResolver = resolver,
-                    UserName = "test",
-                    Password = "test",
+                    UserName = config.Username,
+                    Password = config.Password,
                     Endpoints = new List<EndPoint>() {resolver.EndPoint}
                 };
             }
@@ -121,7 +131,7 @@ public class RClient
                         $"Sent: {totalSent:#,##0.00}, " +
                         $"Sent To SuperStream: {totalSentToSuperStream:#,##0.00}, " +
                         $"Sent per stream: {totalSent / streamsList.Count}");
-                    Thread.Sleep(25000);
+                    Thread.Sleep(5000);
                 }
             });
             List<Consumer> consumersList = new();
@@ -136,8 +146,9 @@ public class RClient
                         await system.DeleteStream(stream).ConfigureAwait(false);
                     }
 
-                    await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 20_000_000_000,})
-                            .ConfigureAwait(false);
+                    await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 30_000_000_000,})
+                        .ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
                 }
 
                 for (var z = 0; z < config.Consumers; z++)
@@ -146,7 +157,7 @@ public class RClient
                     {
                         OffsetSpec = new OffsetTypeFirst(),
                         IsSuperStream = config.SuperStream,
-                        IsSingleActiveConsumer = true,
+                        IsSingleActiveConsumer = config.SuperStream,
                         Reference = "myApp",
                         Identifier = $"my_c_{z}",
                         InitialCredits = 10,
@@ -166,7 +177,7 @@ public class RClient
                             status.Identifier, status.From, status.To, streamInfo);
                     };
                     consumersList.Add(
-                        await Consumer.Create(conf).ConfigureAwait(false));
+                        await Consumer.Create(conf, lc).ConfigureAwait(false));
                 }
 
 
@@ -204,8 +215,12 @@ public class RClient
                             var streamInfo = status.Partition is not null
                                 ? $" Partition {status.Partition} of super stream: {status.Stream}"
                                 : $"Stream: {status.Stream}";
+                            
                             lp.LogInformation("Producer: {Id} - status changed from {From} to {To}. {Info}",
-                                status.Identifier, status.From, status.To, streamInfo);
+                                status.Identifier, 
+                                status.From,
+                                status.To, streamInfo);
+                            
                             if (status.To == ReliableEntityStatus.Open)
                             {
                                 publishEvent.Set();
@@ -240,7 +255,7 @@ public class RClient
                                 Properties = new Properties() {MessageId = $"hello{i}"}
                             };
                             await producer.Send(message).ConfigureAwait(false);
-                            await Task.Delay(500).ConfigureAwait(false);
+                            await Task.Delay(10).ConfigureAwait(false);
                             Interlocked.Increment(ref totalSent);
                         }
                     });

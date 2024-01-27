@@ -73,8 +73,8 @@ public enum ReliableEntityStatus
 {
     Initialization, // the entity is initializing
     Open, // the entity is open and ready to use
-    ReconnectionDueOfUnexpectedlyDisconnected, // the entity is disconnected in an unexpected way but still considered open
-    ReconnectionDueOfMetaDataUpdate, // the entity is disconnected because the stream topology has changed but still considered open
+    ReconnectionForUnexpectedlyDisconnected, // the entity is disconnected in an unexpected way but still considered open
+    ReconnectionForMetaDataUpdate, // the entity is disconnected because the stream topology has changed but still considered open
     Closed, // the entity is closed and cannot be used anymore
 }
 
@@ -103,7 +103,8 @@ public abstract class ReliableBase
             _status = newStatus;
             if (oldStatus != newStatus)
             {
-                _reliableConfig.OnStatusChanged(new StatusInfo(newStatus, oldStatus, _reliableConfig.Stream,
+                _reliableConfig.OnStatusChanged(new StatusInfo(newStatus, oldStatus,
+                    _reliableConfig.Stream,
                     _reliableConfig.Identifier, partition));
             }
         }
@@ -269,20 +270,20 @@ public abstract class ReliableBase
             UpdateStatus(ReliableEntityStatus.Closed);
             return;
         }
-        
+
         if (_status == ReliableEntityStatus.Open)
         {
             throw new Exception("The entity is already open");
         }
-        
+
         switch (IsOpen())
         {
             case true:
                 await MaybeInit(false).ConfigureAwait(false);
                 break;
             case false:
-                if (CompareStatus(ReliableEntityStatus.ReconnectionDueOfMetaDataUpdate) ||
-                    CompareStatus(ReliableEntityStatus.ReconnectionDueOfUnexpectedlyDisconnected))
+                if (CompareStatus(ReliableEntityStatus.ReconnectionForMetaDataUpdate) ||
+                    CompareStatus(ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected))
                 {
                     BaseLogger.LogDebug("{Identity} is in Reconnecting", ToString());
                 }

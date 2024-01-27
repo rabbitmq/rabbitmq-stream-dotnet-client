@@ -223,8 +223,8 @@ RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.Closed = 4 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.Initialization = 0 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.Open = 1 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
-RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.ReconnectionDueOfMetaDataUpdate = 3 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
-RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.ReconnectionDueOfUnexpectedlyDisconnected = 2 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
+RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.ReconnectionForMetaDataUpdate = 3 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
+RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected = 2 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.StatusInfo
 RabbitMQ.Stream.Client.Reliable.StatusInfo.From.get -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.StatusInfo.From.init -> void
