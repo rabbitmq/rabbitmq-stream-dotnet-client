@@ -48,6 +48,7 @@ public class RClient
         var loggerFactory = serviceCollection.BuildServiceProvider()
             .GetService<ILoggerFactory>();
 
+
         if (loggerFactory != null)
         {
             var lp = loggerFactory.CreateLogger<Producer>();
@@ -84,7 +85,7 @@ public class RClient
 
             if (config.LoadBalancer)
             {
-                var resolver = new AddressResolver(new IPEndPoint(IPAddress.Parse(config.Host), config.Port));
+                var resolver = new AddressResolver(ep);
                 streamConf = new StreamSystemConfig()
                 {
                     AddressResolver = resolver,
@@ -114,7 +115,6 @@ public class RClient
             var totalError = 0;
             var totalConsumed = 0;
             var totalSent = 0;
-            var totalSentToSuperStream = 0;
             var isRunning = true;
 
             _ = Task.Run(() =>
@@ -124,12 +124,11 @@ public class RClient
                     Console.WriteLine(
                         $"When: {DateTime.Now}, " +
                         $"Tr {System.Diagnostics.Process.GetCurrentProcess().Threads.Count}, " +
+                        $"Sent: {totalSent:#,##0.00}, " +
                         $"Conf: {totalConfirmed:#,##0.00}, " +
                         $"Error: {totalError:#,##0.00}, " +
                         $"Total: {(totalConfirmed + totalError):#,##0.00}, " +
                         $"Consumed: {totalConsumed:#,##0.00}, " +
-                        $"Sent: {totalSent:#,##0.00}, " +
-                        $"Sent To SuperStream: {totalSentToSuperStream:#,##0.00}, " +
                         $"Sent per stream: {totalSent / streamsList.Count}");
                     Thread.Sleep(5000);
                 }
@@ -180,6 +179,11 @@ public class RClient
                         await Consumer.Create(conf, lc).ConfigureAwait(false));
                 }
 
+                async Task MaybeSend(Producer producer, Message message, ManualResetEvent publishEvent)
+                {
+                    publishEvent.WaitOne();
+                    await producer.Send(message).ConfigureAwait(false);
+                }
 
                 for (var z = 0; z < config.Producers; z++)
                 {
@@ -215,12 +219,12 @@ public class RClient
                             var streamInfo = status.Partition is not null
                                 ? $" Partition {status.Partition} of super stream: {status.Stream}"
                                 : $"Stream: {status.Stream}";
-                            
+
                             lp.LogInformation("Producer: {Id} - status changed from {From} to {To}. {Info}",
-                                status.Identifier, 
+                                status.Identifier,
                                 status.From,
                                 status.To, streamInfo);
-                            
+
                             if (status.To == ReliableEntityStatus.Open)
                             {
                                 publishEvent.Set();
@@ -238,14 +242,13 @@ public class RClient
 
                         for (var i = 0; i < config.MessagesPerProducer; i++)
                         {
-                            publishEvent.WaitOne();
                             if (!unconfirmedMessages.IsEmpty)
                             {
                                 var msgs = unconfirmedMessages.ToArray();
                                 unconfirmedMessages.Clear();
                                 foreach (var msg in msgs)
                                 {
-                                    await producer.Send(msg).ConfigureAwait(false);
+                                    await MaybeSend(producer, msg, publishEvent).ConfigureAwait(false);
                                     Interlocked.Increment(ref totalSent);
                                 }
                             }
@@ -254,8 +257,7 @@ public class RClient
                             {
                                 Properties = new Properties() {MessageId = $"hello{i}"}
                             };
-                            await producer.Send(message).ConfigureAwait(false);
-                            await Task.Delay(10).ConfigureAwait(false);
+                            await MaybeSend(producer, message, publishEvent).ConfigureAwait(false);
                             Interlocked.Increment(ref totalSent);
                         }
                     });
@@ -270,6 +272,9 @@ public class RClient
             producersList.ForEach(async p => await p.Close().ConfigureAwait(false));
             Console.WriteLine("closing the consumers ..... ");
             consumersList.ForEach(async c => await c.Close().ConfigureAwait(false));
+
+            Console.WriteLine("Press any key to close all");
+            Console.ReadKey();
         }
 
         Console.WriteLine("Closed all the consumers and producers");
