@@ -279,11 +279,6 @@ public abstract class ReliableBase
             return;
         }
 
-        if (_status == ReliableEntityStatus.Open)
-        {
-            throw new Exception("The entity is already open");
-        }
-
         switch (IsOpen())
         {
             case true:
