@@ -111,7 +111,7 @@ public abstract class ReliableBase
             _status = newStatus;
             if (oldStatus != newStatus)
             {
-                _reliableConfig.OnStatusChanged(new StatusInfo(newStatus, oldStatus,
+                _reliableConfig.OnStatusChanged(new StatusInfo(oldStatus, newStatus,
                     _reliableConfig.Stream,
                     _reliableConfig.Identifier, partition));
             }
