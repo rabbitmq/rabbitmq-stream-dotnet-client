@@ -232,7 +232,7 @@ RabbitMQ.Stream.Client.Reliable.StatusInfo.Identifier.get -> string
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Identifier.init -> void
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Partition.get -> string
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Partition.init -> void
-RabbitMQ.Stream.Client.Reliable.StatusInfo.StatusInfo(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus To, RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus From, string Stream, string Identifier, string Partition) -> void
+RabbitMQ.Stream.Client.Reliable.StatusInfo.StatusInfo(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus From, RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus To, string Stream, string Identifier, string Partition) -> void
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Stream.get -> string
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Stream.init -> void
 RabbitMQ.Stream.Client.Reliable.StatusInfo.To.get -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus

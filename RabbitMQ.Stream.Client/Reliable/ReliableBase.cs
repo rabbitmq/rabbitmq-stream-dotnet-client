@@ -9,9 +9,17 @@ using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
+/// <summary>
+/// StatusInfo is the information about the change status of the ReliableEntity
+/// </summary>
+/// <param name="From">The previous entity status </param>
+/// <param name="To"> The new status </param>
+/// <param name="Stream"> Stream or SuperSuper affected</param>
+/// <param name="Identifier"> The Entity Identifier </param>
+/// <param name="Partition"> Super stream partition. Valid only for SuperStream else is empty</param>
 public record StatusInfo(
-    ReliableEntityStatus To,
     ReliableEntityStatus From,
+    ReliableEntityStatus To,
     string Stream,
     string Identifier,
     string Partition
@@ -382,7 +390,6 @@ public abstract class ReliableBase
     /// <param name="system">Stream system</param>
     /// <param name="stream">Stream</param>
     /// <param name="reason">The reason why the connection is closed (Metadata update od disconnection)</param>
-
     internal async Task OnEntityClosed(StreamSystem system, string stream, ReliableEntityStatus reason)
     {
         var streamExists = false;
