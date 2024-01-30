@@ -159,7 +159,7 @@ public class Producer : ProducerFactory
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         producerConfig.ResourceAvailableReconnectStrategy ??= new ResourceAvailableBackOffReconnectStrategy(logger);
         var rProducer = new Producer(producerConfig, logger);
-        await rProducer.Init(producerConfig.ReconnectStrategy, producerConfig.ResourceAvailableReconnectStrategy)
+        await rProducer.Init(producerConfig)
             .ConfigureAwait(false);
         return rProducer;
     }
@@ -201,11 +201,11 @@ public class Producer : ProducerFactory
     {
         if (ReliableEntityStatus.Initialization == _status)
         {
-            UpdateStatus(ReliableEntityStatus.Closed);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
             return;
         }
 
-        UpdateStatus(ReliableEntityStatus.Closed);
+        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {

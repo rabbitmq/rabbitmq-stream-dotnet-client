@@ -94,26 +94,28 @@ public class ReliableTests
         var testPassed = new TaskCompletionSource<bool>();
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var count = 0;
-        var producer = await Producer.Create(
-            new ProducerConfig(system, stream)
+        var config = new ProducerConfig(system, stream)
+        {
+            MessagesBufferSize = 150,
+            Identifier = "my_producer_0874",
+            ConfirmationHandler = _ =>
             {
-                MessagesBufferSize = 150,
-                Identifier = "my_producer_0874",
-                ConfirmationHandler = _ =>
+                if (Interlocked.Increment(ref count) ==
+                    5 + // first five messages iteration
+                    5 + // second five messages iteration with compression enabled
+                    2 // batch send iteration since the messages list contains two messages
+                   )
                 {
-                    if (Interlocked.Increment(ref count) ==
-                        5 + // first five messages iteration
-                        5 + // second five messages iteration with compression enabled
-                        2 // batch send iteration since the messages list contains two messages
-                       )
-                    {
-                        testPassed.SetResult(true);
-                    }
-
-                    return Task.CompletedTask;
+                    testPassed.SetResult(true);
                 }
+
+                return Task.CompletedTask;
             }
-        );
+        };
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += (status) => { statusInfoReceived.Add(status); };
+        var producer = await Producer.Create(config);
+
         for (var i = 0; i < 5; i++)
         {
             await producer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
@@ -136,6 +138,15 @@ public class ReliableTests
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         Assert.Equal("my_producer_0874", producer.Info.Identifier);
         await producer.Close();
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[1].To);
+        Assert.Equal(stream, statusInfoReceived[1].Stream);
+        Assert.Equal(stream, statusInfoReceived[0].Stream);
+        Assert.Equal("my_producer_0874", statusInfoReceived[0].Identifier);
+        Assert.Equal("my_producer_0874", statusInfoReceived[1].Identifier);
         await system.Close();
     }
 
@@ -153,7 +164,7 @@ public class ReliableTests
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream, clientProvidedNameLocator);
         var count = 0;
         var clientProvidedName = Guid.NewGuid().ToString();
-        var producer = await Producer.Create(
+        var config =
             new ProducerConfig(system, stream)
             {
                 ClientProvidedName = clientProvidedName,
@@ -168,9 +179,10 @@ public class ReliableTests
                     return Task.CompletedTask;
                 },
                 ReconnectStrategy = new TestBackOffReconnectStrategy()
+            };
 
-            }
-        );
+        var producer = await Producer.Create(config);
+
         for (var i = 0; i < 5; i++)
         {
             await producer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
@@ -199,13 +211,15 @@ public class ReliableTests
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
-        var producer = await Producer.Create(
+        var config =
             new ProducerConfig(system, stream)
             {
                 ClientProvidedName = clientProviderName,
                 ConfirmationHandler = _ => Task.CompletedTask
-            }
-        );
+            };
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += (status) => { statusInfoReceived.Add(status); };
+        var producer = await Producer.Create(config);
 
         Assert.True(producer.IsOpen());
         // When the stream is deleted the producer has to close the 
@@ -213,6 +227,18 @@ public class ReliableTests
         await system.DeleteStream(stream);
 
         SystemUtils.WaitUntil(() => !producer.IsOpen());
+
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
+        Assert.Equal(ChangeStatusReason.MetaDataUpdate, statusInfoReceived[1].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[2].To);
+        Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[2].Reason);
+
         await system.Close();
     }
 
@@ -233,7 +259,8 @@ public class ReliableTests
         );
 
         Assert.True(producer.IsOpen());
-        await producer.OnEntityClosed(system, stream);
+        await producer.OnEntityClosed(system, stream,
+            ChangeStatusReason.UnexpectedlyDisconnected);
         SystemUtils.Wait();
         Assert.True(producer.IsOpen());
         await system.DeleteStream(stream);
@@ -343,7 +370,6 @@ public class ReliableTests
                 await Task.CompletedTask;
             },
             ReconnectStrategy = new TestBackOffReconnectStrategy()
-
         });
         // in this case we kill the connection before consume consume any message
         // so it should use the selected   OffsetSpec in this case = new OffsetTypeFirst(),
@@ -370,10 +396,11 @@ public class ReliableTests
             Guid.NewGuid().ToString(),
             _testOutputHelper);
         var testPassed = new TaskCompletionSource<bool>();
+        var statusCompleted = new TaskCompletionSource<bool>();
         var clientProviderName = Guid.NewGuid().ToString();
         var reference = Guid.NewGuid().ToString();
         var messagesReceived = 0;
-        var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+        var config = new ConsumerConfig(system, stream)
         {
             Crc32 = _crc32,
             Reference = reference,
@@ -392,7 +419,17 @@ public class ReliableTests
                 await Task.CompletedTask;
             },
             ReconnectStrategy = new TestBackOffReconnectStrategy()
-        });
+        };
+
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += (status) =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 5)
+                statusCompleted.SetResult(true);
+        };
+
+        var consumer = await Consumer.Create(config);
         // kill the first time 
         SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
@@ -402,8 +439,38 @@ public class ReliableTests
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // after kill the consumer must be open
         Assert.True(consumer.IsOpen());
+        // there is check to have the statusInfoReceived consistent and to 
+        // to have the test passed.
+        // In a real situation the test isOpen is always correct but the internal status
+        // is not updated yet. Since the status Reconnection is considered as a valid Open() status  
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+
         await consumer.Close();
         Assert.False(consumer.IsOpen());
+        // We must have 6 status here 
+        Assert.Equal(6, statusInfoReceived.Count);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
+        Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[1].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
+        Assert.Equal(ChangeStatusReason.None, statusInfoReceived[2].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[3].From);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[3].To);
+        Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[3].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[4].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[4].To);
+        Assert.Equal(ChangeStatusReason.None, statusInfoReceived[4].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[5].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[5].To);
+        Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[5].Reason);
 
         await system.DeleteStream(stream);
         await system.Close();
@@ -414,19 +481,86 @@ public class ReliableTests
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
-        var consumer = await Consumer.Create(
+        var config =
             new ConsumerConfig(system, stream)
             {
                 ClientProvidedName = clientProviderName,
                 ReconnectStrategy = new TestBackOffReconnectStrategy()
-            }
-        );
+            };
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += (status) => { statusInfoReceived.Add(status); };
+        var consumer = await Consumer.Create(config);
 
         Assert.True(consumer.IsOpen());
         // When the stream is deleted the consumer has to close the 
         // connection an become inactive.
         await system.DeleteStream(stream);
         SystemUtils.WaitUntil(() => !consumer.IsOpen());
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+        Assert.Equal(ChangeStatusReason.None, statusInfoReceived[0].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
+        Assert.Equal(ChangeStatusReason.MetaDataUpdate, statusInfoReceived[1].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[2].To);
+        Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[2].Reason);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void ConsumerShouldReceiveBoolFail()
+    {
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var config = new ConsumerConfig(system, "DOES_NOT_EXIST")
+        {
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
+        };
+
+        var statusCompleted = new TaskCompletionSource<bool>();
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 1)
+            {
+                statusCompleted.SetResult(true);
+            }
+        };
+        await Assert.ThrowsAsync<CreateConsumerException>(async () => await Consumer.Create(config));
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+        Assert.Equal(ChangeStatusReason.BoolFailure, statusInfoReceived[0].Reason);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[0].To);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void ProducerShouldReceiveBoolFail()
+    {
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var config = new ProducerConfig(system, "DOES_NOT_EXIST")
+        {
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
+        };
+
+        var statusCompleted = new TaskCompletionSource<bool>();
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 1)
+            {
+                statusCompleted.SetResult(true);
+            }
+        };
+        await Assert.ThrowsAsync<CreateProducerException>(async () => await Producer.Create(config));
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+        Assert.Equal(ChangeStatusReason.BoolFailure, statusInfoReceived[0].Reason);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[0].To);
         await system.Close();
     }
 
@@ -522,7 +656,7 @@ public class ReliableTests
                 return Task.CompletedTask;
             }
 
-            UpdateStatus(ReliableEntityStatus.Open);
+            UpdateStatus(ReliableEntityStatus.Open, ChangeStatusReason.None);
             // raise the exception only one time
             // to avoid loops
             _firstTime = false;
@@ -546,7 +680,7 @@ public class ReliableTests
             new Exception("Fake Exception"));
 
         await Assert.ThrowsAsync<Exception>(() =>
-            c.Init(new BackOffReconnectStrategy(), new ResourceAvailableBackOffReconnectStrategy()));
+            c.Init(new ConsumerConfig(system, stream)));
 
         Assert.False(c.IsOpen());
 
@@ -567,14 +701,15 @@ public class ReliableTests
     public async void ConsumerShouldFailFast(Exception exception)
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
-        var c = new FakeThrowExceptionConsumer(new ConsumerConfig(system, stream),
+        var config = new ConsumerConfig(system, stream) { ReconnectStrategy = new TestBackOffReconnectStrategy() };
+
+        var c = new FakeThrowExceptionConsumer(config,
             exception);
         Assert.True(ClientExceptions.IsAKnownException(exception));
 
         try
         {
-            await c.Init(new BackOffReconnectStrategy(),
-                new ResourceAvailableBackOffReconnectStrategy());
+            await c.Init(new ConsumerConfig(system, stream));
         }
         catch (Exception e)
         {

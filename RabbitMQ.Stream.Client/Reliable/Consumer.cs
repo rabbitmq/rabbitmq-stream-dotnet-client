@@ -172,7 +172,7 @@ public class Consumer : ConsumerFactory
         consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
         consumerConfig.ResourceAvailableReconnectStrategy ??= new ResourceAvailableBackOffReconnectStrategy(logger);
         var rConsumer = new Consumer(consumerConfig, logger);
-        await rConsumer.Init(consumerConfig.ReconnectStrategy, consumerConfig.ResourceAvailableReconnectStrategy)
+        await rConsumer.Init(consumerConfig)
             .ConfigureAwait(false);
         return rConsumer;
     }
@@ -204,11 +204,11 @@ public class Consumer : ConsumerFactory
     {
         if (_status == ReliableEntityStatus.Initialization)
         {
-            UpdateStatus(ReliableEntityStatus.Closed);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
             return;
         }
 
-        UpdateStatus(ReliableEntityStatus.Closed);
+        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
         await CloseEntity().ConfigureAwait(false);
         _logger?.LogDebug("Consumer {Identity} closed", ToString());
     }

@@ -39,7 +39,8 @@ public class SuperStreamConsumerTests
                 ClientProvidedName = clientProvidedName,
                 Identifier = "super_stream_consumer_88888",
                 OffsetSpec =
-                    await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange, new OffsetTypeFirst())
+                    await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange,
+                        new OffsetTypeFirst())
             });
 
         Assert.NotNull(consumer);
@@ -358,7 +359,7 @@ public class SuperStreamConsumerTests
 
         var listConsumed = new ConcurrentBag<string>();
         var testPassed = new TaskCompletionSource<bool>();
-        var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        var config = new ConsumerConfig(system, SystemUtils.InvoicesExchange)
         {
             OffsetSpec = new OffsetTypeFirst(),
             IsSuperStream = true,
@@ -372,7 +373,12 @@ public class SuperStreamConsumerTests
 
                 return Task.CompletedTask;
             }
-        });
+        };
+
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status => { statusInfoReceived.Add(status); };
+
+        var consumer = await Consumer.Create(config);
 
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         Assert.True(testPassed.Task.Result);
@@ -383,6 +389,14 @@ public class SuperStreamConsumerTests
         Assert.Equal(4,
             listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
         await consumer.Close();
+        SystemUtils.Wait();
+        Assert.Equal(2, statusInfoReceived.Count);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[1].To);
+
         await system.Close();
     }
 
@@ -479,7 +493,6 @@ public class SuperStreamConsumerTests
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 0);
         SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 0);
         await consumerSingle.Close();
-
         await system.Close();
     }
 
@@ -552,6 +565,83 @@ public class SuperStreamConsumerTests
 
         await firstConsumer.Close();
         await secondConsumer.Close();
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SuperConsumerShouldReceive4StatusInfo()
+    {
+        SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+
+        var clientProvidedName = Guid.NewGuid().ToString();
+        var config = new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        {
+            ClientProvidedName = clientProvidedName,
+            OffsetSpec = new OffsetTypeFirst(),
+            IsSuperStream = true,
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
+        };
+
+        var statusCompleted = new TaskCompletionSource<bool>();
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 3)
+            {
+                statusCompleted.SetResult(true);
+            }
+        };
+
+        var consumer = await Consumer.Create(config);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientProvidedName}_0").Result == 1);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+
+        Assert.Equal(3, statusInfoReceived.Count);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
+        Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[1].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
+        Assert.Equal(ChangeStatusReason.None, statusInfoReceived[2].Reason);
+        await consumer.Close();
+        SystemUtils.Wait();
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[3].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[3].To);
+        Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[3].Reason);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SuperConsumerShouldReceiveBoolFail()
+    {
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var config = new ConsumerConfig(system, "DOES_NOT_EXIST")
+        {
+            IsSuperStream = true,
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
+        };
+
+        var statusCompleted = new TaskCompletionSource<bool>();
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 1)
+            {
+                statusCompleted.SetResult(true);
+            }
+        };
+        await Assert.ThrowsAsync<QueryException>(async () => await Consumer.Create(config));
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+        Assert.Equal(ChangeStatusReason.BoolFailure, statusInfoReceived[0].Reason);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[0].To);
         await system.Close();
     }
 }
