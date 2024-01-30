@@ -172,8 +172,8 @@ public class RClient
                             ? $" Partition {status.Partition} of super stream: {status.Stream}"
                             : $"Stream: {status.Stream}";
 
-                        lc.LogInformation("Consumer: {Id} - status changed from {From} to {To}. {Info}",
-                            status.Identifier, status.From, status.To, streamInfo);
+                        lc.LogInformation("Consumer: {Id} - status changed from: {From} to: {To} reason: {Reason}  {Info}",
+                            status.Identifier, status.From, status.To,status.Reason, streamInfo);
                     };
                     consumersList.Add(
                         await Consumer.Create(conf, lc).ConfigureAwait(false));
@@ -220,10 +220,8 @@ public class RClient
                                 ? $" Partition {status.Partition} of super stream: {status.Stream}"
                                 : $"Stream: {status.Stream}";
 
-                            lp.LogInformation("Producer: {Id} - status changed from {From} to {To}. {Info}",
-                                status.Identifier,
-                                status.From,
-                                status.To, streamInfo);
+                            lp.LogInformation("Consumer: {Id} - status changed from: {From} to: {To} reason: {Reason}  {Info}",
+                                status.Identifier, status.From, status.To,status.Reason, streamInfo);
 
                             if (status.To == ReliableEntityStatus.Open)
                             {
@@ -258,6 +256,7 @@ public class RClient
                                 Properties = new Properties() {MessageId = $"hello{i}"}
                             };
                             await MaybeSend(producer, message, publishEvent).ConfigureAwait(false);
+                            await Task.Delay(500).ConfigureAwait(false);
                             Interlocked.Increment(ref totalSent);
                         }
                     });

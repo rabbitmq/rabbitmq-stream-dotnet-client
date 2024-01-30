@@ -184,6 +184,13 @@ RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.ConnectionClosedHandler.get 
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.get -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RawSuperStreamProducerConfig.RoutingStrategyType.set -> void
+RabbitMQ.Stream.Client.Reliable.ChangeStatusReason
+RabbitMQ.Stream.Client.Reliable.ChangeStatusReason.BoolFailure = 5 -> RabbitMQ.Stream.Client.Reliable.ChangeStatusReason
+RabbitMQ.Stream.Client.Reliable.ChangeStatusReason.ClosedByStrategyPolicy = 4 -> RabbitMQ.Stream.Client.Reliable.ChangeStatusReason
+RabbitMQ.Stream.Client.Reliable.ChangeStatusReason.ClosedByUser = 3 -> RabbitMQ.Stream.Client.Reliable.ChangeStatusReason
+RabbitMQ.Stream.Client.Reliable.ChangeStatusReason.MetaDataUpdate = 2 -> RabbitMQ.Stream.Client.Reliable.ChangeStatusReason
+RabbitMQ.Stream.Client.Reliable.ChangeStatusReason.None = 0 -> RabbitMQ.Stream.Client.Reliable.ChangeStatusReason
+RabbitMQ.Stream.Client.Reliable.ChangeStatusReason.UnexpectedlyDisconnected = 1 -> RabbitMQ.Stream.Client.Reliable.ChangeStatusReason
 RabbitMQ.Stream.Client.Reliable.Consumer.Info.get -> RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Crc32.get -> RabbitMQ.Stream.Client.ICrc32
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Crc32.set -> void
@@ -209,7 +216,7 @@ RabbitMQ.Stream.Client.Reliable.ProducerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerConfig.Reference.set -> void
 RabbitMQ.Stream.Client.Reliable.ProducerFactory.CreateProducer(bool boot) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>
 RabbitMQ.Stream.Client.Reliable.ProducerFactory._producer -> RabbitMQ.Stream.Client.IProducer
-RabbitMQ.Stream.Client.Reliable.ReliableBase.UpdateStatus(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus newStatus, string partition = null) -> void
+RabbitMQ.Stream.Client.Reliable.ReliableBase.UpdateStatus(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus newStatus, RabbitMQ.Stream.Client.Reliable.ChangeStatusReason reason, string partition = null) -> void
 RabbitMQ.Stream.Client.Reliable.ReliableBase._status -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.ReliableConfig.Identifier.get -> string
 RabbitMQ.Stream.Client.Reliable.ReliableConfig.Identifier.set -> void
@@ -220,11 +227,10 @@ RabbitMQ.Stream.Client.Reliable.ReliableConfig.ResourceAvailableReconnectStrateg
 RabbitMQ.Stream.Client.Reliable.ReliableConfig.StatusChanged -> RabbitMQ.Stream.Client.Reliable.ReliableConfig.StatusChangedHandler
 RabbitMQ.Stream.Client.Reliable.ReliableConfig.StatusChangedHandler
 RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
-RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.Closed = 4 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
+RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.Closed = 3 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.Initialization = 0 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.Open = 1 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
-RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.ReconnectionForMetaDataUpdate = 3 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
-RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected = 2 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
+RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus.Reconnection = 2 -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.StatusInfo
 RabbitMQ.Stream.Client.Reliable.StatusInfo.From.get -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus
 RabbitMQ.Stream.Client.Reliable.StatusInfo.From.init -> void
@@ -232,7 +238,9 @@ RabbitMQ.Stream.Client.Reliable.StatusInfo.Identifier.get -> string
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Identifier.init -> void
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Partition.get -> string
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Partition.init -> void
-RabbitMQ.Stream.Client.Reliable.StatusInfo.StatusInfo(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus From, RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus To, string Stream, string Identifier, string Partition) -> void
+RabbitMQ.Stream.Client.Reliable.StatusInfo.Reason.get -> RabbitMQ.Stream.Client.Reliable.ChangeStatusReason
+RabbitMQ.Stream.Client.Reliable.StatusInfo.Reason.init -> void
+RabbitMQ.Stream.Client.Reliable.StatusInfo.StatusInfo(RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus From, RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus To, string Stream, string Identifier, string Partition, RabbitMQ.Stream.Client.Reliable.ChangeStatusReason Reason = RabbitMQ.Stream.Client.Reliable.ChangeStatusReason.None) -> void
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Stream.get -> string
 RabbitMQ.Stream.Client.Reliable.StatusInfo.Stream.init -> void
 RabbitMQ.Stream.Client.Reliable.StatusInfo.To.get -> RabbitMQ.Stream.Client.Reliable.ReliableEntityStatus

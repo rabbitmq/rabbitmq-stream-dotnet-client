@@ -201,11 +201,11 @@ public class Producer : ProducerFactory
     {
         if (ReliableEntityStatus.Initialization == _status)
         {
-            UpdateStatus(ReliableEntityStatus.Closed);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
             return;
         }
 
-        UpdateStatus(ReliableEntityStatus.Closed);
+        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {

@@ -857,19 +857,23 @@ public class SuperStreamProducerTests
 
         Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
-        Assert.Equal(ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected, statusInfoReceived[1].To);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
+        Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[1].Reason);
 
         Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
         Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partition);
 
-        Assert.Equal(ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected, statusInfoReceived[2].From);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
+        Assert.Equal(ChangeStatusReason.None, statusInfoReceived[2].Reason);
 
         await streamProducer.Close();
 
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[3].From);
         Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[3].To);
+        Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[3].Reason);
 
         await system.Close();
     }

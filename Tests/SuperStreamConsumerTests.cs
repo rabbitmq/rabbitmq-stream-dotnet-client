@@ -603,14 +603,45 @@ public class SuperStreamConsumerTests
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
 
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
-        Assert.Equal(ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected, statusInfoReceived[1].To);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
+        Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[1].Reason);
 
-        Assert.Equal(ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected, statusInfoReceived[2].From);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
+        Assert.Equal(ChangeStatusReason.None, statusInfoReceived[2].Reason);
         await consumer.Close();
         SystemUtils.Wait();
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[3].From);
         Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[3].To);
+        Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[3].Reason);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SuperConsumerShouldReceiveBoolFail()
+    {
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var config = new ConsumerConfig(system, "DOES_NOT_EXIST")
+        {
+            IsSuperStream = true,
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
+        };
+
+        var statusCompleted = new TaskCompletionSource<bool>();
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 1)
+            {
+                statusCompleted.SetResult(true);
+            }
+        };
+        await Assert.ThrowsAsync<QueryException>(async () => await Consumer.Create(config));
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+        Assert.Equal(ChangeStatusReason.BoolFailure, statusInfoReceived[0].Reason);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[0].To);
         await system.Close();
     }
 }

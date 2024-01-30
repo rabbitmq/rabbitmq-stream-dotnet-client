@@ -17,13 +17,25 @@ namespace RabbitMQ.Stream.Client.Reliable;
 /// <param name="Stream"> Stream or SuperSuper affected</param>
 /// <param name="Identifier"> The Entity Identifier </param>
 /// <param name="Partition"> Super stream partition. Valid only for SuperStream else is empty</param>
+///  <param name="Reason"> The reason why the status changed </param>
 public record StatusInfo(
-    ReliableEntityStatus From,
-    ReliableEntityStatus To,
+    ReliableEntityStatus From, // init 
+    ReliableEntityStatus To, // open 
     string Stream,
     string Identifier,
-    string Partition
+    string Partition,
+    ChangeStatusReason Reason = ChangeStatusReason.None
 );
+
+public enum ChangeStatusReason
+{
+    None,
+    UnexpectedlyDisconnected,
+    MetaDataUpdate,
+    ClosedByUser,
+    ClosedByStrategyPolicy,
+    BoolFailure
+}
 
 public record ReliableConfig
 {
@@ -81,8 +93,7 @@ public enum ReliableEntityStatus
 {
     Initialization, // the entity is initializing
     Open, // the entity is open and ready to use
-    ReconnectionForUnexpectedlyDisconnected, // the entity is disconnected in an unexpected way but still considered open
-    ReconnectionForMetaDataUpdate, // the entity is disconnected because the stream topology has changed but still considered open
+    Reconnection, // the entity is in reconnection but it is still considered open
     Closed, // the entity is closed and cannot be used anymore
 }
 
@@ -103,7 +114,8 @@ public abstract class ReliableBase
         await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
     }
 
-    protected void UpdateStatus(ReliableEntityStatus newStatus, string partition = null)
+    protected void UpdateStatus(ReliableEntityStatus newStatus,
+        ChangeStatusReason reason, string partition = null)
     {
         var oldStatus = _status;
         lock (_lock)
@@ -113,7 +125,7 @@ public abstract class ReliableBase
             {
                 _reliableConfig.OnStatusChanged(new StatusInfo(oldStatus, newStatus,
                     _reliableConfig.Stream,
-                    _reliableConfig.Identifier, partition));
+                    _reliableConfig.Identifier, partition, reason));
             }
         }
     }
@@ -150,7 +162,7 @@ public abstract class ReliableBase
             // else there are two ways:
             // - the exception is a known exception and the client will try to reconnect
             // - the exception is not a known exception and the client will throw the exception
-            UpdateStatus(ReliableEntityStatus.Open);
+            UpdateStatus(ReliableEntityStatus.Open, ChangeStatusReason.None);
         }
         catch (Exception e)
         {
@@ -159,7 +171,7 @@ public abstract class ReliableBase
                 BaseLogger.LogError("{Identity} Error during the first boot {EMessage}",
                     ToString(), e.Message);
                 // if it is the first boot we don't need to reconnect
-                UpdateStatus(ReliableEntityStatus.Closed);
+                UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.BoolFailure);
                 throw;
             }
 
@@ -188,7 +200,7 @@ public abstract class ReliableBase
         // each time that the client is initialized, we need to reset the status
         // if we hare here it means that the entity is not open for some reason like:
         // first time initialization or reconnect due of a IsAKnownException
-        UpdateStatus(ReliableEntityStatus.Initialization);
+        UpdateStatus(ReliableEntityStatus.Initialization, ChangeStatusReason.None);
 
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
@@ -275,7 +287,7 @@ public abstract class ReliableBase
         if (!reconnect)
         {
             BaseLogger.LogDebug("{Identity} is closed due of reconnect strategy", ToString());
-            UpdateStatus(ReliableEntityStatus.Closed);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByStrategyPolicy);
             return;
         }
 
@@ -285,8 +297,7 @@ public abstract class ReliableBase
                 await MaybeInit(false).ConfigureAwait(false);
                 break;
             case false:
-                if (CompareStatus(ReliableEntityStatus.ReconnectionForMetaDataUpdate) ||
-                    CompareStatus(ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected))
+                if (CompareStatus(ReliableEntityStatus.Reconnection))
                 {
                     BaseLogger.LogDebug("{Identity} is in Reconnecting", ToString());
                 }
@@ -304,14 +315,14 @@ public abstract class ReliableBase
         if (!reconnect)
         {
             BaseLogger.LogDebug("{Identity} partition is closed due of reconnect strategy", ToString());
-            UpdateStatus(ReliableEntityStatus.Closed, streamInfo.Stream);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByStrategyPolicy, streamInfo.Stream);
             return;
         }
 
         try
         {
             await reconnectPartitionFunc(streamInfo).ConfigureAwait(false);
-            UpdateStatus(ReliableEntityStatus.Open, streamInfo.Stream);
+            UpdateStatus(ReliableEntityStatus.Open, ChangeStatusReason.None, streamInfo.Stream);
             await _reliableConfig.ReconnectStrategy.WhenConnected(
                 $"Super Stream partition: {streamInfo.Stream} for {info}").ConfigureAwait(false);
         }
@@ -353,11 +364,12 @@ public abstract class ReliableBase
     /// <param name="reconnectPartitionFunc">Function to reconnect the partition</param>
     /// <param name="reason">The reason why the connection is closed (Metadata update od disconnection)</param>
     internal async Task OnEntityClosed(StreamSystem system, string stream,
-        Func<StreamInfo, Task> reconnectPartitionFunc, ReliableEntityStatus reason)
+        Func<StreamInfo, Task> reconnectPartitionFunc, ChangeStatusReason reason)
     {
         var streamExists = false;
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
-        UpdateStatus(reason, stream);
+        UpdateStatus(ReliableEntityStatus.Reconnection, reason,
+            stream);
         try
         {
             streamExists = await CheckIfStreamIsAvailable(stream, system)
@@ -385,11 +397,11 @@ public abstract class ReliableBase
     /// <param name="system">Stream system</param>
     /// <param name="stream">Stream</param>
     /// <param name="reason">The reason why the connection is closed (Metadata update od disconnection)</param>
-    internal async Task OnEntityClosed(StreamSystem system, string stream, ReliableEntityStatus reason)
+    internal async Task OnEntityClosed(StreamSystem system, string stream, ChangeStatusReason reason)
     {
         var streamExists = false;
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
-        UpdateStatus(reason, stream);
+        UpdateStatus(ReliableEntityStatus.Reconnection, reason, stream);
         try
         {
             streamExists = await CheckIfStreamIsAvailable(stream, system)
