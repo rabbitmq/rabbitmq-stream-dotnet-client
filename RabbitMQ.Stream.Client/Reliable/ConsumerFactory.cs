@@ -68,12 +68,12 @@ public abstract class ConsumerFactory : ReliableBase
                 }
 
                 await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
-                    ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected).ConfigureAwait(false);
+                    ChangeStatusReason.UnexpectedlyDisconnected).ConfigureAwait(false);
             },
             MetadataHandler = async _ =>
             {
                 await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
-                    ReliableEntityStatus.ReconnectionForMetaDataUpdate).ConfigureAwait(false);
+                    ChangeStatusReason.MetaDataUpdate).ConfigureAwait(false);
             },
             MessageHandler = async (consumer, ctx, message) =>
             {
@@ -137,7 +137,7 @@ public abstract class ConsumerFactory : ReliableBase
 
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r,
-                                ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected)
+                                ChangeStatusReason.UnexpectedlyDisconnected)
                             .ConfigureAwait(false);
                     },
                     MetadataHandler = async update =>
@@ -145,7 +145,7 @@ public abstract class ConsumerFactory : ReliableBase
                         await RandomWait().ConfigureAwait(false);
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r,
-                                ReliableEntityStatus.ReconnectionForMetaDataUpdate)
+                                ChangeStatusReason.MetaDataUpdate)
                             .ConfigureAwait(false);
                     },
                     MessageHandler = async (partitionStream, consumer, ctx, message) =>

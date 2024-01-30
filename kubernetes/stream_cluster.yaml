@@ -13,8 +13,8 @@ spec:
   image: rabbitmq:3.13-rc-management
   service:
     type: LoadBalancer
-  tls:
-    secretName: tls-secret
+  # tls:
+    # secretName: tls-secret
   resources:
     requests:
       cpu: 1
@@ -26,3 +26,6 @@ spec:
     additionalPlugins:
       - rabbitmq_stream
       - rabbitmq_stream_management
+    additionalConfig: |
+      log.console = true
+      log.console.level = debug

@@ -204,11 +204,11 @@ public class Consumer : ConsumerFactory
     {
         if (_status == ReliableEntityStatus.Initialization)
         {
-            UpdateStatus(ReliableEntityStatus.Closed);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
             return;
         }
 
-        UpdateStatus(ReliableEntityStatus.Closed);
+        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
         await CloseEntity().ConfigureAwait(false);
         _logger?.LogDebug("Consumer {Identity} closed", ToString());
     }

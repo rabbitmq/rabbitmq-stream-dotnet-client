@@ -56,7 +56,7 @@ public abstract class ProducerFactory : ReliableBase
 
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
                         await OnEntityClosed(_producerConfig.StreamSystem, partitionStream, r,
-                                ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected)
+                                ChangeStatusReason.UnexpectedlyDisconnected)
                             .ConfigureAwait(false);
                     },
                     MetadataHandler = async update =>
@@ -64,7 +64,7 @@ public abstract class ProducerFactory : ReliableBase
                         await RandomWait().ConfigureAwait(false);
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
                         await OnEntityClosed(_producerConfig.StreamSystem, update.Stream, r,
-                                ReliableEntityStatus.ReconnectionForMetaDataUpdate)
+                                ChangeStatusReason.MetaDataUpdate)
                             .ConfigureAwait(false);
                     },
                     ConfirmHandler = confirmationHandler =>
@@ -106,7 +106,7 @@ public abstract class ProducerFactory : ReliableBase
             {
                 await RandomWait().ConfigureAwait(false);
                 await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream,
-                    ReliableEntityStatus.ReconnectionForMetaDataUpdate).ConfigureAwait(false);
+                    ChangeStatusReason.MetaDataUpdate).ConfigureAwait(false);
             },
             ConnectionClosedHandler = async (closeReason) =>
             {
@@ -118,7 +118,7 @@ public abstract class ProducerFactory : ReliableBase
                 }
 
                 await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream,
-                    ReliableEntityStatus.ReconnectionForUnexpectedlyDisconnected).ConfigureAwait(false);
+                    ChangeStatusReason.UnexpectedlyDisconnected).ConfigureAwait(false);
             },
             ConfirmHandler = confirmation =>
             {
