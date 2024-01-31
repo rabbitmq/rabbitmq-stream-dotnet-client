@@ -1,7 +1,8 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -23,5 +24,10 @@ namespace RabbitMQ.Stream.Client
         // It is used to identify the client in the ConnectionsPool
         // by default it is a GUID
         string ClientId { get; init; }
+
+        IDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))> Publishers { get; }
+        IDictionary<byte, (string, ConsumerEvents)> Consumers { get; }
+
+        public bool IsClosed { get; }
     }
 }

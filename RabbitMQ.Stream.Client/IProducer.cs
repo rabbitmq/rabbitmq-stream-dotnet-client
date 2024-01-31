@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Collections.Generic;
@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
+public interface ISuperStreamProducer : IProducer
+{
+    public Task ReconnectPartition(StreamInfo streamInfo);
+}
 // <summary>
 // Producer interface for sending messages to a stream.
 // There are different types of producers:
@@ -83,7 +87,6 @@ public record ProducerFilter
 
 public record IProducerConfig : EntityCommonConfig, INamedEntity
 {
-
     public string Reference { get; set; }
     public int MaxInFlight { get; set; } = 1_000;
     public string ClientProvidedName { get; set; } = "dotnet-stream-raw-producer";
@@ -111,8 +114,13 @@ public class ProducerInfo : Info
 {
     public string Reference { get; }
 
-    public ProducerInfo(string stream, string reference) : base(stream)
+    public ProducerInfo(string stream, string reference, string identifier) : base(stream, identifier)
     {
         Reference = reference;
+    }
+
+    public override string ToString()
+    {
+        return $"ProducerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier})";
     }
 }

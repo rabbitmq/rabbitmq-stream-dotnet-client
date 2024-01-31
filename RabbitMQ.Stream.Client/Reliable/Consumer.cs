@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Threading.Tasks;
@@ -156,7 +156,6 @@ public record ConsumerConfig : ReliableConfig
 /// </summary>
 public class Consumer : ConsumerFactory
 {
-    private IConsumer _consumer;
     private readonly ILogger<Consumer> _logger;
 
     protected override ILogger BaseLogger => _logger;
@@ -165,21 +164,20 @@ public class Consumer : ConsumerFactory
     {
         _logger = logger ?? NullLogger<Consumer>.Instance;
         _consumerConfig = consumerConfig;
-        Info = new ConsumerInfo(consumerConfig.Stream, consumerConfig.Reference);
+        Info = new ConsumerInfo(consumerConfig.Stream, consumerConfig.Reference, consumerConfig.Identifier);
     }
 
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
         consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
+        consumerConfig.ResourceAvailableReconnectStrategy ??= new ResourceAvailableBackOffReconnectStrategy(logger);
         var rConsumer = new Consumer(consumerConfig, logger);
-        await rConsumer.Init(consumerConfig.ReconnectStrategy).ConfigureAwait(false);
-        logger?.LogDebug("Consumer: {Reference} created for Stream: {Stream}",
-            consumerConfig.Reference, consumerConfig.Stream);
-
+        await rConsumer.Init(consumerConfig)
+            .ConfigureAwait(false);
         return rConsumer;
     }
 
-    internal override async Task CreateNewEntity(bool boot)
+    protected override async Task CreateNewEntity(bool boot)
     {
         _consumer = await CreateConsumer(boot).ConfigureAwait(false);
         await _consumerConfig.ReconnectStrategy.WhenConnected(ToString()).ConfigureAwait(false);
@@ -188,7 +186,7 @@ public class Consumer : ConsumerFactory
     // just close the consumer. See base/metadataupdate
     protected override async Task CloseEntity()
     {
-        await SemaphoreSlim.WaitAsync(Consts.LongWait).ConfigureAwait(false);
+        await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_consumer != null)
@@ -204,14 +202,22 @@ public class Consumer : ConsumerFactory
 
     public override async Task Close()
     {
-        _isOpen = false;
+        if (_status == ReliableEntityStatus.Initialization)
+        {
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
+            return;
+        }
+
+        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
         await CloseEntity().ConfigureAwait(false);
-        _logger?.LogDebug("Consumer closed for stream {Stream}", _consumerConfig.Stream);
+        _logger?.LogDebug("Consumer {Identity} closed", ToString());
     }
 
     public override string ToString()
     {
-        return $"Consumer reference: {_consumerConfig.Reference}, stream: {_consumerConfig.Stream}, " +
+        return $"Consumer reference: {_consumerConfig.Reference}, " +
+               $"stream: {_consumerConfig.Stream}, " +
+               $"identifier: {_consumerConfig.Identifier}, " +
                $"client name: {_consumerConfig.ClientProvidedName} ";
     }
 

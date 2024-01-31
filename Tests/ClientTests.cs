@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Buffers;
@@ -78,7 +78,11 @@ namespace Tests
             var stream = Guid.NewGuid().ToString();
             var testPassed = new TaskCompletionSource<MetaDataUpdate>();
             var clientParameters = new ClientParameters();
-            clientParameters.OnMetadataUpdate += (update) => { testPassed.SetResult(update); };
+            clientParameters.OnMetadataUpdate += async (update) =>
+            {
+                testPassed.SetResult(update);
+                await Task.CompletedTask;
+            };
 
             var client = await Client.Create(clientParameters);
             await client.CreateStream(stream, new Dictionary<string, string>());

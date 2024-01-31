@@ -1,3 +1,7 @@
+// This source code is dual-licensed under the Apache License, version
+// 2.0, and the Mozilla Public License, version 2.0.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
+
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 
@@ -20,8 +24,7 @@ public class BatchVsBatchSend
         Console.WriteLine("Aggregate Batch Size: {0}", AggregateBatchSize);
         Console.WriteLine("Print Messages each: {0} messages", ModPrintMessages);
 
-
-        var config = new StreamSystemConfig() {Heartbeat = TimeSpan.Zero};
+        var config = new StreamSystemConfig() { Heartbeat = TimeSpan.Zero };
         var system = await StreamSystem.Create(config);
         await BatchSend(system, await RecreateStream(system, "StandardBatchSend"));
         await StandardProducerSend(await RecreateStream(system, "StandardProducerSendNoBatch"), system);
@@ -78,7 +81,6 @@ public class BatchVsBatchSend
         await reliableProducer.Close();
     }
 
-
     private static async Task RProducerBatchSend(string stream, StreamSystem system)
     {
         Console.WriteLine("*****Reliable Producer Batch Send*****");
@@ -110,7 +112,6 @@ public class BatchVsBatchSend
 
         var messages = new List<Message>();
 
-
         var start = DateTime.Now;
         for (ulong i = 1; i <= TotalMessages; i++)
         {
@@ -136,7 +137,6 @@ public class BatchVsBatchSend
         Thread.Sleep(1000);
         await producer.Close();
     }
-
 
     private static async Task StandardProducerSend(string stream, StreamSystem system)
     {

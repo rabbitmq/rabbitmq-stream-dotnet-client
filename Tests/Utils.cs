@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Collections.Concurrent;
@@ -17,12 +17,40 @@ using System.Threading.Tasks;
 using RabbitMQ.Client;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
+using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
 namespace Tests
 {
+    internal class TestBackOffReconnectStrategy : IReconnectStrategy
+    {
+        private int Tentatives { get; set; } = 1;
+
+        private void MaybeResetTentatives()
+        {
+            if (Tentatives > 5)
+            {
+                Tentatives = 1;
+            }
+        }
+
+        public async ValueTask<bool> WhenDisconnected(string itemIdentifier)
+        {
+            Tentatives <<= 1;
+            await Task.Delay(TimeSpan.FromMilliseconds(Tentatives * 100)).ConfigureAwait(false);
+            MaybeResetTentatives();
+            return true;
+        }
+
+        public ValueTask WhenConnected(string itemIdentifier)
+        {
+            Tentatives = 1;
+            return ValueTask.CompletedTask;
+        }
+    }
+
     public class Utils<TResult>
     {
         private readonly ITestOutputHelper testOutputHelper;
@@ -200,13 +228,10 @@ namespace Tests
                     Routing = message1 => message1.Properties.MessageId.ToString(),
                     ConfirmHandler = _ =>
                     {
-                        count++;
-                        if (count != numberOfMessages)
+                        if (Interlocked.Increment(ref count) == numberOfMessages)
                         {
-                            return;
+                            testPassed.SetResult(count);
                         }
-
-                        testPassed.SetResult(count);
                     }
                 });
 

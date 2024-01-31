@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Linq;
@@ -10,7 +10,6 @@ namespace RabbitMQ.Stream.Client
 {
     internal static class ClientExceptions
     {
-
         // <summary>
         /// IsAKnownException returns true if the exception is a known exception
         /// We need it to reconnect when the producer/consumer.
@@ -31,12 +30,32 @@ namespace RabbitMQ.Stream.Client
             if (exception is AggregateException aggregateException)
             {
                 var x = aggregateException.InnerExceptions.Select(x =>
-                    x.GetType() == typeof(SocketException) || x.GetType() == typeof(TimeoutException) ||
-                    x.GetType() == typeof(LeaderNotFoundException));
+                    x.GetType() == typeof(SocketException) ||
+                    x.GetType() == typeof(TimeoutException) ||
+                    x.GetType() == typeof(LeaderNotFoundException) ||
+                    x.GetType() == typeof(OperationCanceledException) ||
+                    x.GetType() == typeof(InvalidOperationException));
                 return x.Any();
             }
 
-            return exception is (SocketException or TimeoutException or LeaderNotFoundException);
+            return exception is (SocketException or TimeoutException or LeaderNotFoundException or InvalidOperationException or OperationCanceledException) ||
+                   IsStreamNotAvailable(exception);
+        }
+
+        internal static bool IsStreamNotAvailable(Exception exception)
+        {
+            // StreamNotAvailable is a temporary exception it can happen when the stream is just created and
+            // it is not ready yet to all the nodes. In this case we can try to reconnect.
+            return exception is CreateException { ResponseCode: ResponseCode.StreamNotAvailable };
+        }
+
+        internal static void CheckLeader(StreamInfo metaStreamInfo)
+        {
+            if (metaStreamInfo.Leader.Equals(default(Broker)))
+            {
+                throw new LeaderNotFoundException(
+                    $"No leader found for streams {string.Join(" ", metaStreamInfo.Stream)}");
+            }
         }
 
         public static void MaybeThrowException(ResponseCode responseCode, string message)

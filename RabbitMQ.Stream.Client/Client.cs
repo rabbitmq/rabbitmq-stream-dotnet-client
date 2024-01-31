@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Buffers;
@@ -40,7 +40,10 @@ namespace RabbitMQ.Stream.Client
                 {"product", "RabbitMQ Stream"},
                 {"version", Version.VersionString},
                 {"platform", ".NET"},
-                {"copyright", "Copyright (c) 2020-2021 VMware, Inc. or its affiliates."},
+                {
+                    "copyright",
+                    "Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries."
+                },
                 {
                     "information",
                     "Licensed under the Apache 2.0 and MPL 2.0 licenses. See https://www.rabbitmq.com/"
@@ -53,7 +56,7 @@ namespace RabbitMQ.Stream.Client
         public string VirtualHost { get; set; } = "/";
         public EndPoint Endpoint { get; set; } = new IPEndPoint(IPAddress.Loopback, 5552);
 
-        public delegate void MetadataUpdateHandler(MetaDataUpdate update);
+        public delegate Task MetadataUpdateHandler(MetaDataUpdate update);
 
         public event MetadataUpdateHandler OnMetadataUpdate;
         public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
@@ -121,12 +124,13 @@ namespace RabbitMQ.Stream.Client
         private readonly TaskCompletionSource<TuneResponse> tuneReceived =
             new TaskCompletionSource<TuneResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        internal readonly IDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>
+        internal readonly IDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))>
             publishers =
-                new ConcurrentDictionary<byte, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)>();
+                new ConcurrentDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>)
+                    )>();
 
-        internal readonly IDictionary<byte, ConsumerEvents> consumers =
-            new ConcurrentDictionary<byte, ConsumerEvents>();
+        internal readonly IDictionary<byte, (string, ConsumerEvents)> consumers =
+            new ConcurrentDictionary<byte, (string, ConsumerEvents)>();
 
         private int publishCommandsSent;
 
@@ -329,7 +333,8 @@ namespace RabbitMQ.Stream.Client
 
             try
             {
-                publishers.Add(publisherId, (confirmCallback, errorCallback));
+                publishers.Add(publisherId, (stream,
+                    (confirmCallback, errorCallback)));
                 response = await Request<DeclarePublisherRequest, DeclarePublisherResponse>(corr =>
                     new DeclarePublisherRequest(corr, publisherId, publisherRef, stream)).ConfigureAwait(false);
             }
@@ -341,10 +346,9 @@ namespace RabbitMQ.Stream.Client
             if (response.ResponseCode == ResponseCode.Ok)
                 return (publisherId, response);
 
-            // if the response code is not ok we need to remove the subscription
             // and close the connection if necessary. 
             publishers.Remove(publisherId);
-            await MaybeClose("Create Publisher Exception", stream, pool).ConfigureAwait(false);
+            pool?.MaybeClose(ClientId, "Publisher creation failed");
             return (publisherId, response);
         }
 
@@ -413,9 +417,10 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 consumers.Add(subscriptionId,
-                    new ConsumerEvents(
-                        deliverHandler,
-                        consumerUpdateHandler));
+                    (config.Stream,
+                        new ConsumerEvents(
+                            deliverHandler,
+                            consumerUpdateHandler)));
 
                 response = await Request<SubscribeRequest, SubscribeResponse>(corr =>
                     new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
@@ -429,10 +434,8 @@ namespace RabbitMQ.Stream.Client
             if (response.ResponseCode == ResponseCode.Ok)
                 return (subscriptionId, response);
 
-            // if the response code is not ok we need to remove the subscription
-            // and close the connection if necessary. 
             consumers.Remove(subscriptionId);
-            await MaybeClose("Create Consumer Exception", config.Stream, config.Pool).ConfigureAwait(false);
+            config.Pool.MaybeClose(ClientId, "Subscription failed");
             return (subscriptionId, response);
         }
 
@@ -535,7 +538,8 @@ namespace RabbitMQ.Stream.Client
                     confirmFrames += 1;
                     if (publishers.TryGetValue(confirm.PublisherId, out var publisherConf))
                     {
-                        var (confirmCallback, _) = publisherConf;
+                        var (_, (confirmCallback, _)) = (publisherConf);
+
                         confirmCallback(confirm.PublishingIds);
                         if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out var confirmSegment))
                         {
@@ -559,7 +563,8 @@ namespace RabbitMQ.Stream.Client
                     Deliver.Read(frame, out var deliver);
                     if (consumers.TryGetValue(deliver.SubscriptionId, out var consumerEvent))
                     {
-                        await consumerEvent.DeliverHandler(deliver).ConfigureAwait(false);
+                        var (_, deliverHandler) = consumerEvent;
+                        await deliverHandler.DeliverHandler(deliver).ConfigureAwait(false);
                     }
                     else
                     {
@@ -578,7 +583,7 @@ namespace RabbitMQ.Stream.Client
                     PublishError.Read(frame, out var error);
                     if (publishers.TryGetValue(error.PublisherId, out var publisher))
                     {
-                        var (_, errorCallback) = publisher;
+                        var (_, (_, errorCallback)) = publisher;
                         errorCallback(error.PublishingErrors);
                     }
                     else
@@ -605,7 +610,8 @@ namespace RabbitMQ.Stream.Client
                     ConsumerUpdateQueryResponse.Read(frame, out var consumerUpdateQueryResponse);
                     HandleCorrelatedResponse(consumerUpdateQueryResponse);
                     var consumerEventsUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
-                    var off = await consumerEventsUpd.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive)
+                    var consumer = consumerEventsUpd.Item2;
+                    var off = await consumer.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive)
                         .ConfigureAwait(false);
                     if (off == null)
                     {
@@ -753,14 +759,6 @@ namespace RabbitMQ.Stream.Client
             IsClosed = true;
         }
 
-        private bool HasEntities()
-        {
-            lock (Obj)
-            {
-                return publishers.Count > 0 || consumers.Count > 0;
-            }
-        }
-
         private async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
         {
             return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification)).ConfigureAwait(false);
@@ -776,6 +774,7 @@ namespace RabbitMQ.Stream.Client
             InternalClose();
             try
             {
+                connection.UpdateCloseStatus(ConnectionClosedReason.Normal);
                 var result =
                     await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
                         TimeSpan.FromSeconds(10)).ConfigureAwait(false);
@@ -811,32 +810,14 @@ namespace RabbitMQ.Stream.Client
         // Release will decrement the active ids for the connection
         // if the active ids are 0 the connection will be closed
 
-        internal async Task<CloseResponse> MaybeClose(string reason, string stream, ConnectionsPool pool)
+        internal async Task<CloseResponse> MaybeClose(string reason, ConnectionsPool pool)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             try
             {
-                if (!HasEntities())
-                {
-                    if (!string.IsNullOrEmpty(ClientId))
-                    {
-                        _logger.LogInformation("Close connection for the {ClientId}", ClientId);
-                        // the client can be closed in an unexpected way so we need to remove it from the pool
-                        // so you will find pool.remove(ClientId) also to the disconnect event
-                        pool.Remove(ClientId);
-                        await Close(reason).ConfigureAwait(false);
-                    }
-                }
-                else
-                {
-                    // we remove an id reference from the client
-                    // in case there are still active ids from the client and the stream 
-                    if (!string.IsNullOrEmpty(ClientId))
-                    {
-                        pool.Release(ClientId, stream);
-                    }
-                }
-
+                // the client can be closed in an unexpected way so we need to remove it from the pool
+                // so you will find pool.remove(ClientId) also to the disconnect event
+                pool.MaybeClose(ClientId, reason);
                 var result = new CloseResponse(0, ResponseCode.Ok);
                 return result;
             }
@@ -847,6 +828,16 @@ namespace RabbitMQ.Stream.Client
         }
 
         public string ClientId { get; init; }
+
+        public IDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))> Publishers
+        {
+            get => publishers;
+        }
+
+        public IDictionary<byte, (string, ConsumerEvents)> Consumers
+        {
+            get => consumers;
+        }
 
         public async ValueTask<QueryPublisherResponse> QueryPublisherSequence(string publisherRef, string stream)
         {
@@ -869,6 +860,13 @@ namespace RabbitMQ.Stream.Client
         {
             var streams = new[] { stream };
             var response = await QueryMetadata(streams).ConfigureAwait(false);
+            if (response.StreamInfos is { Count: >= 1 } &&
+                response.StreamInfos[stream].ResponseCode == ResponseCode.StreamNotAvailable)
+            {
+
+                ClientExceptions.MaybeThrowException(ResponseCode.StreamNotAvailable, stream);
+            }
+
             return response.StreamInfos is { Count: >= 1 } &&
                    response.StreamInfos[stream].ResponseCode == ResponseCode.Ok;
         }

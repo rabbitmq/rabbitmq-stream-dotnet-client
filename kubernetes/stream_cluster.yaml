@@ -10,19 +10,22 @@ metadata:
   namespace: stream-clients-test
 spec:
   replicas: 3
-  image: rabbitmq:3.12.6-management
+  image: rabbitmq:3.13-rc-management
   service:
     type: LoadBalancer
-  tls:
-    secretName: tls-secret
+  # tls:
+    # secretName: tls-secret
   resources:
     requests:
-      cpu: 500m
+      cpu: 1
       memory: 1Gi
     limits:
-      cpu: 800m
+      cpu: 1
       memory: 1Gi
   rabbitmq:
     additionalPlugins:
       - rabbitmq_stream
       - rabbitmq_stream_management
+    additionalConfig: |
+      log.console = true
+      log.console.level = debug

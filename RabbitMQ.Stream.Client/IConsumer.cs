@@ -1,11 +1,16 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
+
+public interface ISuperStreamConsumer : IConsumer
+{
+    public Task ReconnectPartition(StreamInfo streamInfo);
+}
 
 public interface IConsumer : IClosable
 {
@@ -42,8 +47,6 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
 
     public string Reference { get; set; }
 
-    public Func<string, Task> ConnectionClosedHandler { get; set; }
-
     public ConsumerFilter ConsumerFilter { get; set; } = null;
 
     // InitialCredits is the initial credits to be used for the consumer.
@@ -77,8 +80,13 @@ public class ConsumerInfo : Info
 {
     public string Reference { get; }
 
-    public ConsumerInfo(string stream, string reference) : base(stream)
+    public ConsumerInfo(string stream, string reference, string identifier) : base(stream, identifier)
     {
         Reference = reference;
+    }
+
+    public override string ToString()
+    {
+        return $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier})";
     }
 }

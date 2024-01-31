@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Buffers;
@@ -37,12 +37,15 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
             var rawProducer = await system.CreateRawProducer(
                 new RawProducerConfig(stream) { Reference = "producer" });
+            var identifierReceived = "";
             var consumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    MessageHandler = async (consumer, ctx, message) =>
+                    Identifier = "consumer_identifier_999",
+                    MessageHandler = async (sourceConsumer, ctx, message) =>
                     {
+                        identifierReceived = sourceConsumer.Info.Identifier;
                         testPassed.SetResult(message.Data);
                         await Task.CompletedTask;
                     }
@@ -55,6 +58,7 @@ namespace Tests
             new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
+            Assert.Equal("consumer_identifier_999", identifierReceived);
             rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
@@ -603,6 +607,7 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var testPassed = new TaskCompletionSource<bool>();
+
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
@@ -613,11 +618,14 @@ namespace Tests
                         {
                             testPassed.SetResult(true);
                         }
+
+                        return Task.CompletedTask;
                     }
                 });
             SystemUtils.Wait();
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
+            SystemUtils.WaitUntil(() => ((RawConsumer)rawConsumer).IsOpen() == false);
             await rawConsumer.Close();
             await system.Close();
         }

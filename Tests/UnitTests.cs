@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Buffers;
@@ -26,9 +26,21 @@ namespace Tests
 
         public string ClientId { get; init; }
 
+        public IDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))> Publishers
+        {
+            get;
+        }
+
+        public IDictionary<byte, (string, ConsumerEvents)> Consumers { get; }
+        public bool IsClosed { get; }
+
         public FakeClient(ClientParameters clientParameters)
         {
             Parameters = clientParameters;
+            IsClosed = false;
+            Publishers =
+                new Dictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))>();
+            Consumers = new Dictionary<byte, (string, ConsumerEvents)>();
             ClientId = Guid.NewGuid().ToString();
         }
     }
@@ -154,7 +166,8 @@ namespace Tests
             // run more than one time just to be sure to use all the IP with random
             for (var i = 0; i < 4; i++)
             {
-                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, new ConnectionsPool(1, 1));
+                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1));
                 Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }
@@ -170,7 +183,8 @@ namespace Tests
             // run more than one time just to be sure to use all the IP with random
             for (var i = 0; i < 4; i++)
             {
-                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, new ConnectionsPool(1, 1));
+                var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1));
                 Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }

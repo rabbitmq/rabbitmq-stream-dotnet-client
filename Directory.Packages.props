@@ -21,18 +21,16 @@
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="7.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
   </ItemGroup>
-
   <ItemGroup Label=".NET 6 Specific" Condition="'$(TargetFramework)' == 'net6.0'">
     <!-- RabbitMQ.Stream.Client -->
     <PackageVersion Include="System.IO.Hashing" Version="6.0.0" />
     <PackageVersion Include="System.IO.Pipelines" Version="6.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
   </ItemGroup>
-
   <ItemGroup Label=".NET 7 Specific" Condition="'$(TargetFramework)' == 'net7.0'">
     <!-- RabbitMQ.Stream.Client -->
     <PackageVersion Include="System.IO.Hashing" Version="7.0.0" />
     <PackageVersion Include="System.IO.Pipelines" Version="7.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
-  </ItemGroup>  
+  </ItemGroup>
 </Project>

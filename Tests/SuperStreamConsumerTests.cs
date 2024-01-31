@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Collections;
@@ -32,19 +32,29 @@ public class SuperStreamConsumerTests
     {
         SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        var connectionName = Guid.NewGuid().ToString();
+        var clientProvidedName = Guid.NewGuid().ToString();
         var consumer = await system.CreateSuperStreamConsumer(
             new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
             {
-                ClientProvidedName = connectionName,
+                ClientProvidedName = clientProvidedName,
+                Identifier = "super_stream_consumer_88888",
                 OffsetSpec =
-                    await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst())
+                    await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange,
+                        new OffsetTypeFirst())
             });
 
         Assert.NotNull(consumer);
         SystemUtils.Wait();
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(connectionName).Result == 3);
+
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 1);
         Assert.Equal(ResponseCode.Ok, await consumer.Close());
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 0);
+        Assert.Equal("super_stream_consumer_88888", consumer.Info.Identifier);
+
         await system.Close();
     }
 
@@ -55,6 +65,7 @@ public class SuperStreamConsumerTests
 
         var testPassed = new TaskCompletionSource<int>();
         var listConsumed = new ConcurrentBag<string>();
+        var identifierReceived = "";
 
         var consumedMessages = 0;
         const int NumberOfMessages = 20;
@@ -76,9 +87,13 @@ public class SuperStreamConsumerTests
             {
                 Crc32 = _crc32,
                 ClientProvidedName = clientProvidedName,
-                OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange, new OffsetTypeFirst()),
-                MessageHandler = (stream, consumer1, context, message) =>
+                Identifier = "super_stream_consumer_24680",
+                OffsetSpec =
+                    await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange,
+                        new OffsetTypeFirst()),
+                MessageHandler = (stream, sourceConsumer, _, _) =>
                 {
+                    identifierReceived = sourceConsumer.Info.Identifier;
                     listConsumed.Add(stream);
                     Interlocked.Increment(ref consumedMessages);
                     if (consumedMessages == NumberOfMessages)
@@ -89,14 +104,15 @@ public class SuperStreamConsumerTests
                     return Task.CompletedTask;
                 }
             });
-
         Assert.NotNull(consumer);
         SystemUtils.Wait();
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
+        Assert.Equal("super_stream_consumer_24680", identifierReceived);
         Assert.Equal(9, listConsumed.Sum(x => x == SystemUtils.InvoicesStream0 ? 1 : 0));
         Assert.Equal(7, listConsumed.Sum(x => x == SystemUtils.InvoicesStream1 ? 1 : 0));
         Assert.Equal(4, listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
         Assert.Equal(ResponseCode.Ok, await consumer.Close());
+
         await system.Close();
     }
 
@@ -113,15 +129,72 @@ public class SuperStreamConsumerTests
 
         Assert.NotNull(consumer);
         SystemUtils.Wait();
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 3);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 1);
         SystemUtils.HttpDeleteQueue(SystemUtils.InvoicesStream0);
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 2);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 0);
         SystemUtils.HttpDeleteQueue(SystemUtils.InvoicesStream1);
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 0);
         await consumer.Close();
         // in this case we don't have any connection anymore since the super stream consumer is closed
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 0);
         Assert.Equal(ResponseCode.Ok, await consumer.Close());
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SingleConsumerReconnectInCaseOfKillingConnection()
+    {
+        SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var clientProvidedName = Guid.NewGuid().ToString();
+
+        var configuration = new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
+        {
+            ClientProvidedName = clientProvidedName,
+            OffsetSpec =
+                await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst())
+        };
+
+        var consumer = await system.CreateSuperStreamConsumer(configuration);
+        var completed = new TaskCompletionSource<bool>();
+        configuration.ConnectionClosedHandler = async (reason, stream) =>
+        {
+            if (reason == ConnectionClosedReason.Unexpected)
+            {
+                SystemUtils.Wait();
+                await consumer.ReconnectPartition(
+                    await system.StreamInfo(stream).ConfigureAwait(false)
+                );
+                SystemUtils.Wait();
+                completed.SetResult(true);
+            }
+        };
+
+        Assert.NotNull(consumer);
+        SystemUtils.Wait();
+
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 1);
+
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientProvidedName}_0").Result == 1);
+
+        completed.Task.Wait();
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 1);
+        Assert.Equal(ResponseCode.Ok, await consumer.Close());
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 0);
         await system.Close();
     }
 
@@ -210,7 +283,8 @@ public class SuperStreamConsumerTests
         const int NumberOfMessages = 20;
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var publishToSuperStreamTask =
-            SystemUtils.PublishMessagesSuperStream(system, "invoices", NumberOfMessages, "", _testOutputHelper);
+            SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, NumberOfMessages, "",
+                _testOutputHelper);
         if (await Task.WhenAny(publishToSuperStreamTask, Task.Delay(20000)) != publishToSuperStreamTask)
         {
             Assert.Fail("timeout waiting to publish messages");
@@ -257,7 +331,7 @@ public class SuperStreamConsumerTests
                         await SystemUtils.OffsetsForSuperStreamConsumer(system, "invoices", new OffsetTypeFirst()),
                     IsSingleActiveConsumer = consumerExpected.IsSingleActiveConsumer,
                     Reference = "super_stream_consumer_name",
-                    MessageHandler = (stream, consumer1, context, message) =>
+                    MessageHandler = (stream, _, _, _) =>
                     {
                         listConsumed.Add(stream);
                         return Task.CompletedTask;
@@ -285,11 +359,11 @@ public class SuperStreamConsumerTests
 
         var listConsumed = new ConcurrentBag<string>();
         var testPassed = new TaskCompletionSource<bool>();
-        var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        var config = new ConsumerConfig(system, SystemUtils.InvoicesExchange)
         {
             OffsetSpec = new OffsetTypeFirst(),
             IsSuperStream = true,
-            MessageHandler = (stream, consumer1, context, message) =>
+            MessageHandler = (stream, _, _, _) =>
             {
                 listConsumed.Add(stream);
                 if (listConsumed.Count == 20)
@@ -299,7 +373,12 @@ public class SuperStreamConsumerTests
 
                 return Task.CompletedTask;
             }
-        });
+        };
+
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status => { statusInfoReceived.Add(status); };
+
+        var consumer = await Consumer.Create(config);
 
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         Assert.True(testPassed.Task.Result);
@@ -310,6 +389,14 @@ public class SuperStreamConsumerTests
         Assert.Equal(4,
             listConsumed.Sum(x => x == SystemUtils.InvoicesStream2 ? 1 : 0));
         await consumer.Close();
+        SystemUtils.Wait();
+        Assert.Equal(2, statusInfoReceived.Count);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[1].To);
+
         await system.Close();
     }
 
@@ -345,7 +432,7 @@ public class SuperStreamConsumerTests
                 IsSuperStream = true,
                 IsSingleActiveConsumer = true,
                 ConsumerUpdateListener = consumerUpdateListener,
-                MessageHandler = async (stream, consumer1, context, message) =>
+                MessageHandler = async (stream, consumer1, context, _) =>
                 {
                     await consumer1.StoreOffset(context.Offset);
 
@@ -354,7 +441,8 @@ public class SuperStreamConsumerTests
                     {
                         consumerMessageReceived.SetResult(true);
                     }
-                }
+                },
+                ReconnectStrategy = new TestBackOffReconnectStrategy()
             });
         }
 
@@ -367,7 +455,7 @@ public class SuperStreamConsumerTests
         for (var i = 0; i < 2; i++)
         {
             var consumer = await NewReliableConsumer(reference, Guid.NewGuid().ToString(),
-                (consumerRef, stream, arg3) => { return new Task<IOffsetType>(() => new OffsetTypeFirst()); });
+                (_, _, _) => { return new Task<IOffsetType>(() => new OffsetTypeFirst()); });
             consumers.Add(consumer);
         }
 
@@ -382,7 +470,9 @@ public class SuperStreamConsumerTests
 
         SystemUtils.Wait(TimeSpan.FromSeconds(2));
         // we kill the connections of the first super stream consumer ( so 3 connections one per stream)
-        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 3);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientProvidedName}_0").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientProvidedName}_1").Result == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientProvidedName}_2").Result == 1);
         SystemUtils.Wait(TimeSpan.FromSeconds(3));
         //  at this point the second consumer should be active and consume the messages
         // and the consumerUpdateListener should be called and the offset should be restored
@@ -399,8 +489,10 @@ public class SuperStreamConsumerTests
         }
 
         // just to be sure that the connections are killed
-        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName(clientProvidedName).Result == 0);
-
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_1").Result == 0);
+        SystemUtils.WaitUntil(() => SystemUtils.ConnectionsCountByName($"{clientProvidedName}_2").Result == 0);
+        await consumerSingle.Close();
         await system.Close();
     }
 
@@ -424,7 +516,7 @@ public class SuperStreamConsumerTests
             IsSuperStream = true,
             IsSingleActiveConsumer = true,
             Reference = Reference,
-            MessageHandler = (stream, consumer1, context, message) =>
+            MessageHandler = (stream, _, _, _) =>
             {
                 listConsumed.Add(stream);
                 if (listConsumed.Count == 20)
@@ -451,7 +543,7 @@ public class SuperStreamConsumerTests
             IsSuperStream = true,
             IsSingleActiveConsumer = true,
             Reference = Reference,
-            MessageHandler = (stream, consumer1, context, message) =>
+            MessageHandler = (stream, _, _, _) =>
             {
                 listSecondConsumed.Add(stream);
                 // When the second consumer joins the group it consumes only from one partition
@@ -473,6 +565,83 @@ public class SuperStreamConsumerTests
 
         await firstConsumer.Close();
         await secondConsumer.Close();
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SuperConsumerShouldReceive4StatusInfo()
+    {
+        SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+
+        var clientProvidedName = Guid.NewGuid().ToString();
+        var config = new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        {
+            ClientProvidedName = clientProvidedName,
+            OffsetSpec = new OffsetTypeFirst(),
+            IsSuperStream = true,
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
+        };
+
+        var statusCompleted = new TaskCompletionSource<bool>();
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 3)
+            {
+                statusCompleted.SetResult(true);
+            }
+        };
+
+        var consumer = await Consumer.Create(config);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientProvidedName}_0").Result == 1);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+
+        Assert.Equal(3, statusInfoReceived.Count);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
+        Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[1].Reason);
+
+        Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
+        Assert.Equal(ChangeStatusReason.None, statusInfoReceived[2].Reason);
+        await consumer.Close();
+        SystemUtils.Wait();
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[3].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[3].To);
+        Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[3].Reason);
+        await system.Close();
+    }
+
+    [Fact]
+    public async void SuperConsumerShouldReceiveBoolFail()
+    {
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var config = new ConsumerConfig(system, "DOES_NOT_EXIST")
+        {
+            IsSuperStream = true,
+            ReconnectStrategy = new TestBackOffReconnectStrategy()
+        };
+
+        var statusCompleted = new TaskCompletionSource<bool>();
+        var statusInfoReceived = new List<StatusInfo>();
+        config.StatusChanged += status =>
+        {
+            statusInfoReceived.Add(status);
+            if (statusInfoReceived.Count == 1)
+            {
+                statusCompleted.SetResult(true);
+            }
+        };
+        await Assert.ThrowsAsync<QueryException>(async () => await Consumer.Create(config));
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
+        Assert.Equal(ChangeStatusReason.BoolFailure, statusInfoReceived[0].Reason);
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[0].To);
         await system.Close();
     }
 }

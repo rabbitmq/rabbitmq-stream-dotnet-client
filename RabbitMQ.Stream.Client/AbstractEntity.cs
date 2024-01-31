@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Threading;
@@ -12,6 +12,15 @@ namespace RabbitMQ.Stream.Client
     public abstract record EntityCommonConfig
     {
         internal ConnectionsPool Pool { get; set; }
+        public Func<MetaDataUpdate, Task> MetadataHandler { get; set; }
+
+        /// <summary>
+        /// The Identifier does not have any effect on the server.
+        /// It is used to identify the entity in the logs and on the UI (only for the consumer)
+        /// It is possible to retrieve the entity info using the Info.Identifier method form the
+        /// raw* instances.
+        /// </summary>
+        public string Identifier { get; set; }
     }
 
     internal enum EntityStatus
@@ -49,10 +58,11 @@ namespace RabbitMQ.Stream.Client
         // here the _cancelTokenSource is disposed and the token is cancelled
         // in producer is used to cancel the send task
         // in consumer is used to cancel the receive task
-        private void MaybeCancelToken()
+        protected void UpdateStatusToClosed()
         {
             if (!_cancelTokenSource.IsCancellationRequested)
                 _cancelTokenSource.Cancel();
+            _status = EntityStatus.Closed;
         }
 
         public abstract Task<ResponseCode> Close();
@@ -82,9 +92,7 @@ namespace RabbitMQ.Stream.Client
                 return ResponseCode.Ok;
             }
 
-            MaybeCancelToken();
-
-            _status = EntityStatus.Closed;
+            UpdateStatusToClosed();
             var result = await DeleteEntityFromTheServer(ignoreIfAlreadyDeleted).ConfigureAwait(false);
 
             if (_client is { IsClosed: true })
@@ -92,8 +100,7 @@ namespace RabbitMQ.Stream.Client
                 return result;
             }
 
-            var closed = await _client.MaybeClose($"closing: {EntityId}",
-                    GetStream(), config.Pool)
+            var closed = await _client.MaybeClose($"closing: {EntityId}", config.Pool)
                 .ConfigureAwait(false);
             ClientExceptions.MaybeThrowException(closed.ResponseCode, $"_client-close-Entity: {EntityId}");
             Logger.LogDebug("{EntityInfo} is closed", DumpEntityConfiguration());

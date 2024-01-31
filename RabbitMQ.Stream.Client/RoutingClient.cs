@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Collections.Generic;
@@ -67,7 +67,11 @@ namespace RabbitMQ.Stream.Client
                 // In this case we just return the node (leader for producer, random for consumer)
                 // since there is not load balancer configuration
 
-                return await routing.CreateClient(clientParameters with { Endpoint = endPointNoLb }, broker, logger)
+                return await routing.CreateClient(clientParameters with
+                {
+                    Endpoint = endPointNoLb,
+                    ClientProvidedName = clientParameters.ClientProvidedName
+                }, broker, logger)
                     .ConfigureAwait(false);
             }
 
@@ -75,7 +79,11 @@ namespace RabbitMQ.Stream.Client
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
             var endPoint = clientParameters.AddressResolver.EndPoint;
-            var client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, broker, logger)
+            var client = await routing.CreateClient(clientParameters with
+            {
+                Endpoint = endPoint,
+                ClientProvidedName = clientParameters.ClientProvidedName
+            }, broker, logger)
                 .ConfigureAwait(false);
 
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
@@ -87,7 +95,11 @@ namespace RabbitMQ.Stream.Client
                 attemptNo++;
                 await client.Close("advertised_host or advertised_port doesn't match").ConfigureAwait(false);
 
-                client = await routing.CreateClient(clientParameters with { Endpoint = endPoint }, broker, logger)
+                client = await routing.CreateClient(clientParameters with
+                {
+                    Endpoint = endPoint,
+                    ClientProvidedName = clientParameters.ClientProvidedName
+                }, broker, logger)
                     .ConfigureAwait(false);
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
@@ -156,7 +168,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
-            return await pool.GetOrCreateClient(metaDataInfo.Leader.ToString(), metaDataInfo.Stream,
+            return await pool.GetOrCreateClient(metaDataInfo.Leader.ToString(),
                 async () =>
                     await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger)
                         .ConfigureAwait(false)).ConfigureAwait(false);
@@ -170,16 +182,17 @@ namespace RabbitMQ.Stream.Client
         {
             var brokers = new List<Broker>() { metaDataInfo.Leader };
             brokers.AddRange(metaDataInfo.Replicas);
-            // brokers.Sort((_, _) => Random.Shared.Next(-1, 1));
-            var br = brokers.OrderBy(x => Random.Shared.Next()).ToList();
             var exceptions = new List<Exception>();
+            var br = brokers.OrderBy(x => Random.Shared.Next()).ToList();
+
             foreach (var broker in br)
             {
                 try
                 {
-                    return await pool.GetOrCreateClient(broker.ToString(), metaDataInfo.Stream,
+                    return await pool.GetOrCreateClient(broker.ToString(),
                         async () =>
-                            await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo), logger)
+                            await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo),
+                                    logger)
                                 .ConfigureAwait(false)).ConfigureAwait(false);
                 }
                 catch (Exception ex)

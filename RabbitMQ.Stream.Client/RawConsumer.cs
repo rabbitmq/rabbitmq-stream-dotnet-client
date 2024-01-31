@@ -1,6 +1,6 @@
 ﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
-// Copyright (c) 2007-2023 VMware, Inc.
+// Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
 using System.Buffers;
@@ -41,7 +41,7 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    internal struct ConsumerEvents
+    public struct ConsumerEvents
     {
         public ConsumerEvents(Func<Deliver, Task> deliverHandler,
             Func<bool, Task<IOffsetType>> consumerUpdateHandler)
@@ -110,7 +110,7 @@ namespace RabbitMQ.Stream.Client
 
         public Func<RawConsumer, MessageContext, Message, Task> MessageHandler { get; set; }
 
-        public Action<MetaDataUpdate> MetadataHandler { get; set; } = _ => { };
+        public Func<string, Task> ConnectionClosedHandler { get; set; }
     }
 
     public class RawConsumer : AbstractEntity, IConsumer, IDisposable
@@ -132,7 +132,9 @@ namespace RabbitMQ.Stream.Client
                 ? "No SuperStream"
                 : $"SuperStream {_config.SuperStream}";
             return
-                $"Consumer id {EntityId} for stream: {_config.Stream}, reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
+                $"Consumer id {EntityId} for stream: {_config.Stream}, " +
+                $"identifier: {_config.Identifier}, " +
+                $"reference: {_config.Reference}, OffsetSpec {_config.OffsetSpec} " +
                 $"Client ProvidedName {_config.ClientProvidedName}, " +
                 $"{superStream}, IsSingleActiveConsumer: {_config.IsSingleActiveConsumer}, " +
                 $"Token IsCancellationRequested: {Token.IsCancellationRequested} ";
@@ -143,8 +145,8 @@ namespace RabbitMQ.Stream.Client
             Logger = logger ?? NullLogger.Instance;
             _initialCredits = config.InitialCredits;
             _config = config;
-            Logger.LogDebug("Creating... {ConsumerInfo}", DumpEntityConfiguration());
-            Info = new ConsumerInfo(_config.Stream, _config.Reference);
+            Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
+            Info = new ConsumerInfo(_config.Stream, _config.Reference, _config.Identifier);
             // _chunksBuffer is a channel that is used to buffer the chunks
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
             {
@@ -202,7 +204,6 @@ namespace RabbitMQ.Stream.Client
             var client = await RoutingHelper<Routing>
                 .LookupRandomConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
-            logger?.LogInformation("Creating consumer {ConsumerInfo}", client.ClientId);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);
             return consumer;
@@ -275,10 +276,9 @@ namespace RabbitMQ.Stream.Client
 
                                     // can dispatch only if the consumer is active
                                     // it usually at this point the consumer is active
-                                    // but in rare case where the consumer is closed and open in a short
-                                    // time the ids could be the same to not problem we need just to skip the message
                                     // Given the way how the ids are generated it is very rare to have the same ids
-                                    // it is just a safety check
+                                    // it is just a safety check. 
+                                    // If the consumer is not open we can just skip the messages
                                     var canDispatch = _status == EntityStatus.Open;
 
                                     if (_config.IsFiltering)
@@ -478,14 +478,16 @@ namespace RabbitMQ.Stream.Client
         {
             _config.Validate();
 
-            _client.ConnectionClosed += OnConnectionClosed();
-            _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
-
             var consumerProperties = new Dictionary<string, string>();
 
             if (!string.IsNullOrEmpty(_config.Reference))
             {
                 consumerProperties["name"] = _config.Reference;
+            }
+
+            if (!string.IsNullOrEmpty(_config.Identifier))
+            {
+                consumerProperties["identifier"] = _config.Identifier;
             }
 
             if (_config.IsFiltering)
@@ -594,46 +596,55 @@ namespace RabbitMQ.Stream.Client
 
             if (response.ResponseCode == ResponseCode.Ok)
             {
+                _client.ConnectionClosed += OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate += OnMetadataUpdate();
+
                 _status = EntityStatus.Open;
                 // the subscription is completed so the parsechunk can start to process the chunks
                 _completeSubscription.SetResult();
                 return;
             }
 
-            throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}");
+            throw new CreateConsumerException($"consumer could not be created code: {response.ResponseCode}",
+                response.ResponseCode);
         }
 
         private ClientParameters.MetadataUpdateHandler OnMetadataUpdate() =>
-            metaDataUpdate =>
+            async metaDataUpdate =>
             {
                 // the connection can handle different streams
                 // we need to check if the metadata update is for the stream
                 // where the consumer is consuming else can ignore the update
                 if (metaDataUpdate.Stream != _config.Stream)
                     return;
+                // remove the event since the consumer is closed
+                // only if the stream is the valid
+
+                _client.ConnectionClosed -= OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
+
                 // at this point the server has removed the consumer from the list 
                 // and the unsubscribe is not needed anymore (ignoreIfClosed = true)
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid to send the unsubscribe
+                _config.Pool.RemoveConsumerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
+                await Shutdown(_config, true).ConfigureAwait(false);
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
-                Shutdown(_config, true).ConfigureAwait(false);
-                // remove the event since the consumer is closed
-                // only if the stream is the valid
-                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
             };
 
         private Client.ConnectionCloseHandler OnConnectionClosed() =>
             async reason =>
             {
+                _client.ConnectionClosed -= OnConnectionClosed();
+                _client.Parameters.OnMetadataUpdate -= OnMetadataUpdate();
+
+                // remove the event since the connection is closed
                 _config.Pool.Remove(_client.ClientId);
-                await Shutdown(_config, true).ConfigureAwait(false);
+                UpdateStatusToClosed();
                 if (_config.ConnectionClosedHandler != null)
                 {
                     await _config.ConnectionClosedHandler(reason).ConfigureAwait(false);
                 }
-
-                // remove the event since the connection is closed
-                _client.ConnectionClosed -= OnConnectionClosed();
             };
 
         protected override async Task<ResponseCode> DeleteEntityFromTheServer(bool ignoreIfAlreadyDeleted = false)
