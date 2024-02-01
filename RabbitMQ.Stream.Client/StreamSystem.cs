@@ -153,6 +153,17 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        public async Task UpdateSecret(string newSecret)
+        {
+            if (_client.IsClosed)
+                throw new UpdateSecretFailureException("Cannot update a closed connection.");
+
+            await _client.UpdateSecret(newSecret).ConfigureAwait(false);
+            _clientParameters.Password = newSecret;
+            _client.Parameters.Password = newSecret;
+
+        }
+
         public async Task<ISuperStreamProducer> CreateRawSuperStreamProducer(
             RawSuperStreamProducerConfig rawSuperStreamProducerConfig, ILogger logger = null)
         {
@@ -539,6 +550,13 @@ namespace RabbitMQ.Stream.Client
     public class StreamSystemInitialisationException : Exception
     {
         public StreamSystemInitialisationException(string error) : base(error)
+        {
+        }
+    }
+    public class UpdateSecretFailureException : ProtocolException
+    {
+        public UpdateSecretFailureException(string s)
+            : base(s)
         {
         }
     }
