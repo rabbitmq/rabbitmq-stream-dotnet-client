@@ -32,6 +32,8 @@ namespace Tests
         }
 
         public IDictionary<byte, (string, ConsumerEvents)> Consumers { get; }
+        public Task UpdateSecret(string newSecret) => throw new NotImplementedException();
+
         public bool IsClosed { get; }
 
         public FakeClient(ClientParameters clientParameters)

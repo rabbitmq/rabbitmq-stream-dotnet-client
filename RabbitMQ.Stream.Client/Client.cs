@@ -283,7 +283,7 @@ namespace RabbitMQ.Stream.Client
             return client;
         }
 
-        internal async Task UpdateSecret(string newSecret)
+        public async Task UpdateSecret(string newSecret)
         {
             var saslData = Encoding.UTF8.GetBytes($"\0{Parameters.UserName}\0{newSecret}");
 
@@ -774,7 +774,7 @@ namespace RabbitMQ.Stream.Client
             InternalClose();
             try
             {
-                connection.UpdateCloseStatus(ConnectionClosedReason.Normal);
+                _connection.UpdateCloseStatus(ConnectionClosedReason.Normal);
                 var result =
                     await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
                         TimeSpan.FromSeconds(10)).ConfigureAwait(false);

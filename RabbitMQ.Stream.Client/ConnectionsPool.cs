@@ -130,7 +130,7 @@ public class ConnectionsPool
     ///  Value is the connection item
     ///  The Connections contains all the connections created by the pool
     /// </summary>
-    internal ConcurrentDictionary<string, ConnectionItem> Connections { get; } = new();
+    private ConcurrentDictionary<string, ConnectionItem> Connections { get; } = new();
 
     /// <summary>
     /// GetOrCreateClient returns a client for the given brokerInfo.
@@ -162,7 +162,8 @@ public class ConnectionsPool
                 // let's remove it from the pool
                 Connections.TryRemove(connectionItem.Client.ClientId, out _);
                 // let's create a new one
-                connectionItem = new ConnectionItem(brokerInfo, _idsPerConnection, await createClient().ConfigureAwait(false));
+                connectionItem = new ConnectionItem(brokerInfo, _idsPerConnection,
+                    await createClient().ConfigureAwait(false));
                 Connections.TryAdd(connectionItem.Client.ClientId, connectionItem);
 
                 return connectionItem.Client;
@@ -185,6 +186,7 @@ public class ConnectionsPool
             _semaphoreSlim.Release();
         }
     }
+
     public void Remove(string clientId)
     {
         _semaphoreSlim.Wait();
@@ -195,6 +197,23 @@ public class ConnectionsPool
                 return;
             connectionItem.Client.Consumers.Clear();
             connectionItem.Client.Publishers.Clear();
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
+    }
+
+    public async Task UpdateSecrets(string newSecret)
+    {
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            foreach (var connectionItem in Connections.Values)
+            {
+                await connectionItem.Client.UpdateSecret(newSecret).ConfigureAwait(false);
+                connectionItem.Client.Parameters.Password = newSecret;
+            }
         }
         finally
         {
