@@ -91,6 +91,11 @@ public class RClient
                     AddressResolver = resolver,
                     UserName = config.Username,
                     Password = config.Password,
+                    ConnectionPoolConfig = new ConnectionPoolConfig()
+                    {
+                        ProducersPerConnection = config.ProducersPerConnection,
+                        ConsumersPerConnection = config.ConsumersPerConnection,
+                    },
                     Endpoints = new List<EndPoint>() {resolver.EndPoint}
                 };
             }
