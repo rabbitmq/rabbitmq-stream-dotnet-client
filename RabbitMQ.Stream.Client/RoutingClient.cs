@@ -181,12 +181,13 @@ namespace RabbitMQ.Stream.Client
         }
 
         /// <summary>
-        /// Gets a random connection. The consumer can connect to a replica or leader.
+        /// Gets a random connection a random replica.
+        /// If the replicas are not available it will connect to the leader.
         /// </summary>
-        public static async Task<IClient> LookupRandomConnection(ClientParameters clientParameters,
+        public static async Task<IClient> LookupLeaderOrRandomReplicasConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
-            var brokers = new List<Broker>() { };
+            var brokers = new List<Broker>();
             if (metaDataInfo.Replicas is { Count: <= 0 })
             {
                 brokers.Add(metaDataInfo.Leader);

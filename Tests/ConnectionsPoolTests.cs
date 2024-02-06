@@ -80,9 +80,9 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
                 new List<Broker>());
             var pool = new ConnectionsPool(0, 1);
-            var c1 = await RoutingHelper<PoolRouting>.LookupRandomConnection(clientParameters, metaDataInfo, pool);
+            var c1 = await RoutingHelper<PoolRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo, pool);
             c1.Consumers.Add(1, default);
-            var c2 = await RoutingHelper<PoolRouting>.LookupRandomConnection(clientParameters, metaDataInfo, pool);
+            var c2 = await RoutingHelper<PoolRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo, pool);
             c2.Consumers.Add(1, default);
             // here we have two different connections
             // and must be different since we have only one id per connection

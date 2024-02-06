@@ -9,8 +9,8 @@ var rClient = RClient.Start(new RClient.Config()
 {
     ProducersPerConnection = 2, 
     ConsumersPerConnection = 100,
-    Host = "node1",
-    Port = 5553,
+    Host = "localhost",
+    Port = 5552,
     LoadBalancer = true,
     SuperStream = false,
     Streams = 10,
