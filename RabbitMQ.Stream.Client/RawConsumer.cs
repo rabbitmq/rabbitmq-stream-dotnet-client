@@ -202,7 +202,7 @@ namespace RabbitMQ.Stream.Client
         )
         {
             var client = await RoutingHelper<Routing>
-                .LookupRandomConnection(clientParameters, metaStreamInfo, config.Pool, logger)
+                .LookupLeaderOrRandomReplicasConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
             var consumer = new RawConsumer((Client)client, config, logger);
             await consumer.Init().ConfigureAwait(false);

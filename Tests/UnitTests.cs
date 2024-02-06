@@ -107,7 +107,7 @@ namespace Tests
         public bool ValidateDns { get; set; } = false;
     }
 
-    public class ReplicaRouting : IRouting
+    public class LeaderRouting : IRouting
     {
         public Task<IClient> CreateClient(ClientParameters clientParameters, Broker broker, ILogger logger = null)
         {
@@ -117,6 +117,25 @@ namespace Tests
                 {
                     ["advertised_port"] = "5552",
                     ["advertised_host"] = "leader"
+                }
+            };
+            return Task.FromResult<IClient>(fake);
+        }
+
+        public bool ValidateDns { get; set; } = false;
+    }
+
+    public class ReplicaseRouting : IRouting
+    {
+        public Task<IClient> CreateClient(ClientParameters clientParameters, Broker broker, ILogger logger = null)
+        {
+            var fake = new FakeClient(clientParameters)
+            {
+                ConnectionProperties = new Dictionary<string, string>()
+                {
+
+                    ["advertised_port"] = "5553",
+                    ["advertised_host"] = "replica2"
                 }
             };
             return Task.FromResult<IClient>(fake);
@@ -141,7 +160,7 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
                 new List<Broker>());
             await Assert.ThrowsAsync<AggregateException>(() =>
-                RoutingHelper<Routing>.LookupRandomConnection(clientParameters, metaDataInfo,
+                RoutingHelper<Routing>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
                     new ConnectionsPool(1, 1)));
         }
 
@@ -214,11 +233,31 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("leader", 5552),
                 new List<Broker>());
             var client =
-                RoutingHelper<ReplicaRouting>.LookupRandomConnection(clientParameters, metaDataInfo,
+                RoutingHelper<LeaderRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
                     new ConnectionsPool(1, 1));
             Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             var res = (client.Result.ConnectionProperties["advertised_host"] == "leader" ||
                        client.Result.ConnectionProperties["advertised_host"] == "replica");
+            Assert.True(res);
+        }
+
+        [Fact]
+        public void RandomOnlyReplicaIfThereAre()
+        {
+            // this test is not completed yet should add also some replicas
+            var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
+            var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
+            var metaDataInfo = new StreamInfo("stream",
+                ResponseCode.Ok, new Broker("leader", 5552),
+                new List<Broker>()
+                {
+                    new Broker("replica2", 5553),
+                });
+            var client =
+                RoutingHelper<ReplicaseRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
+                    new ConnectionsPool(1, 1));
+            Assert.Equal("5553", client.Result.ConnectionProperties["advertised_port"]);
+            var res = (client.Result.ConnectionProperties["advertised_host"] == "replica2");
             Assert.True(res);
         }
 

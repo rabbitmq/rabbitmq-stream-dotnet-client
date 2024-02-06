@@ -8,13 +8,13 @@ Console.WriteLine("Starting RabbitMQ Streaming Client");
 var rClient = RClient.Start(new RClient.Config()
 {
     ProducersPerConnection = 2, 
-    ConsumersPerConnection = 2,
-    Host = "Node0",
-    Port = 5553,
+    ConsumersPerConnection = 100,
+    Host = "localhost",
+    Port = 5552,
     LoadBalancer = true,
-    SuperStream = true,
-    Streams = 1,
-    Producers = 1,
+    SuperStream = false,
+    Streams = 10,
+    Producers = 4,
     MessagesPerProducer = 50_000_000,
     Consumers = 4
     // Username = "test",

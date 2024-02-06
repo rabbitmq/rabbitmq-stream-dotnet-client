@@ -67,11 +67,13 @@ namespace RabbitMQ.Stream.Client
                 // In this case we just return the node (leader for producer, random for consumer)
                 // since there is not load balancer configuration
 
-                return await routing.CreateClient(clientParameters with
-                {
-                    Endpoint = endPointNoLb,
-                    ClientProvidedName = clientParameters.ClientProvidedName
-                }, broker, logger)
+                return await routing
+                    .CreateClient(
+                        clientParameters with
+                        {
+                            Endpoint = endPointNoLb,
+                            ClientProvidedName = clientParameters.ClientProvidedName
+                        }, broker, logger)
                     .ConfigureAwait(false);
             }
 
@@ -79,11 +81,13 @@ namespace RabbitMQ.Stream.Client
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
             var endPoint = clientParameters.AddressResolver.EndPoint;
-            var client = await routing.CreateClient(clientParameters with
-            {
-                Endpoint = endPoint,
-                ClientProvidedName = clientParameters.ClientProvidedName
-            }, broker, logger)
+            var client = await routing
+                .CreateClient(
+                    clientParameters with
+                    {
+                        Endpoint = endPoint,
+                        ClientProvidedName = clientParameters.ClientProvidedName
+                    }, broker, logger)
                 .ConfigureAwait(false);
 
             var advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
@@ -95,11 +99,13 @@ namespace RabbitMQ.Stream.Client
                 attemptNo++;
                 await client.Close("advertised_host or advertised_port doesn't match").ConfigureAwait(false);
 
-                client = await routing.CreateClient(clientParameters with
-                {
-                    Endpoint = endPoint,
-                    ClientProvidedName = clientParameters.ClientProvidedName
-                }, broker, logger)
+                client = await routing
+                    .CreateClient(
+                        clientParameters with
+                        {
+                            Endpoint = endPoint,
+                            ClientProvidedName = clientParameters.ClientProvidedName
+                        }, broker, logger)
                     .ConfigureAwait(false);
 
                 advertisedHost = GetPropertyValue(client.ConnectionProperties, "advertised_host");
@@ -175,13 +181,20 @@ namespace RabbitMQ.Stream.Client
         }
 
         /// <summary>
-        /// Gets a random connection. The consumer can connect to a replica or leader.
+        /// Gets a random connection a random replica.
+        /// If the replicas are not available it will connect to the leader.
         /// </summary>
-        public static async Task<IClient> LookupRandomConnection(ClientParameters clientParameters,
+        public static async Task<IClient> LookupLeaderOrRandomReplicasConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
-            var brokers = new List<Broker>() { metaDataInfo.Leader };
+            var brokers = new List<Broker>();
+            if (metaDataInfo.Replicas is { Count: <= 0 })
+            {
+                brokers.Add(metaDataInfo.Leader);
+            }
+
             brokers.AddRange(metaDataInfo.Replicas);
+
             var exceptions = new List<Exception>();
             var br = brokers.OrderBy(x => Random.Shared.Next()).ToList();
 
