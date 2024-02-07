@@ -3,7 +3,6 @@
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -48,12 +47,8 @@ public abstract class ProducerFactory : ReliableBase
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
                         await RandomWait().ConfigureAwait(false);
-                        if (closeReason == ConnectionClosedReason.Normal)
-                        {
-                            BaseLogger.LogDebug("{Identity} is closed normally", ToString());
+                        if (IsClosedNormally(closeReason))
                             return;
-                        }
-
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
                         await OnEntityClosed(_producerConfig.StreamSystem, partitionStream, r,
                                 ChangeStatusReason.UnexpectedlyDisconnected)
@@ -62,6 +57,9 @@ public abstract class ProducerFactory : ReliableBase
                     MetadataHandler = async update =>
                     {
                         await RandomWait().ConfigureAwait(false);
+                        if (IsClosedNormally())
+                            return;
+
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
                         await OnEntityClosed(_producerConfig.StreamSystem, update.Stream, r,
                                 ChangeStatusReason.MetaDataUpdate)
@@ -105,17 +103,17 @@ public abstract class ProducerFactory : ReliableBase
             MetadataHandler = async _ =>
             {
                 await RandomWait().ConfigureAwait(false);
+                if (IsClosedNormally())
+                    return;
+
                 await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream,
                     ChangeStatusReason.MetaDataUpdate).ConfigureAwait(false);
             },
             ConnectionClosedHandler = async (closeReason) =>
             {
                 await RandomWait().ConfigureAwait(false);
-                if (closeReason == ConnectionClosedReason.Normal)
-                {
-                    BaseLogger.LogDebug("{Identity} is closed normally", ToString());
+                if (IsClosedNormally(closeReason))
                     return;
-                }
 
                 await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream,
                     ChangeStatusReason.UnexpectedlyDisconnected).ConfigureAwait(false);
