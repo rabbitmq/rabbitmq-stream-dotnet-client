@@ -116,13 +116,15 @@ public abstract class ReliableBase
 
     protected bool IsClosedNormally(string closeReason)
     {
-        if (closeReason != ConnectionClosedReason.Normal && !CompareStatus(ReliableEntityStatus.Closed)) return false;
+        if (closeReason != ConnectionClosedReason.Normal && !CompareStatus(ReliableEntityStatus.Closed))
+            return false;
         BaseLogger.LogInformation("{Identity} is closed normally", ToString());
         return true;
     }
     protected bool IsClosedNormally()
     {
-        if (!CompareStatus(ReliableEntityStatus.Closed)) return false;
+        if (!CompareStatus(ReliableEntityStatus.Closed))
+            return false;
         BaseLogger.LogInformation("{Identity} is closed normally", ToString());
         return true;
     }

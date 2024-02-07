@@ -4,7 +4,6 @@
 
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -60,14 +59,16 @@ public abstract class ConsumerFactory : ReliableBase
             Identifier = _consumerConfig.Identifier,
             ConnectionClosedHandler = async (closeReason) =>
             {
-                if (IsClosedNormally(closeReason)) return;
+                if (IsClosedNormally(closeReason))
+                    return;
 
                 await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
                     ChangeStatusReason.UnexpectedlyDisconnected).ConfigureAwait(false);
             },
             MetadataHandler = async _ =>
             {
-                if (IsClosedNormally()) return;
+                if (IsClosedNormally())
+                    return;
 
                 await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
                     ChangeStatusReason.MetaDataUpdate).ConfigureAwait(false);
@@ -125,8 +126,8 @@ public abstract class ConsumerFactory : ReliableBase
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
                         await RandomWait().ConfigureAwait(false);
-                        if (IsClosedNormally(closeReason)) return;
-
+                        if (IsClosedNormally(closeReason))
+                            return;
 
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r,
@@ -136,7 +137,8 @@ public abstract class ConsumerFactory : ReliableBase
                     MetadataHandler = async update =>
                     {
                         await RandomWait().ConfigureAwait(false);
-                        if (IsClosedNormally()) return;
+                        if (IsClosedNormally())
+                            return;
 
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r,
