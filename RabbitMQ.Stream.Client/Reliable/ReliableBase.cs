@@ -114,6 +114,19 @@ public abstract class ReliableBase
         await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
     }
 
+    protected bool IsClosedNormally(string closeReason)
+    {
+        if (closeReason != ConnectionClosedReason.Normal && !CompareStatus(ReliableEntityStatus.Closed)) return false;
+        BaseLogger.LogInformation("{Identity} is closed normally", ToString());
+        return true;
+    }
+    protected bool IsClosedNormally()
+    {
+        if (!CompareStatus(ReliableEntityStatus.Closed)) return false;
+        BaseLogger.LogInformation("{Identity} is closed normally", ToString());
+        return true;
+    }
+
     protected void UpdateStatus(ReliableEntityStatus newStatus,
         ChangeStatusReason reason, string partition = null)
     {

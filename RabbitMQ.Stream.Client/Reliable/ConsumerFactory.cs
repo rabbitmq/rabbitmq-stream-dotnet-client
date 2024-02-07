@@ -60,18 +60,15 @@ public abstract class ConsumerFactory : ReliableBase
             Identifier = _consumerConfig.Identifier,
             ConnectionClosedHandler = async (closeReason) =>
             {
-                if (closeReason == ConnectionClosedReason.Normal)
-                {
-                    //  we don't update the status here since it happens when Close() is called in a normal way
-                    BaseLogger.LogInformation("{Identity} is closed normally", ToString());
-                    return;
-                }
+                if (IsClosedNormally(closeReason)) return;
 
                 await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
                     ChangeStatusReason.UnexpectedlyDisconnected).ConfigureAwait(false);
             },
             MetadataHandler = async _ =>
             {
+                if (IsClosedNormally()) return;
+
                 await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
                     ChangeStatusReason.MetaDataUpdate).ConfigureAwait(false);
             },
@@ -128,12 +125,8 @@ public abstract class ConsumerFactory : ReliableBase
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
                         await RandomWait().ConfigureAwait(false);
-                        if (closeReason == ConnectionClosedReason.Normal)
-                        {
-                            //  we don't update the status here since it happens when Close() is called in a normal way
-                            BaseLogger.LogInformation("{Identity} is closed normally", ToString());
-                            return;
-                        }
+                        if (IsClosedNormally(closeReason)) return;
+
 
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r,
@@ -143,6 +136,8 @@ public abstract class ConsumerFactory : ReliableBase
                     MetadataHandler = async update =>
                     {
                         await RandomWait().ConfigureAwait(false);
+                        if (IsClosedNormally()) return;
+
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r,
                                 ChangeStatusReason.MetaDataUpdate)

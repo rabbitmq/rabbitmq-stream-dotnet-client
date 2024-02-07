@@ -261,7 +261,7 @@ public class RClient
                                 Properties = new Properties() {MessageId = $"hello{i}"}
                             };
                             await MaybeSend(producer, message, publishEvent).ConfigureAwait(false);
-                            await Task.Delay(500).ConfigureAwait(false);
+                            await Task.Delay(20).ConfigureAwait(false);
                             Interlocked.Increment(ref totalSent);
                         }
                     });

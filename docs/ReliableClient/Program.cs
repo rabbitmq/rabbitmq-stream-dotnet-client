@@ -7,18 +7,18 @@ Console.WriteLine("Starting RabbitMQ Streaming Client");
 
 var rClient = RClient.Start(new RClient.Config()
 {
-    ProducersPerConnection = 2, 
+    ProducersPerConnection = 100, 
     ConsumersPerConnection = 100,
-    Host = "localhost",
+    Host = "node0",
     Port = 5552,
     LoadBalancer = true,
     SuperStream = false,
-    Streams = 10,
-    Producers = 4,
+    Streams = 3,
+    Producers = 10,
     MessagesPerProducer = 50_000_000,
-    Consumers = 4
-    // Username = "test",
-    // Password = "test"
+    Consumers = 10,
+    Username = "test",
+    Password = "test"
 });
 
 await rClient.ConfigureAwait(false);
