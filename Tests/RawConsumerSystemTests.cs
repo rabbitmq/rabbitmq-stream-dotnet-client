@@ -47,7 +47,7 @@ namespace Tests
                     Identifier = "consumer_identifier_999",
                     MessageHandler = async (sourceConsumer, ctx, message) =>
                     {
-                        messagesInTheChunk = ctx.ChuckMessagesCount;
+                        messagesInTheChunk = ctx.ChunkMessagesCount;
                         identifierReceived = sourceConsumer.Info.Identifier;
                         testPassed.SetResult(message.Data);
                         await Task.CompletedTask;
@@ -262,7 +262,7 @@ namespace Tests
                     Reference = "consumer",
                     MessageHandler = async (consumer, ctx, message) =>
                     {
-                        messagesInTheChunks[ctx.ChunkId] = ctx.ChuckMessagesCount;
+                        messagesInTheChunks[ctx.ChunkId] = ctx.ChunkMessagesCount;
                         receivedMessages.Add(message);
                         if (receivedMessages.Count == 10)
                         {

@@ -37,18 +37,18 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// The number of messages in the current chunk
         /// </summary>
-        public uint ChuckMessagesCount { get; }
+        public uint ChunkMessagesCount { get; }
 
         /// <summary>
         /// It is the chunk id that can help to understand the ChuckMessagesCount
         /// </summary>
         public ulong ChunkId { get; }
 
-        public MessageContext(ulong offset, TimeSpan timestamp, uint chuckMessagesCount, ulong chunkId)
+        public MessageContext(ulong offset, TimeSpan timestamp, uint chunkMessagesCount, ulong chunkId)
         {
             Offset = offset;
             Timestamp = timestamp;
-            ChuckMessagesCount = chuckMessagesCount;
+            ChunkMessagesCount = chunkMessagesCount;
             ChunkId = chunkId;
         }
     }
