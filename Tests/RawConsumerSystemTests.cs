@@ -292,6 +292,7 @@ namespace Tests
             AssertMessages(messagesGzip, testPassed.Task.Result.FindAll(s =>
                 Encoding.Default.GetString(s.Data.Contents.ToArray()).Contains("Gzip_")));
             Assert.Equal(10, messagesInTheChunks.Sum(x => x.Value));
+            Assert.Equal((ulong)0, messagesInTheChunks.FirstOrDefault().Key);
             rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
