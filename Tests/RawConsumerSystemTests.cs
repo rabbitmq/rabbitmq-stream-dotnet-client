@@ -5,6 +5,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -38,6 +39,7 @@ namespace Tests
             var rawProducer = await system.CreateRawProducer(
                 new RawProducerConfig(stream) { Reference = "producer" });
             var identifierReceived = "";
+            uint messagesInTheChunk = 0;
             var consumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
@@ -45,6 +47,7 @@ namespace Tests
                     Identifier = "consumer_identifier_999",
                     MessageHandler = async (sourceConsumer, ctx, message) =>
                     {
+                        messagesInTheChunk = ctx.ChuckMessagesCount;
                         identifierReceived = sourceConsumer.Info.Identifier;
                         testPassed.SetResult(message.Data);
                         await Task.CompletedTask;
@@ -59,6 +62,7 @@ namespace Tests
 
             Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
             Assert.Equal("consumer_identifier_999", identifierReceived);
+            Assert.Equal((uint)1, messagesInTheChunk);
             rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
@@ -250,12 +254,15 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
 
             var receivedMessages = new List<Message>();
+            var messagesInTheChunks = new Dictionary<ulong, uint>();
+
             var consumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
                     MessageHandler = async (consumer, ctx, message) =>
                     {
+                        messagesInTheChunks[ctx.ChunkId] = ctx.ChuckMessagesCount;
                         receivedMessages.Add(message);
                         if (receivedMessages.Count == 10)
                         {
@@ -284,7 +291,7 @@ namespace Tests
 
             AssertMessages(messagesGzip, testPassed.Task.Result.FindAll(s =>
                 Encoding.Default.GetString(s.Data.Contents.ToArray()).Contains("Gzip_")));
-
+            Assert.Equal(10, messagesInTheChunks.Sum(x => x.Value));
             rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
