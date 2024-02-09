@@ -43,7 +43,7 @@ public class RClient
                 options.TimestampFormat = "[HH:mm:ss] ";
                 options.ColorBehavior = LoggerColorBehavior.Default;
             })
-            .AddFilter(level => level >= LogLevel.Information)
+            .AddFilter(level => level >= LogLevel.Debug)
         );
         var loggerFactory = serviceCollection.BuildServiceProvider()
             .GetService<ILoggerFactory>();
@@ -261,7 +261,7 @@ public class RClient
                                 Properties = new Properties() {MessageId = $"hello{i}"}
                             };
                             await MaybeSend(producer, message, publishEvent).ConfigureAwait(false);
-                            await Task.Delay(20).ConfigureAwait(false);
+                            await Task.Delay(320).ConfigureAwait(false);
                             Interlocked.Increment(ref totalSent);
                         }
                     });

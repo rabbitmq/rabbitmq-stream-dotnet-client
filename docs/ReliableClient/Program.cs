@@ -12,11 +12,11 @@ var rClient = RClient.Start(new RClient.Config()
     Host = "node0",
     Port = 5562,
     LoadBalancer = false,
-    SuperStream = false,
+    SuperStream = true,
     Streams = 3,
-    Producers = 10,
+    Producers = 2,
     MessagesPerProducer = 10_000_000,
-    Consumers = 10,
+    Consumers = 5,
     // Username = "test",
     // Password = "test"
 });

@@ -311,16 +311,16 @@ public class RawSuperStreamProducer : ISuperStreamProducer, IDisposable
     //<summary>
     /// Returns lower from the LastPublishingId for all the producers
     // </summary> 
-    public Task<ulong> GetLastPublishingId()
+    public async Task<ulong> GetLastPublishingId()
     {
         foreach (var stream in _streamInfos.Keys.ToList())
         {
-            MaybeAddAndGetProducer(stream).Wait();
+            await MaybeAddAndGetProducer(stream).ConfigureAwait(false);
         }
 
         var v = _producers.Values.Min(p => p.GetLastPublishingId().Result);
 
-        return Task.FromResult(v);
+        return v;
     }
 
     public bool IsOpen()
