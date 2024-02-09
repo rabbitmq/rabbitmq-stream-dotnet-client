@@ -145,14 +145,13 @@ public class ConnectionsPool
             // do we have a connection for this brokerInfo and with free slots for producer or consumer?
             // it does not matter which connection is available 
             // the important is to have a connection available for the brokerInfo
-            var count = Connections.Values.Count(x => x.BrokerInfo == brokerInfo && x.Available);
+            var connectionItems = Connections.Values.Where(x => x.BrokerInfo == brokerInfo && x.Available).ToList();
 
-            if (count > 0)
+            if (connectionItems.Any())
             {
                 // ok we have a connection available for this brokerInfo
                 // let's get the first one
-                // TODO: we can improve this by getting the connection with the less active items
-                var connectionItem = Connections.Values.First(x => x.BrokerInfo == brokerInfo && x.Available);
+                var connectionItem = connectionItems.OrderBy(x => x.EntitiesCount).First();
                 connectionItem.LastUsed = DateTime.UtcNow;
 
                 if (connectionItem.Client is not { IsClosed: true })
@@ -162,11 +161,11 @@ public class ConnectionsPool
                 // let's remove it from the pool
                 Connections.TryRemove(connectionItem.Client.ClientId, out _);
                 // let's create a new one
-                connectionItem = new ConnectionItem(brokerInfo, _idsPerConnection,
+                var newConnectionItem = new ConnectionItem(brokerInfo, _idsPerConnection,
                     await createClient().ConfigureAwait(false));
                 Connections.TryAdd(connectionItem.Client.ClientId, connectionItem);
 
-                return connectionItem.Client;
+                return newConnectionItem.Client;
             }
 
             if (_maxConnections > 0 && Connections.Count >= _maxConnections)
