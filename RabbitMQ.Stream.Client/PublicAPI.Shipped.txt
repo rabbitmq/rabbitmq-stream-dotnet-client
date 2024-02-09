@@ -395,7 +395,6 @@ RabbitMQ.Stream.Client.Message.Size.get -> int
 RabbitMQ.Stream.Client.Message.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.MessageContext
 RabbitMQ.Stream.Client.MessageContext.MessageContext() -> void
-RabbitMQ.Stream.Client.MessageContext.MessageContext(ulong offset, System.TimeSpan timestamp) -> void
 RabbitMQ.Stream.Client.MessageContext.Offset.get -> ulong
 RabbitMQ.Stream.Client.MessageContext.Timestamp.get -> System.TimeSpan
 RabbitMQ.Stream.Client.MetaDataQuery

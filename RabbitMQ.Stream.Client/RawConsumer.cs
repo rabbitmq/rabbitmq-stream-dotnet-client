@@ -34,10 +34,22 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public TimeSpan Timestamp { get; }
 
-        public MessageContext(ulong offset, TimeSpan timestamp)
+        /// <summary>
+        /// The number of messages in the current chunk
+        /// </summary>
+        public uint ChunkMessagesCount { get; }
+
+        /// <summary>
+        /// It is the chunk id that can help to understand the ChuckMessagesCount
+        /// </summary>
+        public ulong ChunkId { get; }
+
+        public MessageContext(ulong offset, TimeSpan timestamp, uint chunkMessagesCount, ulong chunkId)
         {
             Offset = offset;
             Timestamp = timestamp;
+            ChunkMessagesCount = chunkMessagesCount;
+            ChunkId = chunkId;
         }
     }
 
@@ -306,7 +318,8 @@ namespace RabbitMQ.Stream.Client
                                     {
                                         await _config.MessageHandler(this,
                                             new MessageContext(message.MessageOffset,
-                                                TimeSpan.FromMilliseconds(chunk.Timestamp)),
+                                                TimeSpan.FromMilliseconds(chunk.Timestamp),
+                                                chunk.NumRecords, chunk.ChunkId),
                                             message).ConfigureAwait(false);
                                     }
                                 }
