@@ -444,7 +444,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateSuperStreamWith2Partitions()
+        public async void CreateDeleteSuperStreamWith2Partitions()
         {
             var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
@@ -457,13 +457,12 @@ namespace Tests
             SystemUtils.Wait(TimeSpan.FromSeconds(1));
             var responseError = await client.CreateSuperStream(SuperStream, partitions, bindingKeys, args);
             Assert.Equal(ResponseCode.StreamAlreadyExists, responseError.ResponseCode);
+            var responseDelete = await client.DeleteSuperStream(SuperStream);
+            Assert.Equal(ResponseCode.Ok, responseDelete.ResponseCode);
+            SystemUtils.Wait(TimeSpan.FromSeconds(1));
+            var responseDeleteError = await client.DeleteSuperStream(SuperStream);
+            Assert.Equal(ResponseCode.StreamDoesNotExist, responseDeleteError.ResponseCode);
+            await client.Close("done");
         }
-        /* Unmerged change from project 'Tests(net7.0)'
-        Before:
-            }
-        After:
-            }
-        */
-
     }
 }

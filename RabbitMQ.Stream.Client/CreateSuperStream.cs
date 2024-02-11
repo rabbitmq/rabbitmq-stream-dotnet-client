@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace RabbitMQ.Stream.Client;
 
-internal readonly struct SuperStreamRequest : ICommand
+internal readonly struct CreateSuperStreamRequest : ICommand
 {
     private const ushort Key = 29;
     private readonly string _superStream;
@@ -18,7 +18,7 @@ internal readonly struct SuperStreamRequest : ICommand
     private readonly List<string> _partitions;
     private readonly List<string> _bindingKeys;
 
-    internal SuperStreamRequest(uint corrId, string superStream,
+    internal CreateSuperStreamRequest(uint corrId, string superStream,
         List<string> partitions, List<string> bindingKeys, IDictionary<string, string> args)
     {
         _corrId = corrId;
@@ -76,13 +76,13 @@ internal readonly struct SuperStreamRequest : ICommand
     }
 }
 
-public readonly struct SuperStreamResponse : ICommand
+public readonly struct CreateSuperStreamResponse : ICommand
 {
     public const ushort Key = 29;
     private readonly uint _correlationId;
     private readonly ushort _responseCode;
 
-    public SuperStreamResponse(uint correlationId, ushort responseCode)
+    private CreateSuperStreamResponse(uint correlationId, ushort responseCode)
     {
         _correlationId = correlationId;
         _responseCode = responseCode;
@@ -99,13 +99,13 @@ public readonly struct SuperStreamResponse : ICommand
         throw new NotImplementedException();
     }
 
-    internal static int Read(ReadOnlySequence<byte> frame, out SuperStreamResponse command)
+    internal static int Read(ReadOnlySequence<byte> frame, out CreateSuperStreamResponse command)
     {
         var offset = WireFormatting.ReadUInt16(frame, out _);
         offset += WireFormatting.ReadUInt16(frame.Slice(offset), out _);
         offset += WireFormatting.ReadUInt32(frame.Slice(offset), out var correlation);
         offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
-        command = new SuperStreamResponse(correlation, responseCode);
+        command = new CreateSuperStreamResponse(correlation, responseCode);
         return offset;
     }
 }
