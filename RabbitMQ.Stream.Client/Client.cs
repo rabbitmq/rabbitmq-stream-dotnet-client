@@ -724,6 +724,10 @@ namespace RabbitMQ.Stream.Client
                     CommandVersionsResponse.Read(frame, out var commandVersionsResponse);
                     HandleCorrelatedResponse(commandVersionsResponse);
                     break;
+                case SuperStreamResponse.Key:
+                    SuperStreamResponse.Read(frame, out var superStreamResponse);
+                    HandleCorrelatedResponse(superStreamResponse);
+                    break;
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
@@ -863,7 +867,6 @@ namespace RabbitMQ.Stream.Client
             if (response.StreamInfos is { Count: >= 1 } &&
                 response.StreamInfos[stream].ResponseCode == ResponseCode.StreamNotAvailable)
             {
-
                 ClientExceptions.MaybeThrowException(ResponseCode.StreamNotAvailable, stream);
             }
 
@@ -886,6 +889,14 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<DeleteResponse> DeleteStream(string stream)
         {
             return await Request<DeleteRequest, DeleteResponse>(corr => new DeleteRequest(corr, stream))
+                .ConfigureAwait(false);
+        }
+
+        public async ValueTask<SuperStreamResponse> CreateSuperStream(string superStream, List<string> partitions,
+            List<string> bindingKeys, IDictionary<string, string> args)
+        {
+            return await Request<SuperStreamRequest, SuperStreamResponse>(corr =>
+                    new SuperStreamRequest(corr, superStream, partitions, bindingKeys, args))
                 .ConfigureAwait(false);
         }
 

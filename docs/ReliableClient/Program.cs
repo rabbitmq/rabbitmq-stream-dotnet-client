@@ -7,8 +7,8 @@ Console.WriteLine("Starting RabbitMQ Streaming Client");
 
 var rClient = RClient.Start(new RClient.Config()
 {
-    ProducersPerConnection = 100, 
-    ConsumersPerConnection = 100,
+    ProducersPerConnection = (byte)(Random.Shared.Next(1, 50)),
+    ConsumersPerConnection = (byte)(Random.Shared.Next(1, 50)),
     Host = "node0",
     Port = 5562,
     LoadBalancer = false,
