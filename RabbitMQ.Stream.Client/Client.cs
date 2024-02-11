@@ -903,7 +903,7 @@ namespace RabbitMQ.Stream.Client
                     new CreateSuperStreamRequest(corr, superStream, partitions, bindingKeys, args))
                 .ConfigureAwait(false);
         }
-        
+
         public async ValueTask<DeleteSuperStreamResponse> DeleteSuperStream(string superStream)
         {
             return await Request<DeleteSuperStreamRequest, DeleteSuperStreamResponse>(corr =>

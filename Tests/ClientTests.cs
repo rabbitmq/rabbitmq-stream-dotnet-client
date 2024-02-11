@@ -451,7 +451,8 @@ namespace Tests
             const string SuperStream = "my_super_stream_with_2_partitions";
             var partitions = new List<string> { "partition_0", "partition_1" };
             var bindingKeys = new List<string>() { "0", "1" };
-            var args = new Dictionary<string, string> { { "queue-leader-locator", "least-leaders" } };
+            var args = new Dictionary<string, string> { { "queue-leader-locator", "least-leaders"},
+                { "max-length-bytes", "10000"}, {"max-age", "30000s"}};
             var response = await client.CreateSuperStream(SuperStream, partitions, bindingKeys, args);
             Assert.Equal(ResponseCode.Ok, response.ResponseCode);
             SystemUtils.Wait(TimeSpan.FromSeconds(1));
