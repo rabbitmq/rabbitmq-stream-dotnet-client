@@ -47,7 +47,7 @@ namespace Tests
         [Fact]
         public async void RawSuperStreamProducersShouldRaiseErrorWhenClosed()
         {
-            SystemUtils.ResetSuperStreams();
+            await SystemUtils.ResetSuperStreams();
             // Simple send message to super stream
             // We should not have any errors and according to the routing strategy
             // the message should be routed to the correct stream

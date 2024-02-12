@@ -231,7 +231,10 @@ public class BatchVsBatchSend
 
         Thread.Sleep(5000);
 
-        await system.CreateStream(new StreamSpec(stream) { });
+        await system.CreateStream(new StreamSpec(stream)
+        {
+            
+        });
         Thread.Sleep(1000);
         Console.WriteLine($"Stream: {stream} created");
         return stream;

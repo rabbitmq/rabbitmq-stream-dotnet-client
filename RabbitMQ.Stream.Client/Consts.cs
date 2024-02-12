@@ -23,6 +23,9 @@ namespace RabbitMQ.Stream.Client
         internal const string FilterNotSupported = "Filtering is not supported by the broker "
                                                    + "(requires RabbitMQ 3.13+ and stream_filtering feature flag activated)";
 
+        internal const string SuperStreamCreationNotSupported = "SuperStreams creation / deleting not supported by the broker "
+                                                        + "(requires RabbitMQ 3.13+. It is possible to use the command line tool to create superstreams)";
+
         internal static int RandomShort()
         {
             return Random.Shared.Next(500, 1500);

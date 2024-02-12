@@ -80,7 +80,7 @@ namespace Tests
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    MessageHandler = async (consumer, ctx, message) => { await Task.CompletedTask; }
+                    MessageHandler = async (_, _, _) => { await Task.CompletedTask; }
                 });
 
             Assert.Equal(ResponseCode.Ok, await consumer.Close());
@@ -148,8 +148,8 @@ namespace Tests
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    MessageHandler = async (consumer, ctx, message) => { await Task.CompletedTask; },
-                    ConnectionClosedHandler = async s =>
+                    MessageHandler = async (_, _, _) => { await Task.CompletedTask; },
+                    ConnectionClosedHandler = async _ =>
                     {
                         testOutputHelper.WriteLine("NotifyConsumerClose set true");
                         testPassed.SetResult(true);
@@ -178,7 +178,7 @@ namespace Tests
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    MessageHandler = async (consumer, ctx, message) =>
+                    MessageHandler = async (_, _, message) =>
                     {
                         testPassed.SetResult(message.Data);
                         await Task.CompletedTask;
@@ -260,7 +260,7 @@ namespace Tests
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    MessageHandler = async (consumer, ctx, message) =>
+                    MessageHandler = async (_, ctx, message) =>
                     {
                         messagesInTheChunks[ctx.ChunkId] = ctx.ChunkMessagesCount;
                         receivedMessages.Add(message);
@@ -324,7 +324,7 @@ namespace Tests
                 new RawConsumerConfig(stream)
                 {
                     Reference = "consumer",
-                    MessageHandler = async (consumer, ctx, message) =>
+                    MessageHandler = async (_, _, message) =>
                     {
                         if (Interlocked.Increment(ref consumed) == 3)
                         {
@@ -431,7 +431,7 @@ namespace Tests
                 {
                     Crc32 = _crc32,
                     Reference = "consumer",
-                    MessageHandler = async (consumer, ctx, message) =>
+                    MessageHandler = async (_, _, message) =>
                     {
                         testPassed.SetResult(message);
                         await Task.CompletedTask;
@@ -479,7 +479,7 @@ namespace Tests
                     Crc32 = _crc32,
                     Reference = Reference,
                     OffsetSpec = new OffsetTypeOffset(),
-                    MessageHandler = async (consumer, ctx, message) =>
+                    MessageHandler = async (consumer, ctx, _) =>
                     {
                         testOutputHelper.WriteLine($"ConsumerStoreOffset receiving.. {count}");
                         count++;
@@ -677,7 +677,7 @@ namespace Tests
                 });
             var consumer = await system.CreateRawConsumer(new RawConsumerConfig(stream)
             {
-                MessageHandler = async (rawConsumer, context, arg3) =>
+                MessageHandler = async (_, _, _) =>
                 {
                     if (Interlocked.Increment(ref count) == 1500)
                     {
@@ -752,7 +752,7 @@ namespace Tests
         [Fact]
         public async void EntityInfoShouldBeCorrect()
         {
-            SystemUtils.ResetSuperStreams();
+            await SystemUtils.ResetSuperStreams();
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             var rawConsumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream) { Reference = "consumer", });

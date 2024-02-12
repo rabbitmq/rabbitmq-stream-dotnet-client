@@ -298,7 +298,9 @@ RabbitMQ.Stream.Client.StreamStatsResponse.StreamStatsResponse() -> void
 RabbitMQ.Stream.Client.StreamStatsResponse.StreamStatsResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode, System.Collections.Generic.IDictionary<string, long> statistic) -> void
 RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.StreamSystem.CreateRawSuperStreamProducer(RabbitMQ.Stream.Client.RawSuperStreamProducerConfig rawSuperStreamProducerConfig, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ISuperStreamProducer>
+RabbitMQ.Stream.Client.StreamSystem.CreateSuperStream(RabbitMQ.Stream.Client.SuperStreamSpec spec) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystem.CreateSuperStreamConsumer(RabbitMQ.Stream.Client.RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ISuperStreamConsumer>
+RabbitMQ.Stream.Client.StreamSystem.DeleteSuperStream(string superStream) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystem.StreamInfo(string streamName) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamInfo>
 RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
 RabbitMQ.Stream.Client.StreamSystem.UpdateSecret(string newSecret) -> System.Threading.Tasks.Task
@@ -306,6 +308,19 @@ RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.get -> RabbitMQ.Stream.C
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.get -> RabbitMQ.Stream.Client.ConnectionPoolConfig
 RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.set -> void
+RabbitMQ.Stream.Client.SuperStreamSpec
+RabbitMQ.Stream.Client.SuperStreamSpec.Args.get -> System.Collections.Generic.IDictionary<string, string>
+RabbitMQ.Stream.Client.SuperStreamSpec.BindingKeys.get -> System.Collections.Generic.List<string>
+RabbitMQ.Stream.Client.SuperStreamSpec.BindingKeys.set -> void
+RabbitMQ.Stream.Client.SuperStreamSpec.LeaderLocator.set -> void
+RabbitMQ.Stream.Client.SuperStreamSpec.MaxAge.set -> void
+RabbitMQ.Stream.Client.SuperStreamSpec.MaxLengthBytes.set -> void
+RabbitMQ.Stream.Client.SuperStreamSpec.MaxSegmentSizeBytes.set -> void
+RabbitMQ.Stream.Client.SuperStreamSpec.Name.get -> string
+RabbitMQ.Stream.Client.SuperStreamSpec.Name.init -> void
+RabbitMQ.Stream.Client.SuperStreamSpec.Partitions.get -> int
+RabbitMQ.Stream.Client.SuperStreamSpec.Partitions.set -> void
+RabbitMQ.Stream.Client.SuperStreamSpec.SuperStreamSpec(string Name) -> void
 RabbitMQ.Stream.Client.TooManyConnectionsException
 RabbitMQ.Stream.Client.TooManyConnectionsException.TooManyConnectionsException(string s) -> void
 RabbitMQ.Stream.Client.UnknownCommandException

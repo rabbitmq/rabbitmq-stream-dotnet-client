@@ -50,7 +50,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void ValidateRoutingKeyProducer()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // RoutingKeyExtractor must be set else the traffic won't be routed
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await Assert.ThrowsAsync<CreateProducerException>(() =>
@@ -133,7 +133,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void SendMessageToSuperStream()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
         // We should not have any errors and according to the routing strategy
         // the message should be routed to the correct stream
@@ -180,7 +180,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void SendMessageToSuperStreamWithKeyStrategy()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
 
         var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -267,7 +267,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void SendMessageWithProducerToSuperStreamWithKeyStrategy()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
 
         var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -344,7 +344,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void SendBachToSuperStream()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // Here we are sending a batch of messages to the super stream
         // The number of the messages per queue _must_ be the same as SendMessageToSuperStream test
         var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -382,7 +382,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void SendSubEntryToSuperStream()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // Here we are sending a subentry messages to the super stream
         // The number of the messages per queue _must_ be the same as SendMessageToSuperStream test
         var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -419,7 +419,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void SendMessageToSuperStreamRecreateConnectionsIfKilled()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // This test validates that the super stream producer is able to recreate the connection
         // if the connection is killed
         // we use the connection closed handler to recreate the connection
@@ -477,7 +477,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void HandleConfirmationToSuperStream()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // This test is for the confirmation mechanism
         // We send 20 messages and we should have confirmation messages == stream messages count
         // total count must be 20 divided by 3 streams (not in equals way..)
@@ -523,7 +523,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void HandleMetaUpdateRemoveSteamShouldContinueToWork()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // In this test we are going to remove a stream from the super stream
         // and we are going to check that the producer is still able to send messages
         var confirmed = 0;
@@ -587,7 +587,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void SendMessagesInDifferentWaysShouldAppendToTheStreams()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // In this test we are going to send 20 messages with the same message id
         // without reference so the messages in the stream must be appended
         // so the total count must be 20 * 3 (standard send,batch send, subentry send)
@@ -632,7 +632,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void SuperStreamDeduplicationDifferentWaysShouldGiveSameResults()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // In this test we are going to send 20 messages with the same message id
         // and the same REFERENCE, in this way we enable the deduplication
         // so the result messages in the streams but always the same for the first
@@ -682,7 +682,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void ReliableProducerSuperStreamSendMessagesDifferentWays()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var streamProducer = await Producer.Create(new ProducerConfig(system, SystemUtils.InvoicesExchange)
         {
@@ -721,7 +721,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void ReliableProducerHandleConfirmation()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // This test is for the confirmation mechanism
         // We send 20 messages and we should have confirmation messages == stream messages count
         // total count must be 20 divided by 3 streams (not in equals way..)
@@ -784,7 +784,7 @@ public class SuperStreamProducerTests
     [Fact]
     public async void ReliableProducerSendMessageConnectionsIfKilled()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // This test validates that the Reliable super stream producer is able to recreate the connection
         // if the connection is killed
         // It is NOT meant to test the availability of the super stream producer

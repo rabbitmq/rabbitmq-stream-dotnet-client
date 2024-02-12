@@ -14,7 +14,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitMQ.Client;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
@@ -136,7 +135,7 @@ namespace Tests
             string clientProviderNameLocator = "stream-locator")
         {
             stream = Guid.NewGuid().ToString();
-            var config = new StreamSystemConfig { ClientProvidedName = clientProviderNameLocator };
+            var config = new StreamSystemConfig {ClientProvidedName = clientProviderNameLocator};
             system = StreamSystem.Create(config).Result;
             var x = system.CreateStream(new StreamSpec(stream));
             x.Wait();
@@ -239,7 +238,7 @@ namespace Tests
             {
                 var message = new Message(Encoding.Default.GetBytes("hello"))
                 {
-                    Properties = new Properties() { MessageId = $"hello{i}" }
+                    Properties = new Properties() {MessageId = $"hello{i}"}
                 };
                 await producer.Send(Convert.ToUInt64(i), message);
             }
@@ -265,7 +264,7 @@ namespace Tests
 
         public static async Task<int> ConnectionsCountByName(string connectionName)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
             using var client = new HttpClient(handler);
 
             var result = await client.GetAsync("http://localhost:15672/api/connections");
@@ -288,7 +287,7 @@ namespace Tests
 
         public static async Task<bool> IsConnectionOpen(string connectionName)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
             using var client = new HttpClient(handler);
             var isOpen = false;
 
@@ -311,7 +310,7 @@ namespace Tests
 
         public static async Task<int> HttpKillConnections(string connectionName)
         {
-            using var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            using var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
             using var client = new HttpClient(handler);
 
             var result = await client.GetAsync("http://localhost:15672/api/connections");
@@ -361,7 +360,7 @@ namespace Tests
 
         private static HttpClient CreateHttpClient()
         {
-            var handler = new HttpClientHandler { Credentials = new NetworkCredential("guest", "guest"), };
+            var handler = new HttpClientHandler {Credentials = new NetworkCredential("guest", "guest"),};
             return new HttpClient(handler);
         }
 
@@ -428,43 +427,22 @@ namespace Tests
             return fileTask.Result;
         }
 
-        public static void ResetSuperStreams()
+        public static async Task ResetSuperStreams()
         {
-            var factory = new ConnectionFactory();
-            var connection = factory.CreateConnection();
-            var channel = connection.CreateModel();
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            try
+            {
+                await system.DeleteStream(InvoicesExchange);
+            }
+            catch (Exception)
+            {
+                // ignore if the stream does not exist
+            }
 
-            channel.ExchangeDelete(InvoicesExchange);
-
-            channel.QueueDelete(InvoicesStream0);
-            channel.QueueDelete(InvoicesStream1);
-            channel.QueueDelete(InvoicesStream2);
             Wait();
-
-            channel.ExchangeDeclare(InvoicesExchange, "direct", true, false,
-                new Dictionary<string, object>() { { "x-super-stream-enabled", "true" } });
-
-            channel.QueueDeclare(InvoicesStream0, true, false, false,
-                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
-
-            channel.QueueDeclare(InvoicesStream1, true, false, false,
-                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
-
-            channel.QueueDeclare(InvoicesStream2, true, false, false,
-                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
-            Wait();
-
-            channel.QueueBind(InvoicesStream0, InvoicesExchange, "0",
-                new Dictionary<string, object>() { { "x-stream-partition-order", "0" } });
-
-            channel.QueueBind(InvoicesStream1, InvoicesExchange, "1",
-                new Dictionary<string, object>() { { "x-stream-partition-order", "1" } });
-
-            channel.QueueBind(InvoicesStream2, InvoicesExchange, "2",
-                new Dictionary<string, object>() { { "x-stream-partition-order", "2" } });
-
-            channel.Close();
-            connection.Close();
+            var spec = new SuperStreamSpec(InvoicesExchange);
+            await system.CreateSuperStream(spec);
+            await system.Close();
         }
     }
 }

@@ -343,7 +343,7 @@ namespace Tests
         [Fact]
         public async void NumberOfPartitionsShouldBeAsDefinition()
         {
-            SystemUtils.ResetSuperStreams();
+            await SystemUtils.ResetSuperStreams();
             var system = await StreamSystem.Create(new StreamSystemConfig());
             var partitions = await system.QueryPartition(SystemUtils.InvoicesExchange);
             Assert.True(partitions.Length == 3);
@@ -352,6 +352,58 @@ namespace Tests
             Assert.Contains(SystemUtils.InvoicesStream2, partitions);
             Assert.DoesNotContain(SystemUtils.InvoicesExchange, partitions);
             await system.Close().ConfigureAwait(false);
+        }
+
+        [Fact]
+        public async void CreateDeleteSuperStream()
+        {
+            var config = new StreamSystemConfig();
+            var system = await StreamSystem.Create(config);
+            const string SuperStream = "my-first-system-super-stream";
+            var spec = new SuperStreamSpec(SuperStream)
+            {
+                MaxAge = TimeSpan.FromHours(8),
+                LeaderLocator = LeaderLocator.Random,
+                MaxLengthBytes = 20_000,
+                MaxSegmentSizeBytes = 1000,
+                Partitions = 3
+            };
+            Assert.Equal("28800s", spec.Args["max-age"]);
+            Assert.Equal("random", spec.Args["queue-leader-locator"]);
+            Assert.Equal("1000", spec.Args["stream-max-segment-size-bytes"]);
+            Assert.Equal("20000", spec.Args["max-length-bytes"]);
+            await system.CreateSuperStream(spec);
+            await system.DeleteSuperStream(SuperStream);
+            await system.Close();
+        }
+
+        [Fact]
+        public async void ValidateSuperStreamConfiguration()
+        {
+            const string SuperStream = "my-validation-system-super-stream";
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            var specZeroPartitions = new SuperStreamSpec(SuperStream)
+            {
+                Partitions = 0
+            };
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                async () => { await system.CreateSuperStream(specZeroPartitions); }
+            );
+
+            var specWrongBindings = new SuperStreamSpec(SuperStream)
+            {
+                BindingKeys = new List<string>() { "key1", "key2" },
+                Partitions = 4,
+            };
+            await Assert.ThrowsAsync<ArgumentException>(
+                async () => { await system.CreateSuperStream(specWrongBindings); }
+            );
+
+            await Assert.ThrowsAsync<DeleteStreamException>(
+                async () => { await system.DeleteSuperStream("not-exist"); }
+            );
+
         }
     }
 }
