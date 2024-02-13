@@ -724,6 +724,14 @@ namespace RabbitMQ.Stream.Client
                     CommandVersionsResponse.Read(frame, out var commandVersionsResponse);
                     HandleCorrelatedResponse(commandVersionsResponse);
                     break;
+                case CreateSuperStreamResponse.Key:
+                    CreateSuperStreamResponse.Read(frame, out var superStreamResponse);
+                    HandleCorrelatedResponse(superStreamResponse);
+                    break;
+                case DeleteSuperStreamResponse.Key:
+                    DeleteSuperStreamResponse.Read(frame, out var deleteSuperStreamResponse);
+                    HandleCorrelatedResponse(deleteSuperStreamResponse);
+                    break;
                 default:
                     if (MemoryMarshal.TryGetArray(frame.First, out var segment))
                     {
@@ -863,7 +871,6 @@ namespace RabbitMQ.Stream.Client
             if (response.StreamInfos is { Count: >= 1 } &&
                 response.StreamInfos[stream].ResponseCode == ResponseCode.StreamNotAvailable)
             {
-
                 ClientExceptions.MaybeThrowException(ResponseCode.StreamNotAvailable, stream);
             }
 
@@ -886,6 +893,21 @@ namespace RabbitMQ.Stream.Client
         public async ValueTask<DeleteResponse> DeleteStream(string stream)
         {
             return await Request<DeleteRequest, DeleteResponse>(corr => new DeleteRequest(corr, stream))
+                .ConfigureAwait(false);
+        }
+
+        public async ValueTask<CreateSuperStreamResponse> CreateSuperStream(string superStream, List<string> partitions,
+            List<string> bindingKeys, IDictionary<string, string> args)
+        {
+            return await Request<CreateSuperStreamRequest, CreateSuperStreamResponse>(corr =>
+                    new CreateSuperStreamRequest(corr, superStream, partitions, bindingKeys, args))
+                .ConfigureAwait(false);
+        }
+
+        public async ValueTask<DeleteSuperStreamResponse> DeleteSuperStream(string superStream)
+        {
+            return await Request<DeleteSuperStreamRequest, DeleteSuperStreamResponse>(corr =>
+                    new DeleteSuperStreamRequest(corr, superStream))
                 .ConfigureAwait(false);
         }
 

@@ -159,7 +159,7 @@ public class RClient
                 {
                     var conf = new ConsumerConfig(system, stream)
                     {
-                        OffsetSpec = new OffsetTypeFirst(),
+                        OffsetSpec = new OffsetTypeLast(),
                         IsSuperStream = config.SuperStream,
                         IsSingleActiveConsumer = config.SuperStream,
                         Reference = "myApp",
@@ -261,7 +261,7 @@ public class RClient
                                 Properties = new Properties() {MessageId = $"hello{i}"}
                             };
                             await MaybeSend(producer, message, publishEvent).ConfigureAwait(false);
-                            await Task.Delay(320).ConfigureAwait(false);
+                            // await Task.Delay(1).ConfigureAwait(false);
                             Interlocked.Increment(ref totalSent);
                         }
                     });

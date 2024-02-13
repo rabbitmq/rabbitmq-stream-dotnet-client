@@ -38,7 +38,7 @@ public class UsabilityTests
         var rawProducerLogger = factory.CreateLogger<RawProducer>();
         var rawProducer = await system.CreateRawProducer(new RawProducerConfig(StreamName), rawProducerLogger);
 
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var rawSuperProducerLogger = factory.CreateLogger<RawSuperStreamProducer>();
         var rawSuperConsumerLogger = factory.CreateLogger<RawSuperStreamConsumer>();
         var rawSuperProducer = await system.CreateRawSuperStreamProducer(

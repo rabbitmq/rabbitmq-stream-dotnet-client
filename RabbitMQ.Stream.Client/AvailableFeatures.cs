@@ -16,6 +16,7 @@ internal class AvailableFeatures
     public bool PublishFilter { get; private set; }
 
     public bool Is311OrMore { get; private set; }
+    public bool Is313OrMore { get; private set; }
 
     public string BrokerVersion { get; private set; }
 
@@ -31,9 +32,9 @@ internal class AvailableFeatures
 
     public void SetServerVersion(string brokerVersion)
     {
-        var v = ExtractVersion(brokerVersion);
-        BrokerVersion = v;
-        Is311OrMore = new System.Version(v) >= new System.Version("3.11.0");
+        BrokerVersion = ExtractVersion(brokerVersion);
+        Is311OrMore = new System.Version(BrokerVersion) >= new System.Version("3.11.0");
+        Is313OrMore = new System.Version(BrokerVersion) >= new System.Version("3.13.0");
     }
 
     public void ParseCommandVersions(List<ICommandVersions> commands)

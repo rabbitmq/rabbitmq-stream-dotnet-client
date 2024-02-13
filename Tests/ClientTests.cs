@@ -68,7 +68,7 @@ namespace Tests
             Assert.Equal(streamNotExist, streamInfoPairNo.Key);
             var streamInfoNo = streamInfoPairNo.Value;
             Assert.Equal(ResponseCode.StreamDoesNotExist, streamInfoNo.ResponseCode);
-
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
@@ -351,6 +351,7 @@ namespace Tests
 
             Assert.Equal(10, messageCount);
             await client.Unsubscribe(subId);
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
@@ -440,6 +441,29 @@ namespace Tests
             var response = await client.ExchangeVersions();
             Assert.Equal(ResponseCode.Ok, response.ResponseCode);
             Assert.True(response.Commands.Count > 0);
+            await client.Close("done");
+        }
+
+        [Fact]
+        public async void CreateDeleteSuperStreamWith2Partitions()
+        {
+            var clientParameters = new ClientParameters { };
+            var client = await Client.Create(clientParameters);
+            const string SuperStream = "my_super_stream_with_2_partitions";
+            var partitions = new List<string> { "partition_0", "partition_1" };
+            var bindingKeys = new List<string>() { "0", "1" };
+            var args = new Dictionary<string, string> { { "queue-leader-locator", "least-leaders"},
+                { "max-length-bytes", "10000"}, {"max-age", "30000s"}};
+            var response = await client.CreateSuperStream(SuperStream, partitions, bindingKeys, args);
+            Assert.Equal(ResponseCode.Ok, response.ResponseCode);
+            SystemUtils.Wait(TimeSpan.FromSeconds(1));
+            var responseError = await client.CreateSuperStream(SuperStream, partitions, bindingKeys, args);
+            Assert.Equal(ResponseCode.StreamAlreadyExists, responseError.ResponseCode);
+            var responseDelete = await client.DeleteSuperStream(SuperStream);
+            Assert.Equal(ResponseCode.Ok, responseDelete.ResponseCode);
+            SystemUtils.Wait(TimeSpan.FromSeconds(1));
+            var responseDeleteError = await client.DeleteSuperStream(SuperStream);
+            Assert.Equal(ResponseCode.StreamDoesNotExist, responseDeleteError.ResponseCode);
             await client.Close("done");
         }
     }

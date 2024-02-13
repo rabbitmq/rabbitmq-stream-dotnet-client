@@ -129,7 +129,7 @@ public class DeduplicationProducerTests
         // We send the same messages again with the same publishing id
         // to see the deduplication in action
         // the second loop will be skipped due to the deduplication
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var testPassed = new TaskCompletionSource<int>();
         const int TotalMessages = 20;
@@ -141,7 +141,7 @@ public class DeduplicationProducerTests
                 {
                     Routing = message1 => message1.Properties.MessageId.ToString()
                 },
-                ConfirmationHandler = async confirmation =>
+                ConfirmationHandler = async _ =>
                 {
                     if (Interlocked.Increment(ref confirmed) == TotalMessages * 2)
                         testPassed.SetResult(TotalMessages);

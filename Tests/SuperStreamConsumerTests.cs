@@ -30,7 +30,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void NumberOfConnectionsShouldBeEqualsToThePartitions()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientProvidedName = Guid.NewGuid().ToString();
         var consumer = await system.CreateSuperStreamConsumer(
@@ -61,7 +61,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void NumberOfMessagesConsumedShouldBeEqualsToPublished()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
 
         var testPassed = new TaskCompletionSource<int>();
         var listConsumed = new ConcurrentBag<string>();
@@ -119,7 +119,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void RemoveOneConnectionIfaStreamIsDeleted()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         // When a stream is deleted, the consumer should remove the connection
         // This is to test the metadata update functionality
         var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -152,7 +152,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void SingleConsumerReconnectInCaseOfKillingConnection()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var clientProvidedName = Guid.NewGuid().ToString();
 
@@ -201,7 +201,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void ValidateSuperStreamConsumer()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
 
         var system = await StreamSystem.Create(new StreamSystemConfig());
 
@@ -277,7 +277,7 @@ public class SuperStreamConsumerTests
     [ClassData(typeof(ConsumerExpectedTestCases))]
     public async void MoreConsumersNumberOfMessagesConsumedShouldBeEqualsToPublished(ConsumerExpected consumerExpected)
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
 
         var listConsumed = new ConcurrentBag<string>();
         const int NumberOfMessages = 20;
@@ -344,7 +344,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void ReliableConsumerNumberOfMessagesConsumedShouldBeEqualsToPublished()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         _testOutputHelper.WriteLine("awaiting publish to super stream");
         var publishTask =
@@ -412,7 +412,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void ReliableConsumerNumberOfMessagesConsumedShouldBeEqualsToPublishedInSaC()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
         var listConsumed = new ConcurrentBag<string>();
@@ -504,7 +504,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void SaCAddNewConsumerShouldReceiveAllTheMessage()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
         await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "", _testOutputHelper);
         var listConsumed = new ConcurrentBag<string>();
@@ -571,7 +571,7 @@ public class SuperStreamConsumerTests
     [Fact]
     public async void SuperConsumerShouldReceive4StatusInfo()
     {
-        SystemUtils.ResetSuperStreams();
+        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
 
         var clientProvidedName = Guid.NewGuid().ToString();

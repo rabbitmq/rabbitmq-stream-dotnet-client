@@ -368,6 +368,19 @@ namespace RabbitMQ.Stream.Client
             throw new CreateStreamException($"Failed to create stream, error code: {response.ResponseCode.ToString()}");
         }
 
+        public async Task CreateSuperStream(SuperStreamSpec spec)
+        {
+            spec.Validate();
+            await MayBeReconnectLocator().ConfigureAwait(false);
+            var response = await _client.CreateSuperStream(spec.Name, spec.GetPartitions(), spec.GetBindingKeys(), spec.Args).ConfigureAwait(false);
+            if (response.ResponseCode is ResponseCode.Ok or ResponseCode.StreamAlreadyExists)
+            {
+                return;
+            }
+
+            throw new CreateStreamException($"Failed to create stream, error code: {response.ResponseCode.ToString()}");
+        }
+
         public async Task<bool> StreamExists(string stream)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
@@ -434,6 +447,18 @@ namespace RabbitMQ.Stream.Client
             }
 
             throw new DeleteStreamException($"Failed to delete stream, error code: {response.ResponseCode.ToString()}");
+        }
+
+        public async Task DeleteSuperStream(string superStream)
+        {
+            await MayBeReconnectLocator().ConfigureAwait(false);
+            var response = await _client.DeleteSuperStream(superStream).ConfigureAwait(false);
+            if (response.ResponseCode == ResponseCode.Ok)
+            {
+                return;
+            }
+
+            throw new DeleteStreamException($"Failed to delete super stream, error code: {response.ResponseCode.ToString()}");
         }
 
         public async Task<StreamStats> StreamStats(string stream)

@@ -14,7 +14,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitMQ.Client;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
@@ -428,43 +427,22 @@ namespace Tests
             return fileTask.Result;
         }
 
-        public static void ResetSuperStreams()
+        public static async Task ResetSuperStreams()
         {
-            var factory = new ConnectionFactory();
-            var connection = factory.CreateConnection();
-            var channel = connection.CreateModel();
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            try
+            {
+                await system.DeleteSuperStream(InvoicesExchange);
+            }
+            catch (Exception)
+            {
+                // ignore if the stream does not exist
+            }
 
-            channel.ExchangeDelete(InvoicesExchange);
-
-            channel.QueueDelete(InvoicesStream0);
-            channel.QueueDelete(InvoicesStream1);
-            channel.QueueDelete(InvoicesStream2);
             Wait();
-
-            channel.ExchangeDeclare(InvoicesExchange, "direct", true, false,
-                new Dictionary<string, object>() { { "x-super-stream-enabled", "true" } });
-
-            channel.QueueDeclare(InvoicesStream0, true, false, false,
-                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
-
-            channel.QueueDeclare(InvoicesStream1, true, false, false,
-                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
-
-            channel.QueueDeclare(InvoicesStream2, true, false, false,
-                new Dictionary<string, object>() { { "x-queue-type", "stream" }, });
-            Wait();
-
-            channel.QueueBind(InvoicesStream0, InvoicesExchange, "0",
-                new Dictionary<string, object>() { { "x-stream-partition-order", "0" } });
-
-            channel.QueueBind(InvoicesStream1, InvoicesExchange, "1",
-                new Dictionary<string, object>() { { "x-stream-partition-order", "1" } });
-
-            channel.QueueBind(InvoicesStream2, InvoicesExchange, "2",
-                new Dictionary<string, object>() { { "x-stream-partition-order", "2" } });
-
-            channel.Close();
-            connection.Close();
+            var spec = new PartitionsSuperStreamSpec(InvoicesExchange, 3);
+            await system.CreateSuperStream(spec);
+            await system.Close();
         }
     }
 }
