@@ -29,6 +29,9 @@ RabbitMQ.Stream.Client.AuthMechanism.External = 1 -> RabbitMQ.Stream.Client.Auth
 RabbitMQ.Stream.Client.AuthMechanism.Plain = 0 -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.AuthMechanismNotSupportedException
 RabbitMQ.Stream.Client.AuthMechanismNotSupportedException.AuthMechanismNotSupportedException(string s) -> void
+RabbitMQ.Stream.Client.BindingsSuperStreamSpec
+RabbitMQ.Stream.Client.BindingsSuperStreamSpec.BindingKeys.get -> string[]
+RabbitMQ.Stream.Client.BindingsSuperStreamSpec.BindingsSuperStreamSpec(string Name, string[] bindingKeys) -> void
 RabbitMQ.Stream.Client.Chunk.Crc.get -> uint
 RabbitMQ.Stream.Client.Chunk.Data.get -> System.ReadOnlyMemory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
@@ -177,6 +180,9 @@ RabbitMQ.Stream.Client.MessageContext.ChunkMessagesCount.get -> uint
 RabbitMQ.Stream.Client.MessageContext.MessageContext(ulong offset, System.TimeSpan timestamp, uint chunkMessagesCount, ulong chunkId) -> void
 RabbitMQ.Stream.Client.OffsetTypeTimestamp.OffsetTypeTimestamp(System.DateTime dateTime) -> void
 RabbitMQ.Stream.Client.OffsetTypeTimestamp.OffsetTypeTimestamp(System.DateTimeOffset dateTimeOffset) -> void
+RabbitMQ.Stream.Client.PartitionsSuperStreamSpec
+RabbitMQ.Stream.Client.PartitionsSuperStreamSpec.Partitions.get -> int
+RabbitMQ.Stream.Client.PartitionsSuperStreamSpec.PartitionsSuperStreamSpec(string Name, int partitions) -> void
 RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.set -> void
@@ -310,16 +316,12 @@ RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.get -> RabbitMQ.S
 RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec
 RabbitMQ.Stream.Client.SuperStreamSpec.Args.get -> System.Collections.Generic.IDictionary<string, string>
-RabbitMQ.Stream.Client.SuperStreamSpec.BindingKeys.get -> System.Collections.Generic.List<string>
-RabbitMQ.Stream.Client.SuperStreamSpec.BindingKeys.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec.LeaderLocator.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec.MaxAge.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec.MaxLengthBytes.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec.MaxSegmentSizeBytes.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec.Name.get -> string
 RabbitMQ.Stream.Client.SuperStreamSpec.Name.init -> void
-RabbitMQ.Stream.Client.SuperStreamSpec.Partitions.get -> int
-RabbitMQ.Stream.Client.SuperStreamSpec.Partitions.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec.SuperStreamSpec(string Name) -> void
 RabbitMQ.Stream.Client.TooManyConnectionsException
 RabbitMQ.Stream.Client.TooManyConnectionsException.TooManyConnectionsException(string s) -> void

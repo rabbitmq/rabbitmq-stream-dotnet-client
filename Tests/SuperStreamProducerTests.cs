@@ -337,7 +337,53 @@ public class SuperStreamProducerTests
         await Assert.ThrowsAsync<RouteNotFoundException>(async () =>
             await producer.Send(
                 new List<Message>() { messageNotRouted }, CompressionType.Gzip));
+        await producer.Close();
+        await system.Close();
+    }
 
+    [Fact]
+    public async void SendMessageWithProducerToSuperStreamWithKeyStrategyCountries()
+    {
+        const string SuperStream = "countries";
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var conf = new BindingsSuperStreamSpec(SuperStream, new[] { "italy", "france", "spain", "germany", "uk" });
+        await system.CreateSuperStream(conf);
+
+        var producer =
+            await Producer.Create(new ProducerConfig(system, SuperStream)
+            {
+                SuperStreamConfig = new SuperStreamConfig()
+                {
+                    Routing = message => message.Properties.MessageId.ToString(),
+                    RoutingStrategyType = RoutingStrategyType.Key // this is the key routing strategy
+                }
+            });
+        var messages = new List<Message>()
+        {
+            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "italy"}},
+            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "italy"}},
+            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "france"}},
+            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "spain"}},
+            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "germany"}},
+            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "germany"}},
+            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "uk"}},
+        };
+
+        foreach (var message in messages)
+        {
+            await producer.Send(message);
+        }
+
+        Assert.Equal(conf.BindingKeys, new[] { "italy", "france", "spain", "germany", "uk" });
+        SystemUtils.Wait();
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-italy") == 2);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-france") == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-spain") == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-uk") == 1);
+        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-germany") == 2);
+        await system.DeleteSuperStream(SuperStream);
+
+        await producer.Close();
         await system.Close();
     }
 
@@ -626,6 +672,7 @@ public class SuperStreamProducerTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9 * 3);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4 * 3);
+        await streamProducer.Close();
         await system.Close();
     }
 
@@ -675,6 +722,7 @@ public class SuperStreamProducerTests
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
         SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await streamProducer.Close();
         await system.Close();
     }
 

@@ -131,8 +131,8 @@ namespace Tests
             var offset = await client.QueryOffset("consumer_offset", stream);
             // The offset must be numberOfMessages less one
             Assert.Equal(offset.Offset, Convert.ToUInt64(NumberOfMessages - 1));
-            await consumer.Close();
             await system.DeleteStream(stream);
+            await consumer.Close();
             await system.Close();
         }
 

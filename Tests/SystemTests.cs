@@ -166,6 +166,7 @@ namespace Tests
             var streamSystem = await StreamSystem.Create(config);
 
             await streamSystem.UpdateSecret("guest");
+            await streamSystem.Close();
         }
 
         [Fact]
@@ -177,6 +178,7 @@ namespace Tests
             await Assert.ThrowsAsync<AuthenticationFailureException>(
                 async () => { await streamSystem.UpdateSecret("not_valid_secret"); }
             );
+            await streamSystem.Close();
         }
 
         [Fact]
@@ -189,6 +191,7 @@ namespace Tests
             await Assert.ThrowsAsync<UpdateSecretFailureException>(
                 async () => { await streamSystem.UpdateSecret("guest"); }
             );
+            await streamSystem.Close();
         }
 
         [Fact]
@@ -360,13 +363,12 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
             const string SuperStream = "my-first-system-super-stream";
-            var spec = new SuperStreamSpec(SuperStream)
+            var spec = new PartitionsSuperStreamSpec(SuperStream, 2)
             {
                 MaxAge = TimeSpan.FromHours(8),
                 LeaderLocator = LeaderLocator.Random,
                 MaxLengthBytes = 20_000,
                 MaxSegmentSizeBytes = 1000,
-                Partitions = 3
             };
             Assert.Equal("28800s", spec.Args["max-age"]);
             Assert.Equal("random", spec.Args["queue-leader-locator"]);
@@ -382,28 +384,27 @@ namespace Tests
         {
             const string SuperStream = "my-validation-system-super-stream";
             var system = await StreamSystem.Create(new StreamSystemConfig());
-            var specZeroPartitions = new SuperStreamSpec(SuperStream)
-            {
-                Partitions = 0
-            };
+            var specZeroPartitions = new PartitionsSuperStreamSpec(SuperStream, 0) { };
 
             await Assert.ThrowsAsync<ArgumentException>(
                 async () => { await system.CreateSuperStream(specZeroPartitions); }
             );
 
-            var specWrongBindings = new SuperStreamSpec(SuperStream)
-            {
-                BindingKeys = new List<string>() { "key1", "key2" },
-                Partitions = 4,
-            };
+            var specNullBindings = new BindingsSuperStreamSpec(SuperStream, null);
             await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.CreateSuperStream(specWrongBindings); }
+                async () => { await system.CreateSuperStream(specNullBindings); }
+            );
+
+            var specDuplicationBindings =
+                new BindingsSuperStreamSpec(SuperStream, new[] { "duplication", "duplication" });
+            await Assert.ThrowsAsync<ArgumentException>(
+                async () => { await system.CreateSuperStream(specDuplicationBindings); }
             );
 
             await Assert.ThrowsAsync<DeleteStreamException>(
                 async () => { await system.DeleteSuperStream("not-exist"); }
             );
-
+            await system.Close();
         }
     }
 }

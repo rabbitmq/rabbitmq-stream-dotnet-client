@@ -68,7 +68,7 @@ namespace Tests
             Assert.Equal(streamNotExist, streamInfoPairNo.Key);
             var streamInfoNo = streamInfoPairNo.Value;
             Assert.Equal(ResponseCode.StreamDoesNotExist, streamInfoNo.ResponseCode);
-
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
@@ -351,6 +351,7 @@ namespace Tests
 
             Assert.Equal(10, messageCount);
             await client.Unsubscribe(subId);
+            await client.DeleteStream(stream);
             await client.Close("done");
         }
 
