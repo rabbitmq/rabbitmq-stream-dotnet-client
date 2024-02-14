@@ -17,21 +17,24 @@ public class SuperStreamProducer
         var loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.AddSimpleConsole();
-            
+
             builder.AddFilter("RabbitMQ.Stream", LogLevel.Information);
         });
-        
+
 
         var logger = loggerFactory.CreateLogger<Producer>();
-        
+
         var loggerMain = loggerFactory.CreateLogger<SuperStreamProducer>();
 
         loggerMain.LogInformation("Starting SuperStream Producer");
         var config = new StreamSystemConfig();
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
         loggerMain.LogInformation("Super Stream Producer connected to RabbitMQ");
-
-
+        
+        
+        // tag::super-stream-creation[]
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(Costants.StreamName, 3)).ConfigureAwait(false);
+        // end::super-stream-creation[]
         // We define a Producer with the SuperStream name (that is the Exchange name)
         // tag::super-stream-producer[]
         var producer = await Producer.Create(
@@ -56,7 +59,7 @@ public class SuperStreamProducer
             await producer.Send(message).ConfigureAwait(false);
             // end::super-stream-producer[]
             loggerMain.LogInformation("Sent {I} message to {StreamName}, id: {ID}", $"my_invoice_number{i}",
-                Costants.StreamName,  $"id_{i}");
+                Costants.StreamName, $"id_{i}");
             Thread.Sleep(TimeSpan.FromMilliseconds(1000));
         }
     }

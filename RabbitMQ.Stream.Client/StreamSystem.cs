@@ -395,6 +395,20 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        public async Task<bool> SuperStreamExists(string superStream)
+        {
+            await MayBeReconnectLocator().ConfigureAwait(false);
+            await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                return await _client.SuperStreamExists(superStream).ConfigureAwait(false);
+            }
+            finally
+            {
+                _semClientProvidedName.Release();
+            }
+        }
+
         private static void MaybeThrowQueryException(string reference, string stream)
         {
             if (string.IsNullOrWhiteSpace(reference) || string.IsNullOrWhiteSpace(stream))
