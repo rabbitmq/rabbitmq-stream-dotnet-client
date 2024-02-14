@@ -19,6 +19,9 @@ public class Start
             case "--producer":
                 await SuperStreamProducer.Start().ConfigureAwait(false);
                 break;
+            case "--producer-key":
+                await SuperStreamProducerKey.Start().ConfigureAwait(false);
+                break;
             case "--consumer":
                 if (arguments.Length == 1)
                 {

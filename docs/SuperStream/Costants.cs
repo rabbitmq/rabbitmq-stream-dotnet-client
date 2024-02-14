@@ -7,4 +7,5 @@ namespace SuperStream;
 public class Costants
 {
    public const string StreamName = "invoices";
+   public const string StreamNameC = "invoices-c";
 }

@@ -864,6 +864,19 @@ namespace RabbitMQ.Stream.Client
                 .ConfigureAwait(false);
         }
 
+        public async Task<bool> SuperStreamExists(string stream)
+        {
+            var response = await QueryPartition(stream).ConfigureAwait(false);
+            if (response is { Streams.Length: >= 0 } &&
+                response.ResponseCode == ResponseCode.StreamNotAvailable)
+            {
+                ClientExceptions.MaybeThrowException(ResponseCode.StreamNotAvailable, stream);
+            }
+
+            return response is { Streams.Length: >= 0 } &&
+                   response.ResponseCode == ResponseCode.Ok;
+        }
+
         public async Task<bool> StreamExists(string stream)
         {
             var streams = new[] { stream };

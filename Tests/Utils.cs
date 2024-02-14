@@ -440,7 +440,7 @@ namespace Tests
             }
 
             Wait();
-            var spec = new PartitionsSuperStreamSpec(InvoicesExchange, 3);
+            var spec = new PartitionsSuperStreamSpec(InvoicesExchange);
             await system.CreateSuperStream(spec);
             await system.Close();
         }

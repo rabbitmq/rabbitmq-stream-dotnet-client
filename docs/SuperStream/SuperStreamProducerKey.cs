@@ -27,7 +27,12 @@ public class SuperStreamProducerKey
         var config = new StreamSystemConfig();
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
         loggerMain.LogInformation("Super Stream Producer connected to RabbitMQ");
+        var keys = new [] {"apac", "emea", "amer"};
 
+        // tag::super-stream-creation[]
+        await system.CreateSuperStream(new BindingsSuperStreamSpec(Costants.StreamNameC, keys)).ConfigureAwait(false);
+        // end::super-stream-creation[]
+        
 
         // We define a Producer with the SuperStream name (that is the Exchange name)
         // tag::super-stream-producer-key[]
@@ -35,7 +40,7 @@ public class SuperStreamProducerKey
             new ProducerConfig(system,
                     // Costants.StreamName is the Exchange name
                     // invoices
-                    Costants.StreamName) 
+                    Costants.StreamNameC) 
                 {
                     SuperStreamConfig = new SuperStreamConfig() 
                     {
@@ -46,8 +51,7 @@ public class SuperStreamProducerKey
                 }, logger).ConfigureAwait(false);
         const int NumberOfMessages = 1_000_000;
         
-        var keys = new [] {"apac", "emea", "amer"};
-
+        
         for (var i = 0; i < NumberOfMessages; i++)
         {
             var key = keys[i % 3];

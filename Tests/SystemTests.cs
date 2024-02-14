@@ -375,7 +375,9 @@ namespace Tests
             Assert.Equal("1000", spec.Args["stream-max-segment-size-bytes"]);
             Assert.Equal("20000", spec.Args["max-length-bytes"]);
             await system.CreateSuperStream(spec);
+            Assert.True(await system.SuperStreamExists(SuperStream));
             await system.DeleteSuperStream(SuperStream);
+            Assert.False(await system.SuperStreamExists(SuperStream));
             await system.Close();
         }
 

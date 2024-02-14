@@ -5,10 +5,8 @@ Super stream example
 [Super Streams blog post](https://blog.rabbitmq.com/posts/2022/07/rabbitmq-3-11-feature-preview-super-streams)
 
 
-First step is to create the super stream:
-
-    $ rabbitmq-streams add_super_stream invoices --partitions 3
-
+This example shows how to use the Super Stream feature in RabbitMQ 3.11.0.
+To run it you need the RabbitMQ `3.13.0` or later and the RabbitMQ .NET client library `1.8.0`.
 
 Then run the producer in one terminal:
 
@@ -80,5 +78,7 @@ Consumer Name my_first_consumer -Received message id: hello9 body: hello9, Strea
 Consumer Name my_first_consumer -Received message id: hello10 body: hello10, Stream invoices-2
 Consumer Name my_first_consumer -Received message id: hello11 body: hello11, Stream invoices-0
 ```
+
+
 
 

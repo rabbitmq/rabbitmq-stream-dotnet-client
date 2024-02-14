@@ -30,12 +30,10 @@ Please refer to the [documentation](https://rabbitmq.github.io/rabbitmq-stream-d
 The library requires .NET 6 or .NET 7.
 
 ### Documentation
-
-
 - [HTML documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html)
 - [PDF documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/dotnet-stream-client.pdf)
-
 - [A Simple Getting started](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/docs/Documentation/)
+- [Best practices to write a reliable client](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient/)
 - [Super Stream example](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/docs/SuperStream)
 - [Stream Performance Test](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/RabbitMQ.Stream.Client.PerfTest)
 

@@ -38,6 +38,10 @@ namespace RabbitMQ.Stream.Client
         public IDictionary<string, string> Args => args;
     }
 
+    /// <summary>
+    /// Abstract class for SuperStreamSpec
+    /// </summary>
+    /// <param name="Name"> Super Stream Name</param>
     public abstract record SuperStreamSpec(string Name)
     {
         internal virtual void Validate()
@@ -79,8 +83,21 @@ namespace RabbitMQ.Stream.Client
         public IDictionary<string, string> Args => args;
     }
 
+    /// <summary>
+    /// Create a super stream based on the number of partitions.
+    /// So there will be N partitions and N binding keys.
+    /// The stream names is the super stream name with a partition number appended.
+    /// The routing key is the partition number.
+    /// Producer should use HASH strategy to route the message to the correct partition.
+    /// Partitions should be at least 1.
+    /// </summary>
     public record PartitionsSuperStreamSpec : SuperStreamSpec
     {
+
+        public PartitionsSuperStreamSpec(string Name) : base(Name)
+        {
+            Partitions = 3;
+        }
 
         public PartitionsSuperStreamSpec(string Name, int partitions) : base(Name)
         {
@@ -121,6 +138,13 @@ namespace RabbitMQ.Stream.Client
 
     }
 
+    /// <summary>
+    /// Create a super stream based on the number of binding keys.
+    /// So there will be N partitions and N binding keys.
+    /// The stream names is the super stream name with a binding key appended.
+    /// Producer should use KEY strategy to route the message to the correct partition.
+    /// The binding keys should be unique duplicates are not allowed.
+    /// </summary>
     public record BindingsSuperStreamSpec : SuperStreamSpec
     {
         public BindingsSuperStreamSpec(string Name, string[] bindingKeys) : base(Name)
