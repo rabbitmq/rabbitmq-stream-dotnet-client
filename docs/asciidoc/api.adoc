@@ -106,6 +106,7 @@ The following table sums up the main settings to create an `StreamSystem` using 
 |Password to use to connect.
 |`guest`
 
+
 |`VirtualHost`
 |Virtual host to connect to.
 |`/`
@@ -131,8 +132,60 @@ The following table sums up the main settings to create an `StreamSystem` using 
 |Configuration helper for TLS.
 |`null`
 
+
+|`ConnectionPoolConfig`
+|Define the connection pool policies. See <<connection-pool,Connection Pool>> for more details.
+|1 producer/consumer per connection
+
 |===
 
+[[connection-pool]]
+==== Connection pool
+Introduced on version 1.8.0.
+With the connection pool you can define how many producers and consumers can be created on a single connection.
+
+[source]
+----
+ ConnectionPoolConfig = new ConnectionPoolConfig()
+ {
+    ProducersPerConnection = 2,
+    ConsumersPerConnection = 3,
+ }
+----
+
+By default the connection pool is set to 1 producer and 1 consumer per connection.
+The maximum number of producers and consumers per connection is 200.
+
+An high value can reduce the number of connections to the server but it could reduce the performance of the producer and the consumer.
+
+An low value can increase the number of connections to the server but it could increase the performance of the producer and the consumer.
+
+The consumers share the same handler, so if you have a high number of consumers per connection, the handler could be a bottleneck. It means that if there is a slow consumer all the other consumers could be slow.
+
+TIP:
+You can use different StreamSystemConfig like:
+
+[source]
+----
+
+streamSystemToReduceTheConnections = new StreamSystemConfig{
+        ConnectionPoolConfig = new ConnectionPoolConfig() {
+                ConsumersPerConnection = 50, // high value
+                ProducersPerConnection = 50,  // high value
+        }
+}
+
+streamSystemToIncreaseThePerformances = new StreamSystemConfig{
+        ConnectionPoolConfig = new ConnectionPoolConfig() {
+                ConsumersPerConnection = 1, // low value
+                ProducersPerConnection = 1,  // low value
+        }
+}
+----
+There is not a magic number, you have to test and evaluate the best value for your use case.
+
+
+[[address-resolver]]
 ===== When a Load Balancer is in Use
 
 A load balancer can misguide the client when it tries to connect to nodes that host stream leaders and replicas.
@@ -288,7 +341,7 @@ The following table sums up the main settings to create a `ProducerConfig`:
 |The confirmation handler where received the messages confirmations.
 |`null` (no confirmation handler)
 
-|ClientProvidedName
+|`ClientProvidedName`
 |The TCP connection name to identify the client.
 |`dotnet-stream-producer`
 
@@ -308,10 +361,14 @@ This value is valid only for the `Send(Message)` method.
 |`TimeoutMessageAfter`
 |Time to wait before considering a message as not confirmed.
 | 3 seconds
-// TODO: Document Super stream
+
 |`SuperStreamConfig`
 |The super stream configuration.
 |`null` (no super stream)
+
+|`StatusChanged`
+|The callback invoked when the producer status changes. See <<entity-status,Producer Status>> for more details.
+|`null` 
 
 |===
 
@@ -732,6 +789,10 @@ The following table sums up the main settings to create a `Consumer` with `Consu
 |The <<crc-on-delivery,CRC32 implementation>> to use to validate the chunk server crc32 .
 |`null` (no CRC32)
 
+|`StatusChanged`
+|The callback invoked when the consumer status changes. See <<entity-status,Consumer Status>> for more details.
+|`null`
+
 |===
 
 [NOTE]
@@ -982,6 +1043,82 @@ include::{test-examples}/ConsumerUsage.cs[tag=sac-consumer-update-listener]
 <2> Enable single active consumer
 <3> Handle `ConsumerUpdateListener` callback
 
+
+[[entity-status]]
+==== Producer/Consumer change status callback
+`Producer` and `Consumer` classes provide a callback to handle the status change.
+It is possible to configure the event using the configuration `StatusChanged` property.
+
+like the following snippet:
+[source,c#,indent=0]
+--------
+var conf = new ConsumerConfig(system, stream)
+{
+    StatusChanged = (statusInfo) =>
+    {
+        Console.WriteLine($"Consumer status changed to {statusInfo}");
+    }
+};
+var consumer = Consumer.Create(conf);
+--------
+
+the `statusInfo` contains the following information:
+
+[%header,cols=2*]
+|===
+|Parameter Name
+|Description
+
+|`From`
+|The previous status
+
+|`To`
+|The new status
+
+|`Stream`
+|The stream where the Producer or the Consumer is connected
+
+|`Identifier`
+|The identifier of the Producer or the Consumer
+
+|`Partition`
+|The partition in case of super stream
+
+|`Reason`
+|The reason of the status change. See <<status-reason,Status Reason>> for more details.
+
+|===
+
+[[status-reason]]
+`statusInfo.Reason` values:
+
+[%header,cols=2*]
+|===
+|Parameter Name
+|Description
+
+|`None`
+|No reason, default value
+
+|`UnexpectedlyDisconnected`
+|The client was unexpectedly disconnected from the server
+
+|`MetaDataUpdate`
+|The server has updated the metadata of the stream. See this https://docs.google.com/presentation/d/111PccBLRGb-RNpYEKeIm2MQvdky-fXrQ/edit?usp=sharing&ouid=106772747306273309885[presentation] about metadata update for more details
+
+| `ClosedByUser`
+| The client was closed by the user
+
+| `ClosedByStrategyPolicy`
+| The Producer or Consumer was closed by the strategy policy
+
+|`BoolFailure`
+| The Producer or Consumer has failed to connect to the server.
+|===
+
+A full example of the status change callback can be found in https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient[here].
+
+
 [[low-high-level-classes]]
 ==== Low Level and High Level classes
 
@@ -1042,5 +1179,14 @@ You need to handle it yourself.
 The `Producer` traces the sent and received messages to give back to the user the original message sent to the server and also handle the message timeout.
 See <<confirmation-status>> for more details.
 
-It would be best to use `Producer` and `Consumer` classes unless you need to handle the low-level details.  
+It would be best to use `Producer` and `Consumer` classes unless you need to handle the low-level details.
+
+This is a https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient[full example] how to deal with disconnections and metadata updates.
+
+
+
+
+
+
+
 
