@@ -542,10 +542,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#understanding-connection-logic">Understanding Connection Logic</a></li>
 <li><a href="#_enabling_tls">Enabling TLS</a></li>
 <li><a href="#_configuring_the_stream_system">Configuring the Stream System</a></li>
-</ul>
-</li>
-<li><a href="#connection-pool">Connection pool</a>
-<ul class="sectlevel4">
+<li><a href="#connection-pool">Connection pool</a></li>
 <li><a href="#address-resolver">When a Load Balancer is in Use</a></li>
 <li><a href="#_managing_streams">Managing Streams</a></li>
 </ul>
@@ -1544,9 +1541,8 @@ If you hit some connection problems at some point – like hostnames impossible 
 </tbody>
 </table>
 </div>
-</div>
-<div class="sect3">
-<h4 id="connection-pool">Connection pool</h4>
+<div class="sect4">
+<h5 id="connection-pool">Connection pool</h5>
 <div class="paragraph">
 <p>Introduced on version 1.8.0.
 With the connection pool you can define how many producers and consumers can be created on a single connection.</p>
@@ -1596,6 +1592,7 @@ streamSystemToIncreaseThePerformances = new StreamSystemConfig{
 </div>
 <div class="paragraph">
 <p>There is not a magic number, you have to test and evaluate the best value for your use case.</p>
+</div>
 </div>
 <div class="sect4">
 <h5 id="address-resolver">When a Load Balancer is in Use</h5>
@@ -4373,7 +4370,7 @@ You can provide your own implementation of these interfaces to customize the rec
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-09-19 08:55:33 UTC
+Last updated 2024-02-15 14:19:59 UTC
 </div>
 </div>
 </body>
