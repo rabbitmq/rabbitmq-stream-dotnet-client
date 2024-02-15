@@ -542,7 +542,11 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#understanding-connection-logic">Understanding Connection Logic</a></li>
 <li><a href="#_enabling_tls">Enabling TLS</a></li>
 <li><a href="#_configuring_the_stream_system">Configuring the Stream System</a></li>
-<li><a href="#_when_a_load_balancer_is_in_use">When a Load Balancer is in Use</a></li>
+</ul>
+</li>
+<li><a href="#connection-pool">Connection pool</a>
+<ul class="sectlevel4">
+<li><a href="#address-resolver">When a Load Balancer is in Use</a></li>
 <li><a href="#_managing_streams">Managing Streams</a></li>
 </ul>
 </li>
@@ -581,6 +585,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 </ul>
 </li>
+<li><a href="#entity-status">Producer/Consumer change status callback</a></li>
 <li><a href="#low-high-level-classes">Low Level and High Level classes</a>
 <ul class="sectlevel4">
 <li><a href="#_low_level_classes">Low-level classes</a></li>
@@ -622,6 +627,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 </ul>
 </li>
+<li><a href="#_deal_with_broker_disconnections_reconnections_and_metadata_update_events">Deal with broker disconnections, reconnections and metadata update events</a></li>
+<li><a href="#_update_secret">Update Secret</a></li>
 </ul>
 </li>
 </ul>
@@ -1529,11 +1536,69 @@ If you hit some connection problems at some point – like hostnames impossible 
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configuration helper for TLS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ConnectionPoolConfig</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Define the connection pool policies. See <a href="#connection-pool">Connection Pool</a> for more details.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 producer/consumer per connection</p></td>
+</tr>
 </tbody>
 </table>
 </div>
+</div>
+<div class="sect3">
+<h4 id="connection-pool">Connection pool</h4>
+<div class="paragraph">
+<p>Introduced on version 1.8.0.
+With the connection pool you can define how many producers and consumers can be created on a single connection.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code> ConnectionPoolConfig = new ConnectionPoolConfig()
+ {
+    ProducersPerConnection = 2,
+    ConsumersPerConnection = 3,
+ }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default the connection pool is set to 1 producer and 1 consumer per connection.
+The maximum number of producers and consumers per connection is 200.</p>
+</div>
+<div class="paragraph">
+<p>An high value can reduce the number of connections to the server but it could reduce the performance of the producer and the consumer.</p>
+</div>
+<div class="paragraph">
+<p>An low value can increase the number of connections to the server but it could increase the performance of the producer and the consumer.</p>
+</div>
+<div class="paragraph">
+<p>The consumers share the same handler, so if you have a high number of consumers per connection, the handler could be a bottleneck. It means that if there is a slow consumer all the other consumers could be slow.</p>
+</div>
+<div class="paragraph">
+<p>TIP:
+You can use different StreamSystemConfig like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>streamSystemToReduceTheConnections = new StreamSystemConfig{
+        ConnectionPoolConfig = new ConnectionPoolConfig() {
+                ConsumersPerConnection = 50, // high value
+                ProducersPerConnection = 50,  // high value
+        }
+}
+
+streamSystemToIncreaseThePerformances = new StreamSystemConfig{
+        ConnectionPoolConfig = new ConnectionPoolConfig() {
+                ConsumersPerConnection = 1, // low value
+                ProducersPerConnection = 1,  // low value
+        }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>There is not a magic number, you have to test and evaluate the best value for your use case.</p>
+</div>
 <div class="sect4">
-<h5 id="_when_a_load_balancer_is_in_use">When a Load Balancer is in Use</h5>
+<h5 id="address-resolver">When a Load Balancer is in Use</h5>
 <div class="paragraph">
 <p>A load balancer can misguide the client when it tries to connect to nodes that host stream leaders and replicas.
 The <a href="https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/">"Connecting to Streams"</a> blog post covers why client applications must connect to the appropriate nodes in a cluster and how a <a href="https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/#with-a-load-balancer">load balancer can make things complicated</a> for them.</p>
@@ -1859,7 +1924,7 @@ Starting from version 1.2.0 the <code>Reference</code> field is deprecated.
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (no confirmation handler)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ClientProvidedName</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ClientProvidedName</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The TCP connection name to identify the client.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dotnet-stream-producer</code></p></td>
 </tr>
@@ -1888,6 +1953,11 @@ This value is valid only for the <code>Send(Message)</code> method.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SuperStreamConfig</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The super stream configuration.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (no super stream)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StatusChanged</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The callback invoked when the producer status changes. See <a href="#entity-status">Producer Status</a> for more details.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -2744,6 +2814,11 @@ await streamSystem.Close().ConfigureAwait(false);</code></pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The <a href="#crc-on-delivery">CRC32 implementation</a> to use to validate the chunk server crc32 .</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (no CRC32)</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StatusChanged</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The callback invoked when the consumer status changes. See <a href="#entity-status">Consumer Status</a> for more details.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
 </tbody>
 </table>
 <div class="admonitionblock note">
@@ -3196,6 +3271,113 @@ var consumer = await Consumer.Create(
 </div>
 </div>
 <div class="sect3">
+<h4 id="entity-status">Producer/Consumer change status callback</h4>
+<div class="paragraph">
+<p><code>Producer</code> and <code>Consumer</code> classes provide a callback to handle the status change.
+It is possible to configure the event using the configuration <code>StatusChanged</code> property.</p>
+</div>
+<div class="paragraph">
+<p>like the following snippet:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">var conf = new ConsumerConfig(system, stream)
+{
+    StatusChanged = (statusInfo) =&gt;
+    {
+        Console.WriteLine($&quot;Consumer status changed to {statusInfo}&quot;);
+    }
+};
+var consumer = Consumer.Create(conf);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>the <code>statusInfo</code> contains the following information:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter Name</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>From</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The previous status</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>To</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The new status</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Stream</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The stream where the Producer or the Consumer is connected</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Identifier</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The identifier of the Producer or the Consumer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Partition</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The partition in case of super stream</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Reason</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The reason of the status change. See <a href="#status-reason">Status Reason</a> for more details.</p></td>
+</tr>
+</tbody>
+</table>
+<div id="status-reason" class="paragraph">
+<p><code>statusInfo.Reason</code> values:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter Name</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>None</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No reason, default value</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UnexpectedlyDisconnected</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The client was unexpectedly disconnected from the server</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MetaDataUpdate</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The server has updated the metadata of the stream. See this <a href="https://docs.google.com/presentation/d/111PccBLRGb-RNpYEKeIm2MQvdky-fXrQ/edit?usp=sharing&amp;ouid=106772747306273309885">presentation</a> about metadata update for more details</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ClosedByUser</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The client was closed by the user</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ClosedByStrategyPolicy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Producer or Consumer was closed by the strategy policy</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BoolFailure</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Producer or Consumer has failed to connect to the server.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A full example of the status change callback can be found in <a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient">here</a>.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="low-high-level-classes">Low Level and High Level classes</h4>
 <div class="ulist">
 <div class="title">NET stream client provides two types of classes:</div>
@@ -3255,6 +3437,7 @@ They give you all the callbacks to manually handle events like:</p>
         MetadataHandler = update =&gt; // <b class="conum">(3)</b>
         {
             Console.WriteLine($&quot;Metadata Stream updated: {update.Stream}&quot;);
+            return Task.CompletedTask;
         },
         ConfirmHandler = confirmation =&gt; // <b class="conum">(4)</b>
         {
@@ -3333,6 +3516,9 @@ See <a href="#confirmation-status">[confirmation-status]</a> for more details.</
 </div>
 <div class="paragraph">
 <p>It would be best to use <code>Producer</code> and <code>Consumer</code> classes unless you need to handle the low-level details.</p>
+</div>
+<div class="paragraph">
+<p>This is a <a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient">full example</a> how to deal with disconnections and metadata updates.</p>
 </div>
 </div>
 </div>
@@ -3517,9 +3703,9 @@ Here is how to create an invoices super stream with 3 partitions:</p>
 const int NumberOfMessages = 1_000_000;
 for (var i = 0; i &lt; NumberOfMessages; i++)
 {
-    var message = new Message(Encoding.Default.GetBytes($&quot;hello{i}&quot;)) // <b class="conum">(4)</b>
+    var message = new Message(Encoding.Default.GetBytes($&quot;my_invoice_number{i}&quot;)) // <b class="conum">(4)</b>
     {
-        Properties = new Properties() {MessageId = $&quot;hello{i}&quot;}
+        Properties = new Properties() {MessageId = $&quot;id_{i}&quot;}
     };
     await producer.Send(message).ConfigureAwait(false);</code></pre>
 </div>
@@ -3593,7 +3779,7 @@ The stream .NET client provides another way to resolve streams, based on the rou
     new ProducerConfig(system,
             // Costants.StreamName is the Exchange name
             // invoices
-            Costants.StreamName) 
+            Costants.StreamNameC) 
         {
             SuperStreamConfig = new SuperStreamConfig() 
             {
@@ -3604,7 +3790,6 @@ The stream .NET client provides another way to resolve streams, based on the rou
         }, logger).ConfigureAwait(false);
 const int NumberOfMessages = 1_000_000;
 
-var keys = new [] {&quot;apac&quot;, &quot;emea&quot;, &quot;amer&quot;};
 
 for (var i = 0; i &lt; NumberOfMessages; i++)
 {
@@ -4135,12 +4320,60 @@ Extreme cardinality (a couple or dozens of thousands) can make filtering less ef
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_deal_with_broker_disconnections_reconnections_and_metadata_update_events">Deal with broker disconnections, reconnections and metadata update events</h3>
+<div class="paragraph">
+<p>The classes <code>Producer</code> and <code>Consumer</code> automatically handle broker disconnections and reconnections.</p>
+</div>
+<div class="paragraph">
+<p>It is important to know what happens when a broker is disconnected and reconnected.
+See this <a href="https://docs.google.com/presentation/d/111PccBLRGb-RNpYEKeIm2MQvdky-fXrQ/edit#slide=id.p1">presentation</a> about that.</p>
+</div>
+<div class="paragraph">
+<p>The <code>Producer</code> and <code>Consumer</code> classes also handle metadata update events.
+When a stream is deleted, the <code>Producer</code> and <code>Consumer</code> classes automatically close the underlying <code>Raw*Producer</code> and <code>Raw*Consumer</code> objects.</p>
+</div>
+<div class="paragraph">
+<p>The classes provides two interfaces:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>ResourceAvailableReconnectStrategy (checks when the resource is available)</p>
+</li>
+<li>
+<p>ReconnectStrategy (reconnects to the broker)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>That by default implement the reconnection strategy using a back off algorithm.
+You can provide your own implementation of these interfaces to customize the reconnection strategy. Most of the time, the default implementation is enough.</p>
+</div>
+<div class="paragraph">
+<p>You can find a full example <a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient">here</a></p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_update_secret">Update Secret</h3>
+<div class="paragraph">
+<p>To update the secret, you can use:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="csharp">await system.UpdateSecret(await NewAccessToken()).ConfigureAwait(false);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can see a full example with a Keycloak integration  <a href="https://github.com/rabbitmq/rabbitmq-oauth2-tutorial/tree/main/stream_dot_net/Keycloak">here</a></p>
+</div>
+</div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-09-08 14:56:32 UTC
+Last updated 2023-09-19 08:55:33 UTC
 </div>
 </div>
 </body>
