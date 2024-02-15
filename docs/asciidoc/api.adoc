@@ -140,7 +140,7 @@ The following table sums up the main settings to create an `StreamSystem` using 
 |===
 
 [[connection-pool]]
-==== Connection pool
+===== Connection pool
 Introduced on version 1.8.0.
 With the connection pool you can define how many producers and consumers can be created on a single connection.
 
