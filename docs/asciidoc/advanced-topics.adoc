@@ -74,3 +74,35 @@ A defined set of values shared across the messages is a good candidate: geograph
 
 Cardinality of filter values can be from a few to a few thousands.
 Extreme cardinality (a couple or dozens of thousands) can make filtering less efficient.
+
+
+=== Deal with broker disconnections, reconnections and metadata update events
+
+The classes `Producer` and `Consumer` automatically handle broker disconnections and reconnections.
+
+It is important to know what happens when a broker is disconnected and reconnected.
+See this https://docs.google.com/presentation/d/111PccBLRGb-RNpYEKeIm2MQvdky-fXrQ/edit#slide=id.p1[presentation] about that.
+
+The `Producer` and `Consumer` classes also handle metadata update events.
+When a stream is deleted, the `Producer` and `Consumer` classes automatically close the underlying `Raw*Producer` and `Raw*Consumer` objects.
+
+The classes provides two interfaces:
+
+- ResourceAvailableReconnectStrategy (checks when the resource is available)
+- ReconnectStrategy (reconnects to the broker)
+
+That by default implement the reconnection strategy using a back off algorithm.
+You can provide your own implementation of these interfaces to customize the reconnection strategy. Most of the time, the default implementation is enough. 
+
+You can find a full example https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient[here] 
+
+=== Update Secret
+
+To update the secret, you can use:
+
+[source,csharp]
+----
+await system.UpdateSecret(await NewAccessToken()).ConfigureAwait(false);
+----
+
+You can see a full example with a Keycloak integration  https://github.com/rabbitmq/rabbitmq-oauth2-tutorial/tree/main/stream_dot_net/Keycloak[here]
