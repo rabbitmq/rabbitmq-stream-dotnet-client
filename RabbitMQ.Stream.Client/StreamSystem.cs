@@ -161,7 +161,8 @@ namespace RabbitMQ.Stream.Client
             await _client.UpdateSecret(newSecret).ConfigureAwait(false);
             _clientParameters.Password = newSecret;
             _client.Parameters.Password = newSecret;
-
+            await PoolConsumers.UpdateSecrets(newSecret).ConfigureAwait(false);
+            await PoolProducers.UpdateSecrets(newSecret).ConfigureAwait(false);
         }
 
         public async Task<ISuperStreamProducer> CreateRawSuperStreamProducer(
