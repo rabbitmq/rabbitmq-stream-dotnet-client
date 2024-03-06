@@ -180,7 +180,7 @@ namespace Tests
             );
             await streamSystem.Close();
         }
-        
+
         [Fact]
         public async void CreateExistStreamIdempotentShouldNoRaiseExceptions()
         {
