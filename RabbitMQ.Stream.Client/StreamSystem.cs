@@ -155,12 +155,10 @@ namespace RabbitMQ.Stream.Client
 
         public async Task UpdateSecret(string newSecret)
         {
-            if (_client.IsClosed)
-                throw new UpdateSecretFailureException("Cannot update a closed connection.");
-
-            await _client.UpdateSecret(newSecret).ConfigureAwait(false);
             _clientParameters.Password = newSecret;
             _client.Parameters.Password = newSecret;
+            await MayBeReconnectLocator().ConfigureAwait(false);
+            await _client.UpdateSecret(newSecret).ConfigureAwait(false);
             await PoolConsumers.UpdateSecrets(newSecret).ConfigureAwait(false);
             await PoolProducers.UpdateSecrets(newSecret).ConfigureAwait(false);
         }
