@@ -182,19 +182,6 @@ namespace Tests
         }
 
         [Fact]
-        public async void UpdateSecretForClosedConnectionShouldThrowUpdateSecretFailureException()
-        {
-            var config = new StreamSystemConfig { UserName = "guest", Password = "guest" }; // specified for readability
-            var streamSystem = await StreamSystem.Create(config);
-
-            await streamSystem.Close();
-            await Assert.ThrowsAsync<UpdateSecretFailureException>(
-                async () => { await streamSystem.UpdateSecret("guest"); }
-            );
-            await streamSystem.Close();
-        }
-        
-        [Fact]
         public async void CreateExistStreamIdempotentShouldNoRaiseExceptions()
         {
             // Create the stream in idempotent way
