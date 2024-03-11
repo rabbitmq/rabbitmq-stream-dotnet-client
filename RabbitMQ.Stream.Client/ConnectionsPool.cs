@@ -210,6 +210,7 @@ public class ConnectionsPool
         {
             foreach (var connectionItem in Connections.Values)
             {
+                connectionItem.Client.Parameters.Password = newSecret;
                 await connectionItem.Client.UpdateSecret(newSecret).ConfigureAwait(false);
                 connectionItem.Client.Parameters.Password = newSecret;
             }
