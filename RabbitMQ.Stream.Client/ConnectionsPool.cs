@@ -32,6 +32,19 @@ public class ConnectionPoolConfig
     public byte ProducersPerConnection { get; set; } = 1;
 }
 
+public class LastSecret
+{
+    public string Secret { get; private set; } = string.Empty;
+    public DateTime LastUpdate { get; private set; } = DateTime.MinValue;
+    public bool IsValid => LastUpdate > DateTime.MinValue && !string.IsNullOrEmpty(Secret);
+
+    public void Update(string secret)
+    {
+        Secret = secret;
+        LastUpdate = DateTime.UtcNow;
+    }
+}
+
 public class ConnectionItem
 {
     public ConnectionItem(string brokerInfo, byte idsPerConnection, IClient client)
@@ -113,6 +126,7 @@ public class ConnectionsPool
     private readonly int _maxConnections;
     private readonly byte _idsPerConnection;
     private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
+    private readonly LastSecret _lastSecret = new();
 
     /// <summary>
     /// Init the pool with the max connections and the max ids per connection
@@ -186,6 +200,21 @@ public class ConnectionsPool
         }
     }
 
+    public bool TryMergeClientParameters(ClientParameters clientParameters, out ClientParameters cp)
+    {
+        if (!_lastSecret.IsValid || clientParameters.Password == _lastSecret.Secret)
+        {
+            cp = clientParameters;
+            return false;
+        }
+
+        cp = clientParameters with
+        {
+            Password = _lastSecret.Secret
+        };
+        return true;
+    }
+
     public void Remove(string clientId)
     {
         _semaphoreSlim.Wait();
@@ -208,11 +237,10 @@ public class ConnectionsPool
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
+            _lastSecret.Update(newSecret);
             foreach (var connectionItem in Connections.Values)
             {
-                connectionItem.Client.Parameters.Password = newSecret;
                 await connectionItem.Client.UpdateSecret(newSecret).ConfigureAwait(false);
-                connectionItem.Client.Parameters.Password = newSecret;
             }
         }
         finally

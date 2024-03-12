@@ -77,6 +77,7 @@ RabbitMQ.Stream.Client.ConnectionsPool.MaybeClose(string clientId, string reason
 RabbitMQ.Stream.Client.ConnectionsPool.Remove(string clientId) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.RemoveConsumerEntityFromStream(string clientId, byte id, string stream) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.RemoveProducerEntityFromStream(string clientId, byte id, string stream) -> void
+RabbitMQ.Stream.Client.ConnectionsPool.TryMergeClientParameters(RabbitMQ.Stream.Client.ClientParameters clientParameters, out RabbitMQ.Stream.Client.ClientParameters cp) -> bool
 RabbitMQ.Stream.Client.ConnectionsPool.UpdateSecrets(string newSecret) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.ConsumerEvents
 RabbitMQ.Stream.Client.ConsumerEvents.ConsumerEvents() -> void
@@ -176,6 +177,12 @@ RabbitMQ.Stream.Client.ISuperStreamProducer.ReconnectPartition(RabbitMQ.Stream.C
 RabbitMQ.Stream.Client.KeyRoutingStrategy
 RabbitMQ.Stream.Client.KeyRoutingStrategy.KeyRoutingStrategy(System.Func<RabbitMQ.Stream.Client.Message, string> routingKeyExtractor, System.Func<string, string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.RouteQueryResponse>> routingKeyQFunc, string superStream) -> void
 RabbitMQ.Stream.Client.KeyRoutingStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
+RabbitMQ.Stream.Client.LastSecret
+RabbitMQ.Stream.Client.LastSecret.IsValid.get -> bool
+RabbitMQ.Stream.Client.LastSecret.LastSecret() -> void
+RabbitMQ.Stream.Client.LastSecret.LastUpdate.get -> System.DateTime
+RabbitMQ.Stream.Client.LastSecret.Secret.get -> string
+RabbitMQ.Stream.Client.LastSecret.Update(string secret) -> void
 RabbitMQ.Stream.Client.MessageContext.ChunkId.get -> ulong
 RabbitMQ.Stream.Client.MessageContext.ChunkMessagesCount.get -> uint
 RabbitMQ.Stream.Client.MessageContext.MessageContext(ulong offset, System.TimeSpan timestamp, uint chunkMessagesCount, ulong chunkId) -> void
