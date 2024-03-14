@@ -140,6 +140,10 @@ namespace RabbitMQ.Stream.Client.AMQP
                     offset = ReadBinary(ref reader, out var resultBin);
                     value = resultBin;
                     return offset;
+                case FormatCode.UUID:
+                    offset = ReadUuid(ref reader, out var uuid);
+                    value = uuid;
+                    return offset;
                 case FormatCode.Null:
                     value = null;
                     reader.Advance(1);
@@ -442,6 +446,19 @@ namespace RabbitMQ.Stream.Client.AMQP
             }
 
             throw new AmqpParseException($"ReadUbyte Invalid type {type}");
+        }
+
+        internal static int ReadUuid(ref SequenceReader<byte> reader, out byte[] value)
+        {
+            var offset = ReadType(ref reader, out var type);
+            switch (type)
+            {
+                case FormatCode.UUID:
+                    offset += WireFormatting.ReadBytes(ref reader, 16, out value);
+                    return offset;
+            }
+
+            throw new AmqpParseException($"ReadUuid Invalid type {type}");
         }
 
         internal static int TryReadNull(ref SequenceReader<byte> reader, out bool value)
