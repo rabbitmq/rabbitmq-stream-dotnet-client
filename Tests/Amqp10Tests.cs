@@ -133,6 +133,12 @@ namespace Tests
                 AmqpWireFormatting.ReadInt16(ref reader, out var value);
             });
 
+            Assert.Throws<AmqpParseException>(() =>
+            {
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadUuid(ref reader, out var value);
+            });
+
             System.Diagnostics.Trace.WriteLine(" test passed");
         }
 
