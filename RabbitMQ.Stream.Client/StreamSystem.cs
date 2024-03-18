@@ -32,7 +32,8 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new();
 
-        public IList<EndPoint> Endpoints { get; set; } = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
+        public IList<EndPoint> Endpoints { get; set; } =
+            new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
 
         public AddressResolver AddressResolver { get; set; }
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
@@ -155,12 +156,22 @@ namespace RabbitMQ.Stream.Client
 
         public async Task UpdateSecret(string newSecret)
         {
-            if (_client.IsClosed)
-                throw new UpdateSecretFailureException("Cannot update a closed connection.");
-
-            await _client.UpdateSecret(newSecret).ConfigureAwait(false);
+            // store the old password just in case it will fail to update the secret
+            var oldSecret = _clientParameters.Password;
             _clientParameters.Password = newSecret;
             _client.Parameters.Password = newSecret;
+            await MayBeReconnectLocator().ConfigureAwait(false);
+            if (_client.IsClosed)
+            {
+                // it can happen during some network problem or server rebooting
+                // even the _clientParameters.Password could be invalid we restore the 
+                // the old one just to be consistent 
+                _clientParameters.Password = oldSecret;
+                _client.Parameters.Password = oldSecret;
+                throw new UpdateSecretFailureException("Cannot update a closed connection.");
+            }
+
+            await _client.UpdateSecret(newSecret).ConfigureAwait(false);
             await PoolConsumers.UpdateSecrets(newSecret).ConfigureAwait(false);
             await PoolProducers.UpdateSecrets(newSecret).ConfigureAwait(false);
         }
@@ -373,7 +384,9 @@ namespace RabbitMQ.Stream.Client
         {
             spec.Validate();
             await MayBeReconnectLocator().ConfigureAwait(false);
-            var response = await _client.CreateSuperStream(spec.Name, spec.GetPartitions(), spec.GetBindingKeys(), spec.Args).ConfigureAwait(false);
+            var response = await _client
+                .CreateSuperStream(spec.Name, spec.GetPartitions(), spec.GetBindingKeys(), spec.Args)
+                .ConfigureAwait(false);
             if (response.ResponseCode is ResponseCode.Ok or ResponseCode.StreamAlreadyExists)
             {
                 return;
@@ -473,7 +486,8 @@ namespace RabbitMQ.Stream.Client
                 return;
             }
 
-            throw new DeleteStreamException($"Failed to delete super stream, error code: {response.ResponseCode.ToString()}");
+            throw new DeleteStreamException(
+                $"Failed to delete super stream, error code: {response.ResponseCode.ToString()}");
         }
 
         public async Task<StreamStats> StreamStats(string stream)
@@ -593,6 +607,7 @@ namespace RabbitMQ.Stream.Client
         {
         }
     }
+
     public class UpdateSecretFailureException : ProtocolException
     {
         public UpdateSecretFailureException(string s)

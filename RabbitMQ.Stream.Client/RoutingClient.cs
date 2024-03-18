@@ -174,9 +174,16 @@ namespace RabbitMQ.Stream.Client
         public static async Task<IClient> LookupLeaderConnection(ClientParameters clientParameters,
             StreamInfo metaDataInfo, ConnectionsPool pool, ILogger logger = null)
         {
+
+            if (pool.TryMergeClientParameters(clientParameters, out var mergedClientParameters))
+            {
+                logger?.LogInformation("Leader Connection. Password changed Merged client parameters");
+            }
+
             return await pool.GetOrCreateClient(metaDataInfo.Leader.ToString(),
                 async () =>
-                    await LookupConnection(clientParameters, metaDataInfo.Leader, MaxAttempts(metaDataInfo), logger)
+                    await LookupConnection(mergedClientParameters, metaDataInfo.Leader,
+                            MaxAttempts(metaDataInfo), logger)
                         .ConfigureAwait(false)).ConfigureAwait(false);
         }
 
@@ -202,9 +209,15 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
+                    if (pool.TryMergeClientParameters(clientParameters, out var mergedClientParameters))
+                    {
+                        logger?.LogInformation("Replicas Connections. Password changed Merged client parameters");
+                    }
+
                     return await pool.GetOrCreateClient(broker.ToString(),
                         async () =>
-                            await LookupConnection(clientParameters, broker, MaxAttempts(metaDataInfo),
+                            await LookupConnection(mergedClientParameters, broker,
+                                    MaxAttempts(metaDataInfo),
                                     logger)
                                 .ConfigureAwait(false)).ConfigureAwait(false);
                 }
