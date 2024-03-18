@@ -4,6 +4,7 @@
 
 using System;
 using System.Buffers;
+using System.Linq;
 using System.Text;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
@@ -131,6 +132,12 @@ namespace Tests
             {
                 var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
                 AmqpWireFormatting.ReadInt16(ref reader, out var value);
+            });
+
+            Assert.Throws<AmqpParseException>(() =>
+            {
+                var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(data));
+                AmqpWireFormatting.ReadUuid(ref reader, out var value);
             });
 
             System.Diagnostics.Trace.WriteLine(" test passed");
@@ -340,7 +347,7 @@ namespace Tests
             Assert.NotNull(msgProp500.ApplicationProperties);
 
             //  body len >= 900 bytes 
-            // ApplicationProperties are not null
+            // ApplicationProperties are not null 
             // Properties is not null
             var prop900 = SystemUtils.GetFileContent("message_random_application_properties_properties_900");
             reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(prop900));
@@ -355,15 +362,16 @@ namespace Tests
 
             Assert.NotNull(msgProp900.Properties);
             Assert.True(!string.IsNullOrEmpty(msgProp900.Properties.ReplyTo));
-            Assert.True(!string.IsNullOrEmpty(msgProp900.Properties.ContentEncoding));
-            Assert.True(!string.IsNullOrEmpty(msgProp900.Properties.ContentType));
             Assert.True(!string.IsNullOrEmpty(msgProp900.Properties.GroupId));
             Assert.Equal((ulong)33333333, msgProp900.Properties.MessageId);
+            // UUID value: 00112233-4455-6677-8899-aabbccddeeff
+            var uuid_value = Enumerable.Range(0, 16).Select(x => (byte)(x << 4 | x)).ToArray();
+            Assert.Equal(uuid_value, msgProp900.Properties.CorrelationId as byte[]);
             Assert.Equal("json", msgProp900.Properties.ContentType);
             Assert.Equal("myCoding", msgProp900.Properties.ContentEncoding);
             Assert.Equal((uint)10, msgProp900.Properties.GroupSequence);
-            Assert.True(msgProp900.Properties.CreationTime != DateTime.MinValue);
-            Assert.True(msgProp900.Properties.AbsoluteExpiryTime != DateTime.MinValue);
+            Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1710440652).Ticks, msgProp900.Properties.CreationTime.Ticks);
+            Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1710440652).Ticks, msgProp900.Properties.AbsoluteExpiryTime.Ticks);
 
             // Test message to check if all the fields with "test" value
             var staticTest = SystemUtils.GetFileContent("static_test_message_compare");
@@ -423,6 +431,20 @@ namespace Tests
         }
 
         [Fact]
+        public void ValidateUuidMessagesFromGo()
+        {
+            // UUID value: 00112233-4455-6677-8899-aabbccddeeff
+            var uuid_value = Enumerable.Range(0, 16).Select(x => (byte)(x << 4 | x)).ToArray();
+
+            var buffer = SystemUtils.GetFileContent("uuid_message");
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(buffer));
+            var uuid_message = Message.From(ref reader, (uint)reader.Length);
+            Assert.NotNull(uuid_message);
+            Assert.Equal(uuid_value, uuid_message.Properties.MessageId);
+            Assert.Equal(uuid_value, uuid_message.Properties.CorrelationId);
+        }
+
+        [Fact]
         public void ValidateNilMessagesFromGo()
         {
             var nilAndTypes = SystemUtils.GetFileContent("nil_and_types");
@@ -434,8 +456,12 @@ namespace Tests
             Assert.Equal(91_000_001_001, msgNilAndTypes.ApplicationProperties["long_value"]);
             Assert.Equal((byte)216, msgNilAndTypes.ApplicationProperties["byte_value"]);
             Assert.Equal(true, msgNilAndTypes.ApplicationProperties["bool_value"]);
+            Assert.Equal(1, (long)msgNilAndTypes.ApplicationProperties["int_value"]); // int in Go has a platform-dependent size.
             Assert.Equal(1.1, msgNilAndTypes.ApplicationProperties["float"]);
             Assert.Equal(1.1, msgNilAndTypes.ApplicationProperties["double"]);
+            // UUID value: 00112233-4455-6677-8899-aabbccddeeff
+            var uuid_value = Enumerable.Range(0, 16).Select(x => (byte)(x << 4 | x)).ToArray();
+            Assert.Equal(uuid_value, msgNilAndTypes.ApplicationProperties["uuid"] as byte[]);
             Assert.Equal("", msgNilAndTypes.ApplicationProperties["empty"]);
         }
 
