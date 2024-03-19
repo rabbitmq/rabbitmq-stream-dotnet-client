@@ -27,7 +27,7 @@ Please refer to the [documentation](https://rabbitmq.github.io/rabbitmq-stream-d
 
 ### Pre-requisites
 
-The library requires .NET 6 or .NET 7.
+The library requires .NET 6, .NET 7 or .NET 8.
 
 ### Documentation
 - [HTML documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html)
@@ -75,7 +75,7 @@ make publish-github-pages
 * Ensure builds are green: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions)
 * Tag the `main` branch using your GPG key:
     ```
-    git tag -a -s -u GPG_KEY_ID -m 'rabbitmq-stream-dotnet-client v1.0.0' 'v1.0.0' && git push && git push --tags
+    git tag -a -s -u GPG_KEY_ID -m 'rabbitmq-stream-dotnet-client v1.8.3' 'v1.8.3' && git push && git push --tags
     ```
 * Ensure the build for the tag passes: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/actions)
 * Create the new release on GitHub, which triggers a build and publish to NuGet: [link](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases)

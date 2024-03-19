@@ -9,22 +9,23 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
             6.x
             7.x
-      - uses: actions/cache@v3
+            8.x
+      - uses: actions/cache@v4
         with:
           # Note: the cache path is relative to the workspace directory
           # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#using-the-cache-action
           path: ~/installers
           key: ${{ runner.os }}-v1-${{ hashFiles('.ci/versions.json') }}
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.nuget/packages
-            ~/AppData/Local/NuGet/v3-cache
+            ~/AppData/Local/NuGet/v4-cache
           key: ${{ runner.os }}-v2-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: |
             ${{ runner.os }}-v2-nuget-
@@ -54,16 +55,16 @@ jobs:
             - 61613:61613
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v3
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
             6.x
             7.x
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.nuget/packages
-            ~/.local/share/NuGet/v3-cache
+            ~/.local/share/NuGet/v4-cache
           key: ${{ runner.os }}-v2-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: |
             ${{ runner.os }}-v2-nuget-
