@@ -2,7 +2,6 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
-using System.Diagnostics;
 using System.Reflection;
 
 namespace RabbitMQ.Stream.Client
@@ -11,9 +10,8 @@ namespace RabbitMQ.Stream.Client
     {
         static Version()
         {
-            var a = Assembly.GetAssembly(typeof(Version));
-            var fvi = FileVersionInfo.GetVersionInfo(a.Location);
-            VersionString = fvi.ProductVersion;
+            var attr = typeof(Version).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            VersionString = attr?.InformationalVersion;
         }
 
         public static string VersionString { get; }
