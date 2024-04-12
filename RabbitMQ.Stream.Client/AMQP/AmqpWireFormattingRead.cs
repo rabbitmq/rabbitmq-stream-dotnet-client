@@ -148,6 +148,35 @@ namespace RabbitMQ.Stream.Client.AMQP
                     value = null;
                     reader.Advance(1);
                     return 1;
+
+                case FormatCode.List0:
+                case FormatCode.List8:
+                case FormatCode.List32:
+                    {
+                        offset = ReadListHeader(ref reader, out var fields);
+                        for (long i = 0; i < fields; i++)
+                        {
+                            offset += ReadAny(ref reader, out _);
+                        }
+
+                        value = null;
+                        return offset;
+                    }
+
+                case FormatCode.Map8:
+                case FormatCode.Map32:
+                    {
+                        offset = ReadMapHeader(ref reader, out var count);
+                        var values = count / 2;
+                        for (uint i = 0; i < values; i++)
+                        {
+                            offset += ReadAny(ref reader, out _);
+                            offset += ReadAny(ref reader, out _);
+                        }
+
+                        value = null;
+                        return offset;
+                    }
             }
 
             throw new AmqpParseException($"Read Any: Invalid type: {type}");
