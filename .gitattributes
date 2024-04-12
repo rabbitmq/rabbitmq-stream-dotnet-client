@@ -1,0 +1,58 @@
+###############################################################################
+# Set default behavior to automatically normalize line endings.
+###############################################################################
+*           text=auto
+
+*.sln       text eol=crlf
+*.csproj    text eol=crlf
+*.vbproj    text eol=crlf
+*.vcxproj   text eol=crlf
+*.vcproj    text eol=crlf
+*.dbproj    text eol=crlf
+*.fsproj    text eol=crlf
+*.lsproj    text eol=crlf
+*.wixproj   text eol=crlf
+*.modelproj text eol=crlf
+*.sqlproj   text eol=crlf
+*.wmaproj   text eol=crlf
+
+*.xproj     text eol=crlf
+*.props     text eol=crlf
+*.filters   text eol=crlf
+*.vcxitems  text eol=crlf
+*.dgml      text eol=crlf
+
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.sh        text eol=lf
+
+*.DotSettings   text eol=lf
+*.svg           text eol=lf
+*.kts           text eol=lf
+
+*.cs        diff=csharp
+*.doc	    diff=astextplain
+*.DOC	    diff=astextplain
+*.docx	    diff=astextplain
+*.DOCX	    diff=astextplain
+*.dot	    diff=astextplain
+*.DOT	    diff=astextplain
+*.pdf	    diff=astextplain
+*.PDF	    diff=astextplain
+*.rtf	    diff=astextplain
+*.RTF	    diff=astextplain
+
+*.exe       binary
+*.pdf       binary
+*.bmp       binary
+*.cur       binary
+*.dll       binary
+*.doc       binary
+*.docx      binary
+*.ico       binary
+*.jpg       binary
+*.ocx       binary
+*.xls       binary
+*.xlsx      binary
+*.png       binary
+*.gif       binary
