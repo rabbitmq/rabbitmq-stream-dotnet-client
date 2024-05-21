@@ -333,6 +333,7 @@ namespace RabbitMQ.Stream.Client
             // when theres 1 endpoint and an address resolver, there could be a cluster behind a load balancer
             var forceLocalHost = false;
             var localPort = 0;
+            var localHostOrAddress = "";
             if (_clientParameters.Endpoints.Count == 1 &&
                 _clientParameters.AddressResolver is null)
             {
@@ -342,10 +343,12 @@ namespace RabbitMQ.Stream.Client
                     case DnsEndPoint { Host: "localhost" } dnsEndPoint:
                         forceLocalHost = true;
                         localPort = dnsEndPoint.Port;
+                        localHostOrAddress = dnsEndPoint.Host;
                         break;
-                    case IPEndPoint ipEndPoint when Equals(ipEndPoint.Address, IPAddress.Loopback):
+                    case IPEndPoint ipEndPoint when IPAddress.IsLoopback(ipEndPoint.Address):
                         forceLocalHost = true;
                         localPort = ipEndPoint.Port;
+                        localHostOrAddress = ipEndPoint.Address.ToString();
                         break;
                 }
             }
@@ -354,7 +357,7 @@ namespace RabbitMQ.Stream.Client
             if (forceLocalHost)
             {
                 // craft the metadata response to force using localhost
-                var leader = new Broker("localhost", (uint)localPort);
+                var leader = new Broker(localHostOrAddress, (uint)localPort);
                 metaStreamInfo = new StreamInfo(streamName, ResponseCode.Ok, leader,
                     new List<Broker>(1) { leader });
             }
