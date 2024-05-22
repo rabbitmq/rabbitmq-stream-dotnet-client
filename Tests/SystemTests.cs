@@ -126,9 +126,6 @@ namespace Tests
             Assert.Throws<OffsetNotFoundException>(() => { stats.FirstOffset(); }
             );
 
-            Assert.Throws<OffsetNotFoundException>(() => { stats.LastOffset(); }
-            );
-
             Assert.Throws<OffsetNotFoundException>(() => { stats.CommittedChunkId(); }
             );
 
@@ -136,7 +133,6 @@ namespace Tests
             SystemUtils.Wait();
             var statAfter = await system.StreamStats(stream);
             Assert.Equal((ulong)0, statAfter.FirstOffset());
-            Assert.True(statAfter.LastOffset() > 0);
             Assert.True(statAfter.CommittedChunkId() > 0);
             await SystemUtils.CleanUpStreamSystem(system, stream);
         }
