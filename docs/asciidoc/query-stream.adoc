@@ -29,8 +29,6 @@ The following methods are available:
 
 - `FirstOffset()`: first offset in the stream
 
-- `LastOffset()`:  last offset in the stream
-
 - `CommittedChunkId()`: the ID (offset) of the committed chunk (block of messages) in the stream.
 
 It is the offset of the first message in the last chunk confirmed by a quorum of the stream cluster members (leader and replicas).
