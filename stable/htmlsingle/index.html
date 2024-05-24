@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.20">
+<meta name="generator" content="Asciidoctor 2.0.22">
 <title>RabbitMQ Stream .Net Client</title>
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -3558,7 +3558,6 @@ The following methods are available:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>StreamStats(string stream)</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Returns the stream statistics:</p>
 <p class="tableblock">- <code>FirstOffset()</code>: first offset in the stream</p>
-<p class="tableblock">- <code>LastOffset()</code>:  last offset in the stream</p>
 <p class="tableblock">- <code>CommittedChunkId()</code>: the ID (offset) of the committed chunk (block of messages) in the stream.</p>
 <p class="tableblock">It is the offset of the first message in the last chunk confirmed by a quorum of the stream cluster members (leader and replicas).</p>
 <p class="tableblock">The committed chunk ID is a good indication of what the last offset of a stream can be at a
@@ -4370,7 +4369,7 @@ You can provide your own implementation of these interfaces to customize the rec
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-02-15 14:19:59 UTC
+Last updated 2024-05-24 08:52:16 UTC
 </div>
 </div>
 </body>
