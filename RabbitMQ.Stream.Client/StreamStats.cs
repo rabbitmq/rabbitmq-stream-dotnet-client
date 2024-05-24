@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Collections.Generic;
 
 namespace RabbitMQ.Stream.Client;
@@ -29,12 +30,7 @@ public class StreamStats
         return (ulong)r;
     }
 
-    /// <summary>
-    /// The last offset in the stream.
-    ///
-    /// return last offset in the stream
-    /// throws NoOffsetException if there is no first offset yet
-    /// </summary>
+    [Obsolete("LastOffset() is deprecated, please use CommittedChunkId instead.")]
     public ulong LastOffset()
     {
         var r = _statistics.TryGetValue("last_chunk_id", out var value) ? value : -1;
