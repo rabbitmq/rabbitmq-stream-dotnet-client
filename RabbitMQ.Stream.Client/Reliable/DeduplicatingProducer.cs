@@ -53,7 +53,7 @@ public class DeduplicatingProducer
                         Filter = producerConfig.Filter,
                         Identifier = producerConfig.Identifier,
                         ResourceAvailableReconnectStrategy = producerConfig.ResourceAvailableReconnectStrategy,
-                        
+
                     }, logger)
                 .ConfigureAwait(false)
         };
