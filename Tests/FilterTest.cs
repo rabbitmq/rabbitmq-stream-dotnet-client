@@ -172,6 +172,115 @@ public class FilterTest
         await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
     }
 
+    [SkippableFact]
+    public async void FilterShouldReturnOnlyOneChunkWithDeduplication()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        if (!AvailableFeaturesSingleton.Instance.PublishFilter)
+        {
+            throw new SkipException("broker does not support filter");
+        }
+
+        var deduplicatingProducer = await DeduplicatingProducer.Create(
+            new DeduplicatingProducerConfig(system, stream, "my_ref")
+            {
+                Filter = new ProducerFilter()
+                {
+                    // define the producer filter 
+                    FilterValue = message => message.ApplicationProperties["state"].ToString(),
+                }
+            }
+        );
+
+        const int ToSend = 50;
+
+        async Task SendTo(string state, ulong start)
+        {
+            for (var i = (0 + start); i < ToSend + start; i++)
+            {
+                var message = new Message(Encoding.UTF8.GetBytes($"Message: {i}.  State: {state}"))
+                {
+                    ApplicationProperties = new ApplicationProperties() { ["state"] = state },
+                    Properties = new Properties() { GroupId = $"group_{i}" }
+                };
+                await deduplicatingProducer.Send(i, message).ConfigureAwait(false);
+            }
+        }
+
+        await SendTo("Alabama", 0);
+        await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        await SendTo("New York", ToSend);
+        await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+
+        var testPassedAlabama = new TaskCompletionSource<int>();
+        var consumedAlabama = new List<Message>();
+        var consumerAlabama = await Consumer.Create(new ConsumerConfig(system, stream)
+        {
+            OffsetSpec = new OffsetTypeFirst(),
+
+            // This is mandatory for enabling the filter
+            Filter = new ConsumerFilter()
+            {
+                Values = new List<string>() { "Alabama" },
+                PostFilter =
+                    _ =>
+                        true, // we don't apply any post filter here to be sure that the server is doing the filtering 
+                MatchUnfiltered = true
+            },
+            MessageHandler = (_, _, _, message) =>
+            {
+                consumedAlabama.Add(message);
+                if (consumedAlabama.Count == ToSend)
+                {
+                    testPassedAlabama.SetResult(ToSend);
+                }
+
+                return Task.CompletedTask;
+            }
+        }).ConfigureAwait(false);
+        Assert.True(testPassedAlabama.Task.Wait(TimeSpan.FromSeconds(5)));
+
+        Assert.Equal(ToSend, consumedAlabama.Count);
+
+        // check that only the messages from Alabama were
+        consumedAlabama.Where(m => m.ApplicationProperties["state"].Equals("Alabama")).ToList().ForEach(m =>
+        {
+            Assert.Equal("Alabama", m.ApplicationProperties["state"]);
+        });
+
+        await consumerAlabama.Close().ConfigureAwait(false);
+        // let's reset 
+        var consumedNY = new List<Message>();
+
+        var consumerNY = await Consumer.Create(new ConsumerConfig(system, stream)
+        {
+            OffsetSpec = new OffsetTypeFirst(),
+
+            // This is mandatory for enabling the filter
+            Filter = new ConsumerFilter()
+            {
+                Values = new List<string>() { "New York" },
+                PostFilter =
+                    message => message.Properties.GroupId.ToString()!
+                        .Equals("group_55"), // we only want the message with  group_55 ignoring the rest
+                // this filter is client side. We should have two messages with group_55
+                // One for the standard send and one for the batch send
+                MatchUnfiltered = true
+            },
+            MessageHandler = (_, _, _, message) =>
+            {
+                consumedNY.Add(message);
+                return Task.CompletedTask;
+            }
+        }).ConfigureAwait(false);
+
+        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        Assert.Single(consumedNY);
+        Assert.Equal("group_55", consumedNY[0].Properties.GroupId!);
+        await consumerNY.Close().ConfigureAwait(false);
+        await SystemUtils.CleanUpStreamSystem(system, stream).ConfigureAwait(false);
+    }
+
     // This test is to test when there are errors on the filter functions
     // producer side and consumer side. 
     // FilterValue and PostFilter are user's functions and can throw exceptions
@@ -249,7 +358,7 @@ public class FilterTest
             OffsetSpec = new OffsetTypeFirst(),
             Filter = new ConsumerFilter()
             {
-                Values = new List<string>() { "my_filter" },// at this level we don't care about the filter value
+                Values = new List<string>() { "my_filter" }, // at this level we don't care about the filter value
                 PostFilter =
                     message =>
                     {
