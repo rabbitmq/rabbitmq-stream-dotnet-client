@@ -50,6 +50,10 @@ public class DeduplicatingProducer
                         MaxInFlight = producerConfig.MaxInFlight,
                         MessagesBufferSize = producerConfig.MessagesBufferSize,
                         TimeoutMessageAfter = producerConfig.TimeoutMessageAfter,
+                        Filter = producerConfig.Filter,
+                        Identifier = producerConfig.Identifier,
+                        ResourceAvailableReconnectStrategy = producerConfig.ResourceAvailableReconnectStrategy,
+
                     }, logger)
                 .ConfigureAwait(false)
         };
