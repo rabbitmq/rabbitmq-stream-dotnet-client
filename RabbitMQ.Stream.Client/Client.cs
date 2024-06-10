@@ -976,10 +976,12 @@ namespace RabbitMQ.Stream.Client
         public void SetException(Exception error)
         {
             // https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/issues/384
-            // we need to check if the task is pending before setting the exception
-            if (_logic.GetStatus(_logic.Version) == ValueTaskSourceStatus.Pending)
+            try
             {
                 _logic.SetException(error);
+            }
+            catch (InvalidOperationException)
+            {
             }
         }
 
