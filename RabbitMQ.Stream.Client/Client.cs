@@ -37,9 +37,9 @@ namespace RabbitMQ.Stream.Client
         public IDictionary<string, string> Properties { get; } =
             new Dictionary<string, string>
             {
-                {"product", "RabbitMQ Stream"},
-                {"version", Version.VersionString},
-                {"platform", ".NET"},
+                { "product", "RabbitMQ Stream" },
+                { "version", Version.VersionString },
+                { "platform", ".NET" },
                 {
                     "copyright",
                     "Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries."
@@ -48,7 +48,7 @@ namespace RabbitMQ.Stream.Client
                     "information",
                     "Licensed under the Apache 2.0 and MPL 2.0 licenses. See https://www.rabbitmq.com/"
                 },
-                {"connection_name", "Unknown"}
+                { "connection_name", "Unknown" }
             };
 
         public string UserName { get; set; } = "guest";
@@ -76,6 +76,8 @@ namespace RabbitMQ.Stream.Client
         public AddressResolver AddressResolver { get; set; } = null;
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
+
+        public TimeSpan RpcTimeOut { get; set; } = TimeSpan.FromSeconds(10);
 
         internal void FireMetadataUpdate(MetaDataUpdate metaDataUpdate)
         {
@@ -113,8 +115,6 @@ namespace RabbitMQ.Stream.Client
     {
         private bool isClosed = true;
 
-        private readonly TimeSpan defaultTimeout = TimeSpan.FromSeconds(10);
-
         private uint correlationId = 0; // allow for some pre-amble
 
         private Connection _connection;
@@ -150,7 +150,6 @@ namespace RabbitMQ.Stream.Client
 
         public int IncomingFrames => _connection.NumFrames;
 
-        //public int IncomingChannelCount => this.incoming.Reader.Count;
         private static readonly object Obj = new();
 
         private readonly ILogger _logger;
@@ -494,7 +493,7 @@ namespace RabbitMQ.Stream.Client
             var tcs = PooledTaskSource<TOut>.Rent();
             requests.TryAdd(corr, tcs);
             await Publish(request(corr)).ConfigureAwait(false);
-            using var cts = new CancellationTokenSource(timeout ?? defaultTimeout);
+            using var cts = new CancellationTokenSource(timeout ?? Parameters.RpcTimeOut);
             await using (cts.Token.Register(
                              valueTaskSource =>
                                  ((ManualResetValueTaskSource<TOut>)valueTaskSource).SetException(
@@ -973,7 +972,16 @@ namespace RabbitMQ.Stream.Client
         public short Version => _logic.Version;
         public void Reset() => _logic.Reset();
         public void SetResult(T result) => _logic.SetResult(result);
-        public void SetException(Exception error) => _logic.SetException(error);
+
+        public void SetException(Exception error)
+        {
+            // https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/issues/384
+            // we need to check if the task is pending before setting the exception
+            if (_logic.GetStatus(_logic.Version) == ValueTaskSourceStatus.Pending)
+            {
+                _logic.SetException(error);
+            }
+        }
 
         void IValueTaskSource.GetResult(short token) => _logic.GetResult(token);
         T IValueTaskSource<T>.GetResult(short token) => _logic.GetResult(token);

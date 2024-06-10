@@ -275,6 +275,15 @@ namespace Tests
         }
 
         [Fact]
+        public async void ValidateRpCtimeOut()
+        {
+            var config = new StreamSystemConfig() { RpcTimeOut = TimeSpan.FromMilliseconds(1) };
+            await Assert.ThrowsAsync<ArgumentException>(
+                async () => { await StreamSystem.Create(config); }
+            );
+        }
+
+        [Fact]
         public async void CloseProducerConsumerAfterForceCloseShouldNotRaiseError()
         {
             // This tests that the producers and consumers

@@ -54,6 +54,8 @@ RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.get -> RabbitMQ.Stream.Cli
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.set -> void
 RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.OnMetadataUpdate -> RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
+RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.get -> System.TimeSpan
+RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.set -> void
 RabbitMQ.Stream.Client.Connection.UpdateCloseStatus(string reason) -> void
 RabbitMQ.Stream.Client.ConnectionItem
 RabbitMQ.Stream.Client.ConnectionItem.Available.get -> bool
@@ -324,6 +326,8 @@ RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.get -> RabbitMQ.Stream.C
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.get -> RabbitMQ.Stream.Client.ConnectionPoolConfig
 RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.set -> void
+RabbitMQ.Stream.Client.StreamSystemConfig.RpcTimeOut.get -> System.TimeSpan
+RabbitMQ.Stream.Client.StreamSystemConfig.RpcTimeOut.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec
 RabbitMQ.Stream.Client.SuperStreamSpec.Args.get -> System.Collections.Generic.IDictionary<string, string>
 RabbitMQ.Stream.Client.SuperStreamSpec.LeaderLocator.set -> void
