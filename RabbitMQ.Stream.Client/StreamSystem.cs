@@ -20,6 +20,11 @@ namespace RabbitMQ.Stream.Client
             {
                 throw new ArgumentException("ConnectionPoolConfig can't be null");
             }
+
+            if (RpcTimeOut < TimeSpan.FromSeconds(1))
+            {
+                throw new ArgumentException("RpcTimeOut must be at least 1 second");
+            }
         }
 
         public string UserName { get; set; } = "guest";
@@ -44,6 +49,13 @@ namespace RabbitMQ.Stream.Client
         ///  Configure the connection pool for producers and consumers.
         /// </summary>
         public ConnectionPoolConfig ConnectionPoolConfig { get; set; } = new();
+
+        /// <summary>
+        ///  The timeout for RPC calls, like PeerProperties, QueryMetadata, etc.
+        /// Default value is 10 seconds and in most cases it should be enough.
+        /// Low value can cause false errors in the client.
+        /// </summary>
+        public TimeSpan RpcTimeOut { get; set; } = TimeSpan.FromSeconds(10);
     }
 
     public class StreamSystem
@@ -85,7 +97,8 @@ namespace RabbitMQ.Stream.Client
                 ClientProvidedName = config.ClientProvidedName,
                 Heartbeat = config.Heartbeat,
                 Endpoints = config.Endpoints,
-                AuthMechanism = config.AuthMechanism
+                AuthMechanism = config.AuthMechanism,
+                RpcTimeOut = config.RpcTimeOut
             };
             // create the metadata client connection
             foreach (var endPoint in clientParams.Endpoints)
