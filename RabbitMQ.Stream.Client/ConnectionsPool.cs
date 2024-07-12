@@ -38,7 +38,6 @@ public class ConnectionCloseConfig
     /// </summary>
     public TimeSpan IdleTime { get; set; } = TimeSpan.FromMinutes(5);
 
-
     /// <summary>
     /// Interval to check the idle time.
     /// Default is high because the check is done in a separate thread.
@@ -66,7 +65,6 @@ public class ConnectionPoolConfig
     /// but it is not the best for performance.
     /// </summary>
     public byte ProducersPerConnection { get; set; } = 1;
-
 
     /// <summary>
     ///  Define the connection close policy.
@@ -190,7 +188,6 @@ public class ConnectionsPool
     }
 
     private ConnectionCloseConfig ConnectionPoolConfig { get; }
-
 
     private void CheckIdleConnectionTime()
     {

@@ -901,18 +901,17 @@ namespace Tests
             Assert.Equal(11, nextValidId);
         }
 
-
         [Fact]
         public void ValidatePoolConsistencyWithClosePolicy()
         {
             var pool = new ConnectionsPool(0, 10,
                 new ConnectionCloseConfig()
                 {
-                    Policy = ConnectionClosePolicy.CloseWhenEmptyAndIdle, IdleTime = TimeSpan.FromSeconds(1)
+                    Policy = ConnectionClosePolicy.CloseWhenEmptyAndIdle,
+                    IdleTime = TimeSpan.FromSeconds(1)
                 });
             Assert.Equal(0, pool.ConnectionsCount);
         }
-
 
         /// <summary>
         /// Test the pool consistency when the policy is CloseWhenEmptyAndIdle
