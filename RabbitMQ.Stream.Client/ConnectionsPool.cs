@@ -11,6 +11,42 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
+public enum ConnectionClosePolicy
+{
+    /// <summary>
+    /// The connection is closed when the last consumer or producer is removed.
+    /// </summary>
+    CloseWhenEmpty,
+
+    /// <summary>
+    /// The connection is closed when the last consumer or producer is removed and the connection is not used for a certain time.
+    /// </summary>
+    CloseWhenEmptyAndIdle
+}
+
+public class ConnectionCloseConfig
+{
+    /// <summary>
+    /// Policy to close the connection.
+    /// </summary>
+
+    public ConnectionClosePolicy Policy { get; set; } = ConnectionClosePolicy.CloseWhenEmpty;
+
+    /// <summary>
+    /// The connection is closed when the last consumer or producer is removed and the connection is not used for a certain time.
+    /// Idle time is valid only if the policy is CloseWhenEmptyAndIdle.
+    /// </summary>
+    public TimeSpan IdleTime { get; set; } = TimeSpan.FromMinutes(5);
+
+
+    /// <summary>
+    /// Interval to check the idle time.
+    /// Default is high because the check is done in a separate thread.
+    /// The filed is internal to help the test.
+    /// </summary>
+    internal TimeSpan CheckIdleTime { get; set; } = TimeSpan.FromSeconds(60);
+}
+
 public class ConnectionPoolConfig
 {
     /// <summary>
@@ -30,6 +66,12 @@ public class ConnectionPoolConfig
     /// but it is not the best for performance.
     /// </summary>
     public byte ProducersPerConnection { get; set; } = 1;
+
+
+    /// <summary>
+    ///  Define the connection close policy.
+    /// </summary>
+    public ConnectionCloseConfig ConnectionCloseConfig { get; set; } = new ConnectionCloseConfig();
 }
 
 public class LastSecret
@@ -90,6 +132,7 @@ public class ConnectionItem
 public class ConnectionsPool
 {
     private static readonly object s_lock = new();
+    private bool _isRunning = false;
 
     internal static byte FindNextValidId(List<byte> ids, byte nextId = 0)
     {
@@ -133,10 +176,36 @@ public class ConnectionsPool
     /// </summary>
     /// <param name="maxConnections"> The max connections are allowed for session</param>
     /// <param name="idsPerConnection"> The max ids per Connection</param>
-    public ConnectionsPool(int maxConnections, byte idsPerConnection)
+    /// <param name="connectionCloseConfig"> Policy to close the connections in the pool</param>
+    public ConnectionsPool(int maxConnections, byte idsPerConnection, ConnectionCloseConfig connectionCloseConfig)
     {
         _maxConnections = maxConnections;
         _idsPerConnection = idsPerConnection;
+        ConnectionPoolConfig = connectionCloseConfig;
+        _isRunning = true;
+        if (ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmptyAndIdle)
+        {
+            Task.Run(CheckIdleConnectionTime);
+        }
+    }
+
+    private ConnectionCloseConfig ConnectionPoolConfig { get; }
+
+
+    private void CheckIdleConnectionTime()
+    {
+        while (_isRunning)
+        {
+            Thread.Sleep(ConnectionPoolConfig.CheckIdleTime);
+
+            var now = DateTime.UtcNow;
+            var connectionItems = Connections.Values.ToList();
+            foreach (var connectionItem in connectionItems.Where(connectionItem => connectionItem.EntitiesCount == 0 &&
+                         connectionItem.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now))
+            {
+                CloseItemAndConnection("Idle connection", connectionItem);
+            }
+        }
     }
 
     /// <summary>
@@ -208,10 +277,7 @@ public class ConnectionsPool
             return false;
         }
 
-        cp = clientParameters with
-        {
-            Password = _lastSecret.Secret
-        };
+        cp = clientParameters with { Password = _lastSecret.Secret };
         return true;
     }
 
@@ -264,18 +330,27 @@ public class ConnectionsPool
                 return;
             }
 
-            // close the connection
-            connectionItem.Client.Close(reason);
+            connectionItem.LastUsed = DateTime.UtcNow;
 
-            // remove the connection from the pool
-            // it means that the connection is closed
-            // we don't care if it is called two times for the same connection
-            Connections.TryRemove(clientId, out _);
+            if (ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmpty)
+            {
+                CloseItemAndConnection(reason, connectionItem);
+            }
         }
         finally
         {
             _semaphoreSlim.Release();
         }
+    }
+
+    private void CloseItemAndConnection(string reason, ConnectionItem connectionItem)
+    {
+        // close the connection
+        connectionItem.Client.Close(reason);
+        // remove the connection from the pool
+        // it means that the connection is closed
+        // we don't care if it is called two times for the same connection
+        Connections.TryRemove(connectionItem.Client.ClientId, out _);
     }
 
     /// <summary>
@@ -328,4 +403,9 @@ public class ConnectionsPool
     }
 
     public int ConnectionsCount => Connections.Count;
+
+    public void Close()
+    {
+        _isRunning = false;
+    }
 }

@@ -46,7 +46,7 @@ namespace Tests
         [Fact]
         public void ValidatePoolConsistencyWithMultiBrokers()
         {
-            var pool = new ConnectionsPool(0, 10);
+            var pool = new ConnectionsPool(0, 10, new ConnectionCloseConfig());
 
             // var brokerNode1 = new Broker("node0", 5552);
             // var brokerNode2 = new Broker("node1", 5552);
@@ -79,10 +79,12 @@ namespace Tests
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("localhost", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
                 new List<Broker>());
-            var pool = new ConnectionsPool(0, 1);
-            var c1 = await RoutingHelper<PoolRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo, pool);
+            var pool = new ConnectionsPool(0, 1, new ConnectionCloseConfig());
+            var c1 = await RoutingHelper<PoolRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters,
+                metaDataInfo, pool);
             c1.Consumers.Add(1, default);
-            var c2 = await RoutingHelper<PoolRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo, pool);
+            var c2 = await RoutingHelper<PoolRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters,
+                metaDataInfo, pool);
             c2.Consumers.Add(1, default);
             // here we have two different connections
             // and must be different since we have only one id per connection
@@ -101,7 +103,7 @@ namespace Tests
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
                 new List<Broker>());
 
-            var pool = new ConnectionsPool(0, 2);
+            var pool = new ConnectionsPool(0, 2, new ConnectionCloseConfig());
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
             var c2 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
             // here we have one connection with two ids
@@ -121,7 +123,7 @@ namespace Tests
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
                 new List<Broker>());
-            var pool = new ConnectionsPool(0, 2);
+            var pool = new ConnectionsPool(0, 2, new ConnectionCloseConfig());
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
             Assert.Equal(1, pool.ConnectionsCount);
 
@@ -146,7 +148,7 @@ namespace Tests
         [Fact]
         public async void RoutingShouldReturnTwoConnectionsGivenTreeIdsForConnection()
         {
-            var pool = new ConnectionsPool(0, 3);
+            var pool = new ConnectionsPool(0, 3, new ConnectionCloseConfig());
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
                 new List<Broker>());
@@ -177,7 +179,7 @@ namespace Tests
         [Fact]
         public async void ReleaseFromThePoolShouldNotRemoveTheConnection()
         {
-            var pool = new ConnectionsPool(0, 3);
+            var pool = new ConnectionsPool(0, 3, new ConnectionCloseConfig());
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
                 new List<Broker>());
@@ -208,7 +210,7 @@ namespace Tests
         [Fact]
         public async void RaiseExceptionWhenThePoolIsFull()
         {
-            var pool = new ConnectionsPool(1, 2);
+            var pool = new ConnectionsPool(1, 2, new ConnectionCloseConfig());
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
                 new List<Broker>());
@@ -236,7 +238,7 @@ namespace Tests
             await client.CreateStream(Stream1, new Dictionary<string, string>());
             await client.CreateStream(Stream2, new Dictionary<string, string>());
 
-            var pool = new ConnectionsPool(0, 2);
+            var pool = new ConnectionsPool(0, 2, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
 
             var c1 = await RawConsumer.Create(
@@ -276,7 +278,7 @@ namespace Tests
             await client.CreateStream(Stream1, new Dictionary<string, string>());
             await client.CreateStream(Stream2, new Dictionary<string, string>());
 
-            var pool = new ConnectionsPool(0, 2);
+            var pool = new ConnectionsPool(0, 2, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
             var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
                 metaDataInfo.StreamInfos[Stream1]);
@@ -317,7 +319,7 @@ namespace Tests
             await client.CreateStream(Stream1, new Dictionary<string, string>());
             await client.CreateStream(Stream2, new Dictionary<string, string>());
 
-            var pool = new ConnectionsPool(0, 1);
+            var pool = new ConnectionsPool(0, 1, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
             var c1 = await RawConsumer.Create(parameters, new RawConsumerConfig(Stream1) { Pool = pool },
                 metaDataInfo.StreamInfos[Stream1]);
@@ -371,7 +373,7 @@ namespace Tests
             await client.CreateStream(Stream2, new Dictionary<string, string>());
             var testPassedC1 = new TaskCompletionSource<Data>();
 
-            var poolConsumer = new ConnectionsPool(0, 2);
+            var poolConsumer = new ConnectionsPool(0, 2, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
             var c1 = await RawConsumer.Create(parameters,
                 new RawConsumerConfig(Stream1)
@@ -399,9 +401,10 @@ namespace Tests
                 },
                 metaDataInfo.StreamInfos[Stream2]);
 
-            var poolProducer = new ConnectionsPool(0, 2);
+            var poolProducer = new ConnectionsPool(0, 2, new ConnectionCloseConfig());
 
-            var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = poolProducer, },
+            var p1 = await RawProducer.Create(client.Parameters,
+                new RawProducerConfig(Stream1) { Pool = poolProducer, },
                 metaDataInfo.StreamInfos[Stream1]);
 
             var p2 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream2) { Pool = poolProducer },
@@ -436,7 +439,7 @@ namespace Tests
             await client.CreateStream(Stream1, new Dictionary<string, string>());
             await client.CreateStream(Stream2, new Dictionary<string, string>());
 
-            var pool = new ConnectionsPool(1, 1);
+            var pool = new ConnectionsPool(1, 1, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
             var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream2) { Pool = pool },
                 metaDataInfo.StreamInfos[Stream2]);
@@ -465,7 +468,7 @@ namespace Tests
             const string Stream1 = "pool_test_stream_1_validate_ids";
             await client.CreateStream(Stream1, new Dictionary<string, string>());
 
-            var pool = new ConnectionsPool(0, 50);
+            var pool = new ConnectionsPool(0, 50, new ConnectionCloseConfig());
             // MetaDataResponse metaDataInfo;
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
             var p = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
@@ -497,7 +500,7 @@ namespace Tests
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "this_stream_does_not_exist";
 
-            var pool = new ConnectionsPool(0, 1);
+            var pool = new ConnectionsPool(0, 1, new ConnectionCloseConfig());
             var metaDataInfo =
                 new StreamInfo(Stream1, ResponseCode.Ok, new Broker("localhost", 5552), new List<Broker>());
 
@@ -547,7 +550,7 @@ namespace Tests
             const string Stream1 = "pool_test_stream_1_multi_thread_producer";
             await client.CreateStream(Stream1, new Dictionary<string, string>());
             const int IdsPerConnection = 17;
-            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var pool = new ConnectionsPool(0, IdsPerConnection, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
             var producerList = new ConcurrentDictionary<string, IProducer>();
 
@@ -614,7 +617,7 @@ namespace Tests
             await client.CreateStream(Stream1, new Dictionary<string, string>());
             await client.CreateStream(Stream2, new Dictionary<string, string>());
             const int IdsPerConnection = 3;
-            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var pool = new ConnectionsPool(0, IdsPerConnection, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
             var iConsumers = new ConcurrentDictionary<string, IConsumer>();
 
@@ -663,7 +666,7 @@ namespace Tests
             await client.CreateStream(Stream1, new Dictionary<string, string>());
             await client.CreateStream(Stream2, new Dictionary<string, string>());
             const int IdsPerConnection = 3;
-            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var pool = new ConnectionsPool(0, IdsPerConnection, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
             var iProducers = new ConcurrentDictionary<string, IProducer>();
 
@@ -709,7 +712,7 @@ namespace Tests
             await client.CreateStream(Stream1, new Dictionary<string, string>());
             await client.CreateStream(Stream2, new Dictionary<string, string>());
             const int IdsPerConnection = 3;
-            var pool = new ConnectionsPool(0, IdsPerConnection);
+            var pool = new ConnectionsPool(0, IdsPerConnection, new ConnectionCloseConfig());
             var metaDataInfo = await client.QueryMetadata(new[] { Stream1, Stream2 });
 
             var c1 = await RawConsumer.Create(client.Parameters,
@@ -896,6 +899,53 @@ namespace Tests
             nextValidId = ConnectionsPool.FindNextValidId(ids, 0);
             ids.Add(nextValidId);
             Assert.Equal(11, nextValidId);
+        }
+
+
+        [Fact]
+        public void ValidatePoolConsistencyWithClosePolicy()
+        {
+            var pool = new ConnectionsPool(0, 10,
+                new ConnectionCloseConfig()
+                {
+                    Policy = ConnectionClosePolicy.CloseWhenEmptyAndIdle, IdleTime = TimeSpan.FromSeconds(1)
+                });
+            Assert.Equal(0, pool.ConnectionsCount);
+        }
+
+
+        /// <summary>
+        /// Test the pool consistency when the policy is CloseWhenEmptyAndIdle
+        /// After producer and consumer are closed the pool should be NOT empty
+        /// It will be closed after 2 seconds for idle activity
+        /// </summary>
+        [Fact]
+        public async void CloseWhenEmptyAndIdlePoolConsistencyShouldCloseAfterTenSeconds()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "PoolConsistencyShouldCloseAfterTenSeconds";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+
+            var pool = new ConnectionsPool(0, 1,
+                new ConnectionCloseConfig()
+                {
+                    IdleTime = TimeSpan.FromSeconds(2),
+                    Policy = ConnectionClosePolicy.CloseWhenEmptyAndIdle,
+                    CheckIdleTime = TimeSpan.FromMilliseconds(500)
+                });
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
+            var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]);
+
+            var c1 = await RawConsumer.Create(client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]);
+            await p1.Close();
+            await c1.Close();
+            Assert.Equal(2, pool.ConnectionsCount);
+
+            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            pool.Close();
+            await client.Close("byte");
         }
     }
 }
