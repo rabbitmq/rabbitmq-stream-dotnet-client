@@ -84,9 +84,10 @@ RabbitMQ.Stream.Client.ConnectionPoolConfig.ConsumersPerConnection.set -> void
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ProducersPerConnection.get -> byte
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ProducersPerConnection.set -> void
 RabbitMQ.Stream.Client.ConnectionsPool
-RabbitMQ.Stream.Client.ConnectionsPool.Close() -> void
+RabbitMQ.Stream.Client.ConnectionsPool.Close() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsCount.get -> int
 RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsPool(int maxConnections, byte idsPerConnection, RabbitMQ.Stream.Client.ConnectionCloseConfig connectionCloseConfig) -> void
+RabbitMQ.Stream.Client.ConnectionsPool.Dispose() -> void
 RabbitMQ.Stream.Client.ConnectionsPool.MaybeClose(string clientId, string reason) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.Remove(string clientId) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.RemoveConsumerEntityFromStream(string clientId, byte id, string stream) -> void

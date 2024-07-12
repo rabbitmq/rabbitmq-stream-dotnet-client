@@ -943,7 +943,7 @@ namespace Tests
             Assert.Equal(2, pool.ConnectionsCount);
 
             SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
-            pool.Close();
+            await pool.Close();
             await client.Close("byte");
         }
     }

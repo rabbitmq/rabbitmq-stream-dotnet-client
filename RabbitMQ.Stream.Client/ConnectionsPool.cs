@@ -127,7 +127,7 @@ public class ConnectionItem
 ///   subscriptionIds 
 ///   publisherIds  
 /// </summary>
-public class ConnectionsPool
+public class ConnectionsPool : IDisposable
 {
     private static readonly object s_lock = new();
     private bool _isRunning = false;
@@ -168,6 +168,7 @@ public class ConnectionsPool
     private readonly byte _idsPerConnection;
     private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
     private readonly LastSecret _lastSecret = new();
+    private readonly Task _checkIdleConnectionTimeTask;
 
     /// <summary>
     /// Init the pool with the max connections and the max ids per connection
@@ -183,24 +184,32 @@ public class ConnectionsPool
         _isRunning = true;
         if (ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmptyAndIdle)
         {
-            Task.Run(CheckIdleConnectionTime);
+            _checkIdleConnectionTimeTask = Task.Run(CheckIdleConnectionTime);
         }
     }
 
     private ConnectionCloseConfig ConnectionPoolConfig { get; }
 
-    private void CheckIdleConnectionTime()
+    private async Task CheckIdleConnectionTime()
     {
         while (_isRunning)
         {
-            Thread.Sleep(ConnectionPoolConfig.CheckIdleTime);
+            await Task.Delay(ConnectionPoolConfig.CheckIdleTime)
+                .ConfigureAwait(false);
 
-            var now = DateTime.UtcNow;
-            var connectionItems = Connections.Values.ToList();
-            foreach (var connectionItem in connectionItems.Where(connectionItem => connectionItem.EntitiesCount == 0 &&
-                         connectionItem.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now))
+            if (_isRunning)
             {
-                CloseItemAndConnection("Idle connection", connectionItem);
+                var now = DateTime.UtcNow;
+                var connectionItems = Connections.Values.ToList();
+                foreach (var connectionItem in connectionItems.Where(connectionItem => connectionItem.EntitiesCount == 0 &&
+                             connectionItem.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now))
+                {
+                    CloseItemAndConnection("Idle connection", connectionItem);
+                }
+            }
+            else
+            {
+                // TODO should everything be closed and cleaned-up here?
             }
         }
     }
@@ -401,8 +410,17 @@ public class ConnectionsPool
 
     public int ConnectionsCount => Connections.Count;
 
-    public void Close()
+    public async Task Close()
     {
         _isRunning = false;
+        if (_checkIdleConnectionTimeTask is not null)
+        {
+            await _checkIdleConnectionTimeTask.ConfigureAwait(false);
+        }
+    }
+
+    public void Dispose()
+    {
+        _semaphoreSlim.Dispose();
     }
 }

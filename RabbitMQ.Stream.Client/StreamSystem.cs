@@ -139,6 +139,23 @@ namespace RabbitMQ.Stream.Client
         public async Task Close()
         {
             await _client.Close("system close").ConfigureAwait(false);
+
+            try
+            {
+                await PoolConsumers.Close()
+                    .ConfigureAwait(false);
+                await PoolProducers.Close()
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+            finally
+            {
+                PoolConsumers.Dispose();
+                PoolProducers.Dispose();
+            }
+
             _logger?.LogDebug("Client Closed");
         }
 
