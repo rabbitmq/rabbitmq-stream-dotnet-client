@@ -422,5 +422,6 @@ public class ConnectionsPool : IDisposable
     public void Dispose()
     {
         _semaphoreSlim.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
