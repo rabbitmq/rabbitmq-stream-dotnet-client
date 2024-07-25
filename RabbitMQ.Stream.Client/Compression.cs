@@ -58,8 +58,8 @@ namespace RabbitMQ.Stream.Client
             var offset = 0;
             foreach (var msg in messages)
             {
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)msg.Size);
-                offset += msg.Write(span.Slice(offset));
+                offset += WireFormatting.WriteUInt32(span[offset..], (uint)msg.Size);
+                offset += msg.Write(span[offset..]);
             }
 
             return offset;
@@ -89,8 +89,8 @@ namespace RabbitMQ.Stream.Client
             var offset = 0;
             foreach (var msg in messages)
             {
-                offset += WireFormatting.WriteUInt32(span.Slice(offset), (uint)msg.Size);
-                offset += msg.Write(span.Slice(offset));
+                offset += WireFormatting.WriteUInt32(span[offset..], (uint)msg.Size);
+                offset += msg.Write(span[offset..]);
             }
 
             using var compressedMemory = new MemoryStream();

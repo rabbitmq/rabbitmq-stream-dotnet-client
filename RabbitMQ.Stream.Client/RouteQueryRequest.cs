@@ -2,7 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
-using System;
+using System.Buffers;
 
 namespace RabbitMQ.Stream.Client;
 
@@ -24,14 +24,16 @@ internal readonly struct RouteQueryRequest : ICommand
                              WireFormatting.StringSize(_superStream) +
                              WireFormatting.StringSize(_routingKey);
 
-    public int Write(Span<byte> span)
+    public int Write(IBufferWriter<byte> writer)
     {
+        var span = writer.GetSpan(SizeNeeded);
         var command = (ICommand)this;
         var offset = WireFormatting.WriteUInt16(span, Key);
         offset += WireFormatting.WriteUInt16(span[offset..], command.Version);
         offset += WireFormatting.WriteUInt32(span[offset..], _corrId);
         offset += WireFormatting.WriteString(span[offset..], _routingKey);
         offset += WireFormatting.WriteString(span[offset..], _superStream);
+        writer.Advance(offset);
         return offset;
     }
 }
