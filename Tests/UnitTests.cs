@@ -133,7 +133,6 @@ namespace Tests
             {
                 ConnectionProperties = new Dictionary<string, string>()
                 {
-
                     ["advertised_port"] = "5553",
                     ["advertised_host"] = "replica2"
                 }
@@ -161,7 +160,7 @@ namespace Tests
                 new List<Broker>());
             await Assert.ThrowsAsync<AggregateException>(() =>
                 RoutingHelper<Routing>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
-                    new ConnectionsPool(1, 1)));
+                    new ConnectionsPool(1, 1, new ConnectionCloseConfig())));
         }
 
         [Fact]
@@ -174,7 +173,7 @@ namespace Tests
             // run more than one time just to be sure to use all the IP with random
             await Assert.ThrowsAsync<RoutingClientException>(() =>
                 RoutingHelper<MissingFieldsRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
-                    new ConnectionsPool(1, 1)));
+                    new ConnectionsPool(1, 1, new ConnectionCloseConfig())));
         }
 
         [Fact]
@@ -188,7 +187,7 @@ namespace Tests
             for (var i = 0; i < 4; i++)
             {
                 var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
-                    new ConnectionsPool(1, 1));
+                    new ConnectionsPool(1, 1, new ConnectionCloseConfig()));
                 Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }
@@ -205,7 +204,7 @@ namespace Tests
             for (var i = 0; i < 4; i++)
             {
                 var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
-                    new ConnectionsPool(1, 1));
+                    new ConnectionsPool(1, 1, new ConnectionCloseConfig()));
                 Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
                 Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             }
@@ -234,7 +233,7 @@ namespace Tests
                 new List<Broker>());
             var client =
                 RoutingHelper<LeaderRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
-                    new ConnectionsPool(1, 1));
+                    new ConnectionsPool(1, 1, new ConnectionCloseConfig()));
             Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
             var res = (client.Result.ConnectionProperties["advertised_host"] == "leader" ||
                        client.Result.ConnectionProperties["advertised_host"] == "replica");
@@ -249,13 +248,10 @@ namespace Tests
             var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
             var metaDataInfo = new StreamInfo("stream",
                 ResponseCode.Ok, new Broker("leader", 5552),
-                new List<Broker>()
-                {
-                    new Broker("replica2", 5553),
-                });
+                new List<Broker>() { new Broker("replica2", 5553), });
             var client =
                 RoutingHelper<ReplicaseRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
-                    new ConnectionsPool(1, 1));
+                    new ConnectionsPool(1, 1, new ConnectionCloseConfig()));
             Assert.Equal("5553", client.Result.ConnectionProperties["advertised_port"]);
             var res = (client.Result.ConnectionProperties["advertised_host"] == "replica2");
             Assert.True(res);
