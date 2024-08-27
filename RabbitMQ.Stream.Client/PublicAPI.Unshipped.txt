@@ -207,6 +207,8 @@ RabbitMQ.Stream.Client.PartitionsSuperStreamSpec
 RabbitMQ.Stream.Client.PartitionsSuperStreamSpec.Partitions.get -> int
 RabbitMQ.Stream.Client.PartitionsSuperStreamSpec.PartitionsSuperStreamSpec(string Name) -> void
 RabbitMQ.Stream.Client.PartitionsSuperStreamSpec.PartitionsSuperStreamSpec(string Name, int partitions) -> void
+RabbitMQ.Stream.Client.PendingConnectionsException
+RabbitMQ.Stream.Client.PendingConnectionsException.PendingConnectionsException(string s) -> void
 RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.set -> void

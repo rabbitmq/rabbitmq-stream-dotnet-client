@@ -197,11 +197,12 @@ public class ConnectionsPool : IDisposable
             await Task.Delay(ConnectionPoolConfig.CheckIdleTime)
                 .ConfigureAwait(false);
 
-            if (_isRunning)
+            if (!_isRunning)
             {
                 var now = DateTime.UtcNow;
                 var connectionItems = Connections.Values.ToList();
-                foreach (var connectionItem in connectionItems.Where(connectionItem => connectionItem.EntitiesCount == 0 &&
+                foreach (var connectionItem in connectionItems.Where(connectionItem =>
+                             connectionItem.EntitiesCount == 0 &&
                              connectionItem.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now))
                 {
                     CloseItemAndConnection("Idle connection", connectionItem);
@@ -209,7 +210,12 @@ public class ConnectionsPool : IDisposable
             }
             else
             {
-                // TODO should everything be closed and cleaned-up here?
+                var connectionItems = Connections.Values.ToList();
+                foreach (var connectionItem in connectionItems.Where(
+                             connectionItem => connectionItem.EntitiesCount == 0))
+                {
+                    CloseItemAndConnection("Idle connection", connectionItem);
+                }
             }
         }
     }
@@ -359,6 +365,8 @@ public class ConnectionsPool : IDisposable
         Connections.TryRemove(connectionItem.Client.ClientId, out _);
     }
 
+    internal int PendingConnections => Connections.Values.Count(x => x.EntitiesCount > 0);
+
     /// <summary>
     /// Removes the consumer entity from the client.
     /// When the metadata update is called we need to remove the consumer entity from the client.
@@ -412,6 +420,20 @@ public class ConnectionsPool : IDisposable
 
     public async Task Close()
     {
+        // The pool can't be closed if there are pending connections with the policy: CloseWhenEmptyAndIdle 
+        // else there is no way to close the pending connections.
+        // The user needs to close the pending connections before to close the pool.
+        // At the moment when the pool is closed the pending connections are not closed with CloseWhenEmpty
+        // because the pool is not strictly bound to the stream system.
+        // The StreamSystem doesn't close the connections when it is closed. That was by design
+        // We could consider (Version 2.0) to close all the Producers and Consumers and their connection when the StreamSystem is closed.
+        // Other clients like Java and Golang close the connections when the Environment (alias StreamSystem) is closed.
+        if (PendingConnections > 0 && ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmptyAndIdle)
+        {
+            throw new PendingConnectionsException(
+                $"There are {PendingConnections} pending connections. With the policy CloseWhenEmptyAndIdle you need to close them");
+        }
+
         _isRunning = false;
         if (_checkIdleConnectionTimeTask is not null)
         {

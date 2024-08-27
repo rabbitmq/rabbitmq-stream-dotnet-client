@@ -38,7 +38,8 @@ namespace RabbitMQ.Stream.Client
                 return x.Any();
             }
 
-            return exception is (SocketException or TimeoutException or LeaderNotFoundException or InvalidOperationException or OperationCanceledException) ||
+            return exception is (SocketException or TimeoutException or LeaderNotFoundException
+                       or InvalidOperationException or OperationCanceledException) ||
                    IsStreamNotAvailable(exception);
         }
 
@@ -187,6 +188,14 @@ namespace RabbitMQ.Stream.Client
     public class TooManyConnectionsException : Exception
     {
         public TooManyConnectionsException(string s)
+            : base(s)
+        {
+        }
+    }
+
+    public class PendingConnectionsException : Exception
+    {
+        public PendingConnectionsException(string s)
             : base(s)
         {
         }

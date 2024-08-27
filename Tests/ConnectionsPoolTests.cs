@@ -946,5 +946,33 @@ namespace Tests
             await pool.Close();
             await client.Close("byte");
         }
+
+        /// <summary>
+        /// If there are pending connections and the policy is CloseWhenEmptyAndIdle
+        /// the pool can't be closed. It should raise an exception
+        /// </summary>
+
+        [Fact]
+        public async void RaisePendingConnectionsExceptionWhenPolicyIsCloseWhenEmptyAndIdle()
+        {
+            var client = await Client.Create(new ClientParameters() { });
+            const string Stream1 = "PoolConsistencyShouldCloseAfterTenSeconds";
+            await client.CreateStream(Stream1, new Dictionary<string, string>());
+
+            var pool = new ConnectionsPool(0, 1,
+                new ConnectionCloseConfig()
+                {
+                    IdleTime = TimeSpan.FromMilliseconds(1000),
+                    Policy = ConnectionClosePolicy.CloseWhenEmptyAndIdle,
+                    CheckIdleTime = TimeSpan.FromMilliseconds(500)
+                });
+            var metaDataInfo = await client.QueryMetadata(new[] { Stream1 });
+            var p1 = await RawProducer.Create(client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
+                metaDataInfo.StreamInfos[Stream1]);
+            await Assert.ThrowsAsync<PendingConnectionsException>(async () => await pool.Close());
+            await p1.Close();
+            await pool.Close();
+            await client.Close("byte");
+        }
     }
 }
