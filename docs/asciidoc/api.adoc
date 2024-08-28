@@ -142,7 +142,7 @@ The following table sums up the main settings to create an `StreamSystem` using 
 [[connection-pool]]
 ===== Connection pool
 Introduced on version 1.8.0.
-With the connection pool you can define how many producers and consumers can be created on a single connection.
+With the connection pool you can define how many producers and consumers can be created on a single connection and the `ConnectionCloseConfig` 
 
 [source]
 ----
@@ -150,15 +150,19 @@ With the connection pool you can define how many producers and consumers can be 
  {
     ProducersPerConnection = 2,
     ConsumersPerConnection = 3,
+    ConnectionCloseConfig = new ConnectionCloseConfig()
+    {
+        Policy = ConnectionClosePolicy.CloseWhenEmpty,
+    }
  }
 ----
 
-By default the connection pool is set to 1 producer and 1 consumer per connection.
+By default, the connection pool is set to 1 producer and 1 consumer per connection.
 The maximum number of producers and consumers per connection is 200.
 
-An high value can reduce the number of connections to the server but it could reduce the performance of the producer and the consumer.
+A high value can reduce the number of connections to the server but it could reduce the performance of the producer and the consumer.
 
-An low value can increase the number of connections to the server but it could increase the performance of the producer and the consumer.
+A low value can increase the number of connections to the server but it could increase the performance of the producer and the consumer.
 
 The consumers share the same handler, so if you have a high number of consumers per connection, the handler could be a bottleneck. It means that if there is a slow consumer all the other consumers could be slow.
 
@@ -184,7 +188,31 @@ streamSystemToIncreaseThePerformances = new StreamSystemConfig{
 ----
 There is not a magic number, you have to test and evaluate the best value for your use case.
 
+The `ConnectionCloseConfig` defines the policy to close the connection when the last producer or consumer is closed.
+- `CloseWhenEmpty` the connection is closed when the last producer or consumer is closed.
+- `CloseWhenEmptyAndIdle` the connection is closed when the last producer or consumer is closed and the connection is idle for a certain amount of time.
 
+The policy `CloseWhenEmpty` covers the standard use cases when the producers or consumers have long life running.
+
+
+The policy `CloseWhenEmptyAndIdle` is useful when producers or consumers have short live and the pool has to be fast to create a new entity.
+The parameter `IdleTime` defines the time to wait before closing the connection when the last producer or consumer is closed.
+The parameter `CheckIdleTime` defines the time to check if the connection is idle.
+
+[source]
+----
+ new ConnectionCloseConfig()
+    {
+        Policy = ConnectionClosePolicy.CloseWhenEmptyAndIdle,
+        IdleTime = TimeSpan.FromMilliseconds(1000),
+        CheckIdleTime = TimeSpan.FromMilliseconds(500)
+    });
+----
+
+Note: You can't close the stream systems if there are producers or consumers still running with the `CloseWhenEmptyAndIdle` policy.
+
+
+[[entity-status]]
 [[address-resolver]]
 ===== When a Load Balancer is in Use
 

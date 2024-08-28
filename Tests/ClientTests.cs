@@ -112,7 +112,7 @@ namespace Tests
 
             var (publisherId, result) =
                 await client.DeclarePublisher(publisherRef, "this-stream-does-not-exist", confirmed, errored,
-                    new ConnectionsPool(0, 1));
+                    new ConnectionsPool(0, 1, new ConnectionCloseConfig()));
             Assert.Equal(ResponseCode.StreamDoesNotExist, result.ResponseCode);
             await client.Close("done");
         }
@@ -124,7 +124,7 @@ namespace Tests
             var client = await Client.Create(clientParameters);
             var (subId, subscribeResponse) = await client.Subscribe(
                 "this-stream-does-not-exist", new OffsetTypeLast(), 1,
-                new Dictionary<string, string>(), null, null, new ConnectionsPool(0, 1));
+                new Dictionary<string, string>(), null, null, new ConnectionsPool(0, 1, new ConnectionCloseConfig()));
             Assert.Equal(ResponseCode.StreamDoesNotExist, subscribeResponse.ResponseCode);
             await client.Close("done");
         }

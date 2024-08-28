@@ -11,6 +11,41 @@ using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
 
+public enum ConnectionClosePolicy
+{
+    /// <summary>
+    /// The connection is closed when the last consumer or producer is removed.
+    /// </summary>
+    CloseWhenEmpty,
+
+    /// <summary>
+    /// The connection is closed when the last consumer or producer is removed and the connection is not used for a certain time.
+    /// </summary>
+    CloseWhenEmptyAndIdle
+}
+
+public class ConnectionCloseConfig
+{
+    /// <summary>
+    /// Policy to close the connection.
+    /// </summary>
+
+    public ConnectionClosePolicy Policy { get; set; } = ConnectionClosePolicy.CloseWhenEmpty;
+
+    /// <summary>
+    /// The connection is closed when the last consumer or producer is removed and the connection is not used for a certain time.
+    /// Idle time is valid only if the policy is CloseWhenEmptyAndIdle.
+    /// </summary>
+    public TimeSpan IdleTime { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Interval to check the idle time.
+    /// Default is high because the check is done in a separate thread.
+    /// The filed is internal to help the test.
+    /// </summary>
+    internal TimeSpan CheckIdleTime { get; set; } = TimeSpan.FromSeconds(60);
+}
+
 public class ConnectionPoolConfig
 {
     /// <summary>
@@ -30,6 +65,11 @@ public class ConnectionPoolConfig
     /// but it is not the best for performance.
     /// </summary>
     public byte ProducersPerConnection { get; set; } = 1;
+
+    /// <summary>
+    ///  Define the connection close policy.
+    /// </summary>
+    public ConnectionCloseConfig ConnectionCloseConfig { get; set; } = new ConnectionCloseConfig();
 }
 
 public class LastSecret
@@ -87,9 +127,10 @@ public class ConnectionItem
 ///   subscriptionIds 
 ///   publisherIds  
 /// </summary>
-public class ConnectionsPool
+public class ConnectionsPool : IDisposable
 {
     private static readonly object s_lock = new();
+    private bool _isRunning = false;
 
     internal static byte FindNextValidId(List<byte> ids, byte nextId = 0)
     {
@@ -127,16 +168,56 @@ public class ConnectionsPool
     private readonly byte _idsPerConnection;
     private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
     private readonly LastSecret _lastSecret = new();
+    private readonly Task _checkIdleConnectionTimeTask;
 
     /// <summary>
     /// Init the pool with the max connections and the max ids per connection
     /// </summary>
     /// <param name="maxConnections"> The max connections are allowed for session</param>
     /// <param name="idsPerConnection"> The max ids per Connection</param>
-    public ConnectionsPool(int maxConnections, byte idsPerConnection)
+    /// <param name="connectionCloseConfig"> Policy to close the connections in the pool</param>
+    public ConnectionsPool(int maxConnections, byte idsPerConnection, ConnectionCloseConfig connectionCloseConfig)
     {
         _maxConnections = maxConnections;
         _idsPerConnection = idsPerConnection;
+        ConnectionPoolConfig = connectionCloseConfig;
+        _isRunning = true;
+        if (ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmptyAndIdle)
+        {
+            _checkIdleConnectionTimeTask = Task.Run(CheckIdleConnectionTime);
+        }
+    }
+
+    private ConnectionCloseConfig ConnectionPoolConfig { get; }
+
+    private async Task CheckIdleConnectionTime()
+    {
+        while (_isRunning)
+        {
+            await Task.Delay(ConnectionPoolConfig.CheckIdleTime)
+                .ConfigureAwait(false);
+
+            if (!_isRunning)
+            {
+                var now = DateTime.UtcNow;
+                var connectionItems = Connections.Values.ToList();
+                foreach (var connectionItem in connectionItems.Where(connectionItem =>
+                             connectionItem.EntitiesCount == 0 &&
+                             connectionItem.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now))
+                {
+                    CloseItemAndConnection("Idle connection", connectionItem);
+                }
+            }
+            else
+            {
+                var connectionItems = Connections.Values.ToList();
+                foreach (var connectionItem in connectionItems.Where(
+                             connectionItem => connectionItem.EntitiesCount == 0))
+                {
+                    CloseItemAndConnection("Idle connection", connectionItem);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -208,10 +289,7 @@ public class ConnectionsPool
             return false;
         }
 
-        cp = clientParameters with
-        {
-            Password = _lastSecret.Secret
-        };
+        cp = clientParameters with { Password = _lastSecret.Secret };
         return true;
     }
 
@@ -264,19 +342,30 @@ public class ConnectionsPool
                 return;
             }
 
-            // close the connection
-            connectionItem.Client.Close(reason);
+            connectionItem.LastUsed = DateTime.UtcNow;
 
-            // remove the connection from the pool
-            // it means that the connection is closed
-            // we don't care if it is called two times for the same connection
-            Connections.TryRemove(clientId, out _);
+            if (ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmpty)
+            {
+                CloseItemAndConnection(reason, connectionItem);
+            }
         }
         finally
         {
             _semaphoreSlim.Release();
         }
     }
+
+    private void CloseItemAndConnection(string reason, ConnectionItem connectionItem)
+    {
+        // close the connection
+        connectionItem.Client.Close(reason);
+        // remove the connection from the pool
+        // it means that the connection is closed
+        // we don't care if it is called two times for the same connection
+        Connections.TryRemove(connectionItem.Client.ClientId, out _);
+    }
+
+    internal int PendingConnections => Connections.Values.Count(x => x.EntitiesCount > 0);
 
     /// <summary>
     /// Removes the consumer entity from the client.
@@ -328,4 +417,33 @@ public class ConnectionsPool
     }
 
     public int ConnectionsCount => Connections.Count;
+
+    public async Task Close()
+    {
+        // The pool can't be closed if there are pending connections with the policy: CloseWhenEmptyAndIdle 
+        // else there is no way to close the pending connections.
+        // The user needs to close the pending connections before to close the pool.
+        // At the moment when the pool is closed the pending connections are not closed with CloseWhenEmpty
+        // because the pool is not strictly bound to the stream system.
+        // The StreamSystem doesn't close the connections when it is closed. That was by design
+        // We could consider (Version 2.0) to close all the Producers and Consumers and their connection when the StreamSystem is closed.
+        // Other clients like Java and Golang close the connections when the Environment (alias StreamSystem) is closed.
+        if (PendingConnections > 0 && ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmptyAndIdle)
+        {
+            throw new PendingConnectionsException(
+                $"There are {PendingConnections} pending connections. With the policy CloseWhenEmptyAndIdle you need to close them");
+        }
+
+        _isRunning = false;
+        if (_checkIdleConnectionTimeTask is not null)
+        {
+            await _checkIdleConnectionTimeTask.ConfigureAwait(false);
+        }
+    }
+
+    public void Dispose()
+    {
+        _semaphoreSlim.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }

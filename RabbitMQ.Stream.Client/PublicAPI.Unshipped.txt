@@ -57,6 +57,15 @@ RabbitMQ.Stream.Client.ClientParameters.OnMetadataUpdate -> RabbitMQ.Stream.Clie
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.get -> System.TimeSpan
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.set -> void
 RabbitMQ.Stream.Client.Connection.UpdateCloseStatus(string reason) -> void
+RabbitMQ.Stream.Client.ConnectionCloseConfig
+RabbitMQ.Stream.Client.ConnectionCloseConfig.ConnectionCloseConfig() -> void
+RabbitMQ.Stream.Client.ConnectionCloseConfig.IdleTime.get -> System.TimeSpan
+RabbitMQ.Stream.Client.ConnectionCloseConfig.IdleTime.set -> void
+RabbitMQ.Stream.Client.ConnectionCloseConfig.Policy.get -> RabbitMQ.Stream.Client.ConnectionClosePolicy
+RabbitMQ.Stream.Client.ConnectionCloseConfig.Policy.set -> void
+RabbitMQ.Stream.Client.ConnectionClosePolicy
+RabbitMQ.Stream.Client.ConnectionClosePolicy.CloseWhenEmpty = 0 -> RabbitMQ.Stream.Client.ConnectionClosePolicy
+RabbitMQ.Stream.Client.ConnectionClosePolicy.CloseWhenEmptyAndIdle = 1 -> RabbitMQ.Stream.Client.ConnectionClosePolicy
 RabbitMQ.Stream.Client.ConnectionItem
 RabbitMQ.Stream.Client.ConnectionItem.Available.get -> bool
 RabbitMQ.Stream.Client.ConnectionItem.BrokerInfo.get -> string
@@ -67,14 +76,18 @@ RabbitMQ.Stream.Client.ConnectionItem.IdsPerConnection.get -> byte
 RabbitMQ.Stream.Client.ConnectionItem.LastUsed.get -> System.DateTime
 RabbitMQ.Stream.Client.ConnectionItem.LastUsed.set -> void
 RabbitMQ.Stream.Client.ConnectionPoolConfig
+RabbitMQ.Stream.Client.ConnectionPoolConfig.ConnectionCloseConfig.get -> RabbitMQ.Stream.Client.ConnectionCloseConfig
+RabbitMQ.Stream.Client.ConnectionPoolConfig.ConnectionCloseConfig.set -> void
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ConnectionPoolConfig() -> void
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ConsumersPerConnection.get -> byte
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ConsumersPerConnection.set -> void
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ProducersPerConnection.get -> byte
 RabbitMQ.Stream.Client.ConnectionPoolConfig.ProducersPerConnection.set -> void
 RabbitMQ.Stream.Client.ConnectionsPool
+RabbitMQ.Stream.Client.ConnectionsPool.Close() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsCount.get -> int
-RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsPool(int maxConnections, byte idsPerConnection) -> void
+RabbitMQ.Stream.Client.ConnectionsPool.ConnectionsPool(int maxConnections, byte idsPerConnection, RabbitMQ.Stream.Client.ConnectionCloseConfig connectionCloseConfig) -> void
+RabbitMQ.Stream.Client.ConnectionsPool.Dispose() -> void
 RabbitMQ.Stream.Client.ConnectionsPool.MaybeClose(string clientId, string reason) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.Remove(string clientId) -> void
 RabbitMQ.Stream.Client.ConnectionsPool.RemoveConsumerEntityFromStream(string clientId, byte id, string stream) -> void
@@ -194,6 +207,8 @@ RabbitMQ.Stream.Client.PartitionsSuperStreamSpec
 RabbitMQ.Stream.Client.PartitionsSuperStreamSpec.Partitions.get -> int
 RabbitMQ.Stream.Client.PartitionsSuperStreamSpec.PartitionsSuperStreamSpec(string Name) -> void
 RabbitMQ.Stream.Client.PartitionsSuperStreamSpec.PartitionsSuperStreamSpec(string Name, int partitions) -> void
+RabbitMQ.Stream.Client.PendingConnectionsException
+RabbitMQ.Stream.Client.PendingConnectionsException.PendingConnectionsException(string s) -> void
 RabbitMQ.Stream.Client.ProducerFilter
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.get -> System.Func<RabbitMQ.Stream.Client.Message, string>
 RabbitMQ.Stream.Client.ProducerFilter.FilterValue.set -> void

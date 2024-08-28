@@ -73,13 +73,13 @@ namespace RabbitMQ.Stream.Client
             _clientParameters = clientParameters;
             _client = client;
             _logger = logger ?? NullLogger<StreamSystem>.Instance;
-            // we don't expose the the max connections per producer/consumer
+            // we don't expose the max connections per producer/consumer
             // for the moment. We can expose it in the future if needed
             PoolConsumers = new ConnectionsPool(0,
-                connectionPoolConfig.ConsumersPerConnection);
+                connectionPoolConfig.ConsumersPerConnection, connectionPoolConfig.ConnectionCloseConfig);
 
             PoolProducers = new ConnectionsPool(0,
-                connectionPoolConfig.ProducersPerConnection);
+                connectionPoolConfig.ProducersPerConnection, connectionPoolConfig.ConnectionCloseConfig);
         }
 
         public bool IsClosed => _client.IsClosed;
@@ -139,6 +139,23 @@ namespace RabbitMQ.Stream.Client
         public async Task Close()
         {
             await _client.Close("system close").ConfigureAwait(false);
+
+            try
+            {
+                await PoolConsumers.Close()
+                    .ConfigureAwait(false);
+                await PoolProducers.Close()
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+            finally
+            {
+                PoolConsumers.Dispose();
+                PoolProducers.Dispose();
+            }
+
             _logger?.LogDebug("Client Closed");
         }
 
