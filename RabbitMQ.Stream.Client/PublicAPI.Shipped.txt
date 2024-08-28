@@ -200,8 +200,6 @@ RabbitMQ.Stream.Client.ClientParameters.Password.set -> void
 RabbitMQ.Stream.Client.ClientParameters.Properties.get -> System.Collections.Generic.IDictionary<string, string>
 RabbitMQ.Stream.Client.ClientParameters.Ssl.get -> RabbitMQ.Stream.Client.SslOption
 RabbitMQ.Stream.Client.ClientParameters.Ssl.set -> void
-RabbitMQ.Stream.Client.ClientParameters.UnhandledExceptionHandler.get -> System.Action<System.Exception>
-RabbitMQ.Stream.Client.ClientParameters.UnhandledExceptionHandler.set -> void
 RabbitMQ.Stream.Client.ClientParameters.UserName.get -> string
 RabbitMQ.Stream.Client.ClientParameters.UserName.set -> void
 RabbitMQ.Stream.Client.ClientParameters.VirtualHost.get -> string

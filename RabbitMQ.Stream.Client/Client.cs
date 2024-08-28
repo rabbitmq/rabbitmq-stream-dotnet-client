@@ -59,7 +59,6 @@ namespace RabbitMQ.Stream.Client
         public delegate Task MetadataUpdateHandler(MetaDataUpdate update);
 
         public event MetadataUpdateHandler OnMetadataUpdate;
-        public Action<Exception> UnhandledExceptionHandler { get; set; } = _ => { };
         public TimeSpan Heartbeat { get; set; } = TimeSpan.FromMinutes(1);
 
         public string ClientProvidedName
@@ -164,11 +163,6 @@ namespace RabbitMQ.Stream.Client
             IsClosed = false;
             _logger = logger ?? NullLogger.Instance;
             ClientId = Guid.NewGuid().ToString();
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-            {
-                _logger.LogError(args.ExceptionObject as Exception, "Unhandled exception");
-                Parameters.UnhandledExceptionHandler(args.ExceptionObject as Exception);
-            };
         }
 
         public bool IsClosed
