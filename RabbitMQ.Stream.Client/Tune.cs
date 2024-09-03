@@ -2,7 +2,6 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
-using System;
 using System.Buffers;
 
 namespace RabbitMQ.Stream.Client
@@ -24,13 +23,15 @@ namespace RabbitMQ.Stream.Client
 
         public uint Heartbeat => heartbeat;
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
+            var span = writer.GetSpan(SizeNeeded);
             var command = (ICommand)this;
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), command.Version);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), frameMax);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), heartbeat);
+            offset += WireFormatting.WriteUInt16(span[offset..], command.Version);
+            offset += WireFormatting.WriteUInt32(span[offset..], frameMax);
+            offset += WireFormatting.WriteUInt32(span[offset..], heartbeat);
+            writer.Advance(offset);
             return offset;
         }
 

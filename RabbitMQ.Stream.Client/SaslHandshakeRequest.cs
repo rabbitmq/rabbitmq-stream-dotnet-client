@@ -2,7 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
-using System;
+using System.Buffers;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -18,11 +18,13 @@ namespace RabbitMQ.Stream.Client
 
         public int SizeNeeded => 8;
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
+            var span = writer.GetSpan(SizeNeeded);
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand)this).Version);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
+            offset += WireFormatting.WriteUInt16(span[offset..], ((ICommand)this).Version);
+            offset += WireFormatting.WriteUInt32(span[offset..], correlationId);
+            writer.Advance(offset);
             return offset;
         }
     }

@@ -24,7 +24,7 @@ namespace RabbitMQ.Stream.Client
 
         private ResponseCode ResponseCode { get; }
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }

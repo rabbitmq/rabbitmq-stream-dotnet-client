@@ -2,7 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
-using System;
+using System.Buffers;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -21,33 +21,35 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
+            var span = writer.GetSpan(SizeNeeded);
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), Version);
-            offset += WireFormatting.WriteByte(span.Slice(offset), publisherId);
+            offset += WireFormatting.WriteUInt16(span[offset..], Version);
+            offset += WireFormatting.WriteByte(span[offset..], publisherId);
             // number of root messages. In this case will be always 1. 
-            offset += WireFormatting.WriteInt32(span.Slice(offset), 1);
+            offset += WireFormatting.WriteInt32(span[offset..], 1);
             // publishingId for all the messages
             // so there is publishingId --> []messages
-            offset += WireFormatting.WriteUInt64(span.Slice(offset), publishingId);
+            offset += WireFormatting.WriteUInt64(span[offset..], publishingId);
             // compress mode see CompressMode
             var agg = (byte)compressionCodec.CompressionType << 4;
             offset += WireFormatting.WriteByte(
-                span.Slice(offset), (byte)(0x80 | agg));
+                span[offset..], (byte)(0x80 | agg));
 
             // sub Messages number  
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), (ushort)compressionCodec.MessagesCount);
+            offset += WireFormatting.WriteUInt16(span[offset..], (ushort)compressionCodec.MessagesCount);
 
             // uncompressed byte size value
-            offset += WireFormatting.WriteUInt32(span.Slice(offset),
+            offset += WireFormatting.WriteUInt32(span[offset..],
                 (uint)compressionCodec.UnCompressedSize);
 
             // compressed byte size value 
-            offset += WireFormatting.WriteUInt32(span.Slice(offset),
+            offset += WireFormatting.WriteUInt32(span[offset..],
                 (uint)compressionCodec.CompressedSize);
 
-            offset += compressionCodec.Write(span.Slice(offset));
+            offset += compressionCodec.Write(span[offset..]);
+            writer.Advance(offset);
             return offset;
         }
 

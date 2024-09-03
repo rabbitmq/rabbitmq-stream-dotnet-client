@@ -54,12 +54,15 @@ namespace RabbitMQ.Stream.Client
             BinaryPrimitives.WriteInt64BigEndian(span, value);
             return 8;
         }
+
+        public const int SizeofUInt32 = 4;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int WriteUInt32(Span<byte> span, uint value)
         {
             BinaryPrimitives.WriteUInt32BigEndian(span, value);
-            return 4;
+            return SizeofUInt32;
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int Write(Span<byte> span, ReadOnlySequence<byte> msg)
         {
