@@ -1,5 +1,9 @@
 <!-- vim: set ft=xml: -->
 <Project>
+  <PropertyGroup>
+    <PublicKey>0024000004800000940000000602000000240000525341310004000001000100e5f75a5f3e8c9cf8151b55c3460da0f58823b3139dd0672f7aae5d875416c363cfdbee2d98a09ee53157213447a128893225a56871be16aba8aa57ac7ceb7824f03131c7c9028a8050660652b26ab7568eaeebf022948e496e00e35e01e5f56d67351278ec90b6c0bfc965610281e7bdf25b0c9e625fdde89f2ed5f3f5757bbc</PublicKey>
+    <TargetFrameworkMonikerAssemblyAttributesPath>$([System.IO.Path]::Combine('$(IntermediateOutputPath)','$(TargetFrameworkMoniker).AssemblyAttributes$(DefaultLanguageSourceExtension)'))</TargetFrameworkMonikerAssemblyAttributesPath>    
+  </PropertyGroup>
   <ItemGroup>
     <EmbeddedFiles Include="$(GeneratedAssemblyInfoFile)"/>
   </ItemGroup>
