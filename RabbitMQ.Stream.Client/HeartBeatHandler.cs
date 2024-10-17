@@ -19,12 +19,12 @@ public class HeartBeatHandler
     private uint _missedHeartbeat;
 
     private readonly Func<ValueTask<bool>> _sendHeartbeatFunc;
-    private readonly Func<string, Task<CloseResponse>> _close;
+    private readonly Func<string, string, Task<CloseResponse>> _close;
     private readonly int _heartbeat;
     private readonly ILogger<HeartBeatHandler> _logger;
 
     public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc,
-        Func<string, Task<CloseResponse>> close,
+        Func<string, string, Task<CloseResponse>> close,
         int heartbeat,
         ILogger<HeartBeatHandler> logger = null
     )
@@ -77,7 +77,8 @@ public class HeartBeatHandler
         // client will be closed
         _logger.LogCritical("Too many heartbeats missed: {MissedHeartbeatCounter}", _missedHeartbeat);
         Close();
-        await _close($"Too many heartbeats missed: {_missedHeartbeat}. Client connection will be closed.").ConfigureAwait(false);
+        await _close($"Too many heartbeats missed: {_missedHeartbeat}. Client connection will be closed.",
+            ConnectionClosedReason.Unexpected).ConfigureAwait(false);
     }
 
     internal void UpdateHeartBeat()
