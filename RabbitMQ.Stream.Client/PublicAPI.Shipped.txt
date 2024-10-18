@@ -308,7 +308,6 @@ RabbitMQ.Stream.Client.Hash.Murmur3.Seed.get -> uint
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.HashRoutingMurmurStrategy(System.Func<RabbitMQ.Stream.Client.Message, string> routingKeyExtractor) -> void
 RabbitMQ.Stream.Client.HeartBeatHandler
-RabbitMQ.Stream.Client.HeartBeatHandler.HeartBeatHandler(System.Func<System.Threading.Tasks.ValueTask<bool>> sendHeartbeatFunc, System.Func<string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse>> close, int heartbeat, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.HeartBeatHandler> logger = null) -> void
 RabbitMQ.Stream.Client.IClient
 RabbitMQ.Stream.Client.IClient.Close(string reason) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse>
 RabbitMQ.Stream.Client.IClient.ConnectionProperties.get -> System.Collections.Generic.IDictionary<string, string>
