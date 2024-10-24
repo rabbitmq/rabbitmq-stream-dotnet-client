@@ -63,7 +63,7 @@ public abstract class ConsumerFactory : ReliableBase
                     return;
 
                 await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
-                    ChangeStatusReason.UnexpectedlyDisconnected).ConfigureAwait(false);
+                    FromConnectionClosedReasonToStatusReason(closeReason)).ConfigureAwait(false);
             },
             MetadataHandler = async _ =>
             {
@@ -131,8 +131,7 @@ public abstract class ConsumerFactory : ReliableBase
 
                         var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                         await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r,
-                                ChangeStatusReason.UnexpectedlyDisconnected)
-                            .ConfigureAwait(false);
+                            FromConnectionClosedReasonToStatusReason(closeReason)).ConfigureAwait(false);
                     },
                     MetadataHandler = async update =>
                     {

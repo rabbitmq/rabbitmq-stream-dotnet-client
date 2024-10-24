@@ -22,7 +22,7 @@ public class BestPracticesClient
         public int Port { get; set; } = 5552;
         public string? Username { get; set; } = "guest";
         public string? Password { get; set; } = "guest";
-        
+
         public string? StreamName { get; set; } = "DotNetClientTest";
         public bool LoadBalancer { get; set; } = false;
         public bool SuperStream { get; set; } = false;
@@ -32,10 +32,8 @@ public class BestPracticesClient
         public int MessagesPerProducer { get; set; } = 5_000_000;
         public int Consumers { get; set; } = 9;
         public byte ConsumersPerConnection { get; set; } = 8;
-        
+
         public int DelayDuringSendMs { get; set; } = 0;
-        
-        
     }
 
     public static async Task Start(Config config)
@@ -49,7 +47,7 @@ public class BestPracticesClient
                 options.TimestampFormat = "[HH:mm:ss] ";
                 options.ColorBehavior = LoggerColorBehavior.Default;
             })
-            .AddFilter(level => level >= LogLevel.Debug)
+            .AddFilter(level => level >= LogLevel.Information)
         );
         var loggerFactory = serviceCollection.BuildServiceProvider()
             .GetService<ILoggerFactory>();
@@ -59,6 +57,7 @@ public class BestPracticesClient
         {
             var lp = loggerFactory.CreateLogger<Producer>();
             var lc = loggerFactory.CreateLogger<Consumer>();
+            var ls = loggerFactory.CreateLogger<StreamSystem>();
 
             var ep = new IPEndPoint(IPAddress.Loopback, config.Port);
 
@@ -86,7 +85,7 @@ public class BestPracticesClient
             {
                 UserName = config.Username,
                 Password = config.Password,
-                Endpoints = new List<EndPoint>() {ep},
+                Endpoints = new List<EndPoint>() { ep },
                 ConnectionPoolConfig = new ConnectionPoolConfig()
                 {
                     ProducersPerConnection = config.ProducersPerConnection,
@@ -108,12 +107,12 @@ public class BestPracticesClient
                         ProducersPerConnection = config.ProducersPerConnection,
                         ConsumersPerConnection = config.ConsumersPerConnection,
                     },
-                    Endpoints = new List<EndPoint>() {resolver.EndPoint}
+                    Endpoints = new List<EndPoint>() { resolver.EndPoint }
                 };
             }
 
 
-            var system = await StreamSystem.Create(streamConf).ConfigureAwait(false);
+            var system = await StreamSystem.Create(streamConf, ls).ConfigureAwait(false);
             var streamsList = new List<string>();
             if (config.SuperStream)
             {
@@ -159,12 +158,13 @@ public class BestPracticesClient
                 {
                     await system.DeleteSuperStream(streamsList[0]).ConfigureAwait(false);
                 }
-                
-                
-                await system.CreateSuperStream(new PartitionsSuperStreamSpec(streamsList[0], config.Streams)).ConfigureAwait(false);
+
+
+                await system.CreateSuperStream(new PartitionsSuperStreamSpec(streamsList[0], config.Streams))
+                    .ConfigureAwait(false);
             }
-            
-            
+
+
             foreach (var stream in streamsList)
             {
                 if (!config.SuperStream)
@@ -174,10 +174,10 @@ public class BestPracticesClient
                         await system.DeleteStream(stream).ConfigureAwait(false);
                     }
 
-                    await system.CreateStream(new StreamSpec(stream) {MaxLengthBytes = 30_000_000_000,})
+                    await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 30_000_000_000, })
                         .ConfigureAwait(false);
                     await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
-                } 
+                }
 
                 for (var z = 0; z < config.Consumers; z++)
                 {
@@ -186,7 +186,7 @@ public class BestPracticesClient
                         OffsetSpec = new OffsetTypeLast(),
                         IsSuperStream = config.SuperStream,
                         IsSingleActiveConsumer = config.SuperStream,
-                        Reference = "myApp",// needed for the Single Active Consumer or fot the store offset 
+                        Reference = "myApp", // needed for the Single Active Consumer or fot the store offset 
                         // can help to identify the consumer on the logs and RabbitMQ Management
                         Identifier = $"my_consumer_{z}",
                         InitialCredits = 10,
@@ -198,10 +198,11 @@ public class BestPracticesClient
                                 // store the offset every 1_000/5_000/10_000 messages
                                 await consumer.StoreOffset(ctx.Offset).ConfigureAwait(false);
                             }
+
                             Interlocked.Increment(ref totalConsumed);
                         },
                     };
-                    
+
                     // This is the callback that will be called when the consumer status changes
                     // DON'T PUT ANY BLOCKING CODE HERE
                     conf.StatusChanged += (status) =>
@@ -210,8 +211,9 @@ public class BestPracticesClient
                             ? $" Partition {status.Partition} of super stream: {status.Stream}"
                             : $"Stream: {status.Stream}";
 
-                        lc.LogInformation("Consumer: {Id} - status changed from: {From} to: {To} reason: {Reason}  {Info}",
-                            status.Identifier, status.From, status.To,status.Reason, streamInfo);
+                        lc.LogInformation(
+                            "Consumer: {Id} - status changed from: {From} to: {To} reason: {Reason}  {Info}",
+                            status.Identifier, status.From, status.To, status.Reason, streamInfo);
                     };
                     consumersList.Add(
                         await Consumer.Create(conf, lc).ConfigureAwait(false));
@@ -258,7 +260,7 @@ public class BestPracticesClient
                                 return Task.CompletedTask;
                             },
                         };
-                        
+
                         // Like the consumer don't put any blocking code here
                         producerConfig.StatusChanged += (status) =>
                         {
@@ -267,8 +269,9 @@ public class BestPracticesClient
                                 : $"Stream: {status.Stream}";
 
                             // just log the status change
-                            lp.LogInformation("Consumer: {Id} - status changed from: {From} to: {To} reason: {Reason}  {Info}",
-                                status.Identifier, status.From, status.To,status.Reason, streamInfo);
+                            lp.LogInformation(
+                                "Consumer: {Id} - status changed from: {From} to: {To} reason: {Reason}  {Info}",
+                                status.Identifier, status.From, status.To, status.Reason, streamInfo);
 
                             // in case of disconnection the event will be reset
                             // in case of reconnection the event will be set so the producer can send messages
@@ -304,7 +307,7 @@ public class BestPracticesClient
 
                             var message = new Message(Encoding.Default.GetBytes("hello"))
                             {
-                                Properties = new Properties() {MessageId = $"hello{i}"}
+                                Properties = new Properties() { MessageId = $"hello{i}" }
                             };
                             await MaybeSend(producer, message, publishEvent).ConfigureAwait(false);
                             // You don't need this it is only for the example
