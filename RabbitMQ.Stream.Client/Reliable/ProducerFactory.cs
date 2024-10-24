@@ -51,7 +51,7 @@ public abstract class ProducerFactory : ReliableBase
                             return;
                         var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
                         await OnEntityClosed(_producerConfig.StreamSystem, partitionStream, r,
-                                ChangeStatusReason.UnexpectedlyDisconnected)
+                                ReliableBase.FromConnectionClosedReasonToStatusReason(closeReason))
                             .ConfigureAwait(false);
                     },
                     MetadataHandler = async update =>
@@ -116,7 +116,7 @@ public abstract class ProducerFactory : ReliableBase
                     return;
 
                 await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream,
-                    ChangeStatusReason.UnexpectedlyDisconnected).ConfigureAwait(false);
+                    ReliableBase.FromConnectionClosedReasonToStatusReason(closeReason)).ConfigureAwait(false);
             },
             ConfirmHandler = confirmation =>
             {

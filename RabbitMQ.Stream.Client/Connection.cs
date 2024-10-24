@@ -18,6 +18,8 @@ namespace RabbitMQ.Stream.Client
     {
         public const string Normal = "TCP connection closed normal";
         public const string Unexpected = "TCP connection closed unexpected";
+        public const string MissingHeartbeat = "TCP connection closed missing heartbeat";
+
     }
 
     public class Connection : IDisposable
@@ -240,7 +242,6 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    UpdateCloseStatus(ConnectionClosedReason.Normal);
                     if (!_cancelTokenSource.IsCancellationRequested)
                     {
                         _cancelTokenSource.Cancel();
