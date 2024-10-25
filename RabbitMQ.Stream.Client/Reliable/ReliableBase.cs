@@ -122,7 +122,7 @@ public abstract class ReliableBase
         // Can be removed on the version 2.0 when the ConnectionClosedReason will be an enum as well
         return connectionClosedReason switch
         {
-            ConnectionClosedReason.MissingHeartbeat => ChangeStatusReason.DisconnectedByTooManyHeartbeatMissing,
+            ConnectionClosedReason.TooManyHeartbeatsMissing => ChangeStatusReason.DisconnectedByTooManyHeartbeatMissing,
             ConnectionClosedReason.Unexpected => ChangeStatusReason.UnexpectedlyDisconnected,
             _ => throw new ArgumentOutOfRangeException(nameof(connectionClosedReason), connectionClosedReason, null)
         };

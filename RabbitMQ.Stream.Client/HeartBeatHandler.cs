@@ -83,7 +83,7 @@ public class HeartBeatHandler
         // Even it is not a perfect solution, it is a good way to handle the case to avoid to introduce breaking changes
         // we need to review all the status and the close reason on the version 2.0
         await _close($"Too many heartbeats missed: {_missedHeartbeat}. Client connection will be closed.",
-            ConnectionClosedReason.MissingHeartbeat).ConfigureAwait(false);
+            ConnectionClosedReason.TooManyHeartbeatsMissing).ConfigureAwait(false);
     }
 
     internal void UpdateHeartBeat()
