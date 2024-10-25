@@ -18,7 +18,7 @@ namespace RabbitMQ.Stream.Client
     {
         public const string Normal = "TCP connection closed normal";
         public const string Unexpected = "TCP connection closed unexpected";
-        public const string MissingHeartbeat = "TCP connection closed missing heartbeat";
+        public const string TooManyHeartbeatsMissing = "TCP connection closed by too many heartbeats missing";
 
     }
 
