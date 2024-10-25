@@ -194,7 +194,8 @@ namespace RabbitMQ.Stream.Client
             if (ConnectionClosed != null)
             {
                 var t = ConnectionClosed?.Invoke(reason)!;
-                await t.ConfigureAwait(false);
+                if (t != null)
+                    await t.ConfigureAwait(false);
             }
         }
 
@@ -765,7 +766,7 @@ namespace RabbitMQ.Stream.Client
             return await Publish(new ConsumerUpdateRequest(rCorrelationId, offsetSpecification)).ConfigureAwait(false);
         }
 
-        public async Task<CloseResponse> Close(string reason)
+        private async Task<CloseResponse> Close(string reason, string closedStatus)
         {
             if (IsClosed)
             {
@@ -775,7 +776,7 @@ namespace RabbitMQ.Stream.Client
             InternalClose();
             try
             {
-                _connection.UpdateCloseStatus(ConnectionClosedReason.Normal);
+                _connection.UpdateCloseStatus(closedStatus);
                 var result =
                     await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
                         TimeSpan.FromSeconds(10)).ConfigureAwait(false);
@@ -797,6 +798,11 @@ namespace RabbitMQ.Stream.Client
             }
 
             return new CloseResponse(0, ResponseCode.Ok);
+        }
+
+        public async Task<CloseResponse> Close(string reason)
+        {
+            return await Close(reason, ConnectionClosedReason.Normal).ConfigureAwait(false);
         }
 
         // _poolSemaphore is introduced here: https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/328 

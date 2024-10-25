@@ -19,12 +19,12 @@ public class HeartBeatHandler
     private uint _missedHeartbeat;
 
     private readonly Func<ValueTask<bool>> _sendHeartbeatFunc;
-    private readonly Func<string, Task<CloseResponse>> _close;
+    private readonly Func<string, string, Task<CloseResponse>> _close;
     private readonly int _heartbeat;
     private readonly ILogger<HeartBeatHandler> _logger;
 
     public HeartBeatHandler(Func<ValueTask<bool>> sendHeartbeatFunc,
-        Func<string, Task<CloseResponse>> close,
+        Func<string, string, Task<CloseResponse>> close,
         int heartbeat,
         ILogger<HeartBeatHandler> logger = null
     )
@@ -77,7 +77,13 @@ public class HeartBeatHandler
         // client will be closed
         _logger.LogCritical("Too many heartbeats missed: {MissedHeartbeatCounter}", _missedHeartbeat);
         Close();
-        await _close($"Too many heartbeats missed: {_missedHeartbeat}. Client connection will be closed.").ConfigureAwait(false);
+        // The heartbeat is missed for x times the client will be closed with the reason Unexpected
+        // In this way the ReliableProducer / ReliableConsumer  will be able to handle the close reason
+        // and reconnect the client
+        // Even it is not a perfect solution, it is a good way to handle the case to avoid to introduce breaking changes
+        // we need to review all the status and the close reason on the version 2.0
+        await _close($"Too many heartbeats missed: {_missedHeartbeat}. Client connection will be closed.",
+            ConnectionClosedReason.MissingHeartbeat).ConfigureAwait(false);
     }
 
     internal void UpdateHeartBeat()

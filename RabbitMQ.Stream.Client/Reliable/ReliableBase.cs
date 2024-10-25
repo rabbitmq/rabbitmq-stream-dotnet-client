@@ -34,7 +34,8 @@ public enum ChangeStatusReason
     MetaDataUpdate,
     ClosedByUser,
     ClosedByStrategyPolicy,
-    BoolFailure
+    BoolFailure,
+    DisconnectedByTooManyHeartbeatMissing,
 }
 
 public record ReliableConfig
@@ -109,6 +110,23 @@ public abstract class ReliableBase
     protected abstract ILogger BaseLogger { get; }
     private ReliableConfig _reliableConfig;
 
+    /// <summary>
+    /// The function to convert the string ConnectionClosedReason to the ChangeStatusReason enum
+    /// 
+    /// </summary>
+    /// <param name="connectionClosedReason"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentOutOfRangeException"></exception>
+    protected static ChangeStatusReason FromConnectionClosedReasonToStatusReason(string connectionClosedReason)
+    {
+        // Can be removed on the version 2.0 when the ConnectionClosedReason will be an enum as well
+        return connectionClosedReason switch
+        {
+            ConnectionClosedReason.MissingHeartbeat => ChangeStatusReason.DisconnectedByTooManyHeartbeatMissing,
+            ConnectionClosedReason.Unexpected => ChangeStatusReason.UnexpectedlyDisconnected,
+            _ => throw new ArgumentOutOfRangeException(nameof(connectionClosedReason), connectionClosedReason, null)
+        };
+    }
     protected static async Task RandomWait()
     {
         await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);

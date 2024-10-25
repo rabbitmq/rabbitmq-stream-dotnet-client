@@ -393,7 +393,7 @@ namespace Tests
             var testPassed = new TaskCompletionSource<bool>();
             var hBeatHandler = new HeartBeatHandler(
                 () => default,
-                s =>
+                (s, r) =>
                 {
                     testPassed.SetResult(true);
                     return null;
@@ -412,7 +412,7 @@ namespace Tests
             // the HeartBeatHandler is disabled by default
             var hBeatHandler = new HeartBeatHandler(
                 () => default,
-                s => null,
+                (s, r) => null,
                 0);
             Assert.False(hBeatHandler.IsActive());
         }
