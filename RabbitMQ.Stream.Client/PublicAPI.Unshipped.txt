@@ -56,6 +56,8 @@ RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.OnMetadataUpdate -> RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.get -> System.TimeSpan
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.set -> void
+RabbitMQ.Stream.Client.CommandVersionsRequest.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.CommandVersionsResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
 RabbitMQ.Stream.Client.Connection.UpdateCloseStatus(string reason) -> void
 RabbitMQ.Stream.Client.ConnectionCloseConfig
 RabbitMQ.Stream.Client.ConnectionCloseConfig.ConnectionCloseConfig() -> void
@@ -123,14 +125,14 @@ RabbitMQ.Stream.Client.CreateSuperStreamResponse.CorrelationId.get -> uint
 RabbitMQ.Stream.Client.CreateSuperStreamResponse.CreateSuperStreamResponse() -> void
 RabbitMQ.Stream.Client.CreateSuperStreamResponse.ResponseCode.get -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.CreateSuperStreamResponse.SizeNeeded.get -> int
-RabbitMQ.Stream.Client.CreateSuperStreamResponse.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.CreateSuperStreamResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
 RabbitMQ.Stream.Client.DeleteSuperStreamResponse
 RabbitMQ.Stream.Client.DeleteSuperStreamResponse.CorrelationId.get -> uint
 RabbitMQ.Stream.Client.DeleteSuperStreamResponse.DeleteSuperStreamResponse() -> void
 RabbitMQ.Stream.Client.DeleteSuperStreamResponse.DeleteSuperStreamResponse(uint correlationId, ushort responseCode) -> void
 RabbitMQ.Stream.Client.DeleteSuperStreamResponse.ResponseCode.get -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.DeleteSuperStreamResponse.SizeNeeded.get -> int
-RabbitMQ.Stream.Client.DeleteSuperStreamResponse.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.DeleteSuperStreamResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
 RabbitMQ.Stream.Client.EntityCommonConfig
 RabbitMQ.Stream.Client.EntityCommonConfig.Identifier.get -> string
 RabbitMQ.Stream.Client.EntityCommonConfig.Identifier.set -> void
@@ -159,14 +161,12 @@ RabbitMQ.Stream.Client.CommandVersionsRequest
 RabbitMQ.Stream.Client.CommandVersionsRequest.CommandVersionsRequest() -> void
 RabbitMQ.Stream.Client.CommandVersionsRequest.CommandVersionsRequest(uint correlationId) -> void
 RabbitMQ.Stream.Client.CommandVersionsRequest.SizeNeeded.get -> int
-RabbitMQ.Stream.Client.CommandVersionsRequest.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.CommandVersionsResponse
 RabbitMQ.Stream.Client.CommandVersionsResponse.Commands.get -> System.Collections.Generic.List<RabbitMQ.Stream.Client.ICommandVersions>
 RabbitMQ.Stream.Client.CommandVersionsResponse.CommandVersionsResponse() -> void
 RabbitMQ.Stream.Client.CommandVersionsResponse.CorrelationId.get -> uint
 RabbitMQ.Stream.Client.CommandVersionsResponse.ResponseCode.get -> RabbitMQ.Stream.Client.ResponseCode
 RabbitMQ.Stream.Client.CommandVersionsResponse.SizeNeeded.get -> int
-RabbitMQ.Stream.Client.CommandVersionsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.ICommandVersions
 RabbitMQ.Stream.Client.ICommandVersions.Command.get -> ushort
 RabbitMQ.Stream.Client.ICommandVersions.MaxVersion.get -> ushort
@@ -223,7 +223,7 @@ RabbitMQ.Stream.Client.PublishFilter.MinVersion.get -> ushort
 RabbitMQ.Stream.Client.PublishFilter.PublishFilter() -> void
 RabbitMQ.Stream.Client.PublishFilter.PublishFilter(byte publisherId, System.Collections.Generic.List<(ulong, RabbitMQ.Stream.Client.Message)> messages, System.Func<RabbitMQ.Stream.Client.Message, string> filterValueExtractor, Microsoft.Extensions.Logging.ILogger logger) -> void
 RabbitMQ.Stream.Client.PublishFilter.SizeNeeded.get -> int
-RabbitMQ.Stream.Client.PublishFilter.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.PublishFilter.Write(System.Buffers.IBufferWriter<byte> writer) -> int
 RabbitMQ.Stream.Client.RawConsumer.Info.get -> RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.RawConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.RawConsumerConfig.ConnectionClosedHandler.set -> void
@@ -256,6 +256,26 @@ RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Filter.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerFactory._consumer -> RabbitMQ.Stream.Client.IConsumer
+RabbitMQ.Stream.Client.CloseResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.ConsumerUpdateQueryResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.CreateResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.CreditResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.DeclarePublisherResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.DeletePublisherResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.DeleteResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.Deliver.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.ICommand.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.Message.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.MetaDataQuery.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.MetaDataResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.MetaDataUpdate.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.PartitionsQueryResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.PeerPropertiesResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.Publish.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.PublishConfirm.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.PublishError.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.QueryOffsetResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.QueryPublisherResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.Close() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.Reliable.DeduplicatingProducer.GetLastPublishedId() -> System.Threading.Tasks.Task<ulong>
@@ -315,7 +335,7 @@ RabbitMQ.Stream.Client.RouteQueryResponse.RouteQueryResponse() -> void
 RabbitMQ.Stream.Client.RouteQueryResponse.RouteQueryResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode, System.Collections.Generic.List<string> streams) -> void
 RabbitMQ.Stream.Client.RouteQueryResponse.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.RouteQueryResponse.Streams.get -> System.Collections.Generic.List<string>
-RabbitMQ.Stream.Client.RouteQueryResponse.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.RouteQueryResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
 RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Hash = 0 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Key = 1 -> RabbitMQ.Stream.Client.RoutingStrategyType
@@ -330,12 +350,12 @@ RabbitMQ.Stream.Client.StreamStatsResponse.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.StreamStatsResponse.Statistic.get -> System.Collections.Generic.IDictionary<string, long>
 RabbitMQ.Stream.Client.StreamStatsResponse.StreamStatsResponse() -> void
 RabbitMQ.Stream.Client.StreamStatsResponse.StreamStatsResponse(uint correlationId, RabbitMQ.Stream.Client.ResponseCode responseCode, System.Collections.Generic.IDictionary<string, long> statistic) -> void
-RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.StreamSystem.CreateRawSuperStreamProducer(RabbitMQ.Stream.Client.RawSuperStreamProducerConfig rawSuperStreamProducerConfig, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ISuperStreamProducer>
 RabbitMQ.Stream.Client.StreamSystem.CreateSuperStream(RabbitMQ.Stream.Client.SuperStreamSpec spec) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystem.CreateSuperStreamConsumer(RabbitMQ.Stream.Client.RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.ISuperStreamConsumer>
 RabbitMQ.Stream.Client.StreamSystem.DeleteSuperStream(string superStream) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystem.StreamInfo(string streamName) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamInfo>
+RabbitMQ.Stream.Client.StreamStatsResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
 RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
 RabbitMQ.Stream.Client.StreamSystem.SuperStreamExists(string superStream) -> System.Threading.Tasks.Task<bool>
 RabbitMQ.Stream.Client.StreamSystem.UpdateSecret(string newSecret) -> System.Threading.Tasks.Task
@@ -373,3 +393,5 @@ static RabbitMQ.Stream.Client.Reliable.ReliableBase.FromConnectionClosedReasonTo
 static RabbitMQ.Stream.Client.Reliable.ReliableBase.RandomWait() -> System.Threading.Tasks.Task
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderOrRandomReplicasConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
+RabbitMQ.Stream.Client.SubscribeResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int
+RabbitMQ.Stream.Client.UnsubscribeResponse.Write(System.Buffers.IBufferWriter<byte> writer) -> int

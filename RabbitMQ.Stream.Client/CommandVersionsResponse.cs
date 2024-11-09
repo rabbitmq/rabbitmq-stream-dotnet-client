@@ -20,7 +20,6 @@ public struct CommandVersionsResponse : ICommand
     }
 
     public int SizeNeeded { get => throw new NotImplementedException(); }
-    public int Write(Span<byte> span) => throw new NotImplementedException();
 
     public uint CorrelationId { get; }
     public ResponseCode ResponseCode { get; }
@@ -46,5 +45,10 @@ public struct CommandVersionsResponse : ICommand
 
         command = new CommandVersionsResponse(correlation, (ResponseCode)responseCode, commands);
         return offset;
+    }
+
+    public int Write(IBufferWriter<byte> writer)
+    {
+        throw new NotImplementedException();
     }
 }

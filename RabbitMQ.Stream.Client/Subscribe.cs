@@ -146,7 +146,7 @@ namespace RabbitMQ.Stream.Client
 
         public ResponseCode ResponseCode => responseCode;
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
             throw new NotImplementedException();
         }
@@ -203,25 +203,27 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public int Write(Span<byte> span)
+        public int Write(IBufferWriter<byte> writer)
         {
+            var span = writer.GetSpan(SizeNeeded);
             var offset = WireFormatting.WriteUInt16(span, Key);
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), ((ICommand)this).Version);
-            offset += WireFormatting.WriteUInt32(span.Slice(offset), correlationId);
-            offset += WireFormatting.WriteByte(span.Slice(offset), subscriptionId);
-            offset += WireFormatting.WriteString(span.Slice(offset), stream);
-            offset += offsetType.Write(span.Slice(offset));
-            offset += WireFormatting.WriteUInt16(span.Slice(offset), credit);
+            offset += WireFormatting.WriteUInt16(span[offset..], ((ICommand)this).Version);
+            offset += WireFormatting.WriteUInt32(span[offset..], correlationId);
+            offset += WireFormatting.WriteByte(span[offset..], subscriptionId);
+            offset += WireFormatting.WriteString(span[offset..], stream);
+            offset += offsetType.Write(span[offset..]);
+            offset += WireFormatting.WriteUInt16(span[offset..], credit);
             if (properties.Count > 0)
             {
-                offset += WireFormatting.WriteInt32(span.Slice(offset), properties.Count);
+                offset += WireFormatting.WriteInt32(span[offset..], properties.Count);
                 foreach (var (k, v) in properties)
                 {
-                    offset += WireFormatting.WriteString(span.Slice(offset), k);
-                    offset += WireFormatting.WriteString(span.Slice(offset), v);
+                    offset += WireFormatting.WriteString(span[offset..], k);
+                    offset += WireFormatting.WriteString(span[offset..], v);
                 }
             }
 
+            writer.Advance(offset);
             return offset;
         }
     }
