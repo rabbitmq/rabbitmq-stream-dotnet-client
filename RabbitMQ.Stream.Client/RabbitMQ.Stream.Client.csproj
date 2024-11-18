@@ -16,6 +16,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageOutputPath>..\packages</PackageOutputPath>
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
+    <SignAssembly>True</SignAssembly>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Title>RabbitMQ Stream Client Library for .NET</Title>
     <Copyright>Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.</Copyright>
@@ -28,12 +29,7 @@
     <None Remove="icon.png" />
     <Content Include="icon.png" PackagePath="icon.png" />
     <None Include="$(MSBuildThisFileDirectory)..\LICENSE" Pack="true" Visible="false" PackagePath="" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-    <_Parameter1>Tests</_Parameter1>
-    </AssemblyAttribute>
+    <InternalsVisibleTo Include="Tests" />
   </ItemGroup>
 
   <ItemGroup>
