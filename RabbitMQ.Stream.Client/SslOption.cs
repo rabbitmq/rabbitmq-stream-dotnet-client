@@ -86,10 +86,15 @@ namespace RabbitMQ.Stream.Client
                     return null;
                 }
 
-                var collection = new X509CertificateCollection
-                {
+                X509CertificateCollection collection = null;
+#if NET9_0_OR_GREATER
+                collection = X509CertificateLoader.LoadPkcs12CollectionFromFile(CertPath, CertPassphrase);
+#else
+                collection =
+                [
                     new X509Certificate2(CertPath, CertPassphrase)
-                };
+                ];
+#endif
                 return collection;
             }
             set => _certificateCollection = value;

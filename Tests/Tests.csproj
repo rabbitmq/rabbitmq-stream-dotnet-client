@@ -6,7 +6,8 @@
     <Copyright>Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.</Copyright>
     <Authors>Broadcom</Authors>
     <Company>Broadcom Inc. and/or its subsidiaries.</Company>
-    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <TestTfmsInParallel>false</TestTfmsInParallel>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,19 +17,13 @@
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="System.IO.Hashing" />
     <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.visualstudio">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
     <PackageReference Include="Xunit.SkippableFact" />
-    <PackageReference Include="coverlet.collector">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="coverlet.collector" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RabbitMQ.Stream.Client\RabbitMQ.Stream.Client.csproj" />
+    <ProjectReference Include="../RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Resources\**" CopyToOutputDirectory="PreserveNewest" LinkBase="TestFiles\" />
+    <None Include="Resources/**" CopyToOutputDirectory="PreserveNewest" LinkBase="TestFiles/" />
   </ItemGroup>
 
 </Project>

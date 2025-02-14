@@ -24,7 +24,7 @@ public class SacTests
     }
 
     [Fact]
-    public async void ValidateSaCConsumer()
+    public async Task ValidateSaCConsumer()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
@@ -40,7 +40,7 @@ public class SacTests
     }
 
     [Fact]
-    public async void SecondConsumerActiveWhenTheFirstIsClosed()
+    public async Task SecondConsumerActiveWhenTheFirstIsClosed()
     {
         // Tests the standard behavior of a single active consumer.
         // The first consumer consumes the entire stream. (TotalMessages)
@@ -54,7 +54,7 @@ public class SacTests
     }
 
     [Fact]
-    public async void SecondConsumerActiveWhenTheFirstIsClosedAndConsume10Messages()
+    public async Task SecondConsumerActiveWhenTheFirstIsClosedAndConsume10Messages()
     {
         // Tests the standard behavior of a single active consumer.
         // The first consumer consumes the entire stream. (TotalMessages)
@@ -68,7 +68,7 @@ public class SacTests
     }
 
     [Fact]
-    public async void SecondConsumerActiveWhenTheFirstIsClosedAndConsumeFromFunctionFirst()
+    public async Task SecondConsumerActiveWhenTheFirstIsClosedAndConsumeFromFunctionFirst()
     {
         // Tests the standard behavior of a single active consumer.
         // The first consumer consumes the entire stream. (TotalMessages)
@@ -86,7 +86,7 @@ public class SacTests
     }
 
     [Fact]
-    public async void SecondConsumerShouldConsumeFromStoredOffset()
+    public async Task SecondConsumerShouldConsumeFromStoredOffset()
     {
         // tests the override of the standard behavior for the second.
         // consumer with a function for ConsumerUpdateListener
@@ -175,7 +175,7 @@ public class SacTests
         // Here the consumer1 is still active, so the consumers should be blocked.
         Assert.Equal(TotalMessages, testPassedConsumer1.Task.Result);
         // Just to be sure that testPassedConsumer2 is not called.
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // so the testPassedConsumer2 should stay in WaitingForActivation state.
         // since the second consumer is blocked.
         Assert.Equal(TaskStatus.WaitingForActivation, testPassedConsumer2.Task.Status);

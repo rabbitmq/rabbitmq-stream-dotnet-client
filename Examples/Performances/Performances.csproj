@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\RabbitMQ.Stream.Client\RabbitMQ.Stream.Client.csproj" />
+    <ProjectReference Include="../../RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj" />
   </ItemGroup>
 
 </Project>

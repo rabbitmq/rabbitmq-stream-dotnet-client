@@ -26,7 +26,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateRawProducer()
+        public async Task CreateRawProducer()
         {
             var testPassed = new TaskCompletionSource<bool>();
             var stream = Guid.NewGuid().ToString();
@@ -60,7 +60,7 @@ namespace Tests
 
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            Assert.True(testPassed.Task.Result);
+            Assert.True(await testPassed.Task);
             rawProducer.Dispose();
             Assert.False(rawProducer.IsOpen());
             await system.DeleteStream(stream);
@@ -113,7 +113,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void NotifyProducerClose()
+        public async Task NotifyProducerClose()
         {
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -164,7 +164,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerMixingDifferentConfirmations()
+        public async Task ProducerMixingDifferentConfirmations()
         {
             // we send 150 messages using three different ways:
             // 1- 50 messages subEntry with compress None 
@@ -215,7 +215,7 @@ namespace Tests
             }
 
             await rawProducer.Send(++pid, messages, CompressionType.Gzip);
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             Assert.Equal((ulong)52, count);
             Assert.Equal(ResponseCode.Ok, await rawProducer.Close());
@@ -224,7 +224,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerMetadataHandlerUpdate()
+        public async Task ProducerMetadataHandlerUpdate()
         {
             // test the producer metadata update
             // metadata update can happen when a stream is deleted
@@ -250,7 +250,7 @@ namespace Tests
                         return Task.CompletedTask;
                     }
                 });
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             Assert.False(((RawProducer)rawProducer).IsOpen());
@@ -259,7 +259,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerQuerySequence()
+        public async Task ProducerQuerySequence()
         {
             // test the producer sequence
             // with an empty stream the QuerySequence/2 return must be = 0
@@ -273,7 +273,7 @@ namespace Tests
             Assert.True(res == 0);
             await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
                 ProducerName, testOutputHelper);
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             var resAfter = await system.QuerySequence(ProducerName, stream);
             // sequence start from zero
             Assert.True(resAfter == (NumberOfMessages - 1));
@@ -285,7 +285,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerSendValidate()
+        public async Task ProducerSendValidate()
         {
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             // validate that the messages batch size is not greater than the MaxInFlight
@@ -318,7 +318,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerBatchConfirmNumberOfMessages()
+        public async Task ProducerBatchConfirmNumberOfMessages()
         {
             // test the batch confirm number of messages for batch send
             // we send 100 messages using the batch send
@@ -420,10 +420,11 @@ namespace Tests
 
             new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testMessageConsumer);
             // at this point the data length _must_ be the same
-            Assert.Equal(@event.Length, testMessageConsumer.Task.Result.Data.Contents.Length);
+            var result = await testMessageConsumer.Task;
+            Assert.Equal(@event.Length, result.Data.Contents.Length);
 
             Assert.Equal(@event.Length,
-                ((byte[])testMessageConsumer.Task.Result.ApplicationProperties["myArray"]).Length);
+                ((byte[])result.ApplicationProperties["myArray"]).Length);
             await consumer.Close();
             await system.DeleteStream(stream);
             await system.Close();

@@ -4,7 +4,7 @@ Set-StrictMode -Version 2.0
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 'Tls12'
 
-$versions_path = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath '.ci' | Join-Path -ChildPath 'versions.json'
+$versions_path = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath '.ci' | Join-Path -ChildPath 'windows' | Join-Path -ChildPath 'versions.json'
 $versions = Get-Content $versions_path | ConvertFrom-Json
 Write-Host "[INFO] versions: $versions"
 $erlang_ver = $versions.erlang
@@ -160,4 +160,4 @@ Write-Host '[INFO] Getting RabbitMQ status...'
 
 $ErrorActionPreference = 'Continue'
 Write-Host '[INFO] Enabling plugins...'
-& $rabbitmq_plugins_path enable rabbitmq_management rabbitmq_stream rabbitmq_stream_management rabbitmq_amqp1_0
+& $rabbitmq_plugins_path enable rabbitmq_management rabbitmq_stream rabbitmq_stream_management

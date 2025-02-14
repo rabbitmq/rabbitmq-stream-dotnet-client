@@ -29,7 +29,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateRawConsumer()
+        public async Task CreateRawConsumer()
         {
             var testPassed = new TaskCompletionSource<Data>();
             var stream = Guid.NewGuid().ToString();
@@ -60,7 +60,8 @@ namespace Tests
 
             new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
+            var result = await testPassed.Task;
+            Assert.Equal(msgData.Contents.ToArray(), result.Contents.ToArray());
             Assert.Equal("consumer_identifier_999", identifierReceived);
             Assert.Equal((uint)1, messagesInTheChunk);
             rawProducer.Dispose();
@@ -70,7 +71,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CloseProducerTwoTimesShouldBeOk()
+        public async Task CloseProducerTwoTimesShouldBeOk()
         {
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -91,7 +92,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ConsumerStoreOffset()
+        public async Task ConsumerStoreOffset()
         {
             var testPassed = new TaskCompletionSource<int>();
             var stream = Guid.NewGuid().ToString();
@@ -122,7 +123,7 @@ namespace Tests
                 });
 
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             // // Here we use the standard client to check the offest
             // // since client.QueryOffset/2 is hidden in the System
             //
@@ -137,7 +138,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void NotifyConsumerClose()
+        public async Task NotifyConsumerClose()
         {
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -164,7 +165,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateProducerConsumerAddressResolver()
+        public async Task CreateProducerConsumerAddressResolver()
         {
             var testPassed = new TaskCompletionSource<Data>();
             var stream = Guid.NewGuid().ToString();
@@ -191,7 +192,8 @@ namespace Tests
 
             new Utils<Data>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            Assert.Equal(msgData.Contents.ToArray(), testPassed.Task.Result.Contents.ToArray());
+            var result = await testPassed.Task;
+            Assert.Equal(msgData.Contents.ToArray(), result.Contents.ToArray());
             rawProducer.Dispose();
             consumer.Dispose();
             await system.DeleteStream(stream);
@@ -199,7 +201,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerAndConsumerCompressShouldHaveTheSameMessages()
+        public async Task ProducerAndConsumerCompressShouldHaveTheSameMessages()
         {
             const string UniCode = "Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家";
 
@@ -286,10 +288,11 @@ namespace Tests
 
             new Utils<List<Message>>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            AssertMessages(messagesNone, testPassed.Task.Result.FindAll(s =>
+            var result = await testPassed.Task;
+            AssertMessages(messagesNone, result.FindAll(s =>
                 Encoding.Default.GetString(s.Data.Contents.ToArray()).Contains("None_")));
 
-            AssertMessages(messagesGzip, testPassed.Task.Result.FindAll(s =>
+            AssertMessages(messagesGzip, result.FindAll(s =>
                 Encoding.Default.GetString(s.Data.Contents.ToArray()).Contains("Gzip_")));
             Assert.Equal(10, messagesInTheChunks.Sum(x => x.Value));
             Assert.Equal((ulong)0, messagesInTheChunks.FirstOrDefault().Key);
@@ -300,7 +303,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ConsumerValidationAmqpAttributes()
+        public async Task ConsumerValidationAmqpAttributes()
         {
             // To test large unicode string
             // The Alan Mathison Turing story from wikipedia
@@ -377,37 +380,38 @@ namespace Tests
             }
             //wait for sent message to be delivered
 
+            var result = await testPassed.Task;
             new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            Assert.Equal(ChineseStringTest, Encoding.UTF8.GetString(testPassed.Task.Result.Data.Contents.ToArray()));
-            Assert.Equal("subject", testPassed.Task.Result.Properties.Subject);
-            Assert.Equal("to", testPassed.Task.Result.Properties.To);
-            Assert.Equal("contentEncoding", testPassed.Task.Result.Properties.ContentEncoding);
-            Assert.Equal("contentType", testPassed.Task.Result.Properties.ContentType);
-            Assert.Equal((ulong)5_000_000_000, testPassed.Task.Result.Properties.CorrelationId);
+            Assert.Equal(ChineseStringTest, Encoding.UTF8.GetString(result.Data.Contents.ToArray()));
+            Assert.Equal("subject", result.Properties.Subject);
+            Assert.Equal("to", result.Properties.To);
+            Assert.Equal("contentEncoding", result.Properties.ContentEncoding);
+            Assert.Equal("contentType", result.Properties.ContentType);
+            Assert.Equal((ulong)5_000_000_000, result.Properties.CorrelationId);
             Assert.Equal(DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
-                testPassed.Task.Result.Properties.AbsoluteExpiryTime);
+                result.Properties.AbsoluteExpiryTime);
             Assert.Equal(DateTime.Parse("2008-11-01T19:35:00.0000000Z").ToUniversalTime(),
-                testPassed.Task.Result.Properties.CreationTime);
-            Assert.Equal("groupId", testPassed.Task.Result.Properties.GroupId);
-            Assert.Equal((uint)1, testPassed.Task.Result.Properties.GroupSequence);
-            Assert.Equal((long)4_000_000_000, testPassed.Task.Result.Properties.MessageId);
-            Assert.Equal("replyTo", testPassed.Task.Result.Properties.ReplyTo);
-            Assert.Equal(new byte[] { 0x0, 0xF }, testPassed.Task.Result.Properties.UserId);
+                result.Properties.CreationTime);
+            Assert.Equal("groupId", result.Properties.GroupId);
+            Assert.Equal((uint)1, result.Properties.GroupSequence);
+            Assert.Equal((long)4_000_000_000, result.Properties.MessageId);
+            Assert.Equal("replyTo", result.Properties.ReplyTo);
+            Assert.Equal(new byte[] { 0x0, 0xF }, result.Properties.UserId);
 
-            Assert.True(testPassed.Task.Result.Annotations.ContainsKey(1));
-            Assert.Equal(1, testPassed.Task.Result.Annotations[1]);
-            Assert.Equal("value1", testPassed.Task.Result.Annotations["akey1"]);
-            Assert.Equal(1_000_000, testPassed.Task.Result.Annotations[1_000_000]);
+            Assert.True(result.Annotations.ContainsKey(1));
+            Assert.Equal(1, result.Annotations[1]);
+            Assert.Equal("value1", result.Annotations["akey1"]);
+            Assert.Equal(1_000_000, result.Annotations[1_000_000]);
 
-            Assert.Equal("value1", testPassed.Task.Result.ApplicationProperties["apkey1"]);
-            Assert.Equal("07-10-2022 午後11:1", testPassed.Task.Result.ApplicationProperties["keyuni"]);
-            Assert.Equal("良い一日を過ごし、クライアントを楽しんでください", testPassed.Task.Result.ApplicationProperties["keyuni2"]);
-            Assert.Equal("祝您有美好的一天，并享受客户", testPassed.Task.Result.ApplicationProperties["keyuni3"]);
-            Assert.Equal(ChineseStringTest, testPassed.Task.Result.ApplicationProperties["keylonguni"]);
-            Assert.Equal(ByteString, testPassed.Task.Result.ApplicationProperties["key255"]);
+            Assert.Equal("value1", result.ApplicationProperties["apkey1"]);
+            Assert.Equal("07-10-2022 午後11:1", result.ApplicationProperties["keyuni"]);
+            Assert.Equal("良い一日を過ごし、クライアントを楽しんでください", result.ApplicationProperties["keyuni2"]);
+            Assert.Equal("祝您有美好的一天，并享受客户", result.ApplicationProperties["keyuni3"]);
+            Assert.Equal(ChineseStringTest, result.ApplicationProperties["keylonguni"]);
+            Assert.Equal(ByteString, result.ApplicationProperties["key255"]);
 
-            Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey2"]);
-            Assert.Null(testPassed.Task.Result.ApplicationProperties["apkey3"]);
+            Assert.Null(result.ApplicationProperties["apkey2"]);
+            Assert.Null(result.ApplicationProperties["apkey3"]);
 
             rawProducer.Dispose();
             rawConsumer.Dispose();
@@ -416,7 +420,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void Amqp091MessagesConsumer()
+        public async Task Amqp091MessagesConsumer()
         {
             // Amqp091 interoperability 
             // We should be able to parse a message coming from an 
@@ -448,12 +452,13 @@ namespace Tests
                 ",\"payload\":\"HI\",\"payload_encoding\":\"string\"}";
             SystemUtils.HttpPost(jsonBody, "exchanges/%2f/amq.default/publish");
             new Utils<Message>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            Assert.Equal("HI", Encoding.Default.GetString(testPassed.Task.Result.Data.Contents.ToArray()));
-            Assert.Equal(stream, testPassed.Task.Result.Annotations["x-routing-key"]);
-            Assert.Equal("", testPassed.Task.Result.Annotations["x-exchange"]);
-            Assert.Equal("hvalue", testPassed.Task.Result.ApplicationProperties["hkey"]);
-            Assert.Equal("json", testPassed.Task.Result.Properties.ContentType);
-            Assert.Equal("2", testPassed.Task.Result.Properties.MessageId);
+            var result = await testPassed.Task;
+            Assert.Equal("HI", Encoding.Default.GetString(result.Data.Contents.ToArray()));
+            Assert.Equal(stream, result.Annotations["x-routing-key"]);
+            Assert.Equal("", result.Annotations["x-exchange"]);
+            Assert.Equal("hvalue", result.ApplicationProperties["hkey"]);
+            Assert.Equal("json", result.Properties.ContentType);
+            Assert.Equal("2", result.Properties.MessageId);
 
             rawConsumer.Dispose();
             await system.DeleteStream(stream);
@@ -461,7 +466,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ConsumerQueryOffset()
+        public async Task ConsumerQueryOffset()
         {
             var testPassed = new TaskCompletionSource<int>();
             var stream = Guid.NewGuid().ToString();
@@ -504,7 +509,7 @@ namespace Tests
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             // it may need some time to store the offset
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             // numberOfMessagesToStore index 0
             Assert.Equal((ulong)(NumberOfMessagesToStore - 1),
                 await system.QueryOffset(Reference, stream));
@@ -520,7 +525,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ShouldConsumeFromStoredOffset()
+        public async Task ShouldConsumeFromStoredOffset()
         {
             // validate restart consume offset
             // When a consumer from a stored offset with:
@@ -566,12 +571,12 @@ namespace Tests
 
             // we need to wait a bit because the StoreOffset is async
             // and `QueryOffset` could raise NoOffsetFound
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
 
             // new consumer that should start from stored offset
             var offset = await system.QueryOffset(Reference, stream);
             // the offset received must be the same from the last stored
-            Assert.Equal(offset, storedOffset.Task.Result);
+            Assert.Equal(offset, await storedOffset.Task);
             var messagesConsumed = new TaskCompletionSource<ulong>();
             var rawConsumerWithOffset = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
@@ -592,9 +597,9 @@ namespace Tests
 
             new Utils<ulong>(testOutputHelper).WaitUntilTaskCompletes(messagesConsumed);
 
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             // just a double check 
-            Assert.Equal(storedOffset.Task.Result, messagesConsumed.Task.Result);
+            Assert.Equal(await storedOffset.Task, await messagesConsumed.Task);
 
             await rawConsumerWithOffset.Close();
             await rawConsumer.Close();
@@ -603,7 +608,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ConsumerMetadataHandlerUpdate()
+        public async Task ConsumerMetadataHandlerUpdate()
         {
             // test the Consumer metadata update
             // metadata update can happen when a stream is deleted
@@ -630,16 +635,16 @@ namespace Tests
                         return Task.CompletedTask;
                     }
                 });
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             await system.DeleteStream(stream);
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            SystemUtils.WaitUntil(() => ((RawConsumer)rawConsumer).IsOpen() == false);
+            await SystemUtils.WaitUntilAsync(() => ((RawConsumer)rawConsumer).IsOpen() == false);
             await rawConsumer.Close();
             await system.Close();
         }
 
         [Fact]
-        public async void ValidateInitialCredits()
+        public async Task ValidateInitialCredits()
         {
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
@@ -650,7 +655,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ProducerConsumerMixingDifferentSendTypesCompressAndStandard()
+        public async Task ProducerConsumerMixingDifferentSendTypesCompressAndStandard()
         {
             // We send messages mixing different send
             // This test is to validate the consumer can handle
@@ -714,7 +719,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ShouldConsumeFromDateTimeOffset()
+        public async Task ShouldConsumeFromDateTimeOffset()
         {
             // validate the consumer can start from a specific time
             // this test is not deterministic because it depends on the
@@ -745,12 +750,12 @@ namespace Tests
                     }
                 });
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
-            await consumer.Close().ConfigureAwait(false);
+            await consumer.Close();
             await SystemUtils.CleanUpStreamSystem(system, stream);
         }
 
         [Fact]
-        public async void EntityInfoShouldBeCorrect()
+        public async Task EntityInfoShouldBeCorrect()
         {
             await SystemUtils.ResetSuperStreams();
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
