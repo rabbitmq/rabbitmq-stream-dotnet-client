@@ -164,7 +164,7 @@ public class FilterTest
             }
         }).ConfigureAwait(false);
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(1));
+        await SystemUtils.WaitAsync(TimeSpan.FromSeconds(1));
         Assert.Equal(2, consumedNY.Count);
         Assert.Equal("group_25", consumedNY[0].Properties.GroupId!);
         Assert.Equal("group_25", consumedNY[1].Properties.GroupId!);
@@ -274,7 +274,7 @@ public class FilterTest
             }
         }).ConfigureAwait(false);
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(2));
+        await SystemUtils.WaitAsync(TimeSpan.FromSeconds(2));
         Assert.Single(consumedNY);
         Assert.Equal("group_55", consumedNY[0].Properties.GroupId!);
         await consumerNY.Close().ConfigureAwait(false);
@@ -378,7 +378,7 @@ public class FilterTest
             }
         }).ConfigureAwait(false);
 
-        SystemUtils.Wait(TimeSpan.FromSeconds(3));
+        await SystemUtils.WaitAsync(TimeSpan.FromSeconds(3));
         // we should have 3 messages since there is an error in the PostFilter
         // function for the message with id_2
         // So we sent 5 messages. 1 error was thrown in the producer filter and 1 error in the consumer Postfilter

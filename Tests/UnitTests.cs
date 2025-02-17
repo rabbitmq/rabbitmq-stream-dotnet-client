@@ -7,6 +7,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
@@ -177,7 +178,7 @@ namespace Tests
         }
 
         [Fact]
-        public void AddressResolverLoadBalancerSimulate()
+        public async Task AddressResolverLoadBalancerSimulate()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
             var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
@@ -188,13 +189,14 @@ namespace Tests
             {
                 var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
                     new ConnectionsPool(1, 1, new ConnectionCloseConfig()));
-                Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
-                Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
+                var result = await client;
+                Assert.Equal("node2", result.ConnectionProperties["advertised_host"]);
+                Assert.Equal("5552", result.ConnectionProperties["advertised_port"]);
             }
         }
 
         [Fact]
-        public void DnsAddressResolverLoadBalancerSimulate()
+        public async Task DnsAddressResolverLoadBalancerSimulate()
         {
             var addressResolver = new AddressResolver(new DnsEndPoint("MyDnsEntryPoint", 5552));
             var clientParameters = new ClientParameters() { AddressResolver = addressResolver, };
@@ -205,8 +207,9 @@ namespace Tests
             {
                 var client = RoutingHelper<LoadBalancerRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
                     new ConnectionsPool(1, 1, new ConnectionCloseConfig()));
-                Assert.Equal("node2", client.Result.ConnectionProperties["advertised_host"]);
-                Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
+                var result = await client;
+                Assert.Equal("node2", result.ConnectionProperties["advertised_host"]);
+                Assert.Equal("5552", result.ConnectionProperties["advertised_port"]);
             }
         }
 
@@ -224,7 +227,7 @@ namespace Tests
         }
 
         [Fact]
-        public void RandomReplicaLeader()
+        public async Task RandomReplicaLeader()
         {
             // this test is not completed yet should add also some replicas
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
@@ -234,14 +237,15 @@ namespace Tests
             var client =
                 RoutingHelper<LeaderRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
                     new ConnectionsPool(1, 1, new ConnectionCloseConfig()));
-            Assert.Equal("5552", client.Result.ConnectionProperties["advertised_port"]);
-            var res = (client.Result.ConnectionProperties["advertised_host"] == "leader" ||
-                       client.Result.ConnectionProperties["advertised_host"] == "replica");
+            var result = await client;
+            Assert.Equal("5552", result.ConnectionProperties["advertised_port"]);
+            var res = (result.ConnectionProperties["advertised_host"] == "leader" ||
+                       result.ConnectionProperties["advertised_host"] == "replica");
             Assert.True(res);
         }
 
         [Fact]
-        public void RandomOnlyReplicaIfThereAre()
+        public async Task RandomOnlyReplicaIfThereAre()
         {
             // this test is not completed yet should add also some replicas
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Parse("192.168.10.99"), 5552));
@@ -252,8 +256,9 @@ namespace Tests
             var client =
                 RoutingHelper<ReplicaseRouting>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
                     new ConnectionsPool(1, 1, new ConnectionCloseConfig()));
-            Assert.Equal("5553", client.Result.ConnectionProperties["advertised_port"]);
-            var res = (client.Result.ConnectionProperties["advertised_host"] == "replica2");
+            var result = await client;
+            Assert.Equal("5553", result.ConnectionProperties["advertised_port"]);
+            var res = (result.ConnectionProperties["advertised_host"] == "replica2");
             Assert.True(res);
         }
 
@@ -277,7 +282,6 @@ namespace Tests
                 var data = new Span<byte>(new byte[codec.UnCompressedSize]);
                 codec.Write(data);
                 Assert.True(codec != null);
-                Assert.True(data != null);
                 var b = new ReadOnlySequence<byte>(data.ToArray());
                 var unCompress = CompressionHelper.UnCompress(
                     compressionType,
@@ -388,7 +392,7 @@ namespace Tests
         }
 
         [Fact]
-        public void HeartBeatRaiseClose()
+        public async Task HeartBeatRaiseClose()
         {
             var testPassed = new TaskCompletionSource<bool>();
             var hBeatHandler = new HeartBeatHandler(
@@ -400,7 +404,8 @@ namespace Tests
                 },
                 1);
             hBeatHandler.Start();
-            var r = testPassed.Task.Wait(6_000);
+            using var cts = new CancellationTokenSource(6000);
+            var r = await testPassed.Task.WaitAsync(cts.Token);
             Assert.True(r);
             Assert.False(hBeatHandler.IsActive());
         }

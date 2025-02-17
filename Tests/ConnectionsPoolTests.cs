@@ -74,7 +74,7 @@ namespace Tests
         /// Each request for a new connection should return a new connection
         /// </summary>
         [Fact]
-        public async void RoutingShouldReturnTwoConnectionsGivenOneItemPerConnection()
+        public async Task RoutingShouldReturnTwoConnectionsGivenOneItemPerConnection()
         {
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("localhost", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
@@ -97,7 +97,7 @@ namespace Tests
         /// Since we have two ids per connection we can reuse the same connection
         /// </summary>
         [Fact]
-        public async void RoutingShouldReturnOneConnectionsGivenTwoIdPerConnection()
+        public async Task RoutingShouldReturnOneConnectionsGivenTwoIdPerConnection()
         {
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("localhost", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("localhost", 3939),
@@ -118,7 +118,7 @@ namespace Tests
         /// so we should have two different connections
         /// </summary>
         [Fact]
-        public async void RoutingShouldReturnTwoConnectionsGivenOneIdPerConnectionDifferentMetaInfo()
+        public async Task RoutingShouldReturnTwoConnectionsGivenOneIdPerConnectionDifferentMetaInfo()
         {
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
             var metaDataInfo = new StreamInfo("stream", ResponseCode.Ok, new Broker("Node1", 3939),
@@ -146,7 +146,7 @@ namespace Tests
         /// one with 3 ids and one with 1 id
         /// </summary>
         [Fact]
-        public async void RoutingShouldReturnTwoConnectionsGivenTreeIdsForConnection()
+        public async Task RoutingShouldReturnTwoConnectionsGivenTreeIdsForConnection()
         {
             var pool = new ConnectionsPool(0, 3, new ConnectionCloseConfig());
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
@@ -177,7 +177,7 @@ namespace Tests
         /// so the pool should have one connection with 3 ids 
         /// </summary>
         [Fact]
-        public async void ReleaseFromThePoolShouldNotRemoveTheConnection()
+        public async Task ReleaseFromThePoolShouldNotRemoveTheConnection()
         {
             var pool = new ConnectionsPool(0, 3, new ConnectionCloseConfig());
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
@@ -208,7 +208,7 @@ namespace Tests
         /// but the pool is full so we raise an exception
         /// </summary>
         [Fact]
-        public async void RaiseExceptionWhenThePoolIsFull()
+        public async Task RaiseExceptionWhenThePoolIsFull()
         {
             var pool = new ConnectionsPool(1, 2, new ConnectionCloseConfig());
             var clientParameters = new ClientParameters { Endpoint = new DnsEndPoint("Node1", 3939) };
@@ -229,7 +229,7 @@ namespace Tests
         /// The pool should have only one connection with 2 ids
         /// </summary>
         [Fact]
-        public async void TwoConsumersShouldShareTheSameConnectionFromThePool()
+        public async Task TwoConsumersShouldShareTheSameConnectionFromThePool()
         {
             var parameters = new ClientParameters();
             var client = await Client.Create(parameters);
@@ -270,7 +270,7 @@ namespace Tests
         /// The pool should have only one connection with 2 ids
         /// </summary>
         [Fact]
-        public async void TwoProducersShouldShareTheSameConnectionFromThePool()
+        public async Task TwoProducersShouldShareTheSameConnectionFromThePool()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "pool_test_stream_1_producer";
@@ -310,7 +310,7 @@ namespace Tests
         /// So the producer and consumer should have different connections
         /// </summary>
         [Fact]
-        public async void TwoProducerAndConsumerShouldHaveDifferentConnection()
+        public async Task TwoProducerAndConsumerShouldHaveDifferentConnection()
         {
             var parameters = new ClientParameters();
             var client = await Client.Create(parameters);
@@ -363,7 +363,7 @@ namespace Tests
         /// to be sure the messages are delivered to the right consumer
         /// </summary>
         [Fact]
-        public async void DeliverToTheRightConsumerEvenShareTheConnection()
+        public async Task DeliverToTheRightConsumerEvenShareTheConnection()
         {
             var parameters = new ClientParameters();
             var client = await Client.Create(parameters);
@@ -420,8 +420,12 @@ namespace Tests
 
             new Utils<Data>(_testOutputHelper).WaitUntilTaskCompletes(testPassedC1);
             new Utils<Data>(_testOutputHelper).WaitUntilTaskCompletes(testPassedC2);
-            Assert.Equal(msgDataStream1.Contents.ToArray(), testPassedC1.Task.Result.Contents.ToArray());
-            Assert.Equal(msgDataStream2.Contents.ToArray(), testPassedC2.Task.Result.Contents.ToArray());
+
+            var c1result = await testPassedC1.Task;
+            var c2result = await testPassedC2.Task;
+
+            Assert.Equal(msgDataStream1.Contents.ToArray(), c1result.Contents.ToArray());
+            Assert.Equal(msgDataStream2.Contents.ToArray(), c2result.Contents.ToArray());
             await client.DeleteStream(Stream1);
             await client.DeleteStream(Stream2);
             await client.Close("byte");
@@ -431,7 +435,7 @@ namespace Tests
         /// Raise an exception in case the pool is full
         /// </summary>
         [Fact]
-        public async void RaiseErrorInCaseThePoolIsFull()
+        public async Task RaiseErrorInCaseThePoolIsFull()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "pool_test_stream_1_full";
@@ -462,7 +466,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ValidateTheRecycleIDs()
+        public async Task ValidateTheRecycleIDs()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "pool_test_stream_1_validate_ids";
@@ -486,7 +490,7 @@ namespace Tests
             }
 
             await p.Close();
-            await client.DeleteStream(Stream1).ConfigureAwait(false);
+            await client.DeleteStream(Stream1);
             await client.Close("byte");
         }
 
@@ -495,7 +499,7 @@ namespace Tests
         /// and close the pending connections in case the pool is full.
         /// </summary>
         [Fact]
-        public async void PoolShouldBeConsistentWhenErrorDuringCreatingProducerOrConsumer()
+        public async Task PoolShouldBeConsistentWhenErrorDuringCreatingProducerOrConsumer()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "this_stream_does_not_exist";
@@ -508,13 +512,13 @@ namespace Tests
                 client.Parameters, new RawConsumerConfig(Stream1) { Pool = pool },
                 metaDataInfo));
             Assert.Equal(0, pool.ConnectionsCount);
-            Assert.Equal(0, client.consumers.Count);
+            Assert.Empty(client.consumers);
 
             await Assert.ThrowsAsync<CreateProducerException>(async () => await RawProducer.Create(
                 client.Parameters, new RawProducerConfig(Stream1) { Pool = pool },
                 metaDataInfo));
             Assert.Equal(0, pool.ConnectionsCount);
-            Assert.Equal(0, client.consumers.Count);
+            Assert.Empty(client.consumers);
 
             const string Stream2 = "consistent_pool_in_case_of_error";
             await client.CreateStream(Stream2, new Dictionary<string, string>());
@@ -532,7 +536,7 @@ namespace Tests
             Assert.Single(ConsumersIdsPerConnection(c1));
 
             await c1.Close();
-            await client.DeleteStream(Stream2).ConfigureAwait(false);
+            await client.DeleteStream(Stream2);
             await client.Close("byte");
         }
 
@@ -544,7 +548,7 @@ namespace Tests
         /// Same when we close the producers in multi thread the pool must be empty at the end
         /// </summary>
         [Fact]
-        public async void TheProducerPoolShouldBeConsistentInMultiThread()
+        public async Task TheProducerPoolShouldBeConsistentInMultiThread()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "pool_test_stream_1_multi_thread_producer";
@@ -594,7 +598,7 @@ namespace Tests
             producerList.Values.ToList().ForEach(p => tasksC.Add(Task.Run(async () => { await p.Close(); })));
             await Task.WhenAll(tasksC);
 
-            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            await SystemUtils.WaitUntilAsync(() => pool.ConnectionsCount == 0);
             Assert.Equal(0, pool.ConnectionsCount);
             // Assert.Equal(0, pool.ActiveIdsCount);
             await client.DeleteStream(Stream1);
@@ -609,7 +613,7 @@ namespace Tests
         /// from the pool.
         /// </summary>
         [Fact]
-        public async void TheConsumersPoolShouldBeConsistentWhenAStreamIsDeleted()
+        public async Task TheConsumersPoolShouldBeConsistentWhenAStreamIsDeleted()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "pool_test_stream_1_delete_consumer";
@@ -642,7 +646,7 @@ namespace Tests
 
             await client.DeleteStream(Stream2);
             // here we can check the pool. however the connections  are distributed here must be 0
-            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            await SystemUtils.WaitUntilAsync(() => pool.ConnectionsCount == 0);
             // no active ids for the stream2 since we removed the stream
 
             // no active consumers to the internal consumers list
@@ -658,7 +662,7 @@ namespace Tests
         /// from the pool.
         /// </summary>
         [Fact]
-        public async void TheProducersPoolShouldBeConsistentWhenAStreamIsDeleted()
+        public async Task TheProducersPoolShouldBeConsistentWhenAStreamIsDeleted()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "pool_test_stream_1_delete_producer";
@@ -690,7 +694,7 @@ namespace Tests
 
             await client.DeleteStream(Stream2);
             // here we can check the pool. however the connections  are distributed here must be 0
-            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            await SystemUtils.WaitUntilAsync(() => pool.ConnectionsCount == 0);
             // no active ids for the stream2 since we removed the stream
 
             // no active consumers to the internal producers list
@@ -703,7 +707,7 @@ namespace Tests
         /// the pool elements.
         /// </summary>
         [Fact]
-        public async void ThePoolShouldBeConsistentWhenTheConnectionIsClosed()
+        public async Task ThePoolShouldBeConsistentWhenTheConnectionIsClosed()
         {
             var clientProvidedName = Guid.NewGuid().ToString();
             var client = await Client.Create(new ClientParameters() { ClientProvidedName = clientProvidedName });
@@ -727,12 +731,12 @@ namespace Tests
                 metaDataInfo.StreamInfos[Stream2]);
 
             Assert.Equal(1, pool.ConnectionsCount);
-            SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 2);
-            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 2);
+            await SystemUtils.WaitUntilAsync(() => pool.ConnectionsCount == 0);
             Assert.Equal(0, pool.ConnectionsCount);
-            SystemUtils.WaitUntil(() => ConsumersIdsPerConnection(c1).ToList().Count == 0);
-            SystemUtils.WaitUntil(() => ConsumersIdsPerConnection(c2).ToList().Count == 0);
-            SystemUtils.WaitUntil(() => ProducersIdsPerConnection(p1).ToList().Count == 0);
+            await SystemUtils.WaitUntilAsync(() => ConsumersIdsPerConnection(c1).ToList().Count == 0);
+            await SystemUtils.WaitUntilAsync(() => ConsumersIdsPerConnection(c2).ToList().Count == 0);
+            await SystemUtils.WaitUntilAsync(() => ProducersIdsPerConnection(p1).ToList().Count == 0);
 
             client = await Client.Create(new ClientParameters());
             await client.DeleteStream(Stream1);
@@ -741,7 +745,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ValidatePool()
+        public async Task ValidatePool()
         {
             await Assert.ThrowsAsync<ArgumentException>(async () =>
                 await StreamSystem.Create(new StreamSystemConfig() { ConnectionPoolConfig = null }));
@@ -919,7 +923,7 @@ namespace Tests
         /// It will be closed after 2 seconds for idle activity
         /// </summary>
         [Fact]
-        public async void CloseWhenEmptyAndIdlePoolConsistencyShouldCloseAfterTenSeconds()
+        public async Task CloseWhenEmptyAndIdlePoolConsistencyShouldCloseAfterTenSeconds()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "PoolConsistencyShouldCloseAfterTenSeconds";
@@ -942,7 +946,7 @@ namespace Tests
             await c1.Close();
             Assert.Equal(2, pool.ConnectionsCount);
 
-            SystemUtils.WaitUntil(() => pool.ConnectionsCount == 0);
+            await SystemUtils.WaitUntilAsync(() => pool.ConnectionsCount == 0);
             await pool.Close();
             await client.Close("byte");
         }
@@ -953,7 +957,7 @@ namespace Tests
         /// </summary>
 
         [Fact]
-        public async void RaisePendingConnectionsExceptionWhenPolicyIsCloseWhenEmptyAndIdle()
+        public async Task RaisePendingConnectionsExceptionWhenPolicyIsCloseWhenEmptyAndIdle()
         {
             var client = await Client.Create(new ClientParameters() { });
             const string Stream1 = "PoolConsistencyShouldCloseAfterTenSeconds";

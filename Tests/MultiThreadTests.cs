@@ -78,9 +78,9 @@ public class MultiThreadTests
 
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(receivedTask);
         Assert.Equal(TotalMessages * ThreadNumber, confirmed);
-        Assert.Equal(TotalMessages * ThreadNumber, receivedTask.Task.Result);
+        Assert.Equal(TotalMessages * ThreadNumber, await receivedTask.Task);
         Assert.Equal(0, error);
-        await producer.Close().ConfigureAwait(false);
+        await producer.Close();
         await SystemUtils.CleanUpStreamSystem(system, stream);
     }
 
@@ -115,7 +115,7 @@ public class MultiThreadTests
                 }
             }
 
-            SystemUtils.WaitUntil(() => producers.TrueForAll(c => !c.IsOpen()));
+            await SystemUtils.WaitUntilAsync(() => producers.TrueForAll(c => !c.IsOpen()));
             Assert.All(producers, p => Assert.False(p.IsOpen()));
         }
 
@@ -135,7 +135,7 @@ public class MultiThreadTests
             });
         }
 
-        SystemUtils.WaitUntil(() => consumers.TrueForAll(c => !c.IsOpen()));
+        await SystemUtils.WaitUntilAsync(() => consumers.TrueForAll(c => !c.IsOpen()));
         Assert.All(consumers, c => Assert.False(c.IsOpen()));
         await SystemUtils.CleanUpStreamSystem(system, stream);
     }

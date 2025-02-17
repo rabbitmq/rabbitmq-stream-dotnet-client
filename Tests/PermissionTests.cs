@@ -3,6 +3,7 @@
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
+using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
@@ -13,7 +14,7 @@ namespace Tests
     public class PermissionTests
     {
         [Fact]
-        public async void AccessToStreamWithoutGrantsShouldRaiseErrorTest()
+        public async Task AccessToStreamWithoutGrantsShouldRaiseErrorTest()
         {
             SystemUtils.HttpPost(
                 System.Text.Encoding.Default.GetString(

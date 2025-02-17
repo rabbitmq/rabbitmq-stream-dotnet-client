@@ -26,7 +26,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateDeleteStream()
+        public async Task CreateDeleteStream()
         {
             var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters { };
@@ -44,7 +44,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void MetaDataShouldReturn()
+        public async Task MetaDataShouldReturn()
         {
             var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters { };
@@ -52,7 +52,7 @@ namespace Tests
             var response = await client.CreateStream(stream, new Dictionary<string, string>());
             Assert.Equal(ResponseCode.Ok, response.ResponseCode);
             var metaDataResponse = await client.QueryMetadata(new[] { stream });
-            Assert.Equal(1, metaDataResponse.StreamInfos.Count);
+            Assert.Single(metaDataResponse.StreamInfos);
             var streamInfoPair = metaDataResponse.StreamInfos.First();
             Assert.Equal(stream, streamInfoPair.Key);
             var streamInfo = streamInfoPair.Value;
@@ -63,7 +63,7 @@ namespace Tests
             // Test result when the Stream Does Not Exist
             const string streamNotExist = "StreamNotExist";
             var metaDataResponseNo = await client.QueryMetadata(new[] { streamNotExist });
-            Assert.Equal(1, metaDataResponseNo.StreamInfos.Count);
+            Assert.Single(metaDataResponseNo.StreamInfos);
             var streamInfoPairNo = metaDataResponseNo.StreamInfos.First();
             Assert.Equal(streamNotExist, streamInfoPairNo.Key);
             var streamInfoNo = streamInfoPairNo.Value;
@@ -73,7 +73,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void MetadataUpdateIsHandled()
+        public async Task MetadataUpdateIsHandled()
         {
             var stream = Guid.NewGuid().ToString();
             var testPassed = new TaskCompletionSource<MetaDataUpdate>();
@@ -93,15 +93,16 @@ namespace Tests
             Assert.Equal(ResponseCode.Ok, result.ResponseCode);
 
             await client.DeleteStream(stream);
-            Assert.True(testPassed.Task.Wait(TimeSpan.FromSeconds(5)));
-            var mdu = testPassed.Task.Result;
+
+            await testPassed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var mdu = await testPassed.Task;
             Assert.Equal(stream, mdu.Stream);
             Assert.Equal(ResponseCode.StreamNotAvailable, mdu.Code);
             await client.Close("done");
         }
 
         [Fact]
-        public async void DeclarePublisherShouldReturnErrorCode()
+        public async Task DeclarePublisherShouldReturnErrorCode()
         {
             var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
@@ -118,7 +119,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void DeclareConsumerShouldReturnErrorCode()
+        public async Task DeclareConsumerShouldReturnErrorCode()
         {
             var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
@@ -130,7 +131,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void PublishShouldError()
+        public async Task PublishShouldError()
         {
             var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters { };
@@ -157,13 +158,13 @@ namespace Tests
 
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            Assert.True(testPassed.Task.Result);
+            Assert.True(await testPassed.Task);
             await client.DeleteStream(stream);
             await client.Close("done");
         }
 
         [Fact]
-        public async void PublishShouldConfirm()
+        public async Task PublishShouldConfirm()
         {
             testOutputHelper.WriteLine("PublishShouldConfirm");
             var stream = Guid.NewGuid().ToString();
@@ -204,7 +205,7 @@ namespace Tests
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
             Debug.WriteLine($"num confirmed {numConfirmed}");
-            Assert.True(testPassed.Task.Result);
+            Assert.True(await testPassed.Task);
             await client.DeleteStream(stream);
             var closeResponse = await client.Close("finished");
             Assert.Equal(ResponseCode.Ok, closeResponse.ResponseCode);
@@ -214,7 +215,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ConsumerShouldReceiveDelivery()
+        public async Task ConsumerShouldReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters { };
@@ -261,7 +262,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ConsumerStoreOffsetShouldReceiveDelivery()
+        public async Task ConsumerStoreOffsetShouldReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
             var publisherRef = Guid.NewGuid().ToString();
@@ -322,7 +323,7 @@ namespace Tests
             testOutputHelper.WriteLine("Sent 10 messages to stream");
             if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
             {
-                Assert.True(false, "MessageHandler was not hit");
+                Assert.Fail("MessageHandler was not hit");
             }
 
             Assert.Equal(10, messageCount);
@@ -346,7 +347,7 @@ namespace Tests
 
             if (!gotEvent.WaitOne(TimeSpan.FromSeconds(10)))
             {
-                Assert.True(false, "MessageHandler was not hit");
+                Assert.Fail("MessageHandler was not hit");
             }
 
             Assert.Equal(10, messageCount);
@@ -356,7 +357,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ConsumerShouldReceiveDeliveryAfterCredit()
+        public async Task ConsumerShouldReceiveDeliveryAfterCredit()
         {
             var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters { };
@@ -386,14 +387,14 @@ namespace Tests
 
             new Utils<Deliver>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
 
-            var delivery = testPassed.Task.Result;
+            var delivery = await testPassed.Task;
             Assert.Equal(1, delivery.Chunk.NumEntries);
             await client.DeleteStream(stream);
             await client.Close("done");
         }
 
         [Fact]
-        public async void UnsubscribedConsumerShouldNotReceiveDelivery()
+        public async Task UnsubscribedConsumerShouldNotReceiveDelivery()
         {
             var stream = Guid.NewGuid().ToString();
             var clientParameters = new ClientParameters { };
@@ -425,7 +426,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void VirtualHostFailureAccess()
+        public async Task VirtualHostFailureAccess()
         {
             var clientParameters = new ClientParameters { VirtualHost = "DOES_NOT_EXIST" };
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
@@ -434,7 +435,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ExchangeVersionCommandsShouldNotBeEmpty()
+        public async Task ExchangeVersionCommandsShouldNotBeEmpty()
         {
             var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
@@ -445,7 +446,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateDeleteSuperStreamWith2Partitions()
+        public async Task CreateDeleteSuperStreamWith2Partitions()
         {
             var clientParameters = new ClientParameters { };
             var client = await Client.Create(clientParameters);
@@ -456,12 +457,12 @@ namespace Tests
                 { "max-length-bytes", "10000"}, {"max-age", "30000s"}};
             var response = await client.CreateSuperStream(SuperStream, partitions, bindingKeys, args);
             Assert.Equal(ResponseCode.Ok, response.ResponseCode);
-            SystemUtils.Wait(TimeSpan.FromSeconds(1));
+            await SystemUtils.WaitAsync(TimeSpan.FromSeconds(1));
             var responseError = await client.CreateSuperStream(SuperStream, partitions, bindingKeys, args);
             Assert.Equal(ResponseCode.StreamAlreadyExists, responseError.ResponseCode);
             var responseDelete = await client.DeleteSuperStream(SuperStream);
             Assert.Equal(ResponseCode.Ok, responseDelete.ResponseCode);
-            SystemUtils.Wait(TimeSpan.FromSeconds(1));
+            await SystemUtils.WaitAsync(TimeSpan.FromSeconds(1));
             var responseDeleteError = await client.DeleteSuperStream(SuperStream);
             Assert.Equal(ResponseCode.StreamDoesNotExist, responseDeleteError.ResponseCode);
             await client.Close("done");

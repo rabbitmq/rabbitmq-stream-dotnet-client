@@ -8,7 +8,7 @@
         <Copyright>Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.</Copyright>
         <Authors>Broadcom</Authors>
         <Company>Broadcom Inc. and/or its subsidiaries.</Company>
-        <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     </PropertyGroup>
 
 <!--     <ItemGroup>
@@ -17,7 +17,7 @@
     </ItemGroup>
  -->
     <ItemGroup>
-      <ProjectReference Include="..\..\..\RabbitMQ.Stream.Client\RabbitMQ.Stream.Client.csproj" />
+      <ProjectReference Include="../../../RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj" />
     </ItemGroup>
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />

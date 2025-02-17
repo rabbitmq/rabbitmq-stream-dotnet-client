@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Security;
 using System.Text;
+using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using Xunit;
 using Xunit.Abstractions;
@@ -32,7 +33,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateSystem()
+        public async Task CreateSystem()
         {
             var config = new StreamSystemConfig
             {
@@ -49,7 +50,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateSystemThrowsWhenNoEndpointsAreReachable()
+        public async Task CreateSystemThrowsWhenNoEndpointsAreReachable()
         {
             var config = new StreamSystemConfig
             {
@@ -64,7 +65,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateSslExceptionThrowsWhenEndPointIsNotSsl()
+        public async Task CreateSslExceptionThrowsWhenEndPointIsNotSsl()
         {
             // Try to connect to an NoTLS port to using TLS parameters
             var config = new StreamSystemConfig
@@ -83,7 +84,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void Create_Delete_Stream()
+        public async Task Create_Delete_Stream()
         {
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -105,7 +106,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void Create_Stream_With_Max_Length_Maximum_Value()
+        public async Task Create_Stream_With_Max_Length_Maximum_Value()
         {
             var stream = Guid.NewGuid().ToString();
             var config = new StreamSystemConfig();
@@ -118,7 +119,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void StreamStatus()
+        public async Task StreamStatus()
         {
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             var stats = await system.StreamStats(stream);
@@ -130,7 +131,7 @@ namespace Tests
             );
 
             await SystemUtils.PublishMessages(system, stream, 500, _testOutputHelper);
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             var statAfter = await system.StreamStats(stream);
             Assert.Equal((ulong)0, statAfter.FirstOffset());
             Assert.True(statAfter.CommittedChunkId() > 0);
@@ -138,7 +139,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateSystemThrowsWhenVirtualHostFailureAccess()
+        public async Task CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
             var config = new StreamSystemConfig { VirtualHost = "DOES_NOT_EXIST" };
             await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
@@ -147,7 +148,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateSystemThrowsWhenAuthenticationAccess()
+        public async Task CreateSystemThrowsWhenAuthenticationAccess()
         {
             var config = new StreamSystemConfig { UserName = "user_does_not_exist" };
             await Assert.ThrowsAsync<AuthenticationFailureException>(
@@ -156,7 +157,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void UpdateSecretWithValidSecretShouldNoRaiseExceptions()
+        public async Task UpdateSecretWithValidSecretShouldNoRaiseExceptions()
         {
             var config = new StreamSystemConfig { UserName = "guest", Password = "guest" }; // specified for readability
             var streamSystem = await StreamSystem.Create(config);
@@ -166,7 +167,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void UpdateSecretWithInvalidSecretShouldThrowAuthenticationFailureException()
+        public async Task UpdateSecretWithInvalidSecretShouldThrowAuthenticationFailureException()
         {
             var config = new StreamSystemConfig { UserName = "guest", Password = "guest" }; // specified for readability
             var streamSystem = await StreamSystem.Create(config);
@@ -178,7 +179,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateExistStreamIdempotentShouldNoRaiseExceptions()
+        public async Task CreateExistStreamIdempotentShouldNoRaiseExceptions()
         {
             // Create the stream in idempotent way
             var stream = Guid.NewGuid().ToString();
@@ -197,7 +198,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CreateExistStreamPreconditionFailShouldRaiseExceptions()
+        public async Task CreateExistStreamPreconditionFailShouldRaiseExceptions()
         {
             // Create the stream in idempotent way
             var stream = Guid.NewGuid().ToString();
@@ -213,7 +214,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ValidateQueryOffset()
+        public async Task ValidateQueryOffset()
         {
             // here we just validate the Query for Offset, Sequence 
             // and Partitions
@@ -241,7 +242,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ValidateQuerySequence()
+        public async Task ValidateQuerySequence()
         {
             // here we just validate the Query for Offset and Sequence
             // if the reference is == "" return must be 0
@@ -264,7 +265,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ValidateSalsExternalConfiguration()
+        public async Task ValidateSalsExternalConfiguration()
         {
             // the user can set the SALs configuration externally
             // this test validates that the configuration is supported by the server
@@ -275,7 +276,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ValidateRpCtimeOut()
+        public async Task ValidateRpCtimeOut()
         {
             var config = new StreamSystemConfig() { RpcTimeOut = TimeSpan.FromMilliseconds(1) };
             await Assert.ThrowsAsync<ArgumentException>(
@@ -284,7 +285,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void CloseProducerConsumerAfterForceCloseShouldNotRaiseError()
+        public async Task CloseProducerConsumerAfterForceCloseShouldNotRaiseError()
         {
             // This tests that the producers and consumers
             // don't raise an exception if the connection is closed
@@ -297,17 +298,17 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
             var producer =
                 await system.CreateRawProducer(new RawProducerConfig(stream) { ClientProvidedName = clientProvidedName });
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             var consumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream) { ClientProvidedName = clientProvidedName });
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
 
             // Here we have to wait the management stats refresh time before killing the connections.
-            SystemUtils.Wait(TimeSpan.FromSeconds(6));
+            await SystemUtils.WaitAsync(TimeSpan.FromSeconds(6));
 
             // we kill _only_ producer and consumer connection
             // leave the locator up and running to delete the stream
-            Assert.Equal(2, SystemUtils.HttpKillConnections(clientProvidedName).Result);
+            Assert.Equal(2, await SystemUtils.HttpKillConnections(clientProvidedName));
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             // close two time it should not raise an exception
@@ -319,7 +320,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void SetHeartBeat()
+        public async Task SetHeartBeat()
         {
             // Just test the heartbeat setting
             // TODO find a smarter way to test the heartbeat disconnection
@@ -329,14 +330,14 @@ namespace Tests
             await system.CreateStream(new StreamSpec(stream));
             var producer =
                 await system.CreateRawProducer(new RawProducerConfig(stream));
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             Assert.Equal(ResponseCode.Ok, await producer.Close());
             await system.DeleteStream(stream);
             await system.Close();
         }
 
         [Fact]
-        public async void NumberOfPartitionsShouldBeAsDefinition()
+        public async Task NumberOfPartitionsShouldBeAsDefinition()
         {
             await SystemUtils.ResetSuperStreams();
             var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -346,11 +347,11 @@ namespace Tests
             Assert.Contains(SystemUtils.InvoicesStream1, partitions);
             Assert.Contains(SystemUtils.InvoicesStream2, partitions);
             Assert.DoesNotContain(SystemUtils.InvoicesExchange, partitions);
-            await system.Close().ConfigureAwait(false);
+            await system.Close();
         }
 
         [Fact]
-        public async void CreateDeleteSuperStream()
+        public async Task CreateDeleteSuperStream()
         {
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
@@ -374,7 +375,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void ValidateSuperStreamConfiguration()
+        public async Task ValidateSuperStreamConfiguration()
         {
             const string SuperStream = "my-validation-system-super-stream";
             var system = await StreamSystem.Create(new StreamSystemConfig());

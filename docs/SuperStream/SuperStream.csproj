@@ -7,14 +7,14 @@
     <MinVerSkip>true</MinVerSkip>
     <Nullable>enable</Nullable>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <Copyright>Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries.</Copyright>
     <Authors>Broadcom</Authors>
     <Company>Broadcom Inc. and/or its subsidiaries.</Company>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\RabbitMQ.Stream.Client\RabbitMQ.Stream.Client.csproj" />
+    <ProjectReference Include="../../RabbitMQ.Stream.Client/RabbitMQ.Stream.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

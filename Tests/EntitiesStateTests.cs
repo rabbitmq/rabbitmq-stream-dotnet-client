@@ -4,6 +4,7 @@
 
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
@@ -14,7 +15,7 @@ namespace Tests
     public class EntitiesStateTests
     {
         [Fact]
-        public async void RawProducersShouldRaiseErrorWhenClosed()
+        public async Task RawProducersShouldRaiseErrorWhenClosed()
         {
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream));
@@ -45,7 +46,7 @@ namespace Tests
         }
 
         [Fact]
-        public async void RawSuperStreamProducersShouldRaiseErrorWhenClosed()
+        public async Task RawSuperStreamProducersShouldRaiseErrorWhenClosed()
         {
             await SystemUtils.ResetSuperStreams();
             // Simple send message to super stream
