@@ -24,12 +24,12 @@ namespace RabbitMQ.Stream.Client
 
     public class Connection : IDisposable
     {
-        private readonly Socket _socket;
-        private readonly PipeWriter _writer;
-        private readonly PipeReader _reader;
+        private readonly Socket socket; // TODO underscore prefix
+        private readonly PipeWriter writer;
+        private readonly PipeReader reader;
         private readonly Task _incomingFramesTask;
-        private readonly Func<Memory<byte>, Task> _commandCallback;
-        private readonly Func<string, Task> _closedCallback;
+        private readonly Func<Memory<byte>, Task> commandCallback;
+        private readonly Func<string, Task> closedCallback;
         private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
         private int numFrames;
         private bool isClosed = false;
@@ -58,13 +58,13 @@ namespace RabbitMQ.Stream.Client
             Func<string, Task> closedCallBack, SslOption sslOption, ILogger logger)
         {
             _logger = logger;
-            _socket = socket;
-            _commandCallback = callback;
-            _closedCallback = closedCallBack;
+            this.socket = socket;
+            commandCallback = callback;
+            closedCallback = closedCallBack;
             var networkStream = new NetworkStream(socket);
             var stream = MaybeTcpUpgrade(networkStream, sslOption);
-            _writer = PipeWriter.Create(stream);
-            _reader = PipeReader.Create(stream);
+            writer = PipeWriter.Create(stream);
+            reader = PipeReader.Create(stream);
             // ProcessIncomingFrames is dropped as soon as the connection is closed
             // no need to stop it manually when the connection is closed
             _incomingFramesTask = Task.Run(ProcessIncomingFrames);
@@ -118,9 +118,9 @@ namespace RabbitMQ.Stream.Client
                 try
                 {
                     var payloadSize = WriteCommandPayloadSize(command);
-                    var written = command.Write(_writer);
+                    var written = command.Write(writer);
                     Debug.Assert(payloadSize == written);
-                    var flush = _writer.FlushAsync();
+                    var flush = writer.FlushAsync();
                     flush.ConfigureAwait(false);
                     if (flush.IsCompletedSuccessfully)
                     {
@@ -163,9 +163,9 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 var payloadSize = WriteCommandPayloadSize(command);
-                var written = command.Write(_writer);
+                var written = command.Write(writer);
                 Debug.Assert(payloadSize == written);
-                await _writer.FlushAsync().ConfigureAwait(false);
+                await writer.FlushAsync().ConfigureAwait(false);
             }
             finally
             {
@@ -197,9 +197,9 @@ namespace RabbitMQ.Stream.Client
              * commands
              */
             var payloadSize = command.SizeNeeded;
-            var span = _writer.GetSpan(WireFormatting.SizeofUInt32); // 4 to write the size
+            var span = writer.GetSpan(WireFormatting.SizeofUInt32); // 4 to write the size
             WireFormatting.WriteUInt32(span, (uint)payloadSize);
-            _writer.Advance(WireFormatting.SizeofUInt32);
+            writer.Advance(WireFormatting.SizeofUInt32);
             return payloadSize;
         }
 
@@ -210,9 +210,9 @@ namespace RabbitMQ.Stream.Client
             {
                 while (!isClosed)
                 {
-                    if (!_reader.TryRead(out var result))
+                    if (!reader.TryRead(out var result))
                     {
-                        result = await _reader.ReadAsync(Token).ConfigureAwait(false);
+                        result = await reader.ReadAsync(Token).ConfigureAwait(false);
                     }
 
                     var buffer = result.Buffer;
@@ -232,11 +232,11 @@ namespace RabbitMQ.Stream.Client
                             ArrayPool<byte>.Shared.Rent((int)frame.Length).AsMemory(0, (int)frame.Length);
                         frame.CopyTo(memory.Span);
 
-                        await _commandCallback(memory).ConfigureAwait(false);
+                        await commandCallback(memory).ConfigureAwait(false);
                         numFrames += 1;
                     }
 
-                    _reader.AdvanceTo(buffer.Start, buffer.End);
+                    reader.AdvanceTo(buffer.Start, buffer.End);
                 }
             }
             catch (OperationCanceledException e)
@@ -267,8 +267,8 @@ namespace RabbitMQ.Stream.Client
                     "TCP Connection Closed ClientId: {ClientId}, Reason {Reason}. IsCancellationRequested {Token} ",
                     ClientId, _closedReason, Token.IsCancellationRequested);
                 // Mark the PipeReader as complete
-                await _reader.CompleteAsync(caught).ConfigureAwait(false);
-                _closedCallback?.Invoke(_closedReason)!.ConfigureAwait(false);
+                await reader.CompleteAsync(caught).ConfigureAwait(false);
+                closedCallback?.Invoke(_closedReason)!.ConfigureAwait(false);
             }
         }
 
@@ -307,9 +307,9 @@ namespace RabbitMQ.Stream.Client
                     }
 
                     isClosed = true;
-                    _writer.Complete();
-                    _reader.Complete();
-                    _socket.Close();
+                    writer.Complete();
+                    reader.Complete();
+                    socket.Close();
                     if (!_incomingFramesTask.Wait(Consts.MidWait))
                     {
                         _logger?.LogWarning("ProcessIncomingFrames reader task did not exit in {MidWait}",
