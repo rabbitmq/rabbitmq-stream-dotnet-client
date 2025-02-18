@@ -26,11 +26,15 @@
     <PackageVersion Include="System.IO.Hashing" Version="8.0.0" />
     <PackageVersion Include="System.IO.Pipelines" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <!-- RabbitMQ.Stream.Client.PerfTest -->
+    <PackageVersion Include="FSharp.Core" Version="8.0.403" />
   </ItemGroup>
   <ItemGroup Label="net9.0 specific" Condition="'$(TargetFramework)' == 'net9.0'">
     <!-- RabbitMQ.Stream.Client -->
     <PackageVersion Include="System.IO.Hashing" Version="9.0.0" />
     <PackageVersion Include="System.IO.Pipelines" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <!-- RabbitMQ.Stream.Client.PerfTest -->
+    <PackageVersion Include="FSharp.Core" Version="9.0.201" />
   </ItemGroup>
 </Project>

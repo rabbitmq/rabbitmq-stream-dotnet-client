@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RabbitMQ.Stream.Client\RabbitMQ.Stream.Client.csproj" />
   </ItemGroup>
 
