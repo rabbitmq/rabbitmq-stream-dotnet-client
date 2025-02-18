@@ -96,6 +96,11 @@ public readonly struct CreateSuperStreamResponse : ICommand
 
     public ResponseCode ResponseCode => (ResponseCode)_responseCode;
 
+    public int Write(IBufferWriter<byte> writer)
+    {
+        throw new NotImplementedException();
+    }
+
     internal static int Read(ReadOnlySequence<byte> frame, out CreateSuperStreamResponse command)
     {
         var offset = WireFormatting.ReadUInt16(frame, out _);
@@ -104,10 +109,5 @@ public readonly struct CreateSuperStreamResponse : ICommand
         offset += WireFormatting.ReadUInt16(frame.Slice(offset), out var responseCode);
         command = new CreateSuperStreamResponse(correlation, responseCode);
         return offset;
-    }
-
-    public int Write(IBufferWriter<byte> writer)
-    {
-        throw new NotImplementedException();
     }
 }
