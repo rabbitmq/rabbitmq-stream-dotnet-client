@@ -46,8 +46,9 @@ internal readonly struct CreateSuperStreamRequest : ICommand
         }
     }
 
-    public int Write(Span<byte> span)
+    public int Write(IBufferWriter<byte> writer)
     {
+        var span = writer.GetSpan(SizeNeeded);
         var command = (ICommand)this;
         var offset = WireFormatting.WriteUInt16(span, Key);
         offset += WireFormatting.WriteUInt16(span[offset..], command.Version);
@@ -72,6 +73,7 @@ internal readonly struct CreateSuperStreamRequest : ICommand
             offset += WireFormatting.WriteString(span[offset..], value);
         }
 
+        writer.Advance(offset);
         return offset;
     }
 }
@@ -94,7 +96,7 @@ public readonly struct CreateSuperStreamResponse : ICommand
 
     public ResponseCode ResponseCode => (ResponseCode)_responseCode;
 
-    public int Write(Span<byte> span)
+    public int Write(IBufferWriter<byte> writer)
     {
         throw new NotImplementedException();
     }
