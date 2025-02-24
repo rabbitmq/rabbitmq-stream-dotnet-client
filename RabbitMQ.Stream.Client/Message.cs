@@ -9,8 +9,17 @@ using RabbitMQ.Stream.Client.AMQP;
 
 namespace RabbitMQ.Stream.Client
 {
-    public class Message
+    public class Message : IDisposable
     {
+        private bool _disposedValue;
+        private IMemoryOwner<byte> _memory;
+
+        public Message(IMemoryOwner<byte> memory, int payloadSize)
+        {
+            _memory = memory;
+            Data = new Data(new ReadOnlySequence<byte>(memory.Memory.Slice(0, payloadSize)));
+        }
+
         public Message(byte[] data) : this(new Data(new ReadOnlySequence<byte>(data)))
         {
         }
@@ -157,5 +166,33 @@ namespace RabbitMQ.Stream.Client
             };
             return msg;
         }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+#pragma warning disable IDE0060 // Remove unused parameter
+        private void Dispose(bool disposing)
+#pragma warning restore IDE0060 // Remove unused parameter
+        {
+            if (!_disposedValue)
+            {
+                try
+                {
+                    _memory?.Dispose();
+                    _memory = null;
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                _disposedValue = true;
+            }
+        }
+
+        ~Message() => Dispose(false);
     }
 }

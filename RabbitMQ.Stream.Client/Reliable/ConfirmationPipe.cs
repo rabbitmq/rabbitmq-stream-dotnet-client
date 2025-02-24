@@ -146,14 +146,21 @@ public class ConfirmationPipe
 
     internal void AddUnConfirmedMessage(ulong publishingId, List<Message> messages)
     {
-        _waitForConfirmation.TryAdd(publishingId,
-            new MessagesConfirmation
+        var messagesConfirmation = new MessagesConfirmation
+        {
+            // We need to copy the messages because the user can reuse the same message or deleted them.
+            Messages = new List<Message>(messages),
+            PublishingId = publishingId,
+            InsertDateTime = DateTime.Now
+        };
+
+        if (!_waitForConfirmation.TryAdd(publishingId, messagesConfirmation))
+        {
+            foreach (var message in messages)
             {
-                // We need to copy the messages because the user can reuse the same message or deleted them.
-                Messages = new List<Message>(messages),
-                PublishingId = publishingId,
-                InsertDateTime = DateTime.Now
-            });
+                message.Dispose();
+            }
+        }
     }
 
     internal async Task RemoveUnConfirmedMessage(ConfirmationStatus confirmationStatus, ulong publishingId,
