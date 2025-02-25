@@ -382,8 +382,11 @@ RabbitMQ.Stream.Client.Message.Annotations.get -> RabbitMQ.Stream.Client.AMQP.An
 RabbitMQ.Stream.Client.Message.ApplicationProperties.get -> RabbitMQ.Stream.Client.AMQP.ApplicationProperties
 RabbitMQ.Stream.Client.Message.ApplicationProperties.set -> void
 RabbitMQ.Stream.Client.Message.Data.get -> RabbitMQ.Stream.Client.AMQP.Data
+RabbitMQ.Stream.Client.Message.Message(System.Buffers.IMemoryOwner<byte> memory, int payloadSize) -> void
 RabbitMQ.Stream.Client.Message.Message(byte[] data) -> void
 RabbitMQ.Stream.Client.Message.Message(RabbitMQ.Stream.Client.AMQP.Data data) -> void
+RabbitMQ.Stream.Client.Message.Dispose() -> void
+RabbitMQ.Stream.Client.Message.~Message() -> void
 RabbitMQ.Stream.Client.Message.MessageHeader.get -> RabbitMQ.Stream.Client.AMQP.Header
 RabbitMQ.Stream.Client.Message.Properties.get -> RabbitMQ.Stream.Client.AMQP.Properties
 RabbitMQ.Stream.Client.Message.Properties.set -> void

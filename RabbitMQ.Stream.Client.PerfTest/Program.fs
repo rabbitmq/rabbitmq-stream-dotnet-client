@@ -40,7 +40,7 @@ let main argv =
         let! producer = system.CreateRawProducer producerConfig
         //make producer available to metrics async
         prod <- producer
-        let msg = Message "asdf"B
+        let msg = new Message "asdf"B
         while run do
             let! _ = producer.Send(publishingId, msg)
             publishingId <- publishingId + 1UL
