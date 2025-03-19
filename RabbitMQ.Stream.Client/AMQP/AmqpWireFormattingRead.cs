@@ -162,7 +162,6 @@ namespace RabbitMQ.Stream.Client.AMQP
                             offset += ReadAny(ref reader, out list);
                         }
 
-                        
                         value = list;
                         return offset;
                     }
@@ -182,7 +181,9 @@ namespace RabbitMQ.Stream.Client.AMQP
                                 map[key] = v2;
                             }
                             else
+                            {
                                 offset += ReadAny(ref reader, out _);
+                            }
                         }
 
                         value = map;
