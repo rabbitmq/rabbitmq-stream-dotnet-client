@@ -37,7 +37,7 @@ public class FromToAmqpTests
     /// In this case the server decodes anc converts the message
     /// </summary>
     [Fact]
-    public async void Amqp091ShouldReadTheAmqp10Properties()
+    public async Task Amqp091ShouldReadTheAmqp10Properties()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var producer = await Producer.Create(new ProducerConfig(system, stream));
@@ -70,7 +70,7 @@ public class FromToAmqpTests
         channel.BasicQos(0, 100, false);
         channel.BasicConsume(stream, false, "consumerTag",
             arguments: new Dictionary<string, object>() { { "x-stream-offset", "first" } }, consumer);
-        var result = tcs.Task.Result;
+        var result = await tcs.Task;
         Assert.Equal("FromStream", Encoding.ASCII.GetString(result.Body.ToArray()));
         Assert.Equal("年 6 月", result.BasicProperties.MessageId);
         Assert.Equal("10000_00000", result.BasicProperties.CorrelationId);
@@ -89,7 +89,7 @@ public class FromToAmqpTests
     /// In this case the server decodes anc converts the message
     /// </summary>
     [Fact]
-    public async void Amqp10ShouldReadTheAmqp019Properties()
+    public async Task Amqp10ShouldReadTheAmqp019Properties()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
@@ -146,7 +146,7 @@ public class FromToAmqpTests
         });
 
         new Utils<List<Message>>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
-        var result = tcs.Task.Result;
+        var result = await tcs.Task;
         Assert.Equal(NumberOfMessages, result.Count);
         for (var i = 0; i < result.Count; i++)
         {
@@ -212,7 +212,7 @@ public class FromToAmqpTests
     }
 
     [Fact]
-    public async void Amqp091ShouldReadTheAmqp10Properties1000Messages()
+    public async Task Amqp091ShouldReadTheAmqp10Properties1000Messages()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var producer = await Producer.Create(new ProducerConfig(system, stream));
@@ -262,13 +262,13 @@ public class FromToAmqpTests
         channel.BasicConsume(stream, false, "consumerTag",
             arguments: new Dictionary<string, object>() { { "x-stream-offset", "first" } }, consumer);
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
-        Assert.Equal(NumberOfMessages, tcs.Task.Result);
+        Assert.Equal(NumberOfMessages, await tcs.Task);
         channel.QueueDelete(stream);
         channel.Close();
     }
 
     [Fact]
-    public async void Amqp10ShouldReadTheAmqp019Properties1000Messages()
+    public async Task Amqp10ShouldReadTheAmqp019Properties1000Messages()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
@@ -327,27 +327,27 @@ public class FromToAmqpTests
             }
         });
         new Utils<List<Message>>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
-        var result = tcs.Task.Result;
+        var result = await tcs.Task;
         Assert.Equal(NumberOfMessages, result.Count);
         i = 0;
         while (i < NumberOfMessages)
         {
-            var s = Encoding.ASCII.GetString(tcs.Task.Result[i].Data.Contents.ToArray());
+            var s = Encoding.ASCII.GetString(result[i].Data.Contents.ToArray());
             Assert.Equal($"FromAMQP{i}", s);
-            Assert.Equal($"messageId{i}", tcs.Task.Result[i].Properties.MessageId);
-            Assert.Equal("10000_00000", tcs.Task.Result[i].Properties.CorrelationId);
-            Assert.Equal("text/plain", tcs.Task.Result[i].Properties.ContentType);
-            Assert.Equal("utf-8", tcs.Task.Result[i].Properties.ContentEncoding);
-            Assert.Equal("guest", Encoding.ASCII.GetString(tcs.Task.Result[i].Properties.UserId));
-            Assert.Equal("stream_value", tcs.Task.Result[i].ApplicationProperties["stream_key"]);
-            Assert.Equal(100, tcs.Task.Result[i].ApplicationProperties["stream_key2"]);
-            Assert.Equal(10_000_009, tcs.Task.Result[i].ApplicationProperties["stream_key3"]);
+            Assert.Equal($"messageId{i}", result[i].Properties.MessageId);
+            Assert.Equal("10000_00000", result[i].Properties.CorrelationId);
+            Assert.Equal("text/plain", result[i].Properties.ContentType);
+            Assert.Equal("utf-8", result[i].Properties.ContentEncoding);
+            Assert.Equal("guest", Encoding.ASCII.GetString(result[i].Properties.UserId));
+            Assert.Equal("stream_value", result[i].ApplicationProperties["stream_key"]);
+            Assert.Equal(100, result[i].ApplicationProperties["stream_key2"]);
+            Assert.Equal(10_000_009, result[i].ApplicationProperties["stream_key3"]);
             Assert.Equal("Alan Mathison Turing（1912 年 6 月 23 日",
-                tcs.Task.Result[i].ApplicationProperties["stream_key4"]);
-            Assert.Equal(true, tcs.Task.Result[i].ApplicationProperties["bool"]);
-            Assert.Equal(10_000_000_000, tcs.Task.Result[i].ApplicationProperties["decimal"]);
-            Assert.Equal(1111, tcs.Task.Result[i].ApplicationProperties["int"]);
-            Assert.Equal("value", tcs.Task.Result[i].ApplicationProperties["string"]);
+                result[i].ApplicationProperties["stream_key4"]);
+            Assert.Equal(true, result[i].ApplicationProperties["bool"]);
+            Assert.Equal(10_000_000_000, result[i].ApplicationProperties["decimal"]);
+            Assert.Equal(1111, result[i].ApplicationProperties["int"]);
+            Assert.Equal("value", result[i].ApplicationProperties["string"]);
 
             i++;
         }
@@ -363,7 +363,7 @@ public class FromToAmqpTests
     /// See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/217
     /// </summary>
     [Fact]
-    public async void StreamShouldReadTheAmqp10PropertiesMessages()
+    public async Task StreamShouldReadTheAmqp10PropertiesMessages()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
@@ -401,7 +401,7 @@ public class FromToAmqpTests
         });
 
         new Utils<Message>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
-        var result = tcs.Task.Result;
+        var result = await tcs.Task;
         Assert.Equal("msg from amqp 1.0", result.AmqpValue);
         await consumer.Close();
         await system.DeleteStream(stream);

@@ -94,11 +94,11 @@ namespace Tests
         public const string InvoicesStream2 = "invoices-2";
 
         // Waits for 10 seconds total by default
-        public static void WaitUntil(Func<bool> func, ushort retries = 40)
+        public static async Task WaitUntilAsync(Func<bool> func, ushort retries = 40)
         {
             while (!func())
             {
-                Wait(TimeSpan.FromMilliseconds(250));
+                await WaitAsync(TimeSpan.FromMilliseconds(250));
                 --retries;
                 if (retries == 0)
                 {
@@ -107,12 +107,12 @@ namespace Tests
             }
         }
 
-        public static async void WaitUntilAsync(Func<Task<bool>> func, ushort retries = 10)
+        public static async Task WaitUntilAsync(Func<Task<bool>> func, ushort retries = 10)
         {
-            Wait();
+            await WaitAsync();
             while (!await func())
             {
-                Wait();
+                await WaitAsync();
                 --retries;
                 if (retries == 0)
                 {
@@ -121,14 +121,14 @@ namespace Tests
             }
         }
 
-        public static void Wait()
+        public static Task WaitAsync()
         {
-            Thread.Sleep(TimeSpan.FromMilliseconds(500));
+            return Task.Delay(TimeSpan.FromMilliseconds(500));
         }
 
-        public static void Wait(TimeSpan wait)
+        public static Task WaitAsync(TimeSpan wait)
         {
-            Thread.Sleep(wait);
+            return Task.Delay(wait);
         }
 
         public static void InitStreamSystemWithRandomStream(out StreamSystem system, out string stream,
@@ -188,9 +188,9 @@ namespace Tests
 
             testPassed.Task.Wait(TimeSpan.FromSeconds(10));
             Assert.Equal(numberOfMessages, testPassed.Task.Result);
-            WaitUntil(() => producer.ConfirmFrames >= 1);
-            WaitUntil(() => producer.IncomingFrames >= 1);
-            WaitUntil(() => producer.PublishCommandsSent >= 1);
+            await WaitUntilAsync(() => producer.ConfirmFrames >= 1);
+            await WaitUntilAsync(() => producer.IncomingFrames >= 1);
+            await WaitUntilAsync(() => producer.PublishCommandsSent >= 1);
 
             testOutputHelper.WriteLine(
                 $"Messages sent to the stream {stream} number of messages {numberOfMessages} " +
@@ -439,7 +439,7 @@ namespace Tests
                 // ignore if the stream does not exist
             }
 
-            Wait();
+            await WaitAsync();
             var spec = new PartitionsSuperStreamSpec(InvoicesExchange);
             await system.CreateSuperStream(spec);
             await system.Close();

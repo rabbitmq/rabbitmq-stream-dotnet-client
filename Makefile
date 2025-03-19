@@ -1,7 +1,7 @@
-all: format test
+# vim: noexpandtab:ts=4:sw=4
+.PHONY: build test format rabbitmq-server stop-rabbitmq-server run-test-in-docker publish-github-pages
 
-format:
-	dotnet format $(CURDIR)/rabbitmq-stream-dotnet-client.sln
+RABBITMQ_DOCKER_NAME ?= rabbitmq-stream-dotnet-client-rabbitmq
 
 build:
 	dotnet build $(CURDIR)/Build.csproj
@@ -9,11 +9,14 @@ build:
 test: build
 	dotnet test -c Debug $(CURDIR)/Tests/Tests.csproj --no-build --logger:"console;verbosity=detailed" /p:AltCover=true
 
+format:
+	dotnet format $(CURDIR)/rabbitmq-stream-dotnet-client.sln
+
 rabbitmq-server:
-	docker run -it --rm --name rabbitmq-stream-docker \
-		-p 5552:5552 -p 5672:5672 -p 15672:15672 \
-		--pull always \
-		pivotalrabbitmq/rabbitmq-stream
+	$(CURDIR)/.ci/ubuntu/gha-setup.sh
+
+stop-rabbitmq-server:
+	docker stop $(RABBITMQ_DOCKER_NAME)
 
 ## Simulate the CI tests
 ## in GitHub Action the number of the CPU is limited
@@ -21,7 +24,7 @@ run-test-in-docker:
 	docker stop dotnet-test || true
 	docker build -t stream-dotnet-test -f Docker/Dockerfile  . && \
 	docker run -d --rm --name dotnet-test -v $(shell pwd):/source --cpuset-cpus="1" stream-dotnet-test && \
-    docker exec -it dotnet-test /bin/sh -c "cd /source && make test" || true
+	docker exec -it dotnet-test /bin/sh -c "cd /source && make test" || true
 
 ## publish the documentation on github pages
 ## you should execute this command only on the `main` branch

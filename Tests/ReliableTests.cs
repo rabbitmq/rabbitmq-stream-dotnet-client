@@ -27,7 +27,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public void MessageWithoutConfirmationRaiseTimeout()
+    public async Task MessageWithoutConfirmationRaiseTimeout()
     {
         var confirmationTask = new TaskCompletionSource<int>();
         var l = new List<ConfirmationStatus>();
@@ -50,7 +50,7 @@ public class ReliableTests
         confirmationPipe.AddUnConfirmedMessage(1, new Message(Encoding.UTF8.GetBytes($"hello")));
         confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { new Message(Encoding.UTF8.GetBytes($"hello")) });
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
-        Assert.Equal(2, confirmationTask.Task.Result);
+        Assert.Equal(2, await confirmationTask.Task);
         Assert.Equal(2, l.Count);
         // time out error is sent by the internal time that checks the status
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
@@ -60,7 +60,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public void MessageConfirmationShouldHaveTheSameMessages()
+    public async Task MessageConfirmationShouldHaveTheSameMessages()
     {
         var confirmationTask = new TaskCompletionSource<List<MessagesConfirmation>>();
         var l = new List<MessagesConfirmation>();
@@ -80,16 +80,17 @@ public class ReliableTests
         var message = new Message(Encoding.UTF8.GetBytes($"hello"));
         confirmationPipe.AddUnConfirmedMessage(1, message);
         confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { message });
-        confirmationPipe.RemoveUnConfirmedMessage(ConfirmationStatus.Confirmed, 1, null).ConfigureAwait(false);
-        confirmationPipe.RemoveUnConfirmedMessage(ConfirmationStatus.Confirmed, 2, null).ConfigureAwait(false);
+        await confirmationPipe.RemoveUnConfirmedMessage(ConfirmationStatus.Confirmed, 1, null);
+        await confirmationPipe.RemoveUnConfirmedMessage(ConfirmationStatus.Confirmed, 2, null);
         new Utils<List<MessagesConfirmation>>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
-        Assert.Equal(ConfirmationStatus.Confirmed, confirmationTask.Task.Result[0].Status);
-        Assert.Equal(ConfirmationStatus.Confirmed, confirmationTask.Task.Result[1].Status);
+        var result = await confirmationTask.Task;
+        Assert.Equal(ConfirmationStatus.Confirmed, result[0].Status);
+        Assert.Equal(ConfirmationStatus.Confirmed, result[1].Status);
         confirmationPipe.Stop();
     }
 
     [Fact]
-    public async void ConfirmRProducerMessages()
+    public async Task ConfirmRProducerMessages()
     {
         var testPassed = new TaskCompletionSource<bool>();
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
@@ -151,7 +152,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void SendMessageAfterKillConnectionShouldContinueToWork()
+    public async Task SendMessageAfterKillConnectionShouldContinueToWork()
     {
         // Test the auto-reconnect client
         // When the client connection is closed by the management UI
@@ -188,7 +189,7 @@ public class ReliableTests
             await producer.Send(new Message(Encoding.UTF8.GetBytes($"hello {i}")));
         }
 
-        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 1);
 
         await SystemUtils.HttpKillConnections(clientProvidedNameLocator);
 
@@ -207,7 +208,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void ProducerHandleDeleteStreamWithMetaDataUpdate()
+    public async Task ProducerHandleDeleteStreamWithMetaDataUpdate()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
@@ -226,7 +227,7 @@ public class ReliableTests
         // connection an become inactive.
         await system.DeleteStream(stream);
 
-        SystemUtils.WaitUntil(() => !producer.IsOpen());
+        await SystemUtils.WaitUntilAsync(() => !producer.IsOpen());
 
         Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
@@ -243,7 +244,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void HandleChangeStreamConfigurationWithMetaDataUpdate()
+    public async Task HandleChangeStreamConfigurationWithMetaDataUpdate()
     {
         // When stream topology changes the MetadataUpdate is raised.
         // in this test we simulate it using await Producer:HandleMetaDataMaybeReconnect/1;
@@ -261,14 +262,14 @@ public class ReliableTests
         Assert.True(producer.IsOpen());
         await producer.OnEntityClosed(system, stream,
             ChangeStatusReason.UnexpectedlyDisconnected);
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         Assert.True(producer.IsOpen());
         await system.DeleteStream(stream);
         await system.Close();
     }
 
     [Fact]
-    public async void AutoPublishIdDefaultShouldStartFromTheLast()
+    public async Task AutoPublishIdDefaultShouldStartFromTheLast()
     {
         // RProducer automatically retrieves the last producer offset.
         // This tests if the the last id stored 
@@ -314,7 +315,7 @@ public class ReliableTests
 
         // We check if the publishing id is actually 5
         new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        Assert.Equal((ulong)5, testPassed.Task.Result);
+        Assert.Equal((ulong)5, await testPassed.Task);
 
         await producer.Close();
         var testPassedSecond = new TaskCompletionSource<ulong>();
@@ -336,7 +337,7 @@ public class ReliableTests
         await producerSecond.Send(new Message(Encoding.UTF8.GetBytes($"hello")));
         // +1 here, so 6
         new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(testPassedSecond);
-        Assert.Equal((ulong)6, testPassedSecond.Task.Result);
+        Assert.Equal((ulong)6, await testPassedSecond.Task);
 
         await producerSecond.Close();
         await system.DeleteStream(stream);
@@ -344,7 +345,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void FirstConsumeAfterKillConnectionShouldContinueToWork()
+    public async Task FirstConsumeAfterKillConnectionShouldContinueToWork()
     {
         // test the consumer reconnection 
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
@@ -374,7 +375,7 @@ public class ReliableTests
         // in this case we kill the connection before consume consume any message
         // so it should use the selected   OffsetSpec in this case = new OffsetTypeFirst(),
 
-        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         await SystemUtils.PublishMessages(system, stream, NumberOfMessages, _testOutputHelper);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         await consumer.Close();
@@ -383,7 +384,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void ConsumeAfterKillConnectionShouldContinueToWork()
+    public async Task ConsumeAfterKillConnectionShouldContinueToWork()
     {
         // test the consumer reconnection 
         // in this test we kill the connection two times 
@@ -431,11 +432,11 @@ public class ReliableTests
 
         var consumer = await Consumer.Create(config);
         // kill the first time 
-        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         await SystemUtils.PublishMessages(system, stream, NumberOfMessages,
             Guid.NewGuid().ToString(),
             _testOutputHelper);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections(clientProviderName).Result == 1);
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // after kill the consumer must be open
         Assert.True(consumer.IsOpen());
@@ -477,7 +478,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void ConsumerHandleDeleteStreamWithMetaDataUpdate()
+    public async Task ConsumerHandleDeleteStreamWithMetaDataUpdate()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var clientProviderName = Guid.NewGuid().ToString();
@@ -495,7 +496,7 @@ public class ReliableTests
         // When the stream is deleted the consumer has to close the 
         // connection an become inactive.
         await system.DeleteStream(stream);
-        SystemUtils.WaitUntil(() => !consumer.IsOpen());
+        await SystemUtils.WaitUntilAsync(() => !consumer.IsOpen());
         Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
         Assert.Equal(ChangeStatusReason.None, statusInfoReceived[0].Reason);
@@ -511,7 +512,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void ConsumerShouldReceiveBoolFail()
+    public async Task ConsumerShouldReceiveBoolFail()
     {
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var config = new ConsumerConfig(system, "DOES_NOT_EXIST")
@@ -538,7 +539,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void ProducerShouldReceiveBoolFail()
+    public async Task ProducerShouldReceiveBoolFail()
     {
         var system = await StreamSystem.Create(new StreamSystemConfig());
         var config = new ProducerConfig(system, "DOES_NOT_EXIST")
@@ -586,7 +587,7 @@ public class ReliableTests
     }
 
     [Fact]
-    public async void OverrideDefaultRecoveryConnection()
+    public async Task OverrideDefaultRecoveryConnection()
     {
         // testing the ReconnectStrategy override with a new 
         // class MyReconnection. In this case we don't want the reconnection
@@ -605,19 +606,19 @@ public class ReliableTests
             }
         );
 
-        SystemUtils.WaitUntil(() => consumer.IsOpen());
+        await SystemUtils.WaitUntilAsync(() => consumer.IsOpen());
 
         await SystemUtils.PublishMessages(system, stream, 10, _testOutputHelper);
-        SystemUtils.WaitUntil(() => SystemUtils.IsConnectionOpen(clientProviderName).Result);
-        Assert.True(SystemUtils.IsConnectionOpen(clientProviderName).Result);
-        SystemUtils.WaitUntil(() =>
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.IsConnectionOpen(clientProviderName).Result);
+        Assert.True(await SystemUtils.IsConnectionOpen(clientProviderName));
+        await SystemUtils.WaitUntilAsync(() =>
             {
                 var c = SystemUtils.HttpKillConnections(clientProviderName).Result;
                 return c == 1;
             }
         );
 
-        SystemUtils.WaitUntil(() =>
+        await SystemUtils.WaitUntilAsync(() =>
             {
                 var isOpen = SystemUtils.IsConnectionOpen(clientProviderName).Result;
                 return !isOpen;
@@ -628,7 +629,7 @@ public class ReliableTests
         // since the set reconnect = false
         try
         {
-            SystemUtils.WaitUntil(() => false == consumer.IsOpen());
+            await SystemUtils.WaitUntilAsync(() => false == consumer.IsOpen());
         }
         finally
         {
@@ -672,7 +673,7 @@ public class ReliableTests
     // The Consumer should be closed and the exception should be
     // propagated to the caller.
     //</summary>
-    public async void RConsumerShouldStopWhenThrowUnknownException()
+    public async Task RConsumerShouldStopWhenThrowUnknownException()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
 
@@ -698,7 +699,7 @@ public class ReliableTests
     // it could be a temporary problem so the Consumer should try to
     // reconnect.
     //</summary>
-    public async void ConsumerShouldFailFast(Exception exception)
+    public async Task ConsumerShouldFailFast(Exception exception)
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var config = new ConsumerConfig(system, stream) { ReconnectStrategy = new TestBackOffReconnectStrategy() };

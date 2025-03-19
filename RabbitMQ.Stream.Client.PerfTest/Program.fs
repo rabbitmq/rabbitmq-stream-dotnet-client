@@ -24,12 +24,10 @@ let main argv =
                                         Reference = Guid.NewGuid().ToString(),
                                         MessageHandler =
                                             fun c ctx m ->
-                                                
                                                 consumed <- consumed + 1
                                                 Task.CompletedTask )
     let t = task {
-        let config = StreamSystemConfig(UserName = "guest",
-                                        Password = "guest")
+        let config = StreamSystemConfig(UserName = "guest", Password = "guest")
         let! system = StreamSystem.Create config
         let! stream = system.CreateStream(StreamSpec(streamName))
         printfn $"Stream: {streamName}"

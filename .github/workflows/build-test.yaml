@@ -9,76 +9,54 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            6.x
-            7.x
-            8.x
       - uses: actions/cache@v4
         with:
           # Note: the cache path is relative to the workspace directory
           # https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#using-the-cache-action
           path: ~/installers
-          key: ${{ runner.os }}-v1-${{ hashFiles('.ci/versions.json') }}
+          key: ${{ runner.os }}-v3-${{ hashFiles('.ci/windows/versions.json') }}
       - uses: actions/cache@v4
         with:
           path: |
             ~/.nuget/packages
             ~/AppData/Local/NuGet/v4-cache
-          key: ${{ runner.os }}-v2-nuget-${{ hashFiles('**/*.csproj') }}
+          key: ${{ runner.os }}-v3-nuget-${{ hashFiles('**/*.csproj','./Directory.Packages.props') }}
           restore-keys: |
-            ${{ runner.os }}-v2-nuget-
+            ${{ runner.os }}-v3-nuget-
       - name: Install and start RabbitMQ
-        run: ./.ci/install.ps1
-      - name: Restore
-        run: dotnet restore ./Build.csproj --verbosity=normal
-      - name: Build
-        run: dotnet build ./Build.csproj --no-restore --verbosity=normal
+        run: ${{ github.workspace }}\.ci\windows\gha-setup.ps1
+      - name: Build (Debug)
+        run: dotnet build ${{ github.workspace }}\Build.csproj
       - name: Verify
-        run: dotnet format ./rabbitmq-stream-dotnet-client.sln --no-restore --verbosity=diagnostic --verify-no-changes
+        run: dotnet format ${{ github.workspace }}\rabbitmq-stream-dotnet-client.sln --no-restore --verify-no-changes
       - name: Test
-        run: dotnet test ./Build.csproj --no-build --logger "console;verbosity=detailed"
-  build:
+        run: dotnet test ${{ github.workspace }}\Tests\Tests.csproj --no-restore --no-build --logger "console;verbosity=detailed"
+  build-ubuntu:
     name: build/test on ubuntu-latest
     runs-on: ubuntu-latest
-    services:
-      rabbitmq:
-        image: rabbitmq:3.13-management
-        env:
-          RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbitmq_stream advertised_host localhost -rabbit collect_statistics_interval 4
-        ports:
-            - 5552:5552
-            - 5672:5672
-            - 15672:15672
-            - 1883:1883
-            - 61613:61613
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
-            6.x
-            7.x
+            8.x
+            9.x
       - uses: actions/cache@v4
         with:
           path: |
             ~/.nuget/packages
             ~/.local/share/NuGet/v4-cache
-          key: ${{ runner.os }}-v2-nuget-${{ hashFiles('**/*.csproj') }}
+          key: ${{ runner.os }}-v3-nuget-${{ hashFiles('**/*.csproj','./Directory.Packages.props') }}
           restore-keys: |
-            ${{ runner.os }}-v2-nuget-
-      - name: Wait RabbitMQ is Up 
-        run: docker exec ${{ job.services.rabbitmq.id }} rabbitmqctl wait --pid 1 --timeout 60
-      - name: Enable RabbitMQ Plugins
-        run: docker exec ${{ job.services.rabbitmq.id }} rabbitmq-plugins enable rabbitmq_stream rabbitmq_stream_management rabbitmq_amqp1_0
-      - name: Restore
-        run: dotnet restore ./Build.csproj --verbosity=normal
-      - name: Build
-        run: dotnet build ./Build.csproj --no-restore --verbosity=normal
+            ${{ runner.os }}-v3-nuget-
+      - name: Start RabbitMQ
+        id: start-rabbitmq
+        run: ${{ github.workspace }}/.ci/ubuntu/gha-setup.sh
+      - name: Build (Debug)
+        run: dotnet build ${{ github.workspace }}/Build.csproj
       - name: Verify
-        run: dotnet format ./rabbitmq-stream-dotnet-client.sln --no-restore --verbosity=diagnostic --verify-no-changes
+        run: dotnet format ${{ github.workspace }}/rabbitmq-stream-dotnet-client.sln --no-restore --verify-no-changes
       - name: Test
-        run: dotnet test ./Build.csproj --no-build --logger "console;verbosity=detailed" /p:AltCover=true
+        run: dotnet test ${{ github.workspace }}/Tests/Tests.csproj --no-restore --no-build --logger "console;verbosity=detailed" /p:AltCover=true
       - name: Upload code coverage to Codecov
         run: bash <(curl -s https://codecov.io/bash)

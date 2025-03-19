@@ -14,7 +14,7 @@
     <IncludeSymbols>true</IncludeSymbols>
     <IsPackable>false</IsPackable>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;IDE0040</NoWarn>
     <PackageId>$(AssemblyName)</PackageId>
     <PackageProjectUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</PackageProjectUrl>
     <PackageReleaseNotes>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/latest</PackageReleaseNotes>
@@ -22,7 +22,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/rabbitmq/rabbitmq-stream-dotnet-client</RepositoryUrl>
-    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 

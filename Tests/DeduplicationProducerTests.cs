@@ -60,7 +60,7 @@ public class DeduplicationProducerTests
         }
 
         new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         Assert.Equal(TotalMessages, await p.GetLastPublishedId());
         await p.Close();
         Assert.False(p.IsOpen());
@@ -97,7 +97,7 @@ public class DeduplicationProducerTests
         }
 
         new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         Assert.Equal(TotalMessages, await p.GetLastPublishedId());
 
         // we send the same messages again with the same publishing id
@@ -107,7 +107,7 @@ public class DeduplicationProducerTests
             await p.Send(i, new Message(new byte[10]));
         }
 
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(stream) == (int)TotalMessages);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(stream) == (int)TotalMessages);
 
         // we are out of the deduplication window so the messages will be stored
         // we start from the last published id + 1
@@ -115,7 +115,7 @@ public class DeduplicationProducerTests
         await p.Send(await p.GetLastPublishedId() + 2, new Message(new byte[10]));
 
         // the total messages should be the TotalMessages + 2 new messages
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(stream) == (int)TotalMessages + 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(stream) == (int)TotalMessages + 2);
         await p.Close();
         Assert.False(p.IsOpen());
 
@@ -164,13 +164,13 @@ public class DeduplicationProducerTests
             }
 
             // so even if there are two sends the messages count won't change
-            SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-            SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-            SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
+            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         }
 
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        Assert.Equal(TotalMessages, testPassed.Task.Result);
+        Assert.Equal(TotalMessages, await testPassed.Task);
         await deduplicatingProducer.Close();
     }
 }

@@ -35,7 +35,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void ValidateSuperStreamProducer()
+    public async Task ValidateSuperStreamProducer()
     {
         var system = await StreamSystem.Create(new StreamSystemConfig());
 
@@ -48,7 +48,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void ValidateRoutingKeyProducer()
+    public async Task ValidateRoutingKeyProducer()
     {
         await SystemUtils.ResetSuperStreams();
         // RoutingKeyExtractor must be set else the traffic won't be routed
@@ -86,7 +86,7 @@ public class SuperStreamProducerTests
 
     [Theory]
     [ClassData(typeof(MessageIdToStreamTestCases))]
-    public async void ValidateHashRoutingStrategy(MessageIdToStream @msg)
+    public async Task ValidateHashRoutingStrategy(MessageIdToStream @msg)
     {
         // this test validates that the hash routing strategy is working as expected
         var murmurStrategy = new HashRoutingMurmurStrategy(message => message.Properties.MessageId.ToString());
@@ -104,7 +104,7 @@ public class SuperStreamProducerTests
     // ValidateKeyRouting is a test that validates that the key routing strategy is working as expected
     // The key routing strategy is used when the routing key is known before hand
     [Fact]
-    public async void ValidateKeyRouting()
+    public async Task ValidateKeyRouting()
     {
         var messageTest = new Message(Encoding.Default.GetBytes("hello"))
         {
@@ -131,7 +131,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void SendMessageToSuperStream()
+    public async Task SendMessageToSuperStream()
     {
         await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
@@ -159,17 +159,17 @@ public class SuperStreamProducerTests
         }
 
         Assert.Equal("my_super_producer_908", streamProducer.Info.Identifier);
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         Assert.Equal((ulong)10, await streamProducer.GetLastPublishingId());
 
         Assert.True(streamProducer.MessagesSent == 20);
-        SystemUtils.WaitUntil(() => streamProducer.ConfirmFrames > 0);
-        SystemUtils.WaitUntil(() => streamProducer.PublishCommandsSent > 0);
+        await SystemUtils.WaitUntilAsync(() => streamProducer.ConfirmFrames > 0);
+        await SystemUtils.WaitUntilAsync(() => streamProducer.PublishCommandsSent > 0);
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
@@ -178,7 +178,7 @@ public class SuperStreamProducerTests
     // SendMessageToSuperStreamWithKeyStrategy is a test that validates that the key routing strategy is working as expected
 
     [Fact]
-    public async void SendMessageToSuperStreamWithKeyStrategy()
+    public async Task SendMessageToSuperStreamWithKeyStrategy()
     {
         await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
@@ -216,16 +216,16 @@ public class SuperStreamProducerTests
             await streamProducer.Send(++id, message);
         }
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6);
 
         Assert.True(streamProducer.MessagesSent == 20);
-        SystemUtils.WaitUntil(() => streamProducer.ConfirmFrames > 0);
-        SystemUtils.WaitUntil(() => streamProducer.PublishCommandsSent > 0);
+        await SystemUtils.WaitUntilAsync(() => streamProducer.ConfirmFrames > 0);
+        await SystemUtils.WaitUntilAsync(() => streamProducer.PublishCommandsSent > 0);
 
         var messageNotRouted = new Message(Encoding.Default.GetBytes("hello"))
         {
@@ -239,9 +239,9 @@ public class SuperStreamProducerTests
 
         // Total messages must be 20 * 2
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 2);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 2);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 2);
 
         Assert.True(streamProducer.MessagesSent == 20 * 2);
 
@@ -252,9 +252,9 @@ public class SuperStreamProducerTests
 
         // Total messages must be 20 * 3
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 3);
 
         await Assert.ThrowsAsync<RouteNotFoundException>(async () =>
             await streamProducer.Send(++id,
@@ -265,7 +265,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void SendMessageWithProducerToSuperStreamWithKeyStrategy()
+    public async Task SendMessageWithProducerToSuperStreamWithKeyStrategy()
     {
         await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
@@ -300,12 +300,12 @@ public class SuperStreamProducerTests
             await producer.Send(message);
         }
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6);
 
         var messageNotRouted = new Message(Encoding.Default.GetBytes("hello"))
         {
@@ -319,9 +319,9 @@ public class SuperStreamProducerTests
 
         // Total messages must be 20 * 2
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 2);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 2);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 2);
 
         await Assert.ThrowsAsync<RouteNotFoundException>(async () => await producer.Send(
             new List<Message>() { messageNotRouted }));
@@ -330,9 +330,9 @@ public class SuperStreamProducerTests
 
         // Total messages must be 20 * 3
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 3);
 
         await Assert.ThrowsAsync<RouteNotFoundException>(async () =>
             await producer.Send(
@@ -342,7 +342,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void SendMessageWithProducerToSuperStreamWithKeyStrategyCountries()
+    public async Task SendMessageWithProducerToSuperStreamWithKeyStrategyCountries()
     {
         const string SuperStream = "countries";
         var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -375,12 +375,12 @@ public class SuperStreamProducerTests
         }
 
         Assert.Equal(conf.BindingKeys, new[] { "italy", "france", "spain", "germany", "uk" });
-        SystemUtils.Wait();
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-italy") == 2);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-france") == 1);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-spain") == 1);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-uk") == 1);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-germany") == 2);
+        await SystemUtils.WaitAsync();
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-italy") == 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-france") == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-spain") == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-uk") == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{SuperStream}-germany") == 2);
         await system.DeleteSuperStream(SuperStream);
 
         await producer.Close();
@@ -388,7 +388,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void SendBachToSuperStream()
+    public async Task SendBachToSuperStream()
     {
         await SystemUtils.ResetSuperStreams();
         // Here we are sending a batch of messages to the super stream
@@ -412,21 +412,21 @@ public class SuperStreamProducerTests
 
         await streamProducer.Send(messages);
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
-        SystemUtils.Wait();
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitAsync();
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
 
     [Fact]
-    public async void SendSubEntryToSuperStream()
+    public async Task SendSubEntryToSuperStream()
     {
         await SystemUtils.ResetSuperStreams();
         // Here we are sending a subentry messages to the super stream
@@ -450,20 +450,20 @@ public class SuperStreamProducerTests
 
         await streamProducer.Send(1, messages, CompressionType.Gzip);
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         Assert.Equal((ulong)1, await streamProducer.GetLastPublishingId());
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
 
     [Fact]
-    public async void SendMessageToSuperStreamRecreateConnectionsIfKilled()
+    public async Task SendMessageToSuperStreamRecreateConnectionsIfKilled()
     {
         await SystemUtils.ResetSuperStreams();
         // This test validates that the super stream producer is able to recreate the connection
@@ -489,7 +489,7 @@ public class SuperStreamProducerTests
 
             var streamInfo = await system.StreamInfo(stream);
             await streamProducer.ReconnectPartition(streamInfo);
-            SystemUtils.Wait();
+            await SystemUtils.WaitAsync();
             completed.SetResult(true);
         };
 
@@ -502,26 +502,26 @@ public class SuperStreamProducerTests
 
             if (i == 10)
             {
-                SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientName}_0").Result == 1);
-                completed.Task.Wait();
+                await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections($"{clientName}_0").Result == 1);
+                await completed.Task;
             }
 
             // Here the connection _must_ be recreated  and the send the message 
             await streamProducer.Send(i, message);
         }
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
 
     [Fact]
-    public async void HandleConfirmationToSuperStream()
+    public async Task HandleConfirmationToSuperStream()
     {
         await SystemUtils.ResetSuperStreams();
         // This test is for the confirmation mechanism
@@ -556,7 +556,7 @@ public class SuperStreamProducerTests
             await streamProducer.Send(i, message);
         }
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         Assert.Equal(9, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream0));
         Assert.Equal(7, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream1));
@@ -567,7 +567,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void HandleMetaUpdateRemoveSteamShouldContinueToWork()
+    public async Task HandleMetaUpdateRemoveSteamShouldContinueToWork()
     {
         await SystemUtils.ResetSuperStreams();
         // In this test we are going to remove a stream from the super stream
@@ -621,17 +621,17 @@ public class SuperStreamProducerTests
             }
         }
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // even we removed a stream the producer should be able to send messages and maintain the hash routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
         await system.Close();
     }
 
     [Fact]
-    public async void SendMessagesInDifferentWaysShouldAppendToTheStreams()
+    public async Task SendMessagesInDifferentWaysShouldAppendToTheStreams()
     {
         await SystemUtils.ResetSuperStreams();
         // In this test we are going to send 20 messages with the same message id
@@ -666,18 +666,18 @@ public class SuperStreamProducerTests
         await streamProducer.Send(batchSendMessages);
         await streamProducer.Send(1, messagesForSubEntry, CompressionType.Gzip);
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20 * 3
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4 * 3);
         await streamProducer.Close();
         await system.Close();
     }
 
     [Fact]
-    public async void SuperStreamDeduplicationDifferentWaysShouldGiveSameResults()
+    public async Task SuperStreamDeduplicationDifferentWaysShouldGiveSameResults()
     {
         await SystemUtils.ResetSuperStreams();
         // In this test we are going to send 20 messages with the same message id
@@ -715,20 +715,20 @@ public class SuperStreamProducerTests
         await streamProducer.Send(batchSendMessages);
         await streamProducer.Send(1, messagesForSubEntry, CompressionType.Gzip);
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // Deduplication in action
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
         await streamProducer.Close();
         await system.Close();
     }
 
     // super stream reliable producer tests
     [Fact]
-    public async void ReliableProducerSuperStreamSendMessagesDifferentWays()
+    public async Task ReliableProducerSuperStreamSendMessagesDifferentWays()
     {
         await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
@@ -756,18 +756,18 @@ public class SuperStreamProducerTests
         await streamProducer.Send(batchSendMessages);
         await streamProducer.Send(batchSendMessages, CompressionType.Gzip);
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         // Total messages must be 20 * 3 (standard send,batch send, subentry send)
         // according to the routing strategy hello{i} that must be the correct routing
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4 * 3);
         await streamProducer.Close();
         await system.Close();
     }
 
     [Fact]
-    public async void ReliableProducerHandleConfirmation()
+    public async Task ReliableProducerHandleConfirmation()
     {
         await SystemUtils.ResetSuperStreams();
         // This test is for the confirmation mechanism
@@ -810,7 +810,7 @@ public class SuperStreamProducerTests
             await streamProducer.Send(message);
         }
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         Assert.Equal(9, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream0));
         Assert.Equal(7, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream1));
@@ -830,7 +830,7 @@ public class SuperStreamProducerTests
     }
 
     [Fact]
-    public async void ReliableProducerSendMessageConnectionsIfKilled()
+    public async Task ReliableProducerSendMessageConnectionsIfKilled()
     {
         await SystemUtils.ResetSuperStreams();
         // This test validates that the Reliable super stream producer is able to recreate the connection
@@ -887,19 +887,19 @@ public class SuperStreamProducerTests
             {
                 // We just decide to close the connections
                 // The messages will go in time out since not confirmed
-                SystemUtils.WaitUntil(() => SystemUtils.HttpKillConnections($"{clientName}_0").Result == 1);
+                await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections($"{clientName}_0").Result == 1);
             }
 
             // Here the connection _must_ be recreated  and the message sent
             await streamProducer.Send(message);
         }
 
-        SystemUtils.Wait();
+        await SystemUtils.WaitAsync();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // killed the connection for the InvoicesStream0. So received + error must be 9
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) + error == 9);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        SystemUtils.WaitUntil(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) + error == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
 
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
 
