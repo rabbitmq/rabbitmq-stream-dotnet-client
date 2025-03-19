@@ -4,6 +4,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -18,6 +19,7 @@ namespace RabbitMQ.Stream.Client.AMQP
         {
             reader.TryPeek(out value);
         }
+
         internal static int ReadType(ref SequenceReader<byte> reader, out byte value)
         {
             var read = WireFormatting.ReadByte(ref reader, out value);
@@ -154,12 +156,14 @@ namespace RabbitMQ.Stream.Client.AMQP
                 case FormatCode.List32:
                     {
                         offset = ReadListHeader(ref reader, out var fields);
+                        object list = null;
                         for (long i = 0; i < fields; i++)
                         {
-                            offset += ReadAny(ref reader, out _);
+                            offset += ReadAny(ref reader, out list);
                         }
 
-                        value = null;
+                        
+                        value = list;
                         return offset;
                     }
 
@@ -168,13 +172,20 @@ namespace RabbitMQ.Stream.Client.AMQP
                     {
                         offset = ReadMapHeader(ref reader, out var count);
                         var values = count / 2;
+                        Dictionary<string, object> map = new();
                         for (uint i = 0; i < values; i++)
                         {
-                            offset += ReadAny(ref reader, out _);
-                            offset += ReadAny(ref reader, out _);
+                            offset += ReadAny(ref reader, out var v);
+                            if (v is string key)
+                            {
+                                offset += ReadAny(ref reader, out var v2);
+                                map[key] = v2;
+                            }
+                            else
+                                offset += ReadAny(ref reader, out _);
                         }
 
-                        value = null;
+                        value = map;
                         return offset;
                     }
             }
