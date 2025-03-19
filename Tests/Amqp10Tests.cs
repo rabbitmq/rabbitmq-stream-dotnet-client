@@ -4,6 +4,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using RabbitMQ.Stream.Client;
@@ -442,6 +443,30 @@ namespace Tests
             Assert.NotNull(uuid_message);
             Assert.Equal(uuid_value, uuid_message.Properties.MessageId);
             Assert.Equal(uuid_value, uuid_message.Properties.CorrelationId);
+        }
+
+        [Fact]
+        public void ValidateAnnotationMap()
+        {
+            // shovel_annotations is a message with a map annotation
+            // coming from the Go client and the following configuration:
+            // source queue: "form"
+            // destination exchange: "to"
+            // queue bound to the exchange
+            // shovel from the source queue to the destination exchange
+            // the annotations will be added to the message
+
+            var buffer = SystemUtils.GetFileContent("shovel_annotations");
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(buffer));
+            var shovelAnnotation = Message.From(ref reader, (uint)reader.Length);
+            Assert.NotNull(shovelAnnotation);
+            Assert.NotNull(shovelAnnotation.Annotations["x-shovelled"]);
+            var xShovelled = shovelAnnotation.Annotations["x-shovelled"] as Dictionary<string, object>;
+            Assert.NotNull(xShovelled);
+            Assert.Equal("hello-key", xShovelled["dest-exchange-key"]);
+            Assert.Equal("from", xShovelled["src-queue"]);
+            Assert.Equal("to", xShovelled["dest-exchange"]);
+            Assert.Equal("dynamic", xShovelled["shovel-type"]);
         }
 
         [Fact]
