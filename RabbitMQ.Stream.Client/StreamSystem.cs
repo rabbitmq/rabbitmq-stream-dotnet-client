@@ -184,6 +184,11 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
+        public async Task StoreOffset(string reference, string stream, ulong offsetValue)
+        {
+            await _client.StoreOffset(reference, stream, offsetValue).ConfigureAwait(false);
+        }
+
         public async Task UpdateSecret(string newSecret)
         {
             // store the old password just in case it will fail to update the secret
