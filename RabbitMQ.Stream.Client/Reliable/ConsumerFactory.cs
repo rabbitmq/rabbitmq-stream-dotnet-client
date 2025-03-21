@@ -76,12 +76,13 @@ public abstract class ConsumerFactory : ReliableBase
             MessageHandler = async (consumer, ctx, message) =>
             {
                 _consumedFirstTime = true;
-                _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
                 if (_consumerConfig.MessageHandler != null)
                 {
                     await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message)
                         .ConfigureAwait(false);
                 }
+                _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+
             },
         }, BaseLogger).ConfigureAwait(false);
     }
