@@ -916,15 +916,9 @@ public class SuperStreamProducerTests
         Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions);
 
         Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
-
-<<<<<<< TODO: Unmerged change from project 'Tests(net9.0)', Before:
         Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);;
-=======
         Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
-        ;
->>>>>>> After
         Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
-        ;
 
         Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
