@@ -651,12 +651,12 @@ public class SuperStreamConsumerTests
     {
         await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        
-        var consumer = await Consumer.Create( new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+
+        var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
         {
             IsSuperStream = true
         });
-        
+
         Assert.Equal(SystemUtils.InvoicesExchange, consumer.Info.Stream);
         Assert.Contains(SystemUtils.InvoicesStream0, consumer.Info.Partitions);
         Assert.Contains(SystemUtils.InvoicesStream1, consumer.Info.Partitions);

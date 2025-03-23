@@ -905,7 +905,7 @@ public class SuperStreamProducerTests
 
         Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
-       //  statusInfoReceived[0].Partitions
+        //  statusInfoReceived[0].Partitions
         Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[0].Partitions);
         Assert.Contains(SystemUtils.InvoicesStream1, statusInfoReceived[0].Partitions);
         Assert.Contains(SystemUtils.InvoicesStream2, statusInfoReceived[0].Partitions);
@@ -915,9 +915,16 @@ public class SuperStreamProducerTests
         Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[1].Reason);
         Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions);
 
-
         Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
+
+<<<<<<< TODO: Unmerged change from project 'Tests(net9.0)', Before:
         Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);;
+=======
+        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
+        ;
+>>>>>>> After
+        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
+        ;
 
         Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
@@ -935,7 +942,6 @@ public class SuperStreamProducerTests
         await system.Close();
     }
 
-
     [Fact]
     public async Task ReliableProducerSuperStreamInfoShouldBeTheSame()
     {
@@ -952,7 +958,6 @@ public class SuperStreamProducerTests
         Assert.Contains(SystemUtils.InvoicesStream1, producer.Info.Partitions);
         Assert.Contains(SystemUtils.InvoicesStream2, producer.Info.Partitions);
         await producer.Close();
-
 
     }
 }
