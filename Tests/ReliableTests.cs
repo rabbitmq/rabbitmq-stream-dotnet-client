@@ -650,11 +650,11 @@ public class ReliableTests
             _exceptionType = exceptionType;
         }
 
-        protected override Task CreateNewEntity(bool boot)
+        protected override Task<Info> CreateNewEntity(bool boot)
         {
             if (!_firstTime)
             {
-                return Task.CompletedTask;
+                return null;
             }
 
             UpdateStatus(ReliableEntityStatus.Open, ChangeStatusReason.None);
@@ -727,9 +727,9 @@ internal class ReliableExceptionTestCases : IEnumerable<object[]>
 {
     public IEnumerator<object[]> GetEnumerator()
     {
-        yield return new object[] { new LeaderNotFoundException(" Leader Not Found") };
-        yield return new object[] { new SocketException(3) };
-        yield return new object[] { new TimeoutException(" TimeoutException") };
+        yield return [new LeaderNotFoundException(" Leader Not Found")];
+        yield return [new SocketException(3)];
+        yield return [new TimeoutException(" TimeoutException")];
     }
 
     IEnumerator IEnumerable.GetEnumerator()

@@ -65,7 +65,7 @@ public class RawSuperStreamProducer : ISuperStreamProducer, IDisposable
         _config = config;
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
-        Info = new ProducerInfo(config.SuperStream, config.Reference, config.Identifier);
+        Info = new ProducerInfo(config.SuperStream, config.Reference, config.Identifier, streamInfos.Keys.ToList());
         _defaultRoutingConfiguration.RoutingStrategy = _config.RoutingStrategyType switch
         {
             RoutingStrategyType.Key => new KeyRoutingStrategy(_config.Routing,

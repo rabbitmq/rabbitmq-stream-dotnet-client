@@ -114,13 +114,13 @@ public class ProducerInfo : Info
 {
     public string Reference { get; }
 
-    public ProducerInfo(string stream, string reference, string identifier) : base(stream, identifier)
+    public ProducerInfo(string stream, string reference, string identifier, List<string> partitions) : base(stream, identifier, partitions)
     {
         Reference = reference;
     }
 
     public override string ToString()
     {
-        return $"ProducerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier})";
+        return $"ProducerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", Partitions)})";
     }
 }

@@ -164,7 +164,6 @@ public class Consumer : ConsumerFactory
     {
         _logger = logger ?? NullLogger<Consumer>.Instance;
         _consumerConfig = consumerConfig;
-        Info = new ConsumerInfo(consumerConfig.Stream, consumerConfig.Reference, consumerConfig.Identifier);
     }
 
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
@@ -174,13 +173,15 @@ public class Consumer : ConsumerFactory
         var rConsumer = new Consumer(consumerConfig, logger);
         await rConsumer.Init(consumerConfig)
             .ConfigureAwait(false);
+
         return rConsumer;
     }
 
-    protected override async Task CreateNewEntity(bool boot)
+    protected override async Task<Info> CreateNewEntity(bool boot)
     {
         _consumer = await CreateConsumer(boot).ConfigureAwait(false);
         await _consumerConfig.ReconnectStrategy.WhenConnected(ToString()).ConfigureAwait(false);
+        return _consumer.Info;
     }
 
     // just close the consumer. See base/metadataupdate
@@ -204,11 +205,11 @@ public class Consumer : ConsumerFactory
     {
         if (_status == ReliableEntityStatus.Initialization)
         {
-            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser, Info.Partitions);
             return;
         }
 
-        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
+        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser, Info.Partitions);
         await CloseEntity().ConfigureAwait(false);
         _logger?.LogDebug("Consumer {Identity} closed", ToString());
     }
@@ -221,5 +222,8 @@ public class Consumer : ConsumerFactory
                $"client name: {_consumerConfig.ClientProvidedName} ";
     }
 
-    public ConsumerInfo Info { get; }
+    public ConsumerInfo Info
+    {
+        get { return _consumer.Info; }
+    }
 }

@@ -137,7 +137,6 @@ public class Producer : ProducerFactory
             producerConfig.TimeoutMessageAfter,
             producerConfig.MaxInFlight
         );
-        Info = new ProducerInfo(producerConfig.Stream, producerConfig.Reference, producerConfig.Identifier);
         _logger = logger ?? NullLogger<Producer>.Instance;
     }
 
@@ -164,7 +163,7 @@ public class Producer : ProducerFactory
         return rProducer;
     }
 
-    protected override async Task CreateNewEntity(bool boot)
+    protected override async Task<Info> CreateNewEntity(bool boot)
     {
         _producer = await CreateProducer(boot).ConfigureAwait(false);
 
@@ -179,6 +178,8 @@ public class Producer : ProducerFactory
             // confirmation Pipe can start only if the producer is ready
             _confirmationPipe.Start();
         }
+
+        return Info;
     }
 
     protected override async Task CloseEntity()
@@ -201,11 +202,11 @@ public class Producer : ProducerFactory
     {
         if (ReliableEntityStatus.Initialization == _status)
         {
-            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser, Info.Partitions);
             return;
         }
 
-        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser);
+        UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser, Info.Partitions);
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
@@ -401,5 +402,5 @@ public class Producer : ProducerFactory
         }
     }
 
-    public ProducerInfo Info { get; }
+    public ProducerInfo Info { get { return _producer.Info; } }
 }

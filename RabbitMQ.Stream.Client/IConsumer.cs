@@ -3,6 +3,7 @@
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client;
@@ -80,13 +81,14 @@ public class ConsumerInfo : Info
 {
     public string Reference { get; }
 
-    public ConsumerInfo(string stream, string reference, string identifier) : base(stream, identifier)
+    public ConsumerInfo(string stream, string reference, string identifier, List<string> partitions) : base(stream,
+        identifier, partitions)
     {
         Reference = reference;
     }
 
     public override string ToString()
     {
-        return $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier})";
+        return $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", Partitions)})";
     }
 }

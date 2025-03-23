@@ -3,6 +3,7 @@
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -17,13 +18,17 @@ namespace RabbitMQ.Stream.Client.Reliable;
 /// <param name="Stream"> Stream or SuperSuper affected</param>
 /// <param name="Identifier"> The Entity Identifier </param>
 /// <param name="Partition"> Super stream partition. Valid only for SuperStream else is empty</param>
+/// <param name="Partitions"> Super stream partitions. Valid only for SuperStream else is empty</param>
 ///  <param name="Reason"> The reason why the status changed </param>
 public record StatusInfo(
     ReliableEntityStatus From, // init 
     ReliableEntityStatus To, // open 
     string Stream,
     string Identifier,
+    // deprecated
+    [property: Obsolete("Partition is deprecated. Use Partitions instead", false)]
     string Partition,
+    List<string> Partitions,
     ChangeStatusReason Reason = ChangeStatusReason.None
 );
 
@@ -127,6 +132,7 @@ public abstract class ReliableBase
             _ => throw new ArgumentOutOfRangeException(nameof(connectionClosedReason), connectionClosedReason, null)
         };
     }
+
     protected static async Task RandomWait()
     {
         await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
@@ -139,6 +145,7 @@ public abstract class ReliableBase
         BaseLogger.LogInformation("{Identity} is closed normally", ToString());
         return true;
     }
+
     protected bool IsClosedNormally()
     {
         if (!CompareStatus(ReliableEntityStatus.Closed))
@@ -148,7 +155,7 @@ public abstract class ReliableBase
     }
 
     protected void UpdateStatus(ReliableEntityStatus newStatus,
-        ChangeStatusReason reason, string partition = null)
+        ChangeStatusReason reason, List<string> partitions = null)
     {
         var oldStatus = _status;
         lock (_lock)
@@ -156,9 +163,10 @@ public abstract class ReliableBase
             _status = newStatus;
             if (oldStatus != newStatus)
             {
+                var partition = partitions?.Count > 0 ? partitions[0] : string.Empty;
                 _reliableConfig.OnStatusChanged(new StatusInfo(oldStatus, newStatus,
                     _reliableConfig.Stream,
-                    _reliableConfig.Identifier, partition, reason));
+                    _reliableConfig.Identifier, partition, partitions, reason));
             }
         }
     }
@@ -190,12 +198,12 @@ public abstract class ReliableBase
         var reconnect = false;
         try
         {
-            await CreateNewEntity(boot).ConfigureAwait(false);
+            var info = await CreateNewEntity(boot).ConfigureAwait(false);
             // if the createNewEntity is successful we can set the status to Open
             // else there are two ways:
             // - the exception is a known exception and the client will try to reconnect
             // - the exception is not a known exception and the client will throw the exception
-            UpdateStatus(ReliableEntityStatus.Open, ChangeStatusReason.None);
+            UpdateStatus(ReliableEntityStatus.Open, ChangeStatusReason.None, info.Partitions);
         }
         catch (Exception e)
         {
@@ -251,7 +259,7 @@ public abstract class ReliableBase
     /// <param name="boot"> If it is the First boot for the reliable P/C </param>
     /// Called by Init method
     /// </summary>
-    protected abstract Task CreateNewEntity(bool boot);
+    protected abstract Task<Info> CreateNewEntity(bool boot);
 
     /// <summary>
     /// When the clients receives a meta data update, it doesn't know
@@ -348,14 +356,14 @@ public abstract class ReliableBase
         if (!reconnect)
         {
             BaseLogger.LogDebug("{Identity} partition is closed due of reconnect strategy", ToString());
-            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByStrategyPolicy, streamInfo.Stream);
+            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByStrategyPolicy, [streamInfo.Stream]);
             return;
         }
 
         try
         {
             await reconnectPartitionFunc(streamInfo).ConfigureAwait(false);
-            UpdateStatus(ReliableEntityStatus.Open, ChangeStatusReason.None, streamInfo.Stream);
+            UpdateStatus(ReliableEntityStatus.Open, ChangeStatusReason.None, [streamInfo.Stream]);
             await _reliableConfig.ReconnectStrategy.WhenConnected(
                 $"Super Stream partition: {streamInfo.Stream} for {info}").ConfigureAwait(false);
         }
@@ -402,7 +410,7 @@ public abstract class ReliableBase
         var streamExists = false;
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         UpdateStatus(ReliableEntityStatus.Reconnection, reason,
-            stream);
+            [stream]);
         try
         {
             streamExists = await CheckIfStreamIsAvailable(stream, system)
@@ -434,7 +442,7 @@ public abstract class ReliableBase
     {
         var streamExists = false;
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
-        UpdateStatus(ReliableEntityStatus.Reconnection, reason, stream);
+        UpdateStatus(ReliableEntityStatus.Reconnection, reason, [stream]);
         try
         {
             streamExists = await CheckIfStreamIsAvailable(stream, system)
