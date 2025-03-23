@@ -916,7 +916,8 @@ public class SuperStreamProducerTests
         Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions);
 
         Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
-        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);;
+        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
+        ;
         Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
         Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
 
