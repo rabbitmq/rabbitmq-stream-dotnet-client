@@ -401,5 +401,18 @@ namespace Tests
             );
             await system.Close();
         }
+
+        [Fact]
+        public async Task ClientShouldStoreOffset()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var consumerRef = "myRef";
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            await system.CreateStream(new StreamSpec(stream));
+            await system.StoreOffset(consumerRef, stream, 4);
+            Assert.Equal((ulong)4, await system.QueryOffset(consumerRef, stream));
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
     }
 }
