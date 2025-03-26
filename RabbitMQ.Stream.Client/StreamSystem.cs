@@ -186,6 +186,7 @@ namespace RabbitMQ.Stream.Client
 
         public async Task StoreOffset(string reference, string stream, ulong offsetValue)
         {
+            await MayBeReconnectLocator().ConfigureAwait(false);
             await _client.StoreOffset(reference, stream, offsetValue).ConfigureAwait(false);
         }
 
