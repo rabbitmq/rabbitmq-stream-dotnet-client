@@ -80,9 +80,9 @@ public abstract class ConsumerFactory : ReliableBase
                     await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message)
                         .ConfigureAwait(false);
                 }
+
                 _consumedFirstTime = true;
                 _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
-
             },
         }, BaseLogger).ConfigureAwait(false);
     }
@@ -152,9 +152,9 @@ public abstract class ConsumerFactory : ReliableBase
                             await _consumerConfig.MessageHandler(partitionStream, consumer, ctx,
                                 message).ConfigureAwait(false);
                         }
+
                         _consumedFirstTime = true;
                         _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
-
                     },
                 }, BaseLogger).ConfigureAwait(false);
         }
