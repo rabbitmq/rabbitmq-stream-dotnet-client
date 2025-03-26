@@ -17,7 +17,7 @@ namespace RabbitMQ.Stream.Client.Reliable;
 /// <param name="To"> The new status </param>
 /// <param name="Stream"> Stream or SuperSuper affected</param>
 /// <param name="Identifier"> The Entity Identifier </param>
-/// <param name="Partition"> Super stream partition. Valid only for SuperStream else is empty</param>
+/// <param name="Partition"> [deprecated] Super stream partition. Valid only for SuperStream else is empty</param>
 /// <param name="Partitions"> Super stream partitions. Valid only for SuperStream else is empty</param>
 ///  <param name="Reason"> The reason why the status changed </param>
 public record StatusInfo(
@@ -25,7 +25,8 @@ public record StatusInfo(
     ReliableEntityStatus To, // open 
     string Stream,
     string Identifier,
-    // deprecated
+    // deprecated since more partitions can be affected
+    // and the partition is not enough. For example super-stream startup or super-stream close
     [property: Obsolete("Partition is deprecated. Use Partitions instead", false)]
     string Partition,
     List<string> Partitions,
