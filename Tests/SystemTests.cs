@@ -401,7 +401,7 @@ namespace Tests
             );
             await system.Close();
         }
-        
+
         [Fact]
         public async Task ClientShouldStoreOffset()
         {
