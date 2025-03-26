@@ -57,7 +57,7 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
         _streamInfos = streamInfos;
         _clientParameters = clientParameters;
         _logger = logger ?? NullLogger.Instance;
-        Info = new ConsumerInfo(_config.SuperStream, _config.Reference, config.Identifier);
+        Info = new ConsumerInfo(_config.SuperStream, _config.Reference, config.Identifier, _streamInfos.Keys.ToList());
 
         StartConsumers().Wait(CancellationToken.None);
     }

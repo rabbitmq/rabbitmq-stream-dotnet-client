@@ -905,13 +905,21 @@ public class SuperStreamProducerTests
 
         Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
+        //  statusInfoReceived[0].Partitions
+        Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[0].Partitions);
+        Assert.Contains(SystemUtils.InvoicesStream1, statusInfoReceived[0].Partitions);
+        Assert.Contains(SystemUtils.InvoicesStream2, statusInfoReceived[0].Partitions);
 
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
         Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
         Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[1].Reason);
+        Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions);
 
         Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
-        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partition);
+        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
+        ;
+        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
+        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
 
         Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
@@ -922,7 +930,29 @@ public class SuperStreamProducerTests
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[3].From);
         Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[3].To);
         Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[3].Reason);
+        Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[3].Partitions);
+        Assert.Contains(SystemUtils.InvoicesStream1, statusInfoReceived[3].Partitions);
+        Assert.Contains(SystemUtils.InvoicesStream2, statusInfoReceived[3].Partitions);
 
         await system.Close();
+    }
+
+    [Fact]
+    public async Task ReliableProducerSuperStreamInfoShouldBeTheSame()
+    {
+        await SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var producerConfig = new ProducerConfig(system, SystemUtils.InvoicesExchange)
+        {
+            SuperStreamConfig =
+                new SuperStreamConfig() { Routing = message1 => message1.Properties.MessageId.ToString() },
+        };
+        var producer = await Producer.Create(producerConfig);
+        Assert.Equal(SystemUtils.InvoicesExchange, producer.Info.Stream);
+        Assert.Contains(SystemUtils.InvoicesStream0, producer.Info.Partitions);
+        Assert.Contains(SystemUtils.InvoicesStream1, producer.Info.Partitions);
+        Assert.Contains(SystemUtils.InvoicesStream2, producer.Info.Partitions);
+        await producer.Close();
+
     }
 }

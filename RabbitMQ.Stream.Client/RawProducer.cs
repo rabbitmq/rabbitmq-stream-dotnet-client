@@ -89,7 +89,7 @@ namespace RabbitMQ.Stream.Client
         {
             _client = client;
             _config = config;
-            Info = new ProducerInfo(_config.Stream, _config.Reference, config.Identifier);
+            Info = new ProducerInfo(_config.Stream, _config.Reference, config.Identifier, null);
             Logger = logger ?? NullLogger.Instance;
             Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
             _messageBuffer = Channel.CreateBounded<OutgoingMsg>(new BoundedChannelOptions(10000)

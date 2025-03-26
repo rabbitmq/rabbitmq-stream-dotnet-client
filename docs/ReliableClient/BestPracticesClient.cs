@@ -207,8 +207,11 @@ public class BestPracticesClient
                     // DON'T PUT ANY BLOCKING CODE HERE
                     conf.StatusChanged += (status) =>
                     {
-                        var streamInfo = status.Partition is not null
-                            ? $" Partition {status.Partition} of super stream: {status.Stream}"
+                        var partitions = "[";
+                        status.Partitions.ForEach(s => partitions += s + ",");
+                        partitions = partitions.Remove(partitions.Length - 1) + "]";
+                        var streamInfo = status.Partitions is not null
+                            ? $" Partitions: {partitions} of super stream: {status.Stream}"
                             : $"Stream: {status.Stream}";
 
                         lc.LogInformation(
@@ -264,8 +267,11 @@ public class BestPracticesClient
                         // Like the consumer don't put any blocking code here
                         producerConfig.StatusChanged += (status) =>
                         {
-                            var streamInfo = status.Partition is not null
-                                ? $" Partition {status.Partition} of super stream: {status.Stream}"
+                            var partitions = "[";
+                            status.Partitions?.ForEach(s => partitions += s + ",");
+                            // partitions = partitions.Remove(partitions.Length - 1) + "]";
+                            var streamInfo = status.Partitions is not null
+                                ? $" Partitions: {partitions} of super stream: {status.Stream}"
                                 : $"Stream: {status.Stream}";
 
                             // just log the status change

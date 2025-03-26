@@ -645,4 +645,22 @@ public class SuperStreamConsumerTests
         Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[0].To);
         await system.Close();
     }
+
+    [Fact]
+    public async Task ReliableConsumerSuperStreamInfoShouldBeTheSame()
+    {
+        await SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+
+        var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        {
+            IsSuperStream = true
+        });
+
+        Assert.Equal(SystemUtils.InvoicesExchange, consumer.Info.Stream);
+        Assert.Contains(SystemUtils.InvoicesStream0, consumer.Info.Partitions);
+        Assert.Contains(SystemUtils.InvoicesStream1, consumer.Info.Partitions);
+        Assert.Contains(SystemUtils.InvoicesStream2, consumer.Info.Partitions);
+        await consumer.Close();
+    }
 }
