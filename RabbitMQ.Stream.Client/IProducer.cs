@@ -121,6 +121,8 @@ public class ProducerInfo : Info
 
     public override string ToString()
     {
-        return $"ProducerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", Partitions)})";
+        var partitions = Partitions ?? [];
+
+        return $"ProducerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", partitions)})";
     }
 }
