@@ -278,7 +278,8 @@ namespace Tests
             // sequence start from zero
             Assert.True(resAfter == (NumberOfMessages - 1));
 
-            var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream) { Reference = ProducerName });
+            var rawProducer =
+                await system.CreateRawProducer(new RawProducerConfig(stream) { Reference = ProducerName });
             Assert.True(await rawProducer.GetLastPublishingId() == (NumberOfMessages - 1));
             await system.DeleteStream(stream);
             await system.Close();
@@ -339,6 +340,9 @@ namespace Tests
                 }
             }
             );
+            Assert.Equal(
+                $"ProducerInfo(Stream={stream}, Reference=producer, Identifier=, Partitions=)",
+                rawProducer.Info.ToString());
             var messages = new List<(ulong, Message)>();
             for (var i = 1; i <= NumberOfMessages; i++)
             {
