@@ -65,17 +65,50 @@ public class SuperStreamProducerTests
     {
         public IEnumerator<object[]> GetEnumerator()
         {
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello1" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello2" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello3" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello4" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello5" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello6" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello7" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello8" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello9" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello10" } };
-            yield return new object[] { new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello88" } };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello1" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello2" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello3" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello4" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello5" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello6" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello7" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello8" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-01", MessageId = "hello9" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-03", MessageId = "hello10" }
+            };
+            yield return new object[]
+            {
+                new MessageIdToStream { StreamExpected = "invoices-02", MessageId = "hello88" }
+            };
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -360,13 +393,13 @@ public class SuperStreamProducerTests
             });
         var messages = new List<Message>()
         {
-            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "italy"}},
-            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "italy"}},
-            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "france"}},
-            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "spain"}},
-            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "germany"}},
-            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "germany"}},
-            new(Encoding.Default.GetBytes("hello")) {Properties = new Properties() {MessageId = "uk"}},
+            new(Encoding.Default.GetBytes("hello")) { Properties = new Properties() { MessageId = "italy" } },
+            new(Encoding.Default.GetBytes("hello")) { Properties = new Properties() { MessageId = "italy" } },
+            new(Encoding.Default.GetBytes("hello")) { Properties = new Properties() { MessageId = "france" } },
+            new(Encoding.Default.GetBytes("hello")) { Properties = new Properties() { MessageId = "spain" } },
+            new(Encoding.Default.GetBytes("hello")) { Properties = new Properties() { MessageId = "germany" } },
+            new(Encoding.Default.GetBytes("hello")) { Properties = new Properties() { MessageId = "germany" } },
+            new(Encoding.Default.GetBytes("hello")) { Properties = new Properties() { MessageId = "uk" } },
         };
 
         foreach (var message in messages)
@@ -952,7 +985,9 @@ public class SuperStreamProducerTests
         Assert.Contains(SystemUtils.InvoicesStream0, producer.Info.Partitions);
         Assert.Contains(SystemUtils.InvoicesStream1, producer.Info.Partitions);
         Assert.Contains(SystemUtils.InvoicesStream2, producer.Info.Partitions);
+        Assert.Equal(
+            $"ProducerInfo(Stream={SystemUtils.InvoicesExchange}, Reference=, Identifier=, Partitions={SystemUtils.InvoicesStream0},{SystemUtils.InvoicesStream1},{SystemUtils.InvoicesStream2})",
+            producer.Info.ToString());
         await producer.Close();
-
     }
 }

@@ -89,6 +89,7 @@ public class ConsumerInfo : Info
 
     public override string ToString()
     {
-        return $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", Partitions)})";
+        var partitions = Partitions ?? [];
+        return $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", partitions)})";
     }
 }

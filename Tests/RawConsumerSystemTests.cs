@@ -122,6 +122,10 @@ namespace Tests
                     }
                 });
 
+            Assert.Equal(
+                $"ConsumerInfo(Stream={stream}, Reference=consumer_offset, Identifier=, Partitions=)",
+                consumer.Info.ToString());
+
             new Utils<int>(testOutputHelper).WaitUntilTaskCompletes(testPassed);
             await SystemUtils.WaitAsync();
             // // Here we use the standard client to check the offest

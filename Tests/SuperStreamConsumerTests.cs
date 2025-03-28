@@ -661,6 +661,9 @@ public class SuperStreamConsumerTests
         Assert.Contains(SystemUtils.InvoicesStream0, consumer.Info.Partitions);
         Assert.Contains(SystemUtils.InvoicesStream1, consumer.Info.Partitions);
         Assert.Contains(SystemUtils.InvoicesStream2, consumer.Info.Partitions);
+        Assert.Equal(
+            $"ConsumerInfo(Stream={SystemUtils.InvoicesExchange}, Reference=, Identifier=, Partitions={SystemUtils.InvoicesStream0},{SystemUtils.InvoicesStream1},{SystemUtils.InvoicesStream2})",
+            consumer.Info.ToString());
         await consumer.Close();
     }
 }
