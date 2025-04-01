@@ -271,10 +271,11 @@ public abstract class ReliableBase
     /// <param name="stream">stream name</param>
     /// <param name="system">stream system</param>
     /// <returns></returns>
-    private async Task<bool> CheckIfStreamIsAvailable(string stream, StreamSystem system)
+    private async Task<(bool, StreamInfo)> CheckIfStreamIsAvailable(string stream, StreamSystem system)
     {
         await Task.Delay(Consts.RandomMid()).ConfigureAwait(false);
         var exists = false;
+        StreamInfo streamInfo = default;
         var tryAgain = true;
         while (tryAgain)
         {
@@ -286,7 +287,7 @@ public abstract class ReliableBase
                 {
                     // It is not enough to check if the stream exists
                     // we need to check if the stream has the leader
-                    var streamInfo = await system.StreamInfo(stream).ConfigureAwait(false);
+                    streamInfo = await system.StreamInfo(stream).ConfigureAwait(false);
                     ClientExceptions.CheckLeader(streamInfo);
                     available += " and has a valid leader";
                 }
@@ -304,7 +305,7 @@ public abstract class ReliableBase
         }
 
         if (exists)
-            return true;
+            return (true, streamInfo);
         // In this case the stream doesn't exist anymore or it failed to check if the stream exists
         // too many tentatives for the reconnection strategy
         // the  Entity is just closed.
@@ -316,7 +317,7 @@ public abstract class ReliableBase
             ToString()
         );
 
-        return false;
+        return (false, default);
     }
 
     // <summary>
@@ -409,16 +410,17 @@ public abstract class ReliableBase
         Func<StreamInfo, Task> reconnectPartitionFunc, ChangeStatusReason reason)
     {
         var streamExists = false;
+
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         UpdateStatus(ReliableEntityStatus.Reconnection, reason,
             [stream]);
         try
         {
-            streamExists = await CheckIfStreamIsAvailable(stream, system)
+            var (localStreamExists, streamInfo) = await CheckIfStreamIsAvailable(stream, system)
                 .ConfigureAwait(false);
-            if (streamExists)
+            streamExists = localStreamExists;
+            if (streamExists && !streamInfo.Equals(default))
             {
-                var streamInfo = await system.StreamInfo(stream).ConfigureAwait(false);
                 await MaybeReconnectPartition(streamInfo, ToString(), reconnectPartitionFunc).ConfigureAwait(false);
             }
         }
@@ -446,7 +448,7 @@ public abstract class ReliableBase
         UpdateStatus(ReliableEntityStatus.Reconnection, reason, [stream]);
         try
         {
-            streamExists = await CheckIfStreamIsAvailable(stream, system)
+            (streamExists, _) = await CheckIfStreamIsAvailable(stream, system)
                 .ConfigureAwait(false);
             if (streamExists)
             {

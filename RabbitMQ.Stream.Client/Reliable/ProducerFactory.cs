@@ -2,7 +2,9 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -49,21 +51,36 @@ public abstract class ProducerFactory : ReliableBase
                         await RandomWait().ConfigureAwait(false);
                         if (IsClosedNormally(closeReason))
                             return;
-                        var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
-                        await OnEntityClosed(_producerConfig.StreamSystem, partitionStream, r,
-                                ReliableBase.FromConnectionClosedReasonToStatusReason(closeReason))
-                            .ConfigureAwait(false);
+                        try
+                        {
+                            var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
+                            await OnEntityClosed(_producerConfig.StreamSystem, partitionStream, r,
+                                    FromConnectionClosedReasonToStatusReason(closeReason))
+                                .ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            BaseLogger?.LogError(e,
+                                $"Super stream producer. ConnectionClosedHandler error. Auto recovery failed for stream: {_producerConfig.Stream}");
+                        }
                     },
                     MetadataHandler = async update =>
                     {
                         await RandomWait().ConfigureAwait(false);
                         if (IsClosedNormally())
                             return;
-
-                        var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
-                        await OnEntityClosed(_producerConfig.StreamSystem, update.Stream, r,
-                                ChangeStatusReason.MetaDataUpdate)
-                            .ConfigureAwait(false);
+                        try
+                        {
+                            var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
+                            await OnEntityClosed(_producerConfig.StreamSystem, update.Stream, r,
+                                    ChangeStatusReason.MetaDataUpdate)
+                                .ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            BaseLogger?.LogError(e,
+                                $"Super stream producer. MetadataHandler error. Auto recovery failed stream: {_producerConfig.Stream}");
+                        }
                     },
                     ConfirmHandler = confirmationHandler =>
                     {

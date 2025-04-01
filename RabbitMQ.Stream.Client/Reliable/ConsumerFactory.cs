@@ -2,8 +2,10 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace RabbitMQ.Stream.Client.Reliable;
 
@@ -62,16 +64,32 @@ public abstract class ConsumerFactory : ReliableBase
                 if (IsClosedNormally(closeReason))
                     return;
 
-                await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
-                    FromConnectionClosedReasonToStatusReason(closeReason)).ConfigureAwait(false);
+                try
+                {
+                    await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
+                        FromConnectionClosedReasonToStatusReason(closeReason)).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    BaseLogger?.LogError(e,
+                        $"Stream consumer.MetadataHandler error. Auto recovery failed for: {ToString()}");
+                }
             },
             MetadataHandler = async _ =>
             {
                 if (IsClosedNormally())
                     return;
 
-                await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
-                    ChangeStatusReason.MetaDataUpdate).ConfigureAwait(false);
+                try
+                {
+                    await OnEntityClosed(_consumerConfig.StreamSystem, _consumerConfig.Stream,
+                        ChangeStatusReason.MetaDataUpdate).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    BaseLogger?.LogError(e,
+                        $"Stream consumer.MetadataHandler error. Auto recovery failed for: {ToString()}");
+                }
             },
             MessageHandler = async (consumer, ctx, message) =>
             {
@@ -129,21 +147,36 @@ public abstract class ConsumerFactory : ReliableBase
                         await RandomWait().ConfigureAwait(false);
                         if (IsClosedNormally(closeReason))
                             return;
-
-                        var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
-                        await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r,
-                            FromConnectionClosedReasonToStatusReason(closeReason)).ConfigureAwait(false);
+                        try
+                        {
+                            var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
+                            await OnEntityClosed(_consumerConfig.StreamSystem, partitionStream, r,
+                                FromConnectionClosedReasonToStatusReason(closeReason)).ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            BaseLogger?.LogError(e,
+                                $"Super stream consumer. ConnectionClosedHandler error. Auto recovery failed for stream: {_consumerConfig.Stream}");
+                        }
                     },
                     MetadataHandler = async update =>
                     {
-                        await RandomWait().ConfigureAwait(false);
-                        if (IsClosedNormally())
-                            return;
+                        try
+                        {
+                            await RandomWait().ConfigureAwait(false);
+                            if (IsClosedNormally())
+                                return;
 
-                        var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
-                        await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r,
-                                ChangeStatusReason.MetaDataUpdate)
-                            .ConfigureAwait(false);
+                            var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
+                            await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r,
+                                    ChangeStatusReason.MetaDataUpdate)
+                                .ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            BaseLogger?.LogError(e,
+                                $"Super stream consumer.MetadataHandler error. Auto recovery failed stream: {_consumerConfig.Stream}");
+                        }
                     },
                     MessageHandler = async (partitionStream, consumer, ctx, message) =>
                     {
