@@ -61,7 +61,7 @@ public abstract class ProducerFactory : ReliableBase
                         catch (Exception e)
                         {
                             BaseLogger?.LogError(e,
-                                $"Super stream producer. ConnectionClosedHandler error. Auto recovery failed for: {ToString()}");
+                                $"Super stream producer. ConnectionClosedHandler error. Auto recovery failed for stream: {_producerConfig.Stream}");
                         }
                     },
                     MetadataHandler = async update =>
@@ -79,7 +79,7 @@ public abstract class ProducerFactory : ReliableBase
                         catch (Exception e)
                         {
                             BaseLogger?.LogError(e,
-                                $"Super stream producer. MetadataHandler error. Auto recovery failed for: {ToString()}");
+                                $"Super stream producer. MetadataHandler error. Auto recovery failed stream: {_producerConfig.Stream}");
                         }
                     },
                     ConfirmHandler = confirmationHandler =>

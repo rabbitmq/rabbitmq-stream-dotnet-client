@@ -156,7 +156,7 @@ public abstract class ConsumerFactory : ReliableBase
                         catch (Exception e)
                         {
                             BaseLogger?.LogError(e,
-                                $"Super stream consumer. ConnectionClosedHandler error. Auto recovery failed for: {ToString()}");
+                                $"Super stream consumer. ConnectionClosedHandler error. Auto recovery failed for stream: {_consumerConfig.Stream}");
                         }
                     },
                     MetadataHandler = async update =>
@@ -175,7 +175,7 @@ public abstract class ConsumerFactory : ReliableBase
                         catch (Exception e)
                         {
                             BaseLogger?.LogError(e,
-                                $"Super stream consumer.MetadataHandler error. Auto recovery failed for: {ToString()}");
+                                $"Super stream consumer.MetadataHandler error. Auto recovery failed stream: {_consumerConfig.Stream}");
                         }
                     },
                     MessageHandler = async (partitionStream, consumer, ctx, message) =>
