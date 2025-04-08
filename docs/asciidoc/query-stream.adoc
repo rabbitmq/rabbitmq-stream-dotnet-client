@@ -17,7 +17,11 @@ The following methods are available:
 
 
 |`QueryOffset(string reference, string stream)`
-|Retrieves retrieves the last consumer offset stored for a given consumer Reference and stream. Useful for as consumer wants to know the last stored offset.
+|Retrieves the last consumer offset stored for a given consumer Reference and stream. Useful for as consumer wants to know the last stored offset.
+| Stream
+
+|`TryQueryOffset(string reference, string stream)`
+|Like `QueryOffset` but returns `null` if the offset was not found without throwing `OffsetNotFoundException` exception .
 | Stream
 
 |`QueryPartition(string superStream)`

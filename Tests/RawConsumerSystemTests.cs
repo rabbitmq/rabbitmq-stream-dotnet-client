@@ -518,10 +518,15 @@ namespace Tests
             Assert.Equal((ulong)(NumberOfMessagesToStore - 1),
                 await system.QueryOffset(Reference, stream));
 
+            Assert.Equal((ulong)(NumberOfMessagesToStore - 1),
+                await system.TryQueryOffset(Reference, stream));
+
             // this has to raise OffsetNotFoundException in case the offset 
             // does not exist like in this case.
             await Assert.ThrowsAsync<OffsetNotFoundException>(() =>
                 system.QueryOffset("reference_does_not_exist", stream));
+
+            Assert.Null(await system.TryQueryOffset("reference_does_not_exist", stream));
 
             await rawConsumer.Close();
             await system.DeleteStream(stream);

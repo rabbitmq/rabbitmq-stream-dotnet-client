@@ -342,6 +342,7 @@ RabbitMQ.Stream.Client.StreamSystem.StoreOffset(string reference, string stream,
 RabbitMQ.Stream.Client.StreamSystem.StreamInfo(string streamName) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamInfo>
 RabbitMQ.Stream.Client.StreamSystem.StreamStats(string stream) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.StreamStats>
 RabbitMQ.Stream.Client.StreamSystem.SuperStreamExists(string superStream) -> System.Threading.Tasks.Task<bool>
+RabbitMQ.Stream.Client.StreamSystem.TryQueryOffset(string reference, string stream) -> System.Threading.Tasks.Task<ulong?>
 RabbitMQ.Stream.Client.StreamSystem.UpdateSecret(string newSecret) -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.set -> void

@@ -238,6 +238,7 @@ namespace Tests
             await Assert.ThrowsAsync<QueryException>(
                 async () => { await system.QueryPartition("stream_does_not_exist"); }
             );
+
             await system.Close();
         }
 
@@ -297,7 +298,8 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream));
             var producer =
-                await system.CreateRawProducer(new RawProducerConfig(stream) { ClientProvidedName = clientProvidedName });
+                await system.CreateRawProducer(
+                    new RawProducerConfig(stream) { ClientProvidedName = clientProvidedName });
             await SystemUtils.WaitAsync();
             var consumer = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream) { ClientProvidedName = clientProvidedName });

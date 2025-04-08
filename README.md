@@ -36,6 +36,7 @@ The library requires .NET 6, .NET 7 or .NET 8.
 - [Best practices to write a reliable client](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient/)
 - [Super Stream example](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/blob/main/docs/SuperStream)
 - [Stream Performance Test](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/RabbitMQ.Stream.Client.PerfTest)
+- [Single Active consumer for a stream](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/SingleActiveConsumer)
 
 
 
