@@ -938,6 +938,8 @@ include::{test-examples}/ConsumerUsage.cs[tag=manual-tracking-defaults]
 <2> Store the current offset on some condition
 
 The snippet above uses `consumer.StoreOffset(context.Offset)` to store at the offset of the current message.
+It is possible to store the offset in a more generic way with `StreamSystem.StoreOffset(reference,stream, offsetValue)`
+
 
 ====== Considerations On Offset Tracking
 
