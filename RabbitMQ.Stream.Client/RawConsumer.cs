@@ -590,10 +590,22 @@ namespace RabbitMQ.Stream.Client
                     {
                         // in this case the StoredOffsetSpec is overridden by the ConsumerUpdateListener
                         // since the user decided to override the default behavior
-                        _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
-                            _config.Reference,
-                            _config.Stream,
-                            promotedAsActive).ConfigureAwait(false);
+
+                        try
+                        {
+                            _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
+                                _config.Reference,
+                                _config.Stream,
+                                promotedAsActive).ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            Logger?.LogError(e,
+                                "Error while calling the ConsumerUpdateListener. OffsetTypeNext will be used. {EntityInfo}",
+                                DumpEntityConfiguration());
+                            // in this case the default behavior is to use the OffsetTypeNext
+                            _config.StoredOffsetSpec = new OffsetTypeNext();
+                        }
                     }
 
                     // Here we set the promotion status

@@ -487,6 +487,19 @@ namespace RabbitMQ.Stream.Client
             return response.Offset;
         }
 
+        public async Task<ulong?> TryQueryOffset(string reference, string stream)
+        {
+            try
+            {
+                var qOffset = await QueryOffset(reference, stream).ConfigureAwait(false);
+                return qOffset;
+            }
+            catch (OffsetNotFoundException)
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// QuerySequence retrieves the last publishing ID
         /// given a producer name and stream 
