@@ -35,5 +35,10 @@ namespace RabbitMQ.Stream.Client
         {
             return Random.Shared.Next(1000, 2500);
         }
+        
+        internal static int RandomLarge()
+        {
+            return Random.Shared.Next(1500, 3000);
+        }
     }
 }

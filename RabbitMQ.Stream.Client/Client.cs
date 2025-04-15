@@ -112,8 +112,6 @@ namespace RabbitMQ.Stream.Client
 
     public class Client : IClient
     {
-        private bool isClosed = true;
-
         private uint correlationId = 0; // allow for some pre-amble
 
         private Connection _connection;
@@ -160,24 +158,13 @@ namespace RabbitMQ.Stream.Client
                 SendHeartBeat,
                 Close,
                 (int)parameters.Heartbeat.TotalSeconds);
-            IsClosed = false;
             _logger = logger ?? NullLogger.Instance;
             ClientId = Guid.NewGuid().ToString();
         }
 
         public bool IsClosed
         {
-            get
-            {
-                if (_connection.IsClosed)
-                {
-                    isClosed = true;
-                }
-
-                return isClosed;
-            }
-
-            private set => isClosed = value;
+            get { return _connection.IsClosed; }
         }
 
         private void StartHeartBeat()
@@ -758,7 +745,7 @@ namespace RabbitMQ.Stream.Client
         private void InternalClose()
         {
             _heartBeatHandler.Close();
-            IsClosed = true;
+            _connection.Close();
         }
 
         private async ValueTask<bool> ConsumerUpdateResponse(uint rCorrelationId, IOffsetType offsetSpecification)
@@ -773,13 +760,13 @@ namespace RabbitMQ.Stream.Client
                 return new CloseResponse(0, ResponseCode.Ok);
             }
 
-            InternalClose();
             try
             {
-                _connection.UpdateCloseStatus(closedStatus);
                 var result =
                     await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
                         TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+                InternalClose();
+                _connection.UpdateCloseStatus(closedStatus);
 
                 return result;
             }

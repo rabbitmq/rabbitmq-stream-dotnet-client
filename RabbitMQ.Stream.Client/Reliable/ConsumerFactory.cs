@@ -47,7 +47,6 @@ public abstract class ConsumerFactory : ReliableBase
         // before creating a new consumer, the old one is disposed
         // This is just a safety check, the consumer should be already disposed
         _consumer?.Dispose();
-
         return await _consumerConfig.StreamSystem.CreateRawConsumer(new RawConsumerConfig(_consumerConfig.Stream)
         {
             ClientProvidedName = _consumerConfig.ClientProvidedName,
@@ -72,7 +71,7 @@ public abstract class ConsumerFactory : ReliableBase
                 catch (Exception e)
                 {
                     BaseLogger?.LogError(e,
-                        $"Stream consumer.MetadataHandler error. Auto recovery failed for: {ToString()}");
+                        $"Stream consumer.ConnectionClosedHandler error. Auto recovery failed for: {ToString()}");
                 }
             },
             MetadataHandler = async _ =>
@@ -93,13 +92,21 @@ public abstract class ConsumerFactory : ReliableBase
             },
             MessageHandler = async (consumer, ctx, message) =>
             {
-                if (_consumerConfig.MessageHandler != null)
+                try
                 {
-                    await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message)
-                        .ConfigureAwait(false);
+                    if (_consumerConfig.MessageHandler != null)
+                    {
+                        await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message)
+                            .ConfigureAwait(false);
+                    }
+
+                    _consumedFirstTime = true;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
                 }
 
-                _consumedFirstTime = true;
                 _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
             },
         }, BaseLogger).ConfigureAwait(false);
