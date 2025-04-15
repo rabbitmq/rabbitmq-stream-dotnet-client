@@ -21,7 +21,7 @@ The following methods are available:
 | Stream
 
 |`TryQueryOffset(string reference, string stream)`
-|Like `QueryOffset` but returns `null` if the offset was not found without throwing `OffsetNotFoundException` exception .
+|Like `QueryOffset` but returns `null` if the offset was not found or in case of any exception. Use `QueryOffset` for a more detailed error message.
 | Stream
 
 |`QueryPartition(string superStream)`
