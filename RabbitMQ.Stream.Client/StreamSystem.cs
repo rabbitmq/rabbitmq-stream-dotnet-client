@@ -499,7 +499,12 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 var response = await _client.QueryOffset(reference, stream).ConfigureAwait(false);
-                return response.Offset;
+                if (response.ResponseCode == ResponseCode.Ok)
+                {
+                    return response.Offset;
+                }
+
+                return null;
             }
             catch (Exception)
             {
