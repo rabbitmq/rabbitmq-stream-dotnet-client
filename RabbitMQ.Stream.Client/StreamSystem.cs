@@ -490,9 +490,9 @@ namespace RabbitMQ.Stream.Client
         /// <summary>
         /// TryQueryOffset tries to retrieve the last consumer offset stored
         /// given a consumer name and stream name.
-        /// Returns null if the offset is not found.
-        /// It is QueryOffset with try/catch to avoid throwing
-        /// OffsetNotFoundException exception. 
+        /// Returns null if the offset is not found or for any other exceptions.
+        /// Note: TryQueryOffset could return null even if the offset exists but for any other exception.
+        /// For a more precise exception handling, use QueryOffset.
         /// </summary>
 
         public async Task<ulong?> TryQueryOffset(string reference, string stream)
@@ -502,7 +502,7 @@ namespace RabbitMQ.Stream.Client
                 var qOffset = await QueryOffset(reference, stream).ConfigureAwait(false);
                 return qOffset;
             }
-            catch (OffsetNotFoundException)
+            catch (Exception)
             {
                 return null;
             }
