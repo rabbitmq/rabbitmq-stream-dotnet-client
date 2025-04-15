@@ -59,7 +59,6 @@ namespace RabbitMQ.Stream.Client
             _logger = logger;
             this.socket = socket;
 
-
             commandCallback = callback;
             closedCallback = closedCallBack;
             var networkStream = new NetworkStream(socket);
