@@ -494,13 +494,12 @@ namespace RabbitMQ.Stream.Client
         /// Note: TryQueryOffset could return null even if the offset exists but for any other exception.
         /// For a more precise exception handling, use QueryOffset.
         /// </summary>
-
         public async Task<ulong?> TryQueryOffset(string reference, string stream)
         {
             try
             {
-                var qOffset = await QueryOffset(reference, stream).ConfigureAwait(false);
-                return qOffset;
+                var response = await _client.QueryOffset(reference, stream).ConfigureAwait(false);
+                return response.Offset;
             }
             catch (Exception)
             {
