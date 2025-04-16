@@ -479,9 +479,28 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         public async Task<ulong> QueryOffset(string reference, string stream)
         {
+            var offset = await TryQueryOffset(reference, stream).ConfigureAwait(false);
+            return offset ??
+                   throw new OffsetNotFoundException($"QueryOffset stream: {stream}, reference: {reference}");
+        }
+
+        /// <summary>
+        /// TryQueryOffset tries to retrieve the last consumer offset stored
+        /// given a consumer name and stream name.
+        /// Returns null if the offset is not found.
+        /// </summary>
+        public async Task<ulong?> TryQueryOffset(string reference, string stream)
+        {
             MaybeThrowQueryException(reference, stream);
 
             var response = await _client.QueryOffset(reference, stream).ConfigureAwait(false);
+
+            // Offset do not exist so just return null. There is no need to throw an OffsetNotFoundException and capture it.
+            if (response.ResponseCode == ResponseCode.OffsetNotFound)
+            {
+                return null;
+            }
+
             ClientExceptions.MaybeThrowException(response.ResponseCode,
                 $"QueryOffset stream: {stream}, reference: {reference}");
             return response.Offset;

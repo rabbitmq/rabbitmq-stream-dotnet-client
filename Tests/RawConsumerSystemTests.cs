@@ -526,7 +526,8 @@ namespace Tests
             await Assert.ThrowsAsync<OffsetNotFoundException>(() =>
                 system.QueryOffset("reference_does_not_exist", stream));
 
-            Assert.Null(await system.TryQueryOffset("reference_does_not_exist", stream));
+            await Assert.ThrowsAsync<GenericProtocolException>(() =>
+                (system.TryQueryOffset(Reference, "stream_does_not_exist")));
 
             await rawConsumer.Close();
             await system.DeleteStream(stream);
@@ -584,8 +585,10 @@ namespace Tests
 
             // new consumer that should start from stored offset
             var offset = await system.QueryOffset(Reference, stream);
+            var tryOffset = await system.TryQueryOffset(Reference, stream);
             // the offset received must be the same from the last stored
             Assert.Equal(offset, await storedOffset.Task);
+            Assert.Equal(offset, tryOffset);
             var messagesConsumed = new TaskCompletionSource<ulong>();
             var rawConsumerWithOffset = await system.CreateRawConsumer(
                 new RawConsumerConfig(stream)
