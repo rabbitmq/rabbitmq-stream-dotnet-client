@@ -479,37 +479,31 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         public async Task<ulong> QueryOffset(string reference, string stream)
         {
-            MaybeThrowQueryException(reference, stream);
-
-            var response = await _client.QueryOffset(reference, stream).ConfigureAwait(false);
-            ClientExceptions.MaybeThrowException(response.ResponseCode,
-                $"QueryOffset stream: {stream}, reference: {reference}");
-            return response.Offset;
+            var offset = await TryQueryOffset(reference, stream).ConfigureAwait(false);
+            return offset ??
+                   throw new OffsetNotFoundException($"QueryOffset stream: {stream}, reference: {reference}");
         }
 
         /// <summary>
         /// TryQueryOffset tries to retrieve the last consumer offset stored
         /// given a consumer name and stream name.
-        /// Returns null if the offset is not found or for any other exceptions.
-        /// Note: TryQueryOffset could return null even if the offset exists but for any other exception.
-        /// For a more precise exception handling, use QueryOffset.
+        /// Returns null if the offset is not found.
         /// </summary>
         public async Task<ulong?> TryQueryOffset(string reference, string stream)
         {
-            try
-            {
-                var response = await _client.QueryOffset(reference, stream).ConfigureAwait(false);
-                if (response.ResponseCode == ResponseCode.Ok)
-                {
-                    return response.Offset;
-                }
+            MaybeThrowQueryException(reference, stream);
 
-                return null;
-            }
-            catch (Exception)
+            var response = await _client.QueryOffset(reference, stream).ConfigureAwait(false);
+
+            // Offset do not exist so just return null. There is no need to throw an OffsetNotFoundException and capture it.
+            if (response.ResponseCode == ResponseCode.OffsetNotFound)
             {
                 return null;
             }
+
+            ClientExceptions.MaybeThrowException(response.ResponseCode,
+                $"QueryOffset stream: {stream}, reference: {reference}");
+            return response.Offset;
         }
 
         /// <summary>

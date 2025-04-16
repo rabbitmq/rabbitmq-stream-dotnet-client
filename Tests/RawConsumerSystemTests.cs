@@ -527,7 +527,8 @@ namespace Tests
                 system.QueryOffset("reference_does_not_exist", stream));
 
             Assert.Null(await system.TryQueryOffset("reference_does_not_exist", stream));
-            Assert.Null(await system.TryQueryOffset(Reference, "stream_does_not_exist"));
+            await Assert.ThrowsAsync<GenericProtocolException>(() =>
+                (system.TryQueryOffset(Reference, "stream_does_not_exist")));
 
             await rawConsumer.Close();
             await system.DeleteStream(stream);
