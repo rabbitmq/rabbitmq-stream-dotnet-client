@@ -507,27 +507,6 @@ namespace RabbitMQ.Stream.Client
         }
 
         /// <summary>
-        /// TryQueryOffset tries to retrieve the last consumer offset stored
-        /// given a consumer name and stream name.
-        /// Returns null if the offset is not found.
-        /// It is QueryOffset with try/catch to avoid throwing
-        /// OffsetNotFoundException exception. 
-        /// </summary>
-
-        public async Task<ulong?> TryQueryOffset(string reference, string stream)
-        {
-            try
-            {
-                var qOffset = await QueryOffset(reference, stream).ConfigureAwait(false);
-                return qOffset;
-            }
-            catch (OffsetNotFoundException)
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
         /// QuerySequence retrieves the last publishing ID
         /// given a producer name and stream 
         /// </summary>
