@@ -29,17 +29,16 @@ var rClient = BestPracticesClient.Start(new BestPracticesClient.Config()
     ConsumersPerConnection = section.GetSection("ConsumersPerConnection").Get<byte>(),
     Host = section.GetSection("Host").Get<string>(),
     Port = section.GetSection("Port").Get<int>(),
-    
     LoadBalancer = section.GetSection("LoadBalancer").Get<bool>(),
-    
+
     // Enable the SuperStream stream feature.
     SuperStream = section.GetSection("SuperStream").Get<bool>(),
-    
+
     // The number of streams that will be created. in case of super stream, this is the number of the partitions.
     Streams = section.GetSection("Streams").Get<int>(),
     // The number of producers that will be created for each stream.
     Producers = section.GetSection("Producers").Get<int>(),
-    
+
     // The number of messages that will be sent by each producer.
     MessagesPerProducer = section.GetSection("MessagesPerProducer").Get<int>(),
     Consumers = section.GetSection("Consumers").Get<int>(),
@@ -48,6 +47,7 @@ var rClient = BestPracticesClient.Start(new BestPracticesClient.Config()
     // The delay between each message sent by the producer.
     DelayDuringSendMs = section.GetSection("DelayDuringSendMs").Get<int>(),
     StreamName = section.GetSection("StreamName").Get<string>(),
+    EnableResending = section.GetSection("EnableResending").Get<bool>(),
 });
 
 await rClient.ConfigureAwait(false);
