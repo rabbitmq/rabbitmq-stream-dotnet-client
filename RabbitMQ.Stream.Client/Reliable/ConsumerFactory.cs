@@ -71,7 +71,7 @@ public abstract class ConsumerFactory : ReliableBase
                 catch (Exception e)
                 {
                     BaseLogger?.LogError(e,
-                        $"Stream consumer.ConnectionClosedHandler error. Auto recovery failed for: {ToString()}");
+                        $"Stream consumer.ConnectionClosedHandler error. Auto recovery failed for: {_consumerConfig.Stream}");
                 }
             },
             MetadataHandler = async _ =>
@@ -87,7 +87,7 @@ public abstract class ConsumerFactory : ReliableBase
                 catch (Exception e)
                 {
                     BaseLogger?.LogError(e,
-                        $"Stream consumer.MetadataHandler error. Auto recovery failed for: {ToString()}");
+                        $"Stream consumer.MetadataHandler error. Auto recovery failed for stream: {_consumerConfig.Stream}");
                 }
             },
             MessageHandler = async (consumer, ctx, message) =>
@@ -104,7 +104,8 @@ public abstract class ConsumerFactory : ReliableBase
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
+                    BaseLogger?.LogError("MessageHandler {Error} for stream {Stream} ", e.Message,
+                        _consumerConfig.Stream);
                 }
 
                 _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
@@ -151,9 +152,9 @@ public abstract class ConsumerFactory : ReliableBase
                     Identifier = _consumerConfig.Identifier,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
-                        await RandomWait().ConfigureAwait(false);
                         if (IsClosedNormally(closeReason))
                             return;
+                        await RandomWait().ConfigureAwait(false);
                         try
                         {
                             var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
@@ -170,9 +171,9 @@ public abstract class ConsumerFactory : ReliableBase
                     {
                         try
                         {
-                            await RandomWait().ConfigureAwait(false);
                             if (IsClosedNormally())
                                 return;
+                            await RandomWait().ConfigureAwait(false);
 
                             var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                             await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r,
@@ -187,14 +188,22 @@ public abstract class ConsumerFactory : ReliableBase
                     },
                     MessageHandler = async (partitionStream, consumer, ctx, message) =>
                     {
-                        if (_consumerConfig.MessageHandler != null)
+                        try
                         {
-                            await _consumerConfig.MessageHandler(partitionStream, consumer, ctx,
-                                message).ConfigureAwait(false);
-                        }
+                            if (_consumerConfig.MessageHandler != null)
+                            {
+                                await _consumerConfig.MessageHandler(partitionStream, consumer, ctx,
+                                    message).ConfigureAwait(false);
+                            }
 
-                        _consumedFirstTime = true;
-                        _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+                            _consumedFirstTime = true;
+                            _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+                        }
+                        catch (Exception e)
+                        {
+                            BaseLogger?.LogError("MessageHandler {Error} for stream {Stream} ", e.Message,
+                                _consumerConfig.Stream);
+                        }
                     },
                 }, BaseLogger).ConfigureAwait(false);
         }
