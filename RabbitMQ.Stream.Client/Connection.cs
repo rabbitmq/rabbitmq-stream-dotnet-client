@@ -19,7 +19,6 @@ namespace RabbitMQ.Stream.Client
         public const string Normal = "TCP connection closed normal";
         public const string Unexpected = "TCP connection closed unexpected";
         public const string TooManyHeartbeatsMissing = "TCP connection closed by too many heartbeats missing";
-
     }
 
     public class Connection : IDisposable
@@ -32,7 +31,6 @@ namespace RabbitMQ.Stream.Client
         private readonly Func<string, Task> closedCallback;
         private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
         private int numFrames;
-        private bool isClosed = false;
         private string _closedReason = ConnectionClosedReason.Unexpected;
         private bool _disposedValue;
         private readonly ILogger _logger;
@@ -43,7 +41,8 @@ namespace RabbitMQ.Stream.Client
 
         internal int NumFrames => numFrames;
         internal string ClientId { get; set; }
-        public bool IsClosed => isClosed;
+        public bool IsClosed => !socket.Connected;
+
         public void UpdateCloseStatus(string reason)
         {
             _closedReason = reason;
@@ -59,15 +58,29 @@ namespace RabbitMQ.Stream.Client
         {
             _logger = logger;
             this.socket = socket;
+
             commandCallback = callback;
             closedCallback = closedCallBack;
             var networkStream = new NetworkStream(socket);
             var stream = MaybeTcpUpgrade(networkStream, sslOption);
-            writer = PipeWriter.Create(stream);
-            reader = PipeReader.Create(stream);
+            reader = PipeReader.Create(stream, new StreamPipeReaderOptions(leaveOpen: true));
+            writer = PipeWriter.Create(stream, new StreamPipeWriterOptions(leaveOpen: true));
+
             // ProcessIncomingFrames is dropped as soon as the connection is closed
             // no need to stop it manually when the connection is closed
             _incomingFramesTask = Task.Run(ProcessIncomingFrames);
+        }
+
+        internal void Close()
+        {
+            if (!_cancelTokenSource.IsCancellationRequested)
+            {
+                _cancelTokenSource.Cancel();
+            }
+
+            writer.Complete();
+            reader.Complete();
+            socket.Close();
         }
 
         public static async Task<Connection> Create(EndPoint endpoint, Func<Memory<byte>, Task> commandCallback,
@@ -120,7 +133,7 @@ namespace RabbitMQ.Stream.Client
                 throw new OperationCanceledException("Token Cancellation Requested Connection");
             }
 
-            if (isClosed)
+            if (!socket.Connected)
             {
                 throw new InvalidOperationException("Connection is closed");
             }
@@ -148,7 +161,7 @@ namespace RabbitMQ.Stream.Client
             Exception caught = null;
             try
             {
-                while (!isClosed)
+                while (socket.Connected)
                 {
                     if (!reader.TryRead(out var result))
                     {
@@ -158,14 +171,13 @@ namespace RabbitMQ.Stream.Client
                     var buffer = result.Buffer;
                     if (buffer.Length == 0)
                     {
-                        Debug.WriteLine("TCP Connection Closed!");
+                        _logger?.LogDebug("TCP Connection Closed!");
                         // We're not going to receive any more bytes from the connection.
                         break;
                     }
 
                     // Let's try to read some frames!
-
-                    while (TryReadFrame(ref buffer, out var frame) && !isClosed)
+                    while (TryReadFrame(ref buffer, out var frame) && socket.Connected)
                     {
                         // Let's rent some memory to copy the frame from the network stream. This memory will be reclaimed once the frame has been handled.
 
@@ -196,20 +208,28 @@ namespace RabbitMQ.Stream.Client
                 // closedCallback event.
                 // It is useful to trace the error, but at this point
                 // the socket is closed maybe not in the correct way
-                if (!isClosed)
+                if (socket.Connected)
                 {
                     _logger?.LogError(e, "Error reading the socket");
                 }
             }
             finally
             {
-                isClosed = true;
                 _logger?.LogDebug(
                     "TCP Connection Closed ClientId: {ClientId}, Reason {Reason}. IsCancellationRequested {Token} ",
                     ClientId, _closedReason, Token.IsCancellationRequested);
                 // Mark the PipeReader as complete
                 await reader.CompleteAsync(caught).ConfigureAwait(false);
-                closedCallback?.Invoke(_closedReason)!.ConfigureAwait(false);
+                if (closedCallback != null)
+                {
+                    // that's mandatory for the ReliableProducer / ReliableConsumer
+                    // to deal with the connection closed. Null callback won't raise the event
+                    await closedCallback(_closedReason).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger?.LogWarning("Connection: Closed callback is null. ClientId: {ClientId}", ClientId);
+                }
             }
         }
 
@@ -242,15 +262,6 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    if (!_cancelTokenSource.IsCancellationRequested)
-                    {
-                        _cancelTokenSource.Cancel();
-                    }
-
-                    isClosed = true;
-                    writer.Complete();
-                    reader.Complete();
-                    socket.Close();
                     if (!_incomingFramesTask.Wait(Consts.MidWait))
                     {
                         _logger?.LogWarning("ProcessIncomingFrames reader task did not exit in {MidWait}",

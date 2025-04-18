@@ -414,6 +414,7 @@ public abstract class ReliableBase
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         UpdateStatus(ReliableEntityStatus.Reconnection, reason,
             [stream]);
+        await Task.Delay(Consts.RandomLarge()).ConfigureAwait(false);
         try
         {
             var (localStreamExists, streamInfo) = await CheckIfStreamIsAvailable(stream, system)
@@ -446,6 +447,7 @@ public abstract class ReliableBase
         var streamExists = false;
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         UpdateStatus(ReliableEntityStatus.Reconnection, reason, [stream]);
+        await Task.Delay(Consts.RandomLarge()).ConfigureAwait(false);
         try
         {
             (streamExists, _) = await CheckIfStreamIsAvailable(stream, system)

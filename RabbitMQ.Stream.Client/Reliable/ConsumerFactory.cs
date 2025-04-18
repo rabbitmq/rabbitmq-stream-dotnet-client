@@ -47,7 +47,6 @@ public abstract class ConsumerFactory : ReliableBase
         // before creating a new consumer, the old one is disposed
         // This is just a safety check, the consumer should be already disposed
         _consumer?.Dispose();
-
         return await _consumerConfig.StreamSystem.CreateRawConsumer(new RawConsumerConfig(_consumerConfig.Stream)
         {
             ClientProvidedName = _consumerConfig.ClientProvidedName,
@@ -72,7 +71,7 @@ public abstract class ConsumerFactory : ReliableBase
                 catch (Exception e)
                 {
                     BaseLogger?.LogError(e,
-                        $"Stream consumer.MetadataHandler error. Auto recovery failed for: {ToString()}");
+                        $"Stream consumer.ConnectionClosedHandler error. Auto recovery failed for: {_consumerConfig.Stream}");
                 }
             },
             MetadataHandler = async _ =>
@@ -88,18 +87,27 @@ public abstract class ConsumerFactory : ReliableBase
                 catch (Exception e)
                 {
                     BaseLogger?.LogError(e,
-                        $"Stream consumer.MetadataHandler error. Auto recovery failed for: {ToString()}");
+                        $"Stream consumer.MetadataHandler error. Auto recovery failed for stream: {_consumerConfig.Stream}");
                 }
             },
             MessageHandler = async (consumer, ctx, message) =>
             {
-                if (_consumerConfig.MessageHandler != null)
+                try
                 {
-                    await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message)
-                        .ConfigureAwait(false);
+                    if (_consumerConfig.MessageHandler != null)
+                    {
+                        await _consumerConfig.MessageHandler(_consumerConfig.Stream, consumer, ctx, message)
+                            .ConfigureAwait(false);
+                    }
+
+                    _consumedFirstTime = true;
+                }
+                catch (Exception e)
+                {
+                    BaseLogger?.LogError("MessageHandler {Error} for stream {Stream} ", e.Message,
+                        _consumerConfig.Stream);
                 }
 
-                _consumedFirstTime = true;
                 _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
             },
         }, BaseLogger).ConfigureAwait(false);
@@ -144,9 +152,9 @@ public abstract class ConsumerFactory : ReliableBase
                     Identifier = _consumerConfig.Identifier,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
-                        await RandomWait().ConfigureAwait(false);
                         if (IsClosedNormally(closeReason))
                             return;
+                        await RandomWait().ConfigureAwait(false);
                         try
                         {
                             var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
@@ -163,9 +171,9 @@ public abstract class ConsumerFactory : ReliableBase
                     {
                         try
                         {
-                            await RandomWait().ConfigureAwait(false);
                             if (IsClosedNormally())
                                 return;
+                            await RandomWait().ConfigureAwait(false);
 
                             var r = ((RawSuperStreamConsumer)(_consumer)).ReconnectPartition;
                             await OnEntityClosed(_consumerConfig.StreamSystem, update.Stream, r,
@@ -180,14 +188,22 @@ public abstract class ConsumerFactory : ReliableBase
                     },
                     MessageHandler = async (partitionStream, consumer, ctx, message) =>
                     {
-                        if (_consumerConfig.MessageHandler != null)
+                        try
                         {
-                            await _consumerConfig.MessageHandler(partitionStream, consumer, ctx,
-                                message).ConfigureAwait(false);
-                        }
+                            if (_consumerConfig.MessageHandler != null)
+                            {
+                                await _consumerConfig.MessageHandler(partitionStream, consumer, ctx,
+                                    message).ConfigureAwait(false);
+                            }
 
-                        _consumedFirstTime = true;
-                        _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+                            _consumedFirstTime = true;
+                            _lastOffsetConsumed[_consumerConfig.Stream] = ctx.Offset;
+                        }
+                        catch (Exception e)
+                        {
+                            BaseLogger?.LogError("MessageHandler {Error} for stream {Stream} ", e.Message,
+                                _consumerConfig.Stream);
+                        }
                     },
                 }, BaseLogger).ConfigureAwait(false);
         }
