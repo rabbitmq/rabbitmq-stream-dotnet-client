@@ -63,8 +63,9 @@ namespace RabbitMQ.Stream.Client
             closedCallback = closedCallBack;
             var networkStream = new NetworkStream(socket);
             var stream = MaybeTcpUpgrade(networkStream, sslOption);
-            writer = PipeWriter.Create(stream);
-            reader = PipeReader.Create(stream);
+            reader = PipeReader.Create(stream, new StreamPipeReaderOptions(leaveOpen: true));
+            writer = PipeWriter.Create(stream, new StreamPipeWriterOptions(leaveOpen: true));
+
             // ProcessIncomingFrames is dropped as soon as the connection is closed
             // no need to stop it manually when the connection is closed
             _incomingFramesTask = Task.Run(ProcessIncomingFrames);
