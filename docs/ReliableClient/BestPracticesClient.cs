@@ -34,6 +34,8 @@ public class BestPracticesClient
         public byte ConsumersPerConnection { get; set; } = 8;
 
         public int DelayDuringSendMs { get; set; } = 0;
+
+        public bool EnableResending { get; set; } = false;
     }
 
     public static async Task Start(Config config)
@@ -190,16 +192,17 @@ public class BestPracticesClient
                         // can help to identify the consumer on the logs and RabbitMQ Management
                         Identifier = $"my_consumer_{z}",
                         InitialCredits = 10,
-                        MessageHandler = async (source, consumer, ctx, _) =>
+                        MessageHandler = (source, consumer, ctx, _) =>
                         {
-                            if (totalConsumed % 10_000 == 0)
-                            {
-                                // don't store the offset every time, it could be a performance issue
-                                // store the offset every 1_000/5_000/10_000 messages
-                                await consumer.StoreOffset(ctx.Offset).ConfigureAwait(false);
-                            }
+                            // if (totalConsumed % 10_000 == 0)
+                            // {
+                            //     // don't store the offset every time, it could be a performance issue
+                            //     // store the offset every 1_000/5_000/10_000 messages
+                            //     //    await consumer.StoreOffset(ctx.Offset).ConfigureAwait(false);
+                            // }
 
                             Interlocked.Increment(ref totalConsumed);
+                            return Task.CompletedTask;
                         },
                     };
 
@@ -207,12 +210,16 @@ public class BestPracticesClient
                     // DON'T PUT ANY BLOCKING CODE HERE
                     conf.StatusChanged += (status) =>
                     {
-                        var partitions = "[";
-                        status.Partitions.ForEach(s => partitions += s + ",");
-                        partitions = partitions.Remove(partitions.Length - 1) + "]";
-                        var streamInfo = status.Partitions is not null
-                            ? $" Partitions: {partitions} of super stream: {status.Stream}"
-                            : $"Stream: {status.Stream}";
+                        var streamInfo = $"Stream: {status.Stream}";
+                        if (status.Partitions is { Count: > 0 })
+                        {
+                            // the partitions are not null and not empty
+                            // it is a super stream
+                            var partitions = "[";
+                            status.Partitions.ForEach(s => partitions += s + ",");
+                            partitions = partitions.Remove(partitions.Length - 1) + "]";
+                            streamInfo = $" Partitions: {partitions} of super stream: {status.Stream}";
+                        }
 
                         lc.LogInformation(
                             "Consumer: {Id} - status changed from: {From} to: {To} reason: {Reason}  {Info}",
@@ -254,7 +261,11 @@ public class BestPracticesClient
                                 // Add the unconfirmed messages to the list in case of error
                                 if (confirmation.Status != ConfirmationStatus.Confirmed)
                                 {
-                                    confirmation.Messages.ForEach(m => { unconfirmedMessages.Add(m); });
+                                    if (config.EnableResending)
+                                    {
+                                        confirmation.Messages.ForEach(m => { unconfirmedMessages.Add(m); });
+                                    }
+
                                     Interlocked.Add(ref totalError, confirmation.Messages.Count);
                                     return Task.CompletedTask;
                                 }
@@ -267,12 +278,17 @@ public class BestPracticesClient
                         // Like the consumer don't put any blocking code here
                         producerConfig.StatusChanged += (status) =>
                         {
-                            var partitions = "[";
-                            status.Partitions?.ForEach(s => partitions += s + ",");
-                            // partitions = partitions.Remove(partitions.Length - 1) + "]";
-                            var streamInfo = status.Partitions is not null
-                                ? $" Partitions: {partitions} of super stream: {status.Stream}"
-                                : $"Stream: {status.Stream}";
+                            var streamInfo = $"Stream: {status.Stream}";
+                            if (status.Partitions is { Count: > 0 })
+                            {
+                                // the partitions are not null and not empty
+                                // it is a super stream
+                                var partitions = "[";
+                                status.Partitions.ForEach(s => partitions += s + ",");
+                                partitions = partitions.Remove(partitions.Length - 1) + "]";
+                                streamInfo = $" Partitions: {partitions} of super stream: {status.Stream}";
+                            }
+
 
                             // just log the status change
                             lp.LogInformation(
