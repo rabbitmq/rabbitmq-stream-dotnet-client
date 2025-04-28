@@ -3067,7 +3067,8 @@ await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </ol>
 </div>
 <div class="paragraph">
-<p>The snippet above uses <code>consumer.StoreOffset(context.Offset)</code> to store at the offset of the current message.</p>
+<p>The snippet above uses <code>consumer.StoreOffset(context.Offset)</code> to store at the offset of the current message.
+It is possible to store the offset in a more generic way with <code>StreamSystem.StoreOffset(reference,stream, offsetValue)</code></p>
 </div>
 </div>
 <div class="sect5">
@@ -3576,7 +3577,12 @@ The following methods are available:</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>QueryOffset(string reference, string stream)</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Retrieves retrieves the last consumer offset stored for a given consumer Reference and stream. Useful for as consumer wants to know the last stored offset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Retrieves the last consumer offset stored for a given consumer Reference and stream. Useful for as consumer wants to know the last stored offset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stream</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TryQueryOffset(string reference, string stream)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Like <code>QueryOffset</code> but returns <code>null</code> if the offset was not found without throwing <code>OffsetNotFoundException</code> exception .</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Stream</p></td>
 </tr>
 <tr>
@@ -4399,7 +4405,7 @@ You can provide your own implementation of these interfaces to customize the rec
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-05-24 09:00:27 UTC
+Last updated 2024-08-28 15:00:58 UTC
 </div>
 </div>
 </body>
