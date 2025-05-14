@@ -13,7 +13,7 @@
     <MinVerVerbosity>normal</MinVerVerbosity>
     <PackageDescription>The RabbitMQ Stream .NET client is the official client library for C# (and, implicitly, other .NET languages)</PackageDescription>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageLicenseExpression>Apache-2.0 AND MPL-2.0</PackageLicenseExpression>
     <PackageOutputPath>../packages</PackageOutputPath>
     <RootNamespace>RabbitMQ.Stream.Client</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -27,7 +27,6 @@
   <ItemGroup>
     <None Remove="icon.png" />
     <Content Include="icon.png" PackagePath="icon.png" />
-    <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
