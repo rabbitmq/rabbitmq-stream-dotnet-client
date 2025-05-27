@@ -7,6 +7,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -205,6 +206,7 @@ namespace RabbitMQ.Stream.Client
         // avoiding to block the consumer handler if the user put some
         // long task
         private bool IsPromotedAsActive { get; set; }
+        private SemaphoreSlim Lock { get; } = new(1);
 
         public static async Task<IConsumer> Create(
             ClientParameters clientParameters,
@@ -389,7 +391,15 @@ namespace RabbitMQ.Stream.Client
                         for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
                         {
                             var message = MessageFromSequence(ref unCompressedData, ref compressOffset);
-                            await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
+                            await Lock.WaitAsync().ConfigureAwait(false);
+                            try
+                            {
+                                await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
+                            }
+                            finally
+                            {
+                                Lock.Release();
+                            }
                         }
 
                         numRecords -= subEntryChunk.NumRecordsInBatch;
@@ -590,7 +600,7 @@ namespace RabbitMQ.Stream.Client
                     {
                         // in this case the StoredOffsetSpec is overridden by the ConsumerUpdateListener
                         // since the user decided to override the default behavior
-
+                        await Lock.WaitAsync().ConfigureAwait(false);
                         try
                         {
                             _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
@@ -605,6 +615,10 @@ namespace RabbitMQ.Stream.Client
                                 DumpEntityConfiguration());
                             // in this case the default behavior is to use the OffsetTypeNext
                             _config.StoredOffsetSpec = new OffsetTypeNext();
+                        }
+                        finally
+                        {
+                            Lock.Release();
                         }
                     }
 
