@@ -265,8 +265,8 @@ namespace RabbitMQ.Stream.Client
                         var slice = unCompressedData.Slice(compressOffset, 4);
                         compressOffset += WireFormatting.ReadUInt32(ref slice, out var len);
                         Debug.Assert(len > 0);
-                        slice = unCompressedData.Slice(compressOffset, len);
-                        Debug.Assert(slice.Length >= len);
+                        var sliceMsg = unCompressedData.Slice(compressOffset, len);
+                        Debug.Assert(sliceMsg.Length == len);
                         compressOffset += (int)len;
 
                         // Here we use the Message.From(ref ReadOnlySequence<byte> seq ..) method to parse the message
@@ -274,7 +274,7 @@ namespace RabbitMQ.Stream.Client
                         // Since the ParseChunk is async and we cannot use the ref SequenceReader<byte> reader
                         // See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250 for more details
 
-                        var message = Message.From(ref slice, len);
+                        var message = Message.From(ref sliceMsg, len);
                         return message;
                     }
                     catch (Exception e)
