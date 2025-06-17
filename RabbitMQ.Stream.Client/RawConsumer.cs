@@ -159,8 +159,7 @@ namespace RabbitMQ.Stream.Client
             Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
             Info = new ConsumerInfo(_config.Stream, _config.Reference, _config.Identifier, null);
             // _chunksBuffer is a channel that is used to buffer the chunks
-            
-            
+
             _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
             {
                 AllowSynchronousContinuations = false,
@@ -461,7 +460,7 @@ namespace RabbitMQ.Stream.Client
                 // need to wait the subscription is completed 
                 // else the _subscriberId could be incorrect
                 _completeSubscription.Task.Wait();
-                
+
                 try
                 {
                     while (!Token.IsCancellationRequested &&
