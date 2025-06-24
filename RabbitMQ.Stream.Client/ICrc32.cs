@@ -4,6 +4,20 @@
 
 namespace RabbitMQ.Stream.Client
 {
+    public enum CrcFailureAction
+    {
+        /// <summary>
+        /// The consumer will Skip the Chunk and continue processing the next message.
+        /// </summary>
+        SkipChunk,
+
+        /// <summary>
+        /// The consumer will receive the message, but it will be marked as invalid and
+        /// the consumer will be closed.
+        /// </summary>
+        CloseConsumer
+    }
+
     /// <summary>
     /// ICrc32 defines an interface for implementing crc32 hashing.
     /// Library users who wish to perform crc32 checks on data from RabbitMQ
@@ -13,5 +27,6 @@ namespace RabbitMQ.Stream.Client
     public interface ICrc32
     {
         byte[] Hash(byte[] data);
+        CrcFailureAction CrcFailureAction { get; set; }
     }
 }

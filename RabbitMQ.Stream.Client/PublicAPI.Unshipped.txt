@@ -109,8 +109,9 @@ RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
 RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference, string identifier, System.Collections.Generic.List<string> partitions) -> void
 RabbitMQ.Stream.Client.ConsumerInfo.Reference.get -> string
-RabbitMQ.Stream.Client.CrcException
-RabbitMQ.Stream.Client.CrcException.CrcException(string s) -> void
+RabbitMQ.Stream.Client.CrcFailureAction
+RabbitMQ.Stream.Client.CrcFailureAction.CloseConsumer = 1 -> RabbitMQ.Stream.Client.CrcFailureAction
+RabbitMQ.Stream.Client.CrcFailureAction.SkipChunk = 0 -> RabbitMQ.Stream.Client.CrcFailureAction
 RabbitMQ.Stream.Client.CreateConsumerException.CreateConsumerException(string s, RabbitMQ.Stream.Client.ResponseCode responseCode) -> void
 RabbitMQ.Stream.Client.CreateException
 RabbitMQ.Stream.Client.CreateException.CreateException(string s) -> void
@@ -175,6 +176,8 @@ RabbitMQ.Stream.Client.IConsumerConfig.ConsumerFilter.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.ICrc32
+RabbitMQ.Stream.Client.ICrc32.CrcFailureAction.get -> RabbitMQ.Stream.Client.CrcFailureAction
+RabbitMQ.Stream.Client.ICrc32.CrcFailureAction.set -> void
 RabbitMQ.Stream.Client.ICrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.Info
 RabbitMQ.Stream.Client.Info.Identifier.get -> string
@@ -322,6 +325,11 @@ RabbitMQ.Stream.Client.RouteQueryResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Hash = 0 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Key = 1 -> RabbitMQ.Stream.Client.RoutingStrategyType
+RabbitMQ.Stream.Client.StreamCrc32
+RabbitMQ.Stream.Client.StreamCrc32.CrcFailureAction.get -> RabbitMQ.Stream.Client.CrcFailureAction
+RabbitMQ.Stream.Client.StreamCrc32.CrcFailureAction.set -> void
+RabbitMQ.Stream.Client.StreamCrc32.Hash(byte[] data) -> byte[]
+RabbitMQ.Stream.Client.StreamCrc32.StreamCrc32() -> void
 RabbitMQ.Stream.Client.StreamStats
 RabbitMQ.Stream.Client.StreamStats.CommittedChunkId() -> ulong
 RabbitMQ.Stream.Client.StreamStats.FirstOffset() -> ulong

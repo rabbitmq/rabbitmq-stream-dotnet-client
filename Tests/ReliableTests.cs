@@ -18,7 +18,10 @@ namespace Tests;
 
 public class ReliableTests
 {
-    private readonly ICrc32 _crc32 = new Crc32();
+    private readonly ICrc32 _crc32 = new StreamCrc32()
+    {
+        CrcFailureAction = CrcFailureAction.CloseConsumer
+    };
     private readonly ITestOutputHelper _testOutputHelper;
 
     public ReliableTests(ITestOutputHelper testOutputHelper)

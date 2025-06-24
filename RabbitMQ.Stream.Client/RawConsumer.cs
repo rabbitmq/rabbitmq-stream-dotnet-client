@@ -131,12 +131,16 @@ namespace RabbitMQ.Stream.Client
         private readonly RawConsumerConfig _config;
 
         private readonly Channel<Chunk> _chunksBuffer;
+
         private readonly ushort _initialCredits;
+
         // _completeSubscription is used to notify the ProcessChunks task
         // that the subscription is completed and so it can start to process the chunks
         // this is needed because the socket starts to receive the chunks before the subscription_id is 
         // assigned. 
-        private readonly TaskCompletionSource _completeSubscription = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _completeSubscription =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         protected sealed override string DumpEntityConfiguration()
         {
             var superStream = string.IsNullOrEmpty(_config.SuperStream)
@@ -219,7 +223,6 @@ namespace RabbitMQ.Stream.Client
         /// MaybeLockDispatch is an optimization to avoid to lock the dispatch
         /// when the consumer is not single active consumer
         /// </summary>
-
         private async Task MaybeLockDispatch()
         {
             if (_config.IsSingleActiveConsumer)
@@ -606,9 +609,25 @@ namespace RabbitMQ.Stream.Client
                                     DumpEntityConfiguration(),
                                     chunkConsumed);
 
-                                throw new CrcException(
-                                    $"CRC32 does not match, server crc: {deliver.Chunk.Crc}, local crc: {crcCalculated}, {DumpEntityConfiguration()}, " +
-                                    $"Chunk Consumed {chunkConsumed}");
+                                // we can skip the chunk since the CRC does not match
+                                switch (_config.Crc32.CrcFailureAction)
+                                {
+                                    case CrcFailureAction.SkipChunk:
+                                        Logger?.LogWarning(
+                                            "CRC32 fail. The chunk will be skipped by policy. {EntityInfo}, Chunk Consumed {ChunkConsumed}",
+                                            DumpEntityConfiguration(), chunkConsumed);
+                                        return;
+
+                                    case CrcFailureAction.CloseConsumer:
+                                        Logger?.LogError(
+                                            "CRC32 fail. The consumer will be closed by policy. {EntityInfo}, Chunk Consumed {ChunkConsumed}",
+                                            DumpEntityConfiguration(), chunkConsumed);
+                                        // in this case we close the consumer
+                                        await Close().ConfigureAwait(false);
+                                        break;
+                                    default:
+                                        throw new ArgumentOutOfRangeException();
+                                }
                             }
                         }
 
