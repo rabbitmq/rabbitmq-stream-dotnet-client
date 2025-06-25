@@ -71,8 +71,6 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
         }
     }
 
-    // enables the check of the crc on the delivery.
-    // the server will send the crc for each chunk and the client will check it.
     // It is enabled by default. You can disable it by setting it to null.
     // It is recommended to keep it enabled. Disable it only for performance reasons.
     public ICrc32 Crc32 { get; set; } = new StreamCrc32();

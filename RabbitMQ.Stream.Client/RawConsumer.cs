@@ -513,7 +513,6 @@ namespace RabbitMQ.Stream.Client
                                     continue; // skip the chunk
                                 case ChunkAction.TryToProcess:
                                     // That's what happens most of the time, and this is the default action
-                                    // Process the chunk
                                     await ParseChunk(chunk).ConfigureAwait(false);
                                     break;
                                 default:
@@ -634,8 +633,8 @@ namespace RabbitMQ.Stream.Client
                             }
                         }
 
-                        // if the chunkAction is passed to the _chunksBuffer because the ProcessChunks task
-                        // asks for the credits. If we skip here no more credits will be requested
+                        // The chunkAction is passed to the _chunksBuffer because the ProcessChunks task
+                        // asks for the credits in a Task. If we skip the chunk here no more credits will be requested
                         await _chunksBuffer.Writer.WriteAsync((deliver.Chunk, chunkAction), Token)
                             .ConfigureAwait(false);
                     }

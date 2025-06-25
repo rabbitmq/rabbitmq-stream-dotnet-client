@@ -9,12 +9,13 @@ namespace RabbitMQ.Stream.Client
     public enum ChunkAction
     {
         /// <summary>
-        /// The consumer will TryToProcess the Chunk.
+        /// The consumer will try to process the Chunk.
         /// </summary>
         TryToProcess,
 
         /// <summary>
-        /// The consumer will Skip the Chunk and continue processing the next message.
+        /// The consumer will skip the Chunk and continue processing the next Chunk.
+        /// All the messages in the Chunk will be skipped.
         /// </summary>
         Skip
     }
