@@ -506,14 +506,18 @@ namespace RabbitMQ.Stream.Client
                             switch (action)
                             {
                                 case ChunkAction.Skip:
-                                    Logger?.LogDebug(
+                                    // the chunk will be skipped due of CRC32 fail
+                                    Logger?.LogWarning(
                                         "The chunk {ChunkId} will be skipped for {EntityInfo}",
                                         chunk.ChunkId, DumpEntityConfiguration());
                                     continue; // skip the chunk
                                 case ChunkAction.TryToProcess:
-                                    // continue to process the chunk
+                                    // That's what happens most of the time, and this is the default action
+                                    // Process the chunk
                                     await ParseChunk(chunk).ConfigureAwait(false);
                                     break;
+                                default:
+                                    throw new ArgumentOutOfRangeException();
                             }
                         }
                     }
@@ -608,7 +612,7 @@ namespace RabbitMQ.Stream.Client
                             return;
                         }
 
-                        var skipChunk = ChunkAction.TryToProcess;
+                        var chunkAction = ChunkAction.TryToProcess;
 
                         if (_config.Crc32 is not null)
                         {
@@ -623,16 +627,17 @@ namespace RabbitMQ.Stream.Client
                                     DumpEntityConfiguration(),
                                     chunkConsumed);
 
-                                if (_config.Crc32.FailAction != null)
-                                {
-                                    // if the user has set the FailAction, we call it
-                                    // to allow the user to handle the chunk action
-                                    skipChunk = _config.Crc32.FailAction(this);
-                                }
+                                // if the user has set the FailAction, we call it
+                                // to allow the user to handle the chunk action
+                                // if the FailAction is not set, we skip the chunk
+                                chunkAction = _config.Crc32.FailAction?.Invoke(this) ?? ChunkAction.Skip;
                             }
                         }
 
-                        await _chunksBuffer.Writer.WriteAsync((deliver.Chunk, skipChunk), Token).ConfigureAwait(false);
+                        // if the chunkAction is passed to the _chunksBuffer because the ProcessChunks task
+                        // asks for the credits. If we skip here no more credits will be requested
+                        await _chunksBuffer.Writer.WriteAsync((deliver.Chunk, chunkAction), Token)
+                            .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {

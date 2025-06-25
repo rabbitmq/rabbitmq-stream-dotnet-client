@@ -66,6 +66,37 @@ public class Crc32Tests(ITestOutputHelper testOutputHelper)
         await SystemUtils.CleanUpStreamSystem(system, stream);
     }
 
+    [Fact]
+    public async Task Crc32ShouldSkipChunkWithTheDefaultBehavior()
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var completionSource = new TaskCompletionSource<MessageContext>();
+        var consumerConfig = new ConsumerConfig(system, stream)
+        {
+            // FailAction is not set, so it will use the default behavior which is to skip the chunk
+            Crc32 = new FirstCrc32IsWrong() { },
+            InitialCredits = 1,
+            MessageHandler = (_, _, messageContext, _) =>
+            {
+                completionSource.TrySetResult(messageContext);
+                return Task.CompletedTask;
+            }
+        };
+        var consumer = await Consumer.Create(consumerConfig);
+        await SystemUtils.PublishMessages(system, stream, 3, "1", testOutputHelper);
+        await SystemUtils.WaitAsync(TimeSpan.FromMilliseconds(700));
+        await SystemUtils.PublishMessages(system, stream, 5, "2", testOutputHelper);
+        var messageContext = await completionSource.Task;
+        if (messageContext.ChunkId == 0)
+        {
+            Assert.Fail($"Expected the second chunk to be processed, but it was not.ChunkId {messageContext.ChunkId}");
+        }
+
+        Assert.True(consumer.IsOpen());
+        await consumer.Close();
+        await SystemUtils.CleanUpStreamSystem(system, stream);
+    }
+
     /// <summary>
     /// Tests the Crc32 functionality of the consumer.
     /// Simulate a CRC32 failure on the first chunk,
