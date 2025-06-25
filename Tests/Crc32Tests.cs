@@ -123,8 +123,7 @@ public class Crc32Tests(ITestOutputHelper testOutputHelper)
         var consumer = await Consumer.Create(consumerConfig);
         await SystemUtils.PublishMessages(system, stream, 3, "1", testOutputHelper);
         await SystemUtils.WaitAsync(TimeSpan.FromMilliseconds(500));
-
-        Assert.False(consumer.IsOpen());
+        await SystemUtils.WaitUntilAsync(() => !consumer.IsOpen());
         await SystemUtils.CleanUpStreamSystem(system, stream);
     }
 
