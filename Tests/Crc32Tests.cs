@@ -60,6 +60,7 @@ public class Crc32Tests(ITestOutputHelper testOutputHelper)
         {
             Assert.Fail($"Expected the second chunk to be processed, but it was not.ChunkId {messageContext.ChunkId}");
         }
+
         Assert.True(consumer.IsOpen());
         await consumer.Close();
         await SystemUtils.CleanUpStreamSystem(system, stream);
