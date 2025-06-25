@@ -142,7 +142,7 @@ public class ConsumerUsage
             {
                 Crc32 = new StreamCrc32()
                 {
-                    FailAction = () => ChunkAction.Skip // <1>
+                    FailAction = (consumerInstance) => ChunkAction.Skip // <1>
                 }, // <2>
                 OffsetSpec = new OffsetTypeTimestamp(),
                 // end::consumer-creation-crc[]

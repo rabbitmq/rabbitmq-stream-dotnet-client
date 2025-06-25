@@ -12,11 +12,11 @@ namespace RabbitMQ.Stream.Client
         /// The consumer will TryToProcess the Chunk.
         /// </summary>
         TryToProcess,
+
         /// <summary>
         /// The consumer will Skip the Chunk and continue processing the next message.
         /// </summary>
         Skip
-
     }
 
     /// <summary>
@@ -28,6 +28,13 @@ namespace RabbitMQ.Stream.Client
     public interface ICrc32
     {
         byte[] Hash(byte[] data);
+
+        /// <summary>
+        /// FailAction is called when the Crc32 check fails.
+        /// The user can assign a function that returns a <see cref="ChunkAction"/>.
+        /// It is possible to add custom logic to handle the failure, such as logging.
+        /// The code here should be safe 
+        /// </summary>
         Func<IConsumer, ChunkAction> FailAction { get; set; }
     }
 }
