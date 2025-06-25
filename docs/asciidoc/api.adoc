@@ -5,7 +5,7 @@
 ==== Overview
 
 This section describes the API to connect to the RabbitMQ Stream Plugin, publish messages, and consume messages.
-There are 3 main interfaces:
+There are three main interfaces:
 
 * `RabbitMQ.Stream.Client` for connecting to a node and optionally managing streams.
 * `RabbitMQ.Stream.Client.Reliable.Producer` to publish messages.
@@ -141,8 +141,9 @@ The following table sums up the main settings to create an `StreamSystem` using 
 
 [[connection-pool]]
 ===== Connection pool
+
 Introduced on version 1.8.0.
-With the connection pool you can define how many producers and consumers can be created on a single connection and the `ConnectionCloseConfig` 
+With the connection pool you can define how many producers and consumers can be created on a single connection and the `ConnectionCloseConfig`
 
 [source]
 ----
@@ -164,7 +165,8 @@ A high value can reduce the number of connections to the server but it could red
 
 A low value can increase the number of connections to the server but it could increase the performance of the producer and the consumer.
 
-The consumers share the same handler, so if you have a high number of consumers per connection, the handler could be a bottleneck. It means that if there is a slow consumer all the other consumers could be slow.
+The consumers share the same handler, so if you have a high number of consumers per connection, the handler could be a bottleneck.
+It means that if there is a slow consumer all the other consumers could be slow.
 
 TIP:
 You can use different StreamSystemConfig like:
@@ -186,6 +188,7 @@ streamSystemToIncreaseThePerformances = new StreamSystemConfig{
         }
 }
 ----
+
 There is not a magic number, you have to test and evaluate the best value for your use case.
 
 The `ConnectionCloseConfig` defines the policy to close the connection when the last producer or consumer is closed.
@@ -193,7 +196,6 @@ The `ConnectionCloseConfig` defines the policy to close the connection when the 
 - `CloseWhenEmptyAndIdle` the connection is closed when the last producer or consumer is closed and the connection is idle for a certain amount of time.
 
 The policy `CloseWhenEmpty` covers the standard use cases when the producers or consumers have long life running.
-
 
 The policy `CloseWhenEmptyAndIdle` is useful when producers or consumers have short live and the pool has to be fast to create a new entity.
 The parameter `IdleTime` defines the time to wait before closing the connection when the last producer or consumer is closed.
@@ -210,7 +212,6 @@ The parameter `CheckIdleTime` defines the time to check if the connection is idl
 ----
 
 Note: You can't close the stream systems if there are producers or consumers still running with the `CloseWhenEmptyAndIdle` policy.
-
 
 [[entity-status]]
 [[address-resolver]]
@@ -396,7 +397,7 @@ This value is valid only for the `Send(Message)` method.
 
 |`StatusChanged`
 |The callback invoked when the producer status changes. See <<entity-status,Producer Status>> for more details.
-|`null` 
+|`null`
 
 |===
 
@@ -815,7 +816,7 @@ The following table sums up the main settings to create a `Consumer` with `Consu
 
 |`ICrc32`
 |The <<crc-on-delivery,CRC32 implementation>> to use to validate the chunk server crc32 .
-|`null` (no CRC32)
+| `StreamCrc32()`
 
 |`StatusChanged`
 |The callback invoked when the consumer status changes. See <<entity-status,Consumer Status>> for more details.
@@ -836,8 +837,8 @@ See the <<specifying-an-offset,offset section>> to find out more about the diffe
 ===== Check the CRC on Delivery
 
 RabbitMQ Stream provides a CRC32 checksum on each chunk.
-The client library can check the checksum before parse the chunk and throw an `CrcException` exception if the validation fails.
-By default the CRC32 checksum is not enabled, to enable it you need to set the `ICrc32` interface in the `ConsumerConfig`:
+The client library can check the checksum before parsing the chunk.
+By default the CRC32 checksum enabled (with the class `StreamCrc32()` ), to disable it you need to set null to `ICrc32` interface in the `ConsumerConfig`:
 
 .Checking the CRC32 checksum on the chunk
 [source,c#,indent=0]
@@ -847,13 +848,30 @@ include::{test-examples}/ConsumerUsage.cs[tag=consumer-creation-crc]
 
 <1> An implementation of the `ICrc32` interface.
 You are free to use any implementation you want.
-The client is tested with `System.IO.Hashing`.
-`System.IO.Hashing` is not shipped with the client library.
-<2> Set the `ICrc32` implementation in the `ConsumerConfig`
+By default the client library uses `StreamCrc32` which is a simple implementation of the `ICrc32` interface.
+<2> The function FailAction is called when the CRC32 checksum is not valid.
 
-It is recommended to use it.
-It _could_ reduce the performance of the consumer.
-It depends on the use case.
+`FailAction` return types:
+
+[%header,cols=2*]
+|===
+|Parameter Name
+|Description
+
+|`ChunkAction.Skip`
+|Skip the chunk and continue consuming the next chunk.
+
+|`ChunkAction.TryToProcess`
+|Try to process the chunk even if the CRC32 checksum is not valid.
+|===
+
+If `FailAction` is `null` the library will use `ChunkAction.Skip` as default value.
+
+`FailAction` has `sourceConsumer` as parameter, which is the consumer that failed to validate the CRC32 checksum.
+the code in the `FailAction`  should be short, fast and safe, as it is executed in the consumer thread.
+
+It is recommended to leave it enabled, as it allows the client library to detect corrupted chunks and avoid parsing them.
+Disabling the CRC32 _could_ improve performance, but it is not recommended as it can lead to parsing corrupted chunks and unexpected behavior.
 
 [[consumer-reconnect-strategy]]
 [[specifying-an-offset]]
@@ -939,7 +957,6 @@ include::{test-examples}/ConsumerUsage.cs[tag=manual-tracking-defaults]
 
 The snippet above uses `consumer.StoreOffset(context.Offset)` to store at the offset of the current message.
 It is possible to store the offset in a more generic way with `StreamSystem.StoreOffset(reference,stream, offsetValue)`
-
 
 ====== Considerations On Offset Tracking
 
@@ -1073,13 +1090,14 @@ include::{test-examples}/ConsumerUsage.cs[tag=sac-consumer-update-listener]
 <2> Enable single active consumer
 <3> Handle `ConsumerUpdateListener` callback
 
-
 [[entity-status]]
 ==== Producer/Consumer change status callback
+
 `Producer` and `Consumer` classes provide a callback to handle the status change.
 It is possible to configure the event using the configuration `StatusChanged` property.
 
 like the following snippet:
+
 [source,c#,indent=0]
 --------
 var conf = new ConsumerConfig(system, stream)
@@ -1147,7 +1165,6 @@ the `statusInfo` contains the following information:
 |===
 
 A full example of the status change callback can be found in https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ReliableClient[here].
-
 
 [[low-high-level-classes]]
 ==== Low Level and High Level classes

@@ -13,5 +13,5 @@ public class StreamCrc32 : ICrc32
         return System.IO.Hashing.Crc32.Hash(data);
     }
 
-    public Func<IConsumer, ChunkAction> FailAction { get; set; }
+    public Func<IConsumer, ChunkAction> FailAction { get; set; } = null;
 }

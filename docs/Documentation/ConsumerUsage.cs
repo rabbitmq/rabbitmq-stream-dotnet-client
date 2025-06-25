@@ -140,10 +140,10 @@ public class ConsumerUsage
                 streamSystem,
                 "my-stream")
             {
-                Crc32 = new StreamCrc32()
+                Crc32 = new StreamCrc32() // <1>
                 {
-                    FailAction = (consumerInstance) => ChunkAction.Skip // <1>
-                }, // <2>
+                    FailAction = (consumerInstance) => ChunkAction.Skip // <2>
+                }, 
                 OffsetSpec = new OffsetTypeTimestamp(),
                 // end::consumer-creation-crc[]
                 MessageHandler = async (stream, consumer, context, message) => // <4>
