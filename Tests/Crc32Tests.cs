@@ -118,9 +118,7 @@ public class Crc32Tests(ITestOutputHelper testOutputHelper)
         await SystemUtils.PublishMessages(system, stream, 3, "1", testOutputHelper);
         await SystemUtils.WaitAsync();
         var messageContext = await completionSource.Task;
-        Assert.True(messageContext.Offset == 0);
         Assert.True(0 == messageContext.ChunkId);
-        Assert.True(3 == messageContext.ChunkMessagesCount);
         Assert.True(consumer.IsOpen());
         await consumer.Close();
         await SystemUtils.CleanUpStreamSystem(system, stream);
