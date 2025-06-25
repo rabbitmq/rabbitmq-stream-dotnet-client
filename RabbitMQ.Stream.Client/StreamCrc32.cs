@@ -2,6 +2,8 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
+
 namespace RabbitMQ.Stream.Client;
 
 public class StreamCrc32 : ICrc32
@@ -11,5 +13,5 @@ public class StreamCrc32 : ICrc32
         return System.IO.Hashing.Crc32.Hash(data);
     }
 
-    public CrcFailureAction CrcFailureAction { get; set; } = CrcFailureAction.SkipChunk;
+    public Func<IConsumer, ChunkAction> FailAction { get; set; }
 }

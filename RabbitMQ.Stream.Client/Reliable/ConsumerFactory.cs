@@ -61,7 +61,11 @@ public abstract class ConsumerFactory : ReliableBase
             ConnectionClosedHandler = async (closeReason) =>
             {
                 if (IsClosedNormally(closeReason))
+                {
+                    UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser,
+                        [_consumerConfig.Stream]);
                     return;
+                }
 
                 try
                 {
@@ -153,7 +157,12 @@ public abstract class ConsumerFactory : ReliableBase
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
                         if (IsClosedNormally(closeReason))
+                        {
+                            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser,
+                                [partitionStream]);
                             return;
+                        }
+
                         await RandomWait().ConfigureAwait(false);
                         try
                         {

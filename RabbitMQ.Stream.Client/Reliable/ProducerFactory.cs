@@ -50,7 +50,12 @@ public abstract class ProducerFactory : ReliableBase
                     {
                         await RandomWait().ConfigureAwait(false);
                         if (IsClosedNormally(closeReason))
+                        {
+                            UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser,
+                                [partitionStream]);
                             return;
+                        }
+
                         try
                         {
                             var r = ((RawSuperStreamProducer)(_producer)).ReconnectPartition;
@@ -121,7 +126,11 @@ public abstract class ProducerFactory : ReliableBase
             {
                 await RandomWait().ConfigureAwait(false);
                 if (IsClosedNormally())
+                {
+                    UpdateStatus(ReliableEntityStatus.Closed, ChangeStatusReason.ClosedByUser,
+                        [_producerConfig.Stream]);
                     return;
+                }
 
                 await OnEntityClosed(_producerConfig.StreamSystem, _producerConfig.Stream,
                     ChangeStatusReason.MetaDataUpdate).ConfigureAwait(false);

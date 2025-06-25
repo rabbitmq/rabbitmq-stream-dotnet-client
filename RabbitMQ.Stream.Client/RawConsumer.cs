@@ -130,7 +130,7 @@ namespace RabbitMQ.Stream.Client
     {
         private readonly RawConsumerConfig _config;
 
-        private readonly Channel<Chunk> _chunksBuffer;
+        private readonly Channel<(Chunk, ChunkAction)> _chunksBuffer;
 
         private readonly ushort _initialCredits;
 
@@ -164,7 +164,7 @@ namespace RabbitMQ.Stream.Client
             Info = new ConsumerInfo(_config.Stream, _config.Reference, _config.Identifier, null);
             // _chunksBuffer is a channel that is used to buffer the chunks
 
-            _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
+            _chunksBuffer = Channel.CreateBounded<(Chunk, ChunkAction)>(new BoundedChannelOptions(_initialCredits)
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
@@ -469,10 +469,12 @@ namespace RabbitMQ.Stream.Client
                     while (!Token.IsCancellationRequested &&
                            await _chunksBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false)) // 
                     {
-                        while (_chunksBuffer.Reader.TryRead(out var chunk))
+                        while (_chunksBuffer.Reader.TryRead(out var chunkWithAction))
                         {
                             // We send the credit to the server to allow the server to send more messages
                             // we request the credit before process the check to keep the network busy
+
+                            var (chunk, action) = chunkWithAction;
                             try
                             {
                                 if (Token.IsCancellationRequested)
@@ -501,8 +503,18 @@ namespace RabbitMQ.Stream.Client
                             // and close the task
                             if (Token.IsCancellationRequested)
                                 break;
-
-                            await ParseChunk(chunk).ConfigureAwait(false);
+                            switch (action)
+                            {
+                                case ChunkAction.Skip:
+                                    Logger?.LogDebug(
+                                        "The chunk {ChunkId} will be skipped for {EntityInfo}",
+                                        chunk.ChunkId, DumpEntityConfiguration());
+                                    continue; // skip the chunk
+                                case ChunkAction.TryToProcess:
+                                    // continue to process the chunk
+                                    await ParseChunk(chunk).ConfigureAwait(false);
+                                    break;
+                            }
                         }
                     }
 
@@ -596,6 +608,8 @@ namespace RabbitMQ.Stream.Client
                             return;
                         }
 
+                        var skipChunk = ChunkAction.TryToProcess;
+
                         if (_config.Crc32 is not null)
                         {
                             var crcCalculated = BitConverter.ToUInt32(
@@ -609,29 +623,16 @@ namespace RabbitMQ.Stream.Client
                                     DumpEntityConfiguration(),
                                     chunkConsumed);
 
-                                // we can skip the chunk since the CRC does not match
-                                switch (_config.Crc32.CrcFailureAction)
+                                if (_config.Crc32.FailAction != null)
                                 {
-                                    case CrcFailureAction.SkipChunk:
-                                        Logger?.LogWarning(
-                                            "CRC32 fail. The chunk will be skipped by policy. {EntityInfo}, Chunk Consumed {ChunkConsumed}",
-                                            DumpEntityConfiguration(), chunkConsumed);
-                                        return;
-
-                                    case CrcFailureAction.CloseConsumer:
-                                        Logger?.LogError(
-                                            "CRC32 fail. The consumer will be closed by policy. {EntityInfo}, Chunk Consumed {ChunkConsumed}",
-                                            DumpEntityConfiguration(), chunkConsumed);
-                                        // in this case we close the consumer
-                                        await Close().ConfigureAwait(false);
-                                        break;
-                                    default:
-                                        throw new ArgumentOutOfRangeException();
+                                    // if the user has set the FailAction, we call it
+                                    // to allow the user to handle the chunk action
+                                    skipChunk = _config.Crc32.FailAction(this);
                                 }
                             }
                         }
 
-                        await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
+                        await _chunksBuffer.Writer.WriteAsync((deliver.Chunk, skipChunk), Token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {

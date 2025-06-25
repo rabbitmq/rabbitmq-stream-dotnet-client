@@ -2,20 +2,21 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
+
 namespace RabbitMQ.Stream.Client
 {
-    public enum CrcFailureAction
+    public enum ChunkAction
     {
+        /// <summary>
+        /// The consumer will TryToProcess the Chunk.
+        /// </summary>
+        TryToProcess,
         /// <summary>
         /// The consumer will Skip the Chunk and continue processing the next message.
         /// </summary>
-        SkipChunk,
+        Skip
 
-        /// <summary>
-        /// The consumer will receive the message, but it will be marked as invalid and
-        /// the consumer will be closed.
-        /// </summary>
-        CloseConsumer
     }
 
     /// <summary>
@@ -27,6 +28,6 @@ namespace RabbitMQ.Stream.Client
     public interface ICrc32
     {
         byte[] Hash(byte[] data);
-        CrcFailureAction CrcFailureAction { get; set; }
+        Func<IConsumer, ChunkAction> FailAction { get; set; }
     }
 }

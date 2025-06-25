@@ -35,6 +35,9 @@ RabbitMQ.Stream.Client.BindingsSuperStreamSpec.BindingsSuperStreamSpec(string Na
 RabbitMQ.Stream.Client.Chunk.Crc.get -> uint
 RabbitMQ.Stream.Client.Chunk.Data.get -> System.ReadOnlyMemory<byte>
 RabbitMQ.Stream.Client.Chunk.MagicVersion.get -> byte
+RabbitMQ.Stream.Client.ChunkAction
+RabbitMQ.Stream.Client.ChunkAction.Skip = 1 -> RabbitMQ.Stream.Client.ChunkAction
+RabbitMQ.Stream.Client.ChunkAction.TryToProcess = 0 -> RabbitMQ.Stream.Client.ChunkAction
 RabbitMQ.Stream.Client.Client.ClientId.get -> string
 RabbitMQ.Stream.Client.Client.ClientId.init -> void
 RabbitMQ.Stream.Client.Client.Consumers.get -> System.Collections.Generic.IDictionary<byte, (string, RabbitMQ.Stream.Client.ConsumerEvents)>
@@ -109,9 +112,6 @@ RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
 RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference, string identifier, System.Collections.Generic.List<string> partitions) -> void
 RabbitMQ.Stream.Client.ConsumerInfo.Reference.get -> string
-RabbitMQ.Stream.Client.CrcFailureAction
-RabbitMQ.Stream.Client.CrcFailureAction.CloseConsumer = 1 -> RabbitMQ.Stream.Client.CrcFailureAction
-RabbitMQ.Stream.Client.CrcFailureAction.SkipChunk = 0 -> RabbitMQ.Stream.Client.CrcFailureAction
 RabbitMQ.Stream.Client.CreateConsumerException.CreateConsumerException(string s, RabbitMQ.Stream.Client.ResponseCode responseCode) -> void
 RabbitMQ.Stream.Client.CreateException
 RabbitMQ.Stream.Client.CreateException.CreateException(string s) -> void
@@ -176,8 +176,8 @@ RabbitMQ.Stream.Client.IConsumerConfig.ConsumerFilter.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.ICrc32
-RabbitMQ.Stream.Client.ICrc32.CrcFailureAction.get -> RabbitMQ.Stream.Client.CrcFailureAction
-RabbitMQ.Stream.Client.ICrc32.CrcFailureAction.set -> void
+RabbitMQ.Stream.Client.ICrc32.FailAction.get -> System.Func<RabbitMQ.Stream.Client.IConsumer, RabbitMQ.Stream.Client.ChunkAction>
+RabbitMQ.Stream.Client.ICrc32.FailAction.set -> void
 RabbitMQ.Stream.Client.ICrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.Info
 RabbitMQ.Stream.Client.Info.Identifier.get -> string
@@ -326,8 +326,8 @@ RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Hash = 0 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Key = 1 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.StreamCrc32
-RabbitMQ.Stream.Client.StreamCrc32.CrcFailureAction.get -> RabbitMQ.Stream.Client.CrcFailureAction
-RabbitMQ.Stream.Client.StreamCrc32.CrcFailureAction.set -> void
+RabbitMQ.Stream.Client.StreamCrc32.FailAction.get -> System.Func<RabbitMQ.Stream.Client.IConsumer, RabbitMQ.Stream.Client.ChunkAction>
+RabbitMQ.Stream.Client.StreamCrc32.FailAction.set -> void
 RabbitMQ.Stream.Client.StreamCrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.StreamCrc32.StreamCrc32() -> void
 RabbitMQ.Stream.Client.StreamStats
