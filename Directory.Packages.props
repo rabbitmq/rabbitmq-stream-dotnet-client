@@ -20,6 +20,7 @@
     <PackageVersion Include="K4os.Compression.LZ4.Streams" Version="1.2.16" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.6" />
   </ItemGroup>
   <ItemGroup Label="net8.0 specific" Condition="'$(TargetFramework)' == 'net8.0'">
     <!-- RabbitMQ.Stream.Client -->

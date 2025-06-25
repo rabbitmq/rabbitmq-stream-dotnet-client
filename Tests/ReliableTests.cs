@@ -18,7 +18,7 @@ namespace Tests;
 
 public class ReliableTests
 {
-    private readonly ICrc32 _crc32 = new Crc32();
+    private readonly ICrc32 _crc32 = new StreamCrc32() { };
     private readonly ITestOutputHelper _testOutputHelper;
 
     public ReliableTests(ITestOutputHelper testOutputHelper)
@@ -48,7 +48,8 @@ public class ReliableTests
         );
         confirmationPipe.Start();
         confirmationPipe.AddUnConfirmedMessage(1, new Message(Encoding.UTF8.GetBytes($"hello")));
-        confirmationPipe.AddUnConfirmedMessage(2, new List<Message>() { new Message(Encoding.UTF8.GetBytes($"hello")) });
+        confirmationPipe.AddUnConfirmedMessage(2,
+            new List<Message>() { new Message(Encoding.UTF8.GetBytes($"hello")) });
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(confirmationTask);
         Assert.Equal(2, await confirmationTask.Task);
         Assert.Equal(2, l.Count);

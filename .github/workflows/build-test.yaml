@@ -8,6 +8,12 @@ jobs:
     name: build/test on windows-latest
     runs-on: windows-latest
     steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
         with:
@@ -35,6 +41,12 @@ jobs:
     name: build/test on ubuntu-latest
     runs-on: ubuntu-latest
     steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json    
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:

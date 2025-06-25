@@ -130,14 +130,16 @@ namespace RabbitMQ.Stream.Client
     {
         private readonly RawConsumerConfig _config;
 
-        private readonly Channel<Chunk> _chunksBuffer;
+        private readonly Channel<(Chunk, ChunkAction)> _chunksBuffer;
+
         private readonly ushort _initialCredits;
 
         // _completeSubscription is used to notify the ProcessChunks task
         // that the subscription is completed and so it can start to process the chunks
         // this is needed because the socket starts to receive the chunks before the subscription_id is 
         // assigned. 
-        private readonly TaskCompletionSource _completeSubscription = new();
+        private readonly TaskCompletionSource _completeSubscription =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         protected sealed override string DumpEntityConfiguration()
         {
@@ -161,7 +163,8 @@ namespace RabbitMQ.Stream.Client
             Logger.LogDebug("Creating... {DumpEntityConfiguration}", DumpEntityConfiguration());
             Info = new ConsumerInfo(_config.Stream, _config.Reference, _config.Identifier, null);
             // _chunksBuffer is a channel that is used to buffer the chunks
-            _chunksBuffer = Channel.CreateBounded<Chunk>(new BoundedChannelOptions(_initialCredits)
+
+            _chunksBuffer = Channel.CreateBounded<(Chunk, ChunkAction)>(new BoundedChannelOptions(_initialCredits)
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
@@ -220,7 +223,6 @@ namespace RabbitMQ.Stream.Client
         /// MaybeLockDispatch is an optimization to avoid to lock the dispatch
         /// when the consumer is not single active consumer
         /// </summary>
-
         private async Task MaybeLockDispatch()
         {
             if (_config.IsSingleActiveConsumer)
@@ -266,8 +268,8 @@ namespace RabbitMQ.Stream.Client
                         var slice = unCompressedData.Slice(compressOffset, 4);
                         compressOffset += WireFormatting.ReadUInt32(ref slice, out var len);
                         Debug.Assert(len > 0);
-                        slice = unCompressedData.Slice(compressOffset, len);
-                        Debug.Assert(slice.Length >= len);
+                        var sliceMsg = unCompressedData.Slice(compressOffset, len);
+                        Debug.Assert(sliceMsg.Length == len);
                         compressOffset += (int)len;
 
                         // Here we use the Message.From(ref ReadOnlySequence<byte> seq ..) method to parse the message
@@ -275,7 +277,7 @@ namespace RabbitMQ.Stream.Client
                         // Since the ParseChunk is async and we cannot use the ref SequenceReader<byte> reader
                         // See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250 for more details
 
-                        var message = Message.From(ref slice, len);
+                        var message = Message.From(ref sliceMsg, len);
                         return message;
                     }
                     catch (Exception e)
@@ -461,15 +463,18 @@ namespace RabbitMQ.Stream.Client
                 // need to wait the subscription is completed 
                 // else the _subscriberId could be incorrect
                 _completeSubscription.Task.Wait();
+
                 try
                 {
                     while (!Token.IsCancellationRequested &&
                            await _chunksBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false)) // 
                     {
-                        while (_chunksBuffer.Reader.TryRead(out var chunk))
+                        while (_chunksBuffer.Reader.TryRead(out var chunkWithAction))
                         {
                             // We send the credit to the server to allow the server to send more messages
                             // we request the credit before process the check to keep the network busy
+
+                            var (chunk, action) = chunkWithAction;
                             try
                             {
                                 if (Token.IsCancellationRequested)
@@ -498,8 +503,21 @@ namespace RabbitMQ.Stream.Client
                             // and close the task
                             if (Token.IsCancellationRequested)
                                 break;
-
-                            await ParseChunk(chunk).ConfigureAwait(false);
+                            switch (action)
+                            {
+                                case ChunkAction.Skip:
+                                    // the chunk will be skipped due of CRC32 fail
+                                    Logger?.LogWarning(
+                                        "The chunk {ChunkId} will be skipped for {EntityInfo}",
+                                        chunk.ChunkId, DumpEntityConfiguration());
+                                    continue; // skip the chunk
+                                case ChunkAction.TryToProcess:
+                                    // That's what happens most of the time, and this is the default action
+                                    await ParseChunk(chunk).ConfigureAwait(false);
+                                    break;
+                                default:
+                                    throw new ArgumentOutOfRangeException();
+                            }
                         }
                     }
 
@@ -593,6 +611,8 @@ namespace RabbitMQ.Stream.Client
                             return;
                         }
 
+                        var chunkAction = ChunkAction.TryToProcess;
+
                         if (_config.Crc32 is not null)
                         {
                             var crcCalculated = BitConverter.ToUInt32(
@@ -606,13 +626,17 @@ namespace RabbitMQ.Stream.Client
                                     DumpEntityConfiguration(),
                                     chunkConsumed);
 
-                                throw new CrcException(
-                                    $"CRC32 does not match, server crc: {deliver.Chunk.Crc}, local crc: {crcCalculated}, {DumpEntityConfiguration()}, " +
-                                    $"Chunk Consumed {chunkConsumed}");
+                                // if the user has set the FailAction, we call it
+                                // to allow the user to handle the chunk action
+                                // if the FailAction is not set, we skip the chunk
+                                chunkAction = _config.Crc32.FailAction?.Invoke(this) ?? ChunkAction.Skip;
                             }
                         }
 
-                        await _chunksBuffer.Writer.WriteAsync(deliver.Chunk, Token).ConfigureAwait(false);
+                        // The chunkAction is passed to the _chunksBuffer because the ProcessChunks task
+                        // asks for the credits in a Task. If we skip the chunk here no more credits will be requested
+                        await _chunksBuffer.Writer.WriteAsync((deliver.Chunk, chunkAction), Token)
+                            .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {

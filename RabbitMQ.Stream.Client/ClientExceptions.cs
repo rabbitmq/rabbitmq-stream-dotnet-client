@@ -177,14 +177,6 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public class CrcException : Exception
-    {
-        public CrcException(string s)
-            : base(s)
-        {
-        }
-    }
-
     public class TooManyConnectionsException : Exception
     {
         public TooManyConnectionsException(string s)

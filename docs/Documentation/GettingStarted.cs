@@ -121,11 +121,11 @@ public static class GettingStarted
         }
 
 
-        confirmationTaskCompletionSource.Task.Wait(); // <7>
+        await confirmationTaskCompletionSource.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false); // <7>
         await producer.Close().ConfigureAwait(false); // <8>
         // end::sample-producer[]
 
-        var consumerTaskCompletionSource = new TaskCompletionSource<int>();
+        var consumerTaskCompletionSource = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var consumerCount = 0;
         // Create a consumer
         // tag::sample-consumer[]
@@ -149,7 +149,7 @@ public static class GettingStarted
                 consumerLogger // <4>
             )
             .ConfigureAwait(false);
-        consumerTaskCompletionSource.Task.Wait(); // <5>
+        await consumerTaskCompletionSource.Task.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false); // <5>
         await consumer.Close().ConfigureAwait(false); // <6>
         // end::sample-consumer[]
 

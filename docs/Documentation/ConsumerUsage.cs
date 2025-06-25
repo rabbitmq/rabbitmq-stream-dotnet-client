@@ -128,15 +128,7 @@ public class ConsumerUsage
         await streamSystem.Close().ConfigureAwait(false);
     }
 
-    // tag::consumer-creation-crc[]
-    private class UserCrc32 : ICrc32 // <1>
-    {
-        public byte[] Hash(byte[] data)
-        {
-            // Here we use the System.IO.Hashing.Crc32 implementation
-            return System.IO.Hashing.Crc32.Hash(data);
-        }
-    }
+   
 
     public static async Task CreateConsumerWithCrc()
     {
@@ -148,7 +140,10 @@ public class ConsumerUsage
                 streamSystem,
                 "my-stream")
             {
-                Crc32 = new UserCrc32(), // <2>
+                Crc32 = new StreamCrc32() // <1>
+                {
+                    FailAction = (consumerInstance) => ChunkAction.Skip // <2>
+                }, 
                 OffsetSpec = new OffsetTypeTimestamp(),
                 // end::consumer-creation-crc[]
                 MessageHandler = async (stream, consumer, context, message) => // <4>

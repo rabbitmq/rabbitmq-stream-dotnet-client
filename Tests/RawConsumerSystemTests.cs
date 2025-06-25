@@ -20,7 +20,7 @@ namespace Tests
 {
     public class ConsumerSystemTests
     {
-        private readonly ICrc32 _crc32 = new Crc32();
+        private readonly ICrc32 _crc32 = new StreamCrc32();
         private readonly ITestOutputHelper testOutputHelper;
 
         public ConsumerSystemTests(ITestOutputHelper testOutputHelper)

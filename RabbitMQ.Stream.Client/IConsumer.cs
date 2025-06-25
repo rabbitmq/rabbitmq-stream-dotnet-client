@@ -71,10 +71,9 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
         }
     }
 
-    // enables the check of the crc on the delivery.
-    // the server will send the crc for each chunk and the client will check it.
-    // It is not enabled by default because it is could reduce the performance.
-    public ICrc32 Crc32 { get; set; } = null;
+    // It is enabled by default. You can disable it by setting it to null.
+    // It is recommended to keep it enabled. Disable it only for performance reasons.
+    public ICrc32 Crc32 { get; set; } = new StreamCrc32();
 }
 
 public class ConsumerInfo : Info
@@ -90,6 +89,7 @@ public class ConsumerInfo : Info
     public override string ToString()
     {
         var partitions = Partitions ?? [];
-        return $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", partitions)})";
+        return
+            $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", partitions)})";
     }
 }
