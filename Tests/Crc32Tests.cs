@@ -97,7 +97,7 @@ public class Crc32Tests(ITestOutputHelper testOutputHelper)
     /// Here we test an edge case where  Crc32 is wrong,
     /// but the consumer should still process the chunk.
     /// by given the FailAction as TryToProcess.
-    /// In real life when a a CRC32 is wrong the consumer can't process the chunk,
+    /// In real life when a CRC32 is wrong the consumer can't process the chunk,
     /// this is to give more flexibility to the user.
     /// </summary>
     [Fact]
@@ -118,7 +118,11 @@ public class Crc32Tests(ITestOutputHelper testOutputHelper)
         await SystemUtils.PublishMessages(system, stream, 3, "1", testOutputHelper);
         await SystemUtils.WaitAsync();
         var messageContext = await completionSource.Task;
-        Assert.True(0 == messageContext.ChunkId);
+        if (messageContext.ChunkId != 0)
+        {
+            Assert.Fail($"Expected the first chunk to be processed, but it was not.ChunkId {messageContext.ChunkId}");
+        }
+
         Assert.True(consumer.IsOpen());
         await consumer.Close();
         await SystemUtils.CleanUpStreamSystem(system, stream);
