@@ -53,10 +53,13 @@ public class Crc32Tests(ITestOutputHelper testOutputHelper)
         };
         var consumer = await Consumer.Create(consumerConfig);
         await SystemUtils.PublishMessages(system, stream, 3, "1", testOutputHelper);
-        await SystemUtils.WaitAsync();
+        await SystemUtils.WaitAsync(TimeSpan.FromMilliseconds(700));
         await SystemUtils.PublishMessages(system, stream, 5, "2", testOutputHelper);
         var messageContext = await completionSource.Task;
-        Assert.True(1 != messageContext.ChunkId);
+        if (messageContext.ChunkId == 0)
+        {
+            Assert.Fail($"Expected the second chunk to be processed, but it was not.ChunkId {messageContext.ChunkId}");
+        }
         Assert.True(consumer.IsOpen());
         await consumer.Close();
         await SystemUtils.CleanUpStreamSystem(system, stream);
