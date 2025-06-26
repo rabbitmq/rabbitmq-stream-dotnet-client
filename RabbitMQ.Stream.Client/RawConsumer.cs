@@ -399,6 +399,15 @@ namespace RabbitMQ.Stream.Client
                     messageOffset = 0; // it is used to calculate the message offset. It is the chunkId + messageOffset
                 while (numRecords != 0)
                 {
+
+                    // request credit to the server when half of the chunk is processed
+                    if (_config.FlowControl.Strategy ==
+                        ConsumerFlowStrategy.CreditWhenHalfChunkProcessed && numRecords == chunk.NumRecords / 2)
+                    {
+                        // Request the credit to the server
+                        await _client.Credit(EntityId, 1).ConfigureAwait(false);
+                    }
+
                     // (entryType & 0x80) == 0 is standard entry
                     // (entryType & 0x80) != 0 is compress entry (used for subEntry)
                     // In Case of subEntry the entryType is the compression type
@@ -479,7 +488,17 @@ namespace RabbitMQ.Stream.Client
                             {
                                 if (Token.IsCancellationRequested)
                                     break;
-                                await _client.Credit(EntityId, 1).ConfigureAwait(false);
+                                // Request the credit to the server
+                                if (_config.FlowControl.Strategy ==
+                                    ConsumerFlowStrategy.CreditBeforeParseChunk)
+                                {
+                                    // Request the credit before processing the chunk
+                                    // this is the default behavior
+                                    // it is useful to keep the network busy
+                                    // and avoid to wait for the next chunk
+                                    await _client.Credit(EntityId, 1)
+                                        .ConfigureAwait(false);
+                                }
                             }
                             catch (InvalidOperationException)
                             {
@@ -514,6 +533,16 @@ namespace RabbitMQ.Stream.Client
                                 case ChunkAction.TryToProcess:
                                     // That's what happens most of the time, and this is the default action
                                     await ParseChunk(chunk).ConfigureAwait(false);
+
+                                    if (_config.FlowControl.Strategy == ConsumerFlowStrategy.CreditAfterParseChunk)
+                                    {
+                                        // Request the credit after processing the chunk
+                                        // this is useful when processing the chunk takes time
+                                        // it avoids flooding the network with credits
+                                        await _client.Credit(EntityId, 1)
+                                            .ConfigureAwait(false);
+                                    }
+
                                     break;
                                 default:
                                     throw new ArgumentOutOfRangeException();

@@ -26,7 +26,7 @@ public class FirstCrc32IsWrong : ICrc32
             : System.IO.Hashing.Crc32.Hash(data);
     }
 
-    public Func<IConsumer, ChunkAction> FailAction { get; set; }
+    public Func<IConsumer, ChunkAction> FailAction { get; init; }
 }
 
 public class Crc32Tests(ITestOutputHelper testOutputHelper)

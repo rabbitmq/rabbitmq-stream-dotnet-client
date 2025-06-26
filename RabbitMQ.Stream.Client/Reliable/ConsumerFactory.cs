@@ -58,6 +58,7 @@ public abstract class ConsumerFactory : ReliableBase
             ConsumerFilter = _consumerConfig.Filter,
             Crc32 = _consumerConfig.Crc32,
             Identifier = _consumerConfig.Identifier,
+            FlowControl = _consumerConfig.FlowControl,
             ConnectionClosedHandler = async (closeReason) =>
             {
                 if (IsClosedNormally(closeReason))
@@ -154,6 +155,7 @@ public abstract class ConsumerFactory : ReliableBase
                     Crc32 = _consumerConfig.Crc32,
                     OffsetSpec = offsetSpecs,
                     Identifier = _consumerConfig.Identifier,
+                    FlowControl = _consumerConfig.FlowControl,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
                     {
                         if (IsClosedNormally(closeReason))

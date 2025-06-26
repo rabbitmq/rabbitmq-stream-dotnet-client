@@ -74,17 +74,15 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
     // It is enabled by default. You can disable it by setting it to null.
     // It is recommended to keep it enabled. Disable it only for performance reasons.
     public ICrc32 Crc32 { get; set; } = new StreamCrc32();
+
+    public FlowControl FlowControl { get; set; } = new FlowControl();
 }
 
-public class ConsumerInfo : Info
-{
-    public string Reference { get; }
-
-    public ConsumerInfo(string stream, string reference, string identifier, List<string> partitions) : base(stream,
+public class ConsumerInfo(string stream, string reference, string identifier, List<string> partitions)
+    : Info(stream,
         identifier, partitions)
-    {
-        Reference = reference;
-    }
+{
+    public string Reference { get; } = reference;
 
     public override string ToString()
     {
@@ -92,4 +90,25 @@ public class ConsumerInfo : Info
         return
             $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", partitions)})";
     }
+}
+
+public enum ConsumerFlowStrategy
+{
+    /// <summary>
+    /// Request credits before parsing the chunk.
+    /// </summary>
+    CreditBeforeParseChunk,
+
+    /// <summary>
+    ///
+    /// </summary>
+    CreditAfterParseChunk,
+
+    CreditWhenHalfChunkProcessed
+}
+
+public class FlowControl
+{
+    public ConsumerFlowStrategy Strategy { get; set; } = ConsumerFlowStrategy.CreditBeforeParseChunk;
+
 }
