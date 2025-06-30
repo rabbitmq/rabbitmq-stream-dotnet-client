@@ -109,6 +109,10 @@ RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.get -> System.Func<RabbitMQ.Str
 RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.set -> void
 RabbitMQ.Stream.Client.ConsumerFilter.Values.get -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
+RabbitMQ.Stream.Client.ConsumerFlowStrategy
+RabbitMQ.Stream.Client.ConsumerFlowStrategy.ConsumerCredits = 2 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
+RabbitMQ.Stream.Client.ConsumerFlowStrategy.CreditsAfterParseChunk = 1 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
+RabbitMQ.Stream.Client.ConsumerFlowStrategy.CreditsBeforeParseChunk = 0 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
 RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference, string identifier, System.Collections.Generic.List<string> partitions) -> void
 RabbitMQ.Stream.Client.ConsumerInfo.Reference.get -> string
@@ -137,6 +141,10 @@ RabbitMQ.Stream.Client.EntityCommonConfig.Identifier.get -> string
 RabbitMQ.Stream.Client.EntityCommonConfig.Identifier.set -> void
 RabbitMQ.Stream.Client.EntityCommonConfig.MetadataHandler.get -> System.Func<RabbitMQ.Stream.Client.MetaDataUpdate, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.EntityCommonConfig.MetadataHandler.set -> void
+RabbitMQ.Stream.Client.FlowControl
+RabbitMQ.Stream.Client.FlowControl.FlowControl() -> void
+RabbitMQ.Stream.Client.FlowControl.Strategy.get -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
+RabbitMQ.Stream.Client.FlowControl.Strategy.set -> void
 RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Message message, System.Collections.Generic.List<string> partitions) -> System.Threading.Tasks.Task<System.Collections.Generic.List<string>>
 RabbitMQ.Stream.Client.HeartBeatHandler.HeartBeatHandler(System.Func<System.Threading.Tasks.ValueTask<bool>> sendHeartbeatFunc, System.Func<string, string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse>> close, int heartbeat, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.HeartBeatHandler> logger = null) -> void
 RabbitMQ.Stream.Client.IClient.ClientId.get -> string
@@ -173,11 +181,13 @@ RabbitMQ.Stream.Client.ICommandVersions.Command.get -> ushort
 RabbitMQ.Stream.Client.ICommandVersions.MaxVersion.get -> ushort
 RabbitMQ.Stream.Client.ICommandVersions.MinVersion.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.ConsumerFilter.set -> void
+RabbitMQ.Stream.Client.IConsumerConfig.FlowControl.get -> RabbitMQ.Stream.Client.FlowControl
+RabbitMQ.Stream.Client.IConsumerConfig.FlowControl.set -> void
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.IConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.ICrc32
 RabbitMQ.Stream.Client.ICrc32.FailAction.get -> System.Func<RabbitMQ.Stream.Client.IConsumer, RabbitMQ.Stream.Client.ChunkAction>
-RabbitMQ.Stream.Client.ICrc32.FailAction.set -> void
+RabbitMQ.Stream.Client.ICrc32.FailAction.init -> void
 RabbitMQ.Stream.Client.ICrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.Info
 RabbitMQ.Stream.Client.Info.Identifier.get -> string
@@ -228,6 +238,7 @@ RabbitMQ.Stream.Client.PublishFilter.PublishFilter() -> void
 RabbitMQ.Stream.Client.PublishFilter.PublishFilter(byte publisherId, System.Collections.Generic.List<(ulong, RabbitMQ.Stream.Client.Message)> messages, System.Func<RabbitMQ.Stream.Client.Message, string> filterValueExtractor, Microsoft.Extensions.Logging.ILogger logger) -> void
 RabbitMQ.Stream.Client.PublishFilter.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.PublishFilter.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.RawConsumer.Credits() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.RawConsumer.Info.get -> RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.RawConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.RawConsumerConfig.ConnectionClosedHandler.set -> void
@@ -257,6 +268,8 @@ RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Crc32.get -> RabbitMQ.Stream.Clie
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Crc32.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Filter.get -> RabbitMQ.Stream.Client.ConsumerFilter
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.Filter.set -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.FlowControl.get -> RabbitMQ.Stream.Client.FlowControl
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.FlowControl.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.get -> ushort
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.InitialCredits.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerFactory._consumer -> RabbitMQ.Stream.Client.IConsumer
@@ -327,7 +340,7 @@ RabbitMQ.Stream.Client.RoutingStrategyType.Hash = 0 -> RabbitMQ.Stream.Client.Ro
 RabbitMQ.Stream.Client.RoutingStrategyType.Key = 1 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.StreamCrc32
 RabbitMQ.Stream.Client.StreamCrc32.FailAction.get -> System.Func<RabbitMQ.Stream.Client.IConsumer, RabbitMQ.Stream.Client.ChunkAction>
-RabbitMQ.Stream.Client.StreamCrc32.FailAction.set -> void
+RabbitMQ.Stream.Client.StreamCrc32.FailAction.init -> void
 RabbitMQ.Stream.Client.StreamCrc32.Hash(byte[] data) -> byte[]
 RabbitMQ.Stream.Client.StreamCrc32.StreamCrc32() -> void
 RabbitMQ.Stream.Client.StreamStats

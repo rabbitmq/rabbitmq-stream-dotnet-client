@@ -15,6 +15,7 @@ namespace RabbitMQ.Stream.Client
         internal static readonly TimeSpan MidWait = TimeSpan.FromSeconds(3);
         internal static readonly TimeSpan LongWait = TimeSpan.FromSeconds(10);
         internal const ushort ConsumerInitialCredits = 2;
+
         internal const byte Version1 = 1;
         internal const byte Version2 = 2;
         internal const string SubscriptionPropertyFilterPrefix = "filter.";

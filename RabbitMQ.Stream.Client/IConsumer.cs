@@ -74,17 +74,15 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
     // It is enabled by default. You can disable it by setting it to null.
     // It is recommended to keep it enabled. Disable it only for performance reasons.
     public ICrc32 Crc32 { get; set; } = new StreamCrc32();
+
+    public FlowControl FlowControl { get; set; } = new FlowControl();
 }
 
-public class ConsumerInfo : Info
-{
-    public string Reference { get; }
-
-    public ConsumerInfo(string stream, string reference, string identifier, List<string> partitions) : base(stream,
+public class ConsumerInfo(string stream, string reference, string identifier, List<string> partitions)
+    : Info(stream,
         identifier, partitions)
-    {
-        Reference = reference;
-    }
+{
+    public string Reference { get; } = reference;
 
     public override string ToString()
     {
@@ -92,4 +90,37 @@ public class ConsumerInfo : Info
         return
             $"ConsumerInfo(Stream={Stream}, Reference={Reference}, Identifier={Identifier}, Partitions={string.Join(",", partitions)})";
     }
+}
+
+public enum ConsumerFlowStrategy
+{
+    /// <summary>
+    /// Request credits before parsing the chunk.
+    /// Default strategy. The best for performance.
+    /// </summary>
+    CreditsBeforeParseChunk,
+
+    /// <summary>
+    /// Request credits after parsing the chunk.
+    /// It can be useful if the parsing is expensive and you want to avoid requesting credits too early.
+    /// Useful for slow processing of chunks.
+    /// </summary>
+    CreditsAfterParseChunk,
+
+    /// <summary>
+    /// The user manually requests credits with <see cref="RawConsumer.Credits()"/>
+    /// Everything is done manually, so the user has full control over the flow of the consumer.
+    /// </summary>
+    ConsumerCredits
+}
+
+/// <summary>
+/// FlowControl is used to control the flow of the consumer.
+/// See <see cref="ConsumerFlowStrategy"/> for the available strategies.
+/// Open for future extensions.
+/// </summary>ra
+public class FlowControl
+{
+    public ConsumerFlowStrategy Strategy { get; set; } = ConsumerFlowStrategy.CreditsBeforeParseChunk;
+
 }

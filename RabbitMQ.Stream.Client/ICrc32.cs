@@ -36,6 +36,6 @@ namespace RabbitMQ.Stream.Client
         /// It is possible to add custom logic to handle the failure, such as logging.
         /// The code here should be safe 
         /// </summary>
-        Func<IConsumer, ChunkAction> FailAction { get; set; }
+        Func<IConsumer, ChunkAction> FailAction { get; init; }
     }
 }

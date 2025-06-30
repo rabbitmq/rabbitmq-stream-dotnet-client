@@ -115,21 +115,10 @@ public record ConsumerConfig : ReliableConfig
     /// <summary>
     /// Enable the check of the crc on the delivery when set to an implementation
     /// of <see cref="ICrc32"><code>ICrc32</code></see>.
-    /// The server will send the crc for each chunk and the client will check it.
-    /// It is not enabled by default. In some case it is could reduce the performance.
-    /// ICrc32 is an interface that can be implemented by the user with the desired implementation.
-    /// The client is tested with the System.IO.Hashing.Crc32 implementation, like:
-    ///<c>
-    /// private class UserCrc32 : ICrc32 
-    /// {
-    /// public byte[] Hash(byte[] data)
-    /// {
-    /// return System.IO.Hashing.Crc32.Hash(data);
-    /// }
-    /// }
-    /// </c>
     /// </summary>
-    public ICrc32 Crc32 { get; set; } = null;
+    public ICrc32 Crc32 { get; set; } = new StreamCrc32();
+
+    public FlowControl FlowControl { get; set; } = new FlowControl();
 
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {

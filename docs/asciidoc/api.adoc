@@ -873,7 +873,66 @@ the code in the `FailAction`  should be short, fast and safe, as it is executed 
 It is recommended to leave it enabled, as it allows the client library to detect corrupted chunks and avoid parsing them.
 Disabling the CRC32 _could_ improve performance, but it is not recommended as it can lead to parsing corrupted chunks and unexpected behavior.
 
-[[consumer-reconnect-strategy]]
+[[consumer-flow-control]]
+===== Flow Control
+
+This section covers how a consumer can tell the broker when to send more messages.
+By default, the broker keeps sending messages as soon as a chunk is received. This strategy works fine if message processing is fast enough. 
+
+With `ConsumerFlowStrategy` it is possible to control when the broker sends more messages to the consumer.
+
+.Setting a consumer flow control strategy
+[source,c#,indent=0]
+--------
+include::{test-examples}/SetFlowControl.cs[tag=set-flow-control]
+--------
+
+<1> Set the flow control strategy
+<2> Set the flow control strategy to `ConsumerFlowStrategy.CreditAfterParseChunk` as soon as the chunk is parsed. See `ConsumerFlowStrategy` for more details.
+If message processing takes longer, one can be tempted to process messages in parallel with `Tasks`.
+This will make the handle method return immediately and the broker will keep sending messages, potentially overflowing the consumer.
+
+What we miss in the parallel processing case is a way to tell the library we are done processing a message and that we are ready at some point to handle more messages. 
+This is the goal of the `consumer.RequestCredits()` method.
+With `consumer.RequestCredits()` the consumer can tell the broker it is ready to receive more messages.
+It is possible also the `Pause` the consumer by not asking for credits.
+
+.Setting a consumer manual control strategy
+[source,c#,indent=0]
+--------
+include::{test-examples}/SetFlowControl.cs[tag=set-flow-control-manual]
+--------
+
+<1> Set the flow control strategy
+<2> Set the flow control strategy to `ConsumerFlowStrategy.ConsumerCredits` to control when the broker sends more messages.
+<3> Request credits when the consumer is ready to receive more messages.
+
+`ConsumerFlowStrategy` values:
+
+[%header,cols=2*]
+|===
+|Parameter Name
+|Description
+
+|`CreditsBeforeParseChunk`
+|The broker sends messages to the consumer before parsing the chunk. (Default)
+
+|`CreditsAfterParseChunk`
+|The broker sends messages to the consumer after parsing the chunk.
+
+|`ConsumerCredits`
+|The broker sends messages to the consumer only when the consumer requests credits.
+|===
+
+[NOTE]
+.Manual flow control with `ConsumerCredits` 
+====
+With manual flow control, the consumer can control when the broker sends more messages.
+It gives all the control user side. If the server doesn't receive a request for credits, it will not send more messages.
+So you could end up with a consumer not consuming anything.
+====
+
+
 [[specifying-an-offset]]
 ===== Specifying an Offset
 
