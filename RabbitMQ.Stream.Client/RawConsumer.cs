@@ -226,7 +226,7 @@ namespace RabbitMQ.Stream.Client
         private async Task MaybeLockDispatch()
         {
             if (_config.IsSingleActiveConsumer)
-                await PromotionLock.WaitAsync(Token).ConfigureAwait(false);
+                await PromotionLock.WaitAsync(TimeSpan.FromSeconds(5), Token).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -309,9 +309,14 @@ namespace RabbitMQ.Stream.Client
                         {
                             if (!Token.IsCancellationRequested)
                             {
+                                // we need to lock the dispatch only if the consumer is single active consumer
+                                await MaybeLockDispatch().ConfigureAwait(false);
+                                var lockedIsPromotedAsActive = IsPromotedAsActive;
+                                MaybeReleaseLock();
+
                                 // it is usually active
                                 // it is useful only in single active consumer
-                                if (IsPromotedAsActive)
+                                if (lockedIsPromotedAsActive)
                                 {
                                     if (_status != EntityStatus.Open)
                                     {
@@ -399,7 +404,6 @@ namespace RabbitMQ.Stream.Client
                     messageOffset = 0; // it is used to calculate the message offset. It is the chunkId + messageOffset
                 while (numRecords != 0)
                 {
-
                     // request credit to the server when half of the chunk is processed
                     if (_config.FlowControl.Strategy ==
                         ConsumerFlowStrategy.CreditWhenHalfChunkProcessed && numRecords == chunk.NumRecords / 2)
@@ -432,15 +436,7 @@ namespace RabbitMQ.Stream.Client
                         for (ulong z = 0; z < subEntryChunk.NumRecordsInBatch; z++)
                         {
                             var message = MessageFromSequence(ref unCompressedData, ref compressOffset);
-                            await MaybeLockDispatch().ConfigureAwait(false);
-                            try
-                            {
-                                await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
-                            }
-                            finally
-                            {
-                                MaybeReleaseLock();
-                            }
+                            await DispatchMessage(message, messageOffset++).ConfigureAwait(false);
                         }
 
                         numRecords -= subEntryChunk.NumRecordsInBatch;

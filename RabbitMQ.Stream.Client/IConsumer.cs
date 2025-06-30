@@ -96,17 +96,30 @@ public enum ConsumerFlowStrategy
 {
     /// <summary>
     /// Request credits before parsing the chunk.
+    /// Default strategy. The best for performance.
     /// </summary>
     CreditBeforeParseChunk,
 
     /// <summary>
-    ///
+    /// Request credits after parsing the chunk.
+    /// It can be useful if the parsing is expensive and you want to avoid requesting credits too early.
+    /// Useful for slow processing of chunks.
     /// </summary>
     CreditAfterParseChunk,
 
+    /// <summary>
+    /// Request credits when half of the chunk is processed.
+    /// In the middle between CreditBeforeParseChunk and CreditAfterParseChunk.
+    /// Can be useful if you want to balance the performance and the processing time.
+    /// </summary>
     CreditWhenHalfChunkProcessed
 }
 
+/// <summary>
+/// FlowControl is used to control the flow of the consumer.
+/// See <see cref="ConsumerFlowStrategy"/> for the available strategies.
+/// Open for future extensions.
+/// </summary>ra
 public class FlowControl
 {
     public ConsumerFlowStrategy Strategy { get; set; } = ConsumerFlowStrategy.CreditBeforeParseChunk;

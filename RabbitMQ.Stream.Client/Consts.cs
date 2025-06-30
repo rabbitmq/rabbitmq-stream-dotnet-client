@@ -15,8 +15,6 @@ namespace RabbitMQ.Stream.Client
         internal static readonly TimeSpan MidWait = TimeSpan.FromSeconds(3);
         internal static readonly TimeSpan LongWait = TimeSpan.FromSeconds(10);
         internal const ushort ConsumerInitialCredits = 2;
-        internal const ushort MaxRequestsCredits = 20;
-        internal const ushort DefaultRequestsCredits = 1;
 
         internal const byte Version1 = 1;
         internal const byte Version2 = 2;
