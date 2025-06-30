@@ -105,6 +105,9 @@ namespace RabbitMQ.Stream.Client
                 case { Values.Count: 0 }:
                     throw new ArgumentException("Values must be provided when Filter is set");
             }
+
+            FlowControl ??= new FlowControl();
+
         }
 
         internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
@@ -177,7 +180,7 @@ namespace RabbitMQ.Stream.Client
             ProcessChunks();
         }
 
-        // if a user specify a custom offset 
+        // if a user specifies a custom offset, 
         // the _client must filter messages
         // and dispatch only the messages starting from the 
         // user offset.
@@ -201,7 +204,7 @@ namespace RabbitMQ.Stream.Client
         // by default is active
         // in case of single active consumer can be not active
         // it is important to skip the messages in the chunk that 
-        // it is in progress. In this way the promotion will be faster
+        // it is in progress. In this way, the promotion will be faster
         // avoiding to block the consumer handler if the user put some
         // long task
         private bool IsPromotedAsActive { get; set; }
@@ -214,8 +217,8 @@ namespace RabbitMQ.Stream.Client
 
         /// <summary>
         /// MaybeLockDispatch locks the dispatch of the messages
-        /// it is needed only when the consumer is single active consumer
-        /// MaybeLockDispatch is an optimization to avoid to lock the dispatch
+        /// it is needed only when the consumer is single active consumer.
+        /// MaybeLockDispatch is an optimization to avoid lock the dispatch
         /// when the consumer is not single active consumer
         /// </summary>
         private async Task MaybeLockDispatch()
@@ -487,7 +490,7 @@ namespace RabbitMQ.Stream.Client
                             {
                                 // The client has been closed
                                 // Suppose a scenario where the client is closed and the ProcessChunks task is still running
-                                // we remove the the subscriber from the client and we close the client
+                                // we remove the subscriber from the client and we close the client
                                 // The ProcessChunks task will try to send the credit to the server
                                 // The client will throw an InvalidOperationException
                                 // since the connection is closed
@@ -519,8 +522,6 @@ namespace RabbitMQ.Stream.Client
 
                                     if (_config.FlowControl.Strategy == ConsumerFlowStrategy.CreditsAfterParseChunk)
                                     {
-                                        // Request the credit after processing the chunk
-                                        // this is useful when processing the chunk takes time
                                         // it avoids flooding the network with credits
                                         await _client.Credit(EntityId, 1)
                                             .ConfigureAwait(false);
@@ -610,7 +611,7 @@ namespace RabbitMQ.Stream.Client
                         chunkConsumed++;
                         // Send the chunk to the _chunksBuffer
                         // in this way the chunks are processed in a separate thread
-                        // this wont' block the socket thread
+                        // this won't block the socket thread
                         // introduced https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/250
                         if (Token.IsCancellationRequested)
                         {
@@ -654,7 +655,7 @@ namespace RabbitMQ.Stream.Client
                     {
                         // The consumer is closing from the user but some chunks are still in the buffer
                         // simply skip the chunk since the Token.IsCancellationRequested is true
-                        // the catch is needed to avoid to propagate the exception to the socket thread.
+                        // the catch is needed to avoid propagating the exception to the socket thread.
                         Logger?.LogWarning(
                             "OperationCanceledException. {EntityInfo} has been closed while consuming messages. " +
                             "Token.IsCancellationRequested: {IsCancellationRequested}",
@@ -731,7 +732,7 @@ namespace RabbitMQ.Stream.Client
                 // at this point the server has removed the consumer from the list 
                 // and the unsubscribe is not needed anymore (ignoreIfClosed = true)
                 // we call the Close to re-enter to the standard behavior
-                // ignoreIfClosed is an optimization to avoid to send the unsubscribe
+                // ignoreIfClosed is an optimization to avoid sending the unsubscribe
                 _config.Pool.RemoveConsumerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
                 await Shutdown(_config, true).ConfigureAwait(false);
                 _config.MetadataHandler?.Invoke(metaDataUpdate);
@@ -782,7 +783,7 @@ namespace RabbitMQ.Stream.Client
         public override async Task<ResponseCode> Close()
         {
             // when the consumer is closed we must be sure that the 
-            // the subscription is completed to avoid problems with the connection
+            // subscription is completed to avoid problems with the connection
             // It could happen when the closing is called just after the creation
             _completeSubscription.Task.Wait();
             return await Shutdown(_config).ConfigureAwait(false);
@@ -808,10 +809,15 @@ namespace RabbitMQ.Stream.Client
             await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Request credits from the server.
+        /// Valid only if the ConsumerFlowStrategy is set to ConsumerFlowStrategy.ConsumerCredits.
+        /// </summary>
         public async Task Credits()
         {
             await Credits(1).ConfigureAwait(false);
         }
+
         private async Task Credits(ushort credits)
         {
             if (credits < 1)

@@ -22,8 +22,9 @@ var cts = new CancellationTokenSource();
 RawConsumer? rawConsumer = null;
 _ = Task.Run(async () =>
 {
-    // simulate a background task that requests credits periodically
-    // each 2 seconds request credits from the raw consumer
+    // Simulate a background task that requests credits periodically
+    // each two-second request credits from the raw consumer.
+    // You will see the messages coming in the console each time the credits are requested.
     while (!cts.IsCancellationRequested)
     {
         await Task.Delay(2000, cts.Token).ConfigureAwait(false);
