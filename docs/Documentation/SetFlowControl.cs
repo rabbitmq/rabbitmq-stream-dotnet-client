@@ -37,11 +37,11 @@ public class SetFlowControl
         {
             FlowControl = new FlowControl() // <1>
             {
-                Strategy = ConsumerFlowStrategy.ManualCreditsRequest, // <2>
+                Strategy = ConsumerFlowStrategy.ConsumerCredits, // <2>
             },
             // here we simulate a manual flow control
             // when the consumer has consumed 10 messages, it will request more credits
-            MessageHandler = (_, rawConsumer, _, _) => consumed++ % 10 == 0 ? rawConsumer.RequestCredits() : // <3>
+            MessageHandler = (_, rawConsumer, _, _) => consumed++ % 10 == 0 ? rawConsumer.Credits() : // <3>
                 Task.CompletedTask
         };
         // end::set-flow-control-manual[]

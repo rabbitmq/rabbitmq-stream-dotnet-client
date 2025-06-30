@@ -27,7 +27,7 @@ _ = Task.Run(async () =>
     while (!cts.IsCancellationRequested)
     {
         await Task.Delay(2000, cts.Token).ConfigureAwait(false);
-        if (rawConsumer != null) await rawConsumer.RequestCredits().ConfigureAwait(false);
+        if (rawConsumer != null) await rawConsumer.Credits().ConfigureAwait(false);
         else Console.WriteLine("Credits requested...");
     }
 }).ConfigureAwait(false);
@@ -37,7 +37,7 @@ var consumer = await Consumer.Create(
     new ConsumerConfig(streamSystem, StreamName)
     {
         OffsetSpec = new OffsetTypeFirst(),
-        FlowControl = new FlowControl() { Strategy = ConsumerFlowStrategy.ManualCreditsRequest },
+        FlowControl = new FlowControl() { Strategy = ConsumerFlowStrategy.ConsumerCredits },
         MessageHandler = (_, sourceConsumer, _, message) =>
         {
             rawConsumer ??= sourceConsumer;

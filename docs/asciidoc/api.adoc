@@ -904,7 +904,7 @@ include::{test-examples}/SetFlowControl.cs[tag=set-flow-control-manual]
 --------
 
 <1> Set the flow control strategy
-<2> Set the flow control strategy to `ConsumerFlowStrategy.Manual` to control when the broker sends more messages.
+<2> Set the flow control strategy to `ConsumerFlowStrategy.ConsumerCredits` to control when the broker sends more messages.
 <3> Request credits when the consumer is ready to receive more messages.
 
 `ConsumerFlowStrategy` values:
@@ -920,12 +920,12 @@ include::{test-examples}/SetFlowControl.cs[tag=set-flow-control-manual]
 |`CreditsAfterParseChunk`
 |The broker sends messages to the consumer after parsing the chunk.
 
-|`ManualCreditsRequest`
+|`ConsumerCredits`
 |The broker sends messages to the consumer only when the consumer requests credits.
 |===
 
 [NOTE]
-.Manual flow control
+.Manual flow control with `ConsumerCredits` 
 ====
 With manual flow control, the consumer can control when the broker sends more messages.
 It gives all the control user side. If the server doesn't receive a request for credits, it will not send more messages.

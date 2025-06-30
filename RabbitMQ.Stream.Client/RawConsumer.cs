@@ -808,11 +808,11 @@ namespace RabbitMQ.Stream.Client
             await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
         }
 
-        public async Task RequestCredits()
+        public async Task Credits()
         {
-            await RequestCredits(1).ConfigureAwait(false);
+            await Credits(1).ConfigureAwait(false);
         }
-        private async Task RequestCredits(ushort credits)
+        private async Task Credits(ushort credits)
         {
             if (credits < 1)
             {
@@ -820,7 +820,7 @@ namespace RabbitMQ.Stream.Client
                     $"Credits must be greater than 0");
             }
 
-            if (_config.FlowControl.Strategy != ConsumerFlowStrategy.ManualCreditsRequest)
+            if (_config.FlowControl.Strategy != ConsumerFlowStrategy.ConsumerCredits)
             {
                 throw new InvalidOperationException(
                     "RequestCredits can be used only with ConsumerFlowStrategy.ManualRequestCredit.");

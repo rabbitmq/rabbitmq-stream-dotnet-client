@@ -110,9 +110,9 @@ RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.set -> void
 RabbitMQ.Stream.Client.ConsumerFilter.Values.get -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
 RabbitMQ.Stream.Client.ConsumerFlowStrategy
+RabbitMQ.Stream.Client.ConsumerFlowStrategy.ConsumerCredits = 2 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
 RabbitMQ.Stream.Client.ConsumerFlowStrategy.CreditsAfterParseChunk = 1 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
 RabbitMQ.Stream.Client.ConsumerFlowStrategy.CreditsBeforeParseChunk = 0 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
-RabbitMQ.Stream.Client.ConsumerFlowStrategy.ManualCreditsRequest = 2 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
 RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference, string identifier, System.Collections.Generic.List<string> partitions) -> void
 RabbitMQ.Stream.Client.ConsumerInfo.Reference.get -> string
@@ -238,8 +238,8 @@ RabbitMQ.Stream.Client.PublishFilter.PublishFilter() -> void
 RabbitMQ.Stream.Client.PublishFilter.PublishFilter(byte publisherId, System.Collections.Generic.List<(ulong, RabbitMQ.Stream.Client.Message)> messages, System.Func<RabbitMQ.Stream.Client.Message, string> filterValueExtractor, Microsoft.Extensions.Logging.ILogger logger) -> void
 RabbitMQ.Stream.Client.PublishFilter.SizeNeeded.get -> int
 RabbitMQ.Stream.Client.PublishFilter.Write(System.Span<byte> span) -> int
+RabbitMQ.Stream.Client.RawConsumer.Credits() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.RawConsumer.Info.get -> RabbitMQ.Stream.Client.ConsumerInfo
-RabbitMQ.Stream.Client.RawConsumer.RequestCredits() -> System.Threading.Tasks.Task
 RabbitMQ.Stream.Client.RawConsumerConfig.ConnectionClosedHandler.get -> System.Func<string, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.RawConsumerConfig.ConnectionClosedHandler.set -> void
 RabbitMQ.Stream.Client.RawProducer.Info.get -> RabbitMQ.Stream.Client.ProducerInfo
