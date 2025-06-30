@@ -196,11 +196,6 @@ namespace RabbitMQ.Stream.Client
             return _config.Stream;
         }
 
-        public async Task StoreOffset(ulong offset)
-        {
-            await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
-        }
-
         ////// *********************
         // IsPromotedAsActive is needed to understand if the consumer is active or not
         // by default is active
@@ -404,14 +399,6 @@ namespace RabbitMQ.Stream.Client
                     messageOffset = 0; // it is used to calculate the message offset. It is the chunkId + messageOffset
                 while (numRecords != 0)
                 {
-                    // request credit to the server when half of the chunk is processed
-                    if (_config.FlowControl.Strategy ==
-                        ConsumerFlowStrategy.CreditWhenHalfChunkProcessed && numRecords == chunk.NumRecords / 2)
-                    {
-                        // Request the credit to the server
-                        await _client.Credit(EntityId, 1).ConfigureAwait(false);
-                    }
-
                     // (entryType & 0x80) == 0 is standard entry
                     // (entryType & 0x80) != 0 is compress entry (used for subEntry)
                     // In Case of subEntry the entryType is the compression type
@@ -815,5 +802,31 @@ namespace RabbitMQ.Stream.Client
         }
 
         public ConsumerInfo Info { get; }
+
+        public async Task StoreOffset(ulong offset)
+        {
+            await _client.StoreOffset(_config.Reference, _config.Stream, offset).ConfigureAwait(false);
+        }
+
+        public async Task RequestCredits()
+        {
+            await RequestCredits(1).ConfigureAwait(false);
+        }
+        private async Task RequestCredits(ushort credits)
+        {
+            if (credits < 1)
+            {
+                throw new ArgumentException(
+                    $"Credits must be greater than 0");
+            }
+
+            if (_config.FlowControl.Strategy != ConsumerFlowStrategy.ManualRequestCredit)
+            {
+                throw new InvalidOperationException(
+                    "RequestCredits can be used only with ConsumerFlowStrategy.ManualRequestCredit.");
+            }
+
+            await _client.Credit(EntityId, credits).ConfigureAwait(false);
+        }
     }
 }

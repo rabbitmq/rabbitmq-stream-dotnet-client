@@ -108,11 +108,9 @@ public enum ConsumerFlowStrategy
     CreditAfterParseChunk,
 
     /// <summary>
-    /// Request credits when half of the chunk is processed.
-    /// In the middle between CreditBeforeParseChunk and CreditAfterParseChunk.
-    /// Can be useful if you want to balance the performance and the processing time.
+    ///  The user manually requests credits.
     /// </summary>
-    CreditWhenHalfChunkProcessed
+    ManualRequestCredit
 }
 
 /// <summary>

@@ -873,7 +873,14 @@ the code in the `FailAction`  should be short, fast and safe, as it is executed 
 It is recommended to leave it enabled, as it allows the client library to detect corrupted chunks and avoid parsing them.
 Disabling the CRC32 _could_ improve performance, but it is not recommended as it can lead to parsing corrupted chunks and unexpected behavior.
 
-[[consumer-reconnect-strategy]]
+[[consumer-flow-control]]
+===== Flow Control
+
+This section covers how a consumer can tell the broker when to send more messages.
+By default, the broker keeps sending messages as long as messages are processed and the `MessageHandler` method returns.
+
+
+
 [[specifying-an-offset]]
 ===== Specifying an Offset
 
