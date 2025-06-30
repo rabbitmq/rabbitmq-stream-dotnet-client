@@ -473,7 +473,7 @@ namespace RabbitMQ.Stream.Client
                                     break;
                                 // Request the credit to the server
                                 if (_config.FlowControl.Strategy ==
-                                    ConsumerFlowStrategy.CreditBeforeParseChunk)
+                                    ConsumerFlowStrategy.CreditsBeforeParseChunk)
                                 {
                                     // Request the credit before processing the chunk
                                     // this is the default behavior
@@ -517,7 +517,7 @@ namespace RabbitMQ.Stream.Client
                                     // That's what happens most of the time, and this is the default action
                                     await ParseChunk(chunk).ConfigureAwait(false);
 
-                                    if (_config.FlowControl.Strategy == ConsumerFlowStrategy.CreditAfterParseChunk)
+                                    if (_config.FlowControl.Strategy == ConsumerFlowStrategy.CreditsAfterParseChunk)
                                     {
                                         // Request the credit after processing the chunk
                                         // this is useful when processing the chunk takes time
@@ -820,7 +820,7 @@ namespace RabbitMQ.Stream.Client
                     $"Credits must be greater than 0");
             }
 
-            if (_config.FlowControl.Strategy != ConsumerFlowStrategy.ManualRequestCredit)
+            if (_config.FlowControl.Strategy != ConsumerFlowStrategy.ManualCreditsRequest)
             {
                 throw new InvalidOperationException(
                     "RequestCredits can be used only with ConsumerFlowStrategy.ManualRequestCredit.");

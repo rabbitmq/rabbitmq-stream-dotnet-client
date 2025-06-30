@@ -98,19 +98,20 @@ public enum ConsumerFlowStrategy
     /// Request credits before parsing the chunk.
     /// Default strategy. The best for performance.
     /// </summary>
-    CreditBeforeParseChunk,
+    CreditsBeforeParseChunk,
 
     /// <summary>
     /// Request credits after parsing the chunk.
     /// It can be useful if the parsing is expensive and you want to avoid requesting credits too early.
     /// Useful for slow processing of chunks.
     /// </summary>
-    CreditAfterParseChunk,
+    CreditsAfterParseChunk,
 
     /// <summary>
-    ///  The user manually requests credits.
+    /// The user manually requests credits.
+    /// With raw consumer, the user must call <see cref="RawConsumer.RequestCredits"/> after processing the chunk.
     /// </summary>
-    ManualRequestCredit
+    ManualCreditsRequest
 }
 
 /// <summary>
@@ -120,6 +121,6 @@ public enum ConsumerFlowStrategy
 /// </summary>ra
 public class FlowControl
 {
-    public ConsumerFlowStrategy Strategy { get; set; } = ConsumerFlowStrategy.CreditBeforeParseChunk;
+    public ConsumerFlowStrategy Strategy { get; set; } = ConsumerFlowStrategy.CreditsBeforeParseChunk;
 
 }

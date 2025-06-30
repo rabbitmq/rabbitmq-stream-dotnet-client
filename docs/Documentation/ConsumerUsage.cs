@@ -140,6 +140,7 @@ public class ConsumerUsage
                 streamSystem,
                 "my-stream")
             {
+                // tag::consumer-creation-crc[]
                 Crc32 = new StreamCrc32() // <1>
                 {
                     FailAction = (consumerInstance) => ChunkAction.Skip // <2>

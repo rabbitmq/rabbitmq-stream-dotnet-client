@@ -14,9 +14,9 @@ namespace Tests;
 public class FlowControlTests(ITestOutputHelper testOutputHelper)
 {
     [Theory]
-    [InlineData(ConsumerFlowStrategy.CreditAfterParseChunk)]
-    [InlineData(ConsumerFlowStrategy.CreditBeforeParseChunk)]
-    [InlineData(ConsumerFlowStrategy.ManualRequestCredit)]
+    [InlineData(ConsumerFlowStrategy.CreditsAfterParseChunk)]
+    [InlineData(ConsumerFlowStrategy.CreditsBeforeParseChunk)]
+    [InlineData(ConsumerFlowStrategy.ManualCreditsRequest)]
     public async Task ConsumerShouldConsumeMessagesWithAllFlowStrategy(ConsumerFlowStrategy strategy)
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
@@ -40,20 +40,21 @@ public class FlowControlTests(ITestOutputHelper testOutputHelper)
 
                 switch (strategy)
                 {
-                    case ConsumerFlowStrategy.CreditAfterParseChunk:
+                    case ConsumerFlowStrategy.CreditsAfterParseChunk:
                         // No action needed, credit is requested automatically after parsing the chunk
-                        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sourceConsumer.RequestCredits());
+                        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                            await sourceConsumer.RequestCredits());
                         break;
-                    case ConsumerFlowStrategy.CreditBeforeParseChunk:
+                    case ConsumerFlowStrategy.CreditsBeforeParseChunk:
                         // No action needed, credit is requested automatically before parsing the chunk
-                        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sourceConsumer.RequestCredits());
+                        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                            await sourceConsumer.RequestCredits());
                         break;
-                    case ConsumerFlowStrategy.ManualRequestCredit:
+                    case ConsumerFlowStrategy.ManualCreditsRequest:
                         // In manual request credit mode, we need to request credit explicitly
+                        // here we simulate the finish of processing the chunk
                         if (consumed % 10 == 0)
-                        {
                             await sourceConsumer.RequestCredits().ConfigureAwait(false);
-                        }
 
                         break;
                     default:
@@ -70,9 +71,9 @@ public class FlowControlTests(ITestOutputHelper testOutputHelper)
     }
 
     [Theory]
-    [InlineData(ConsumerFlowStrategy.CreditAfterParseChunk)]
-    [InlineData(ConsumerFlowStrategy.CreditBeforeParseChunk)]
-    [InlineData(ConsumerFlowStrategy.ManualRequestCredit)]
+    [InlineData(ConsumerFlowStrategy.CreditsAfterParseChunk)]
+    [InlineData(ConsumerFlowStrategy.CreditsBeforeParseChunk)]
+    [InlineData(ConsumerFlowStrategy.ManualCreditsRequest)]
     public async Task RawConsumerShouldConsumeMessagesWithAllFlowStrategy(ConsumerFlowStrategy strategy)
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
@@ -90,27 +91,26 @@ public class FlowControlTests(ITestOutputHelper testOutputHelper)
             {
                 consumed++;
                 if (consumed == 290)
-                {
                     completionSource.TrySetResult(consumed);
-                }
 
                 switch (strategy)
                 {
-                    case ConsumerFlowStrategy.CreditAfterParseChunk:
+                    case ConsumerFlowStrategy.CreditsAfterParseChunk:
                         // No action needed, credit is requested automatically after parsing the chunk
-                        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sourceConsumer.RequestCredits());
+                        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                            await sourceConsumer.RequestCredits());
 
                         break;
-                    case ConsumerFlowStrategy.CreditBeforeParseChunk:
+                    case ConsumerFlowStrategy.CreditsBeforeParseChunk:
                         // No action needed, credit is requested automatically before parsing the chunk
-                        await Assert.ThrowsAsync<InvalidOperationException>(async () => await sourceConsumer.RequestCredits());
+                        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                            await sourceConsumer.RequestCredits());
                         break;
-                    case ConsumerFlowStrategy.ManualRequestCredit:
+                    case ConsumerFlowStrategy.ManualCreditsRequest:
                         // In manual request credit mode, we need to request credit explicitly
+                        // here we simulate the finish of processing the chunk
                         if (consumed % 10 == 0)
-                        {
                             await sourceConsumer.RequestCredits().ConfigureAwait(false);
-                        }
 
                         break;
                     default:

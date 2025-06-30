@@ -110,9 +110,9 @@ RabbitMQ.Stream.Client.ConsumerFilter.PostFilter.set -> void
 RabbitMQ.Stream.Client.ConsumerFilter.Values.get -> System.Collections.Generic.List<string>
 RabbitMQ.Stream.Client.ConsumerFilter.Values.set -> void
 RabbitMQ.Stream.Client.ConsumerFlowStrategy
-RabbitMQ.Stream.Client.ConsumerFlowStrategy.CreditAfterParseChunk = 1 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
-RabbitMQ.Stream.Client.ConsumerFlowStrategy.CreditBeforeParseChunk = 0 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
-RabbitMQ.Stream.Client.ConsumerFlowStrategy.ManualRequestCredit = 2 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
+RabbitMQ.Stream.Client.ConsumerFlowStrategy.CreditsAfterParseChunk = 1 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
+RabbitMQ.Stream.Client.ConsumerFlowStrategy.CreditsBeforeParseChunk = 0 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
+RabbitMQ.Stream.Client.ConsumerFlowStrategy.ManualCreditsRequest = 2 -> RabbitMQ.Stream.Client.ConsumerFlowStrategy
 RabbitMQ.Stream.Client.ConsumerInfo
 RabbitMQ.Stream.Client.ConsumerInfo.ConsumerInfo(string stream, string reference, string identifier, System.Collections.Generic.List<string> partitions) -> void
 RabbitMQ.Stream.Client.ConsumerInfo.Reference.get -> string
