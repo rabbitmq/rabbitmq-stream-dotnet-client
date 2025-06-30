@@ -109,7 +109,7 @@ public enum ConsumerFlowStrategy
 
     /// <summary>
     /// The user manually requests credits.
-    /// With raw consumer, the user must call <see cref="RawConsumer.RequestCredits"/> after processing the chunk.
+    /// With raw consumer, the user must call <see cref="RawConsumer.RequestCredits()"/> after processing the chunk.
     /// </summary>
     ManualCreditsRequest
 }
