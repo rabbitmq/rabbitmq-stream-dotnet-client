@@ -566,6 +566,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <ul class="sectlevel4">
 <li><a href="#_creating_a_consumer">Creating a Consumer</a></li>
 <li><a href="#crc-on-delivery">Check the CRC on Delivery</a></li>
+<li><a href="#consumer-flow-control">Flow Control</a></li>
 <li><a href="#specifying-an-offset">Specifying an Offset</a></li>
 <li><a href="#consumer-offset-tracking">Tracking the Offset for a Consumer</a>
 <ul class="sectlevel5">
@@ -1089,7 +1090,7 @@ for (var i = 0; i &lt; MessageCount; i++)
 }
 
 
-confirmationTaskCompletionSource.Task.Wait(); // <b class="conum">(7)</b>
+await confirmationTaskCompletionSource.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false); // <b class="conum">(7)</b>
 await producer.Close().ConfigureAwait(false); // <b class="conum">(8)</b></code></pre>
 </div>
 </div>
@@ -1150,7 +1151,7 @@ var consumer = await Consumer.Create( // <b class="conum">(1)</b>
         consumerLogger // <b class="conum">(4)</b>
     )
     .ConfigureAwait(false);
-consumerTaskCompletionSource.Task.Wait(); // <b class="conum">(5)</b>
+await consumerTaskCompletionSource.Task.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false); // <b class="conum">(5)</b>
 await consumer.Close().ConfigureAwait(false); // <b class="conum">(6)</b></code></pre>
 </div>
 </div>
@@ -1254,7 +1255,7 @@ All the 100 messages are received
 <h4 id="_overview">Overview</h4>
 <div class="paragraph">
 <p>This section describes the API to connect to the RabbitMQ Stream Plugin, publish messages, and consume messages.
-There are 3 main interfaces:</p>
+There are three main interfaces:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1571,7 +1572,8 @@ The maximum number of producers and consumers per connection is 200.</p>
 <p>A low value can increase the number of connections to the server but it could increase the performance of the producer and the consumer.</p>
 </div>
 <div class="paragraph">
-<p>The consumers share the same handler, so if you have a high number of consumers per connection, the handler could be a bottleneck. It means that if there is a slow consumer all the other consumers could be slow.</p>
+<p>The consumers share the same handler, so if you have a high number of consumers per connection, the handler could be a bottleneck.
+It means that if there is a slow consumer all the other consumers could be slow.</p>
 </div>
 <div class="paragraph">
 <p>TIP:
@@ -2839,7 +2841,7 @@ await streamSystem.Close().ConfigureAwait(false);</code></pre>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ICrc32</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The <a href="#crc-on-delivery">CRC32 implementation</a> to use to validate the chunk server crc32 .</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (no CRC32)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StreamCrc32()</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>StatusChanged</code></p></td>
@@ -2871,33 +2873,17 @@ See the <a href="#specifying-an-offset">offset section</a> to find out more abou
 <h5 id="crc-on-delivery">Check the CRC on Delivery</h5>
 <div class="paragraph">
 <p>RabbitMQ Stream provides a CRC32 checksum on each chunk.
-The client library can check the checksum before parse the chunk and throw an <code>CrcException</code> exception if the validation fails.
-By default the CRC32 checksum is not enabled, to enable it you need to set the <code>ICrc32</code> interface in the <code>ConsumerConfig</code>:</p>
+The client library can check the checksum before parsing the chunk.
+By default the CRC32 checksum enabled (with the class <code>StreamCrc32()</code> ), to disable it you need to set null to <code>ICrc32</code> interface in the <code>ConsumerConfig</code>:</p>
 </div>
 <div class="listingblock">
 <div class="title">Checking the CRC32 checksum on the chunk</div>
 <div class="content">
-<pre class="CodeRay highlight"><code data-lang="c#">private class UserCrc32 : ICrc32 // <b class="conum">(1)</b>
+<pre class="CodeRay highlight"><code data-lang="c#">Crc32 = new StreamCrc32() // <b class="conum">(1)</b>
 {
-    public byte[] Hash(byte[] data)
-    {
-        // Here we use the System.IO.Hashing.Crc32 implementation
-        return System.IO.Hashing.Crc32.Hash(data);
-    }
-}
-
-public static async Task CreateConsumerWithCrc()
-{
-    var streamSystem = await StreamSystem.Create(
-        new StreamSystemConfig()
-    ).ConfigureAwait(false);
-    var consumer = await Consumer.Create(
-        new ConsumerConfig(
-            streamSystem,
-            &quot;my-stream&quot;)
-        {
-            Crc32 = new UserCrc32(), // <b class="conum">(2)</b>
-            OffsetSpec = new OffsetTypeTimestamp(),</code></pre>
+    FailAction = (consumerInstance) =&gt; ChunkAction.Skip // <b class="conum">(2)</b>
+}, 
+OffsetSpec = new OffsetTypeTimestamp(),</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2905,18 +2891,163 @@ public static async Task CreateConsumerWithCrc()
 <li>
 <p>An implementation of the <code>ICrc32</code> interface.
 You are free to use any implementation you want.
-The client is tested with <code>System.IO.Hashing</code>.
-<code>System.IO.Hashing</code> is not shipped with the client library.</p>
+By default the client library uses <code>StreamCrc32</code> which is a simple implementation of the <code>ICrc32</code> interface.</p>
 </li>
 <li>
-<p>Set the <code>ICrc32</code> implementation in the <code>ConsumerConfig</code></p>
+<p>The function FailAction is called when the CRC32 checksum is not valid.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>It is recommended to use it.
-It <em>could</em> reduce the performance of the consumer.
-It depends on the use case.</p>
+<p><code>FailAction</code> return types:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter Name</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ChunkAction.Skip</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skip the chunk and continue consuming the next chunk.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ChunkAction.TryToProcess</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Try to process the chunk even if the CRC32 checksum is not valid.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>If <code>FailAction</code> is <code>null</code> the library will use <code>ChunkAction.Skip</code> as default value.</p>
+</div>
+<div class="paragraph">
+<p><code>FailAction</code> has <code>sourceConsumer</code> as parameter, which is the consumer that failed to validate the CRC32 checksum.
+the code in the <code>FailAction</code>  should be short, fast and safe, as it is executed in the consumer thread.</p>
+</div>
+<div class="paragraph">
+<p>It is recommended to leave it enabled, as it allows the client library to detect corrupted chunks and avoid parsing them.
+Disabling the CRC32 <em>could</em> improve performance, but it is not recommended as it can lead to parsing corrupted chunks and unexpected behavior.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="consumer-flow-control">Flow Control</h5>
+<div class="paragraph">
+<p>This section covers how a consumer can tell the broker when to send more messages.
+By default, the broker keeps sending messages as soon as a chunk is received. This strategy works fine if message processing is fast enough.</p>
+</div>
+<div class="paragraph">
+<p>With <code>ConsumerFlowStrategy</code> it is possible to control when the broker sends more messages to the consumer.</p>
+</div>
+<div class="listingblock">
+<div class="title">Setting a consumer flow control strategy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">var consumerConfig = new ConsumerConfig(streamSystem, &quot;MyStream&quot;)
+{
+    FlowControl = new FlowControl() // <b class="conum">(1)</b>
+    {
+        Strategy = ConsumerFlowStrategy.CreditsAfterParseChunk, // <b class="conum">(2)</b>
+    },
+};</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Set the flow control strategy</p>
+</li>
+<li>
+<p>Set the flow control strategy to <code>ConsumerFlowStrategy.CreditAfterParseChunk</code> as soon as the chunk is parsed. See <code>ConsumerFlowStrategy</code> for more details.
+If message processing takes longer, one can be tempted to process messages in parallel with <code>Tasks</code>.
+This will make the handle method return immediately and the broker will keep sending messages, potentially overflowing the consumer.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>What we miss in the parallel processing case is a way to tell the library we are done processing a message and that we are ready at some point to handle more messages.
+This is the goal of the <code>consumer.RequestCredits()</code> method.
+With <code>consumer.RequestCredits()</code> the consumer can tell the broker it is ready to receive more messages.
+It is possible also the <code>Pause</code> the consumer by not asking for credits.</p>
+</div>
+<div class="listingblock">
+<div class="title">Setting a consumer manual control strategy</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">var consumerConfig = new ConsumerConfig(streamSystem, &quot;MyStream&quot;)
+{
+    FlowControl = new FlowControl() // <b class="conum">(1)</b>
+    {
+        Strategy = ConsumerFlowStrategy.ConsumerCredits, // <b class="conum">(2)</b>
+    },
+    // here we simulate a manual flow control
+    // when the consumer has consumed 10 messages, it will request more credits
+    MessageHandler = (_, rawConsumer, _, _) =&gt; consumed++ % 10 == 0 ? rawConsumer.Credits() : // <b class="conum">(3)</b>
+        Task.CompletedTask
+};</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Set the flow control strategy</p>
+</li>
+<li>
+<p>Set the flow control strategy to <code>ConsumerFlowStrategy.ConsumerCredits</code> to control when the broker sends more messages.</p>
+</li>
+<li>
+<p>Request credits when the consumer is ready to receive more messages.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>ConsumerFlowStrategy</code> values:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter Name</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CreditsBeforeParseChunk</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The broker sends messages to the consumer before parsing the chunk. (Default)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CreditsAfterParseChunk</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The broker sends messages to the consumer after parsing the chunk.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ConsumerCredits</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The broker sends messages to the consumer only when the consumer requests credits.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+<div class="title">Manual flow control with <code>ConsumerCredits</code></div>
+<div class="paragraph">
+<p>With manual flow control, the consumer can control when the broker sends more messages.
+It gives all the control user side. If the server doesn&#8217;t receive a request for credits, it will not send more messages.
+So you could end up with a consumer not consuming anything.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect4">
@@ -4405,7 +4536,7 @@ You can provide your own implementation of these interfaces to customize the rec
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-08-28 15:00:58 UTC
+Last updated 2025-04-28 07:02:21 UTC
 </div>
 </div>
 </body>
