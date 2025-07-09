@@ -4,4 +4,4 @@
 
 using Performances;
 
-BatchVsBatchSend.Start().Wait();
+await BatchVsBatchSend.Start().ConfigureAwait(false);
