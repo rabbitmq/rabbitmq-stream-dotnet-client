@@ -6,7 +6,7 @@ using System.Net;
 
 namespace RabbitMQ.Stream.Client
 {
-    public class AddressResolver
+    public class AddressResolver: IAddressResolver
     {
         public AddressResolver(EndPoint endPoint)
         {
@@ -14,7 +14,8 @@ namespace RabbitMQ.Stream.Client
             Enabled = true;
         }
 
-        public EndPoint EndPoint { get; set; }
+        private EndPoint EndPoint { get; set; }
         public bool Enabled { get; set; }
+        public EndPoint Resolve(string address, int host) => EndPoint;
     }
 }
