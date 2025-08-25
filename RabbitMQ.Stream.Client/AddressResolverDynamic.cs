@@ -7,7 +7,7 @@ using System.Net;
 
 namespace RabbitMQ.Stream.Client;
 
-public class AddressResolverDynamic: IAddressResolver
+public class AddressResolverDynamic : IAddressResolver
 {
     private readonly Func<string, int, EndPoint> _resolveFunction;
 
