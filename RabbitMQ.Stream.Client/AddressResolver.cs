@@ -14,7 +14,7 @@ namespace RabbitMQ.Stream.Client
             Enabled = true;
         }
 
-        private EndPoint EndPoint { get; set; }
+        public EndPoint EndPoint { get; set; }
         public bool Enabled { get; set; }
         public EndPoint Resolve(string address, int host) => EndPoint;
     }

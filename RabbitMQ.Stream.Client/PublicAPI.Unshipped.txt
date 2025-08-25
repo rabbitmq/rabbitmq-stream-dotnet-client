@@ -26,6 +26,8 @@ RabbitMQ.Stream.Client.AddressResolver
 RabbitMQ.Stream.Client.AddressResolver.AddressResolver(System.Net.EndPoint endPoint) -> void
 RabbitMQ.Stream.Client.AddressResolver.Enabled.get -> bool
 RabbitMQ.Stream.Client.AddressResolver.Enabled.set -> void
+RabbitMQ.Stream.Client.AddressResolver.EndPoint.get -> System.Net.EndPoint
+RabbitMQ.Stream.Client.AddressResolver.EndPoint.set -> void
 RabbitMQ.Stream.Client.AddressResolver.Resolve(string address, int host) -> System.Net.EndPoint
 RabbitMQ.Stream.Client.AddressResolverDynamic
 RabbitMQ.Stream.Client.AddressResolverDynamic.AddressResolverDynamic(System.Func<string, int, System.Net.EndPoint> resolveFunction) -> void
