@@ -39,22 +39,7 @@ public class DeduplicatingProducer
         var x = new DeduplicatingProducer()
         {
             _producer = await Producer
-                .Create(
-                    new ProducerConfig(producerConfig.StreamSystem, producerConfig.Stream)
-                    {
-                        _reference = producerConfig.Reference,
-                        ConfirmationHandler = producerConfig.ConfirmationHandler,
-                        ReconnectStrategy = producerConfig.ReconnectStrategy,
-                        ClientProvidedName = producerConfig.ClientProvidedName,
-                        SuperStreamConfig = producerConfig.SuperStreamConfig,
-                        MaxInFlight = producerConfig.MaxInFlight,
-                        MessagesBufferSize = producerConfig.MessagesBufferSize,
-                        TimeoutMessageAfter = producerConfig.TimeoutMessageAfter,
-                        Filter = producerConfig.Filter,
-                        Identifier = producerConfig.Identifier,
-                        ResourceAvailableReconnectStrategy = producerConfig.ResourceAvailableReconnectStrategy,
-
-                    }, logger)
+                .Create(producerConfig, logger)
                 .ConfigureAwait(false)
         };
         return x;
