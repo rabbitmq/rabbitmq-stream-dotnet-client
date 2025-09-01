@@ -3,6 +3,7 @@
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -80,16 +81,22 @@ public class DeduplicationProducerTests
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         var testPassed = new TaskCompletionSource<ulong>();
         const ulong TotalMessages = 1000UL;
-        var p = await DeduplicatingProducer.Create(
-            new DeduplicatingProducerConfig(system, stream, "my_producer_reference")
+        var dupConfig = new DeduplicatingProducerConfig(system, stream, "my_producer_reference")
+        {
+            ConfirmationHandler = async confirmation =>
             {
-                ConfirmationHandler = async confirmation =>
-                {
-                    if (confirmation.PublishingId == TotalMessages)
-                        testPassed.SetResult(TotalMessages);
-                    await Task.CompletedTask;
-                },
-            });
+                if (confirmation.PublishingId == TotalMessages)
+                    testPassed.SetResult(TotalMessages);
+                await Task.CompletedTask;
+            },
+        };
+        var statusInfoReceived = new List<StatusInfo>();
+        dupConfig.StatusChanged += (status) => { statusInfoReceived.Add(status); };
+
+        var p = await DeduplicatingProducer.Create(dupConfig);
+
+        Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
+        Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
         // first send and the messages are stored
         for (ulong i = 1; i <= TotalMessages; i++)
         {
