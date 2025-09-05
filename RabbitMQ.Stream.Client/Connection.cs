@@ -189,7 +189,10 @@ namespace RabbitMQ.Stream.Client
                         numFrames += 1;
                     }
 
-                    reader.AdvanceTo(buffer.Start, buffer.End);
+                    if (socket.Connected)
+                    {
+                        reader.AdvanceTo(buffer.Start, buffer.End);
+                    }
                 }
             }
             catch (OperationCanceledException e)
