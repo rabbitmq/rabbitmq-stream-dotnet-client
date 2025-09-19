@@ -107,7 +107,6 @@ namespace RabbitMQ.Stream.Client
             }
 
             FlowControl ??= new FlowControl();
-
         }
 
         internal bool IsFiltering => ConsumerFilter is { Values.Count: > 0 };
@@ -642,7 +641,14 @@ namespace RabbitMQ.Stream.Client
                                 // if the user has set the FailAction, we call it
                                 // to allow the user to handle the chunk action
                                 // if the FailAction is not set, we skip the chunk
-                                chunkAction = _config.Crc32.FailAction?.Invoke(this) ?? ChunkAction.Skip;
+                                chunkAction = _config.Crc32.AsyncFailAction?.Invoke(this,
+                                    new ChunkInfo()
+                                    {
+                                        Id = deliver.Chunk.ChunkId,
+                                        ServerHash = deliver.Chunk.Crc,
+                                        LocalHash = crcCalculated,
+                                        StreamName = _config.Stream
+                                    }) ?? ChunkAction.Skip;
                             }
                         }
 
