@@ -20,4 +20,5 @@ public class StreamCrc32 : ICrc32
     }
 
     public Func<IConsumer, ChunkAction> FailAction { get; init; } = null;
+    public Func<IConsumer, ChunkInfo, ChunkAction> AsyncFailAction { get; init; }
 }

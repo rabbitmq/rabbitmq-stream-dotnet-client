@@ -27,6 +27,7 @@ public class FirstCrc32IsWrong : ICrc32
     }
 
     public Func<IConsumer, ChunkAction> FailAction { get; init; }
+    public Func<IConsumer, ChunkInfo, ChunkAction> AsyncFailAction { get; init; }
 }
 
 public class Crc32Tests(ITestOutputHelper testOutputHelper)

@@ -6,6 +6,20 @@ using System;
 
 namespace RabbitMQ.Stream.Client
 {
+    public struct ChunkInfo
+    {
+        /// <summary>
+        /// The stream name of the chunk.
+        /// </summary>
+        public string StreamName { get; init; }
+
+        public ulong Id { get; init; }
+
+        public uint ServerHash { get; init; }
+
+        public uint LocalHash { get; init; }
+    }
+
     public enum ChunkAction
     {
         /// <summary>
@@ -37,5 +51,7 @@ namespace RabbitMQ.Stream.Client
         /// The code here should be safe 
         /// </summary>
         Func<IConsumer, ChunkAction> FailAction { get; init; }
+
+        Func<IConsumer, ChunkInfo, ChunkAction> AsyncFailAction { get; init; }
     }
 }
