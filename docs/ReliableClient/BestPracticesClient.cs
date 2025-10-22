@@ -146,8 +146,8 @@ public class BestPracticesClient
                         $"Conf: {totalConfirmed:#,##0.00}, " +
                         $"Error: {totalError:#,##0.00}, " +
                         $"Total: {(totalConfirmed + totalError):#,##0.00}, " +
-                        $"Consumed: {totalConsumed:#,##0.00}, " +
-                        $"Sent per stream: {totalSent / streamsList.Count}");
+                        $"Consumed all: {totalConsumed:#,##0.00}, " +
+                        $"Consumed / Consumers : {totalConsumed / config.Consumers:#,##0.00}");
                     Thread.Sleep(5000);
                 }
             });

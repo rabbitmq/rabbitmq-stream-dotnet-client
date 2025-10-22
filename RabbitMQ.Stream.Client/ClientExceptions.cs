@@ -78,13 +78,7 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public class AlreadyClosedException : Exception
-    {
-        public AlreadyClosedException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class AlreadyClosedException(string s) : Exception(s);
 
     public class ProtocolException : Exception
     {
@@ -94,102 +88,31 @@ namespace RabbitMQ.Stream.Client
         }
     }
 
-    public class LeaderNotFoundException : ProtocolException
-    {
-        public LeaderNotFoundException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class LeaderNotFoundException(string s) : ProtocolException(s);
 
-    public class GenericProtocolException : ProtocolException
-    {
-        public GenericProtocolException(ResponseCode responseCode, string s)
-            : base($"response code: {responseCode} - {s}")
-        {
-        }
-    }
+    public class GenericProtocolException(ResponseCode responseCode, string s)
+        : ProtocolException($"response code: {responseCode} - {s}");
 
-    public class AuthenticationFailureException : ProtocolException
-    {
-        public AuthenticationFailureException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class AuthenticationFailureException(string s) : ProtocolException(s);
 
-    public class AuthenticationFailureLoopback : ProtocolException
-    {
-        public AuthenticationFailureLoopback(string s)
-            : base(s)
-        {
-        }
-    }
+    public class AuthenticationFailureLoopback(string s) : ProtocolException(s);
 
-    public class VirtualHostAccessFailureException : ProtocolException
-    {
-        public VirtualHostAccessFailureException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class VirtualHostAccessFailureException(string s) : ProtocolException(s);
 
-    public class OffsetNotFoundException : ProtocolException
-    {
-        public OffsetNotFoundException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class OffsetNotFoundException(string s) : ProtocolException(s);
 
     // RouteNotFoundException the exception for super stream publish
     // RouteNotFoundException is raised when the message can't be routed to any stream.
     // In this case the user will receive a timeout error and this exception is raised
-    public class RouteNotFoundException : ProtocolException
-    {
-        public RouteNotFoundException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class RouteNotFoundException(string s) : ProtocolException(s);
 
-    public class AuthMechanismNotSupportedException : Exception
-    {
-        public AuthMechanismNotSupportedException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class AuthMechanismNotSupportedException(string s) : Exception(s);
 
-    public class UnsupportedOperationException : Exception
-    {
-        public UnsupportedOperationException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class UnsupportedOperationException(string s) : Exception(s);
 
-    public class UnknownCommandException : Exception
-    {
-        public UnknownCommandException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class UnknownCommandException(string s) : Exception(s);
 
-    public class TooManyConnectionsException : Exception
-    {
-        public TooManyConnectionsException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class TooManyConnectionsException(string s) : Exception(s);
 
-    public class PendingConnectionsException : Exception
-    {
-        public PendingConnectionsException(string s)
-            : base(s)
-        {
-        }
-    }
+    public class PendingConnectionsException(string s) : Exception(s);
 }
