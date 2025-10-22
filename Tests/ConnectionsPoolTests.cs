@@ -906,6 +906,27 @@ namespace Tests
         }
 
         [Fact]
+        public void FindNextValidIdWithAMaxValue()
+        {
+            var ids = new List<byte> { 0, 1, 2, 3, 255 };
+            var v = ConnectionsPool.FindNextValidId(ids, 254);
+            Assert.Equal(4, v);
+        }
+
+        [Fact]
+        public void TrowExceptionIfTheArrayIsFull()
+        {
+            var ids = new List<byte>();
+            for (byte i = 0; i < byte.MaxValue; i++)
+            {
+                ids.Add(i);
+            }
+
+            ids.Add(255);
+            Assert.Throws<InvalidOperationException>(() => ConnectionsPool.FindNextValidId(ids));
+        }
+
+        [Fact]
         public void ValidatePoolConsistencyWithClosePolicy()
         {
             var pool = new ConnectionsPool(0, 10,

@@ -136,7 +136,7 @@ public class ConnectionsPool : IDisposable
     {
         lock (s_lock)
         {
-            // // we start with the recycle when we reach the max value
+            var originalList = ids.ToList();
             // // in this way we can avoid to recycle the same ids in a short time
             ids.Sort();
             var l = ids.Where(b => b >= nextId).ToList();
@@ -152,15 +152,17 @@ public class ConnectionsPool : IDisposable
             if (l[^1] != byte.MaxValue)
                 return (byte)(l[^1] + 1);
 
-            for (var i = 0; i < ids.Count - 1; i++)
+            // let's try to find a free id in the list
+            originalList.Reverse();
+            for (byte i = 0; i < byte.MaxValue; i++)
             {
-                if (l[i + 1] - l[i] > 1)
+                if (!originalList.Contains(i))
                 {
-                    return (byte)(l[i] + 1);
+                    return i;
                 }
             }
 
-            return (byte)(l[^1] + 1);
+            throw new InvalidOperationException("No more available ids");
         }
     }
 
@@ -237,28 +239,23 @@ public class ConnectionsPool : IDisposable
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
-            // do we have a connection for this brokerInfo and with free slots for producer or consumer?
-            // it does not matter which connection is available 
-            // the important is to have a connection available for the brokerInfo
             var connectionItems = Connections.Values.Where(x => x.BrokerInfo == brokerInfo && x.Available).ToList();
 
             if (connectionItems.Any())
             {
-                // ok we have a connection available for this brokerInfo
-                // let's get the first one
                 var connectionItem = connectionItems.OrderBy(x => x.EntitiesCount).First();
                 connectionItem.LastUsed = DateTime.UtcNow;
 
                 if (connectionItem.Client is not { IsClosed: true })
                     return connectionItem.Client;
 
-                // the connection is closed
-                // let's remove it from the pool
+                // remove closed connection
                 Connections.TryRemove(connectionItem.Client.ClientId, out _);
-                // let's create a new one
+
+                // create and add new connection item with the new client's id
                 var newConnectionItem = new ConnectionItem(brokerInfo, _idsPerConnection,
                     await createClient().ConfigureAwait(false));
-                Connections.TryAdd(connectionItem.Client.ClientId, connectionItem);
+                Connections.TryAdd(newConnectionItem.Client.ClientId, newConnectionItem);
 
                 return newConnectionItem.Client;
             }
@@ -268,10 +265,7 @@ public class ConnectionsPool : IDisposable
                 throw new TooManyConnectionsException($"Max connections {_maxConnections} reached");
             }
 
-            // no connection available for this brokerInfo
-            // let's create a new one
             var client = await createClient().ConfigureAwait(false);
-            // the connection give us the client id that is a GUID
             Connections.TryAdd(client.ClientId, new ConnectionItem(brokerInfo, _idsPerConnection, client));
             return client;
         }
@@ -408,7 +402,7 @@ public class ConnectionsPool : IDisposable
             var l = connectionItem.Client.Publishers.Where(x =>
                 x.Key == id && x.Value.Item1 == stream).ToList();
 
-            l.ForEach(x => connectionItem.Client.Consumers.Remove(x.Key));
+            l.ForEach(x => connectionItem.Client.Publishers.Remove(x.Key));
         }
         finally
         {
