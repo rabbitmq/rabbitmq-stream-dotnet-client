@@ -79,12 +79,6 @@ override RabbitMQ.Stream.Client.Reliable.Producer.Close() -> System.Threading.Ta
 override RabbitMQ.Stream.Client.Reliable.Producer.ToString() -> string
 RabbitMQ.Stream.Client.AbstractEntity
 RabbitMQ.Stream.Client.AbstractEntity.AbstractEntity() -> void
-RabbitMQ.Stream.Client.AddressResolver
-RabbitMQ.Stream.Client.AddressResolver.AddressResolver(System.Net.EndPoint endPoint) -> void
-RabbitMQ.Stream.Client.AddressResolver.Enabled.get -> bool
-RabbitMQ.Stream.Client.AddressResolver.Enabled.set -> void
-RabbitMQ.Stream.Client.AddressResolver.EndPoint.get -> System.Net.EndPoint
-RabbitMQ.Stream.Client.AddressResolver.EndPoint.set -> void
 RabbitMQ.Stream.Client.AMQP.AmqpParseException
 RabbitMQ.Stream.Client.AMQP.AmqpParseException.AmqpParseException(string s) -> void
 RabbitMQ.Stream.Client.AMQP.AmqpWireFormatting
@@ -187,8 +181,6 @@ RabbitMQ.Stream.Client.Client.StoreOffset(string reference, string stream, ulong
 RabbitMQ.Stream.Client.Client.StreamExists(string stream) -> System.Threading.Tasks.Task<bool>
 RabbitMQ.Stream.Client.Client.Subscribe(RabbitMQ.Stream.Client.RawConsumerConfig config, ushort initialCredit, System.Collections.Generic.Dictionary<string, string> properties, System.Func<RabbitMQ.Stream.Client.Deliver, System.Threading.Tasks.Task> deliverHandler, System.Func<bool, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>> consumerUpdateHandler) -> System.Threading.Tasks.Task<(byte, RabbitMQ.Stream.Client.SubscribeResponse)>
 RabbitMQ.Stream.Client.ClientParameters
-RabbitMQ.Stream.Client.ClientParameters.AddressResolver.get -> RabbitMQ.Stream.Client.AddressResolver
-RabbitMQ.Stream.Client.ClientParameters.AddressResolver.set -> void
 RabbitMQ.Stream.Client.ClientParameters.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.ClientParameters.ClientProvidedName.set -> void
 RabbitMQ.Stream.Client.ClientParameters.Endpoint.get -> System.Net.EndPoint
@@ -724,7 +716,7 @@ RabbitMQ.Stream.Client.StreamSystem.QueryPartition(string superStream) -> System
 RabbitMQ.Stream.Client.StreamSystem.QuerySequence(string reference, string stream) -> System.Threading.Tasks.Task<ulong>
 RabbitMQ.Stream.Client.StreamSystem.StreamExists(string stream) -> System.Threading.Tasks.Task<bool>
 RabbitMQ.Stream.Client.StreamSystemConfig
-RabbitMQ.Stream.Client.StreamSystemConfig.AddressResolver.get -> RabbitMQ.Stream.Client.AddressResolver
+RabbitMQ.Stream.Client.StreamSystemConfig.AddressResolver.get -> RabbitMQ.Stream.Client.IAddressResolver
 RabbitMQ.Stream.Client.StreamSystemConfig.AddressResolver.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.ClientProvidedName.get -> string
 RabbitMQ.Stream.Client.StreamSystemConfig.ClientProvidedName.set -> void

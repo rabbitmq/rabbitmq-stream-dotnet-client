@@ -80,7 +80,7 @@ namespace RabbitMQ.Stream.Client
             // here it means that there is a AddressResolver configuration
             // so there is a load-balancer or proxy we need to get the right connection
             // as first we try with the first node given from the LB
-            var endPoint = clientParameters.AddressResolver.EndPoint;
+            var endPoint = clientParameters.AddressResolver.Resolve(broker.Host, (int)broker.Port);
             var client = await routing
                 .CreateClient(
                     clientParameters with

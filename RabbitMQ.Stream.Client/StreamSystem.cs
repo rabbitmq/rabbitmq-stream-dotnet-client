@@ -40,7 +40,7 @@ namespace RabbitMQ.Stream.Client
         public IList<EndPoint> Endpoints { get; set; } =
             new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
 
-        public AddressResolver AddressResolver { get; set; }
+        public IAddressResolver AddressResolver { get; set; }
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;

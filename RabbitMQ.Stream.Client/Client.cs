@@ -72,7 +72,7 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
-        public AddressResolver AddressResolver { get; set; } = null;
+        public IAddressResolver AddressResolver { get; set; } = null;
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
 
