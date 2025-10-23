@@ -346,7 +346,7 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
-                while (await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+                while (!Token.IsCancellationRequested && await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
                 {
                     while (_messageBuffer.Reader.TryRead(out var msg))
                     {
@@ -371,6 +371,16 @@ namespace RabbitMQ.Stream.Client
 
         public override async Task<ResponseCode> Close()
         {
+            // Complete the channel writer to signal ProcessBuffer to finish
+            try
+            {
+                _messageBuffer.Writer.TryComplete();
+            }
+            catch
+            {
+                // ignored
+            }
+
             return await Shutdown(_config).ConfigureAwait(false);
         }
 
