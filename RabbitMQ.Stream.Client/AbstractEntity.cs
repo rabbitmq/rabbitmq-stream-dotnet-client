@@ -93,7 +93,7 @@ namespace RabbitMQ.Stream.Client
             }
 
             UpdateStatusToClosed();
-            
+
             // we can ignore if the ignoreIfAlreadyDeleted or the socket is already closed
             var ignore = ignoreIfAlreadyDeleted || _client.IsClosed;
             var result = await DeleteEntityFromTheServer(ignore).ConfigureAwait(false);
