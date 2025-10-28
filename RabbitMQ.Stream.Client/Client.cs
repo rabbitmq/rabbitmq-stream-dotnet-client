@@ -772,7 +772,7 @@ namespace RabbitMQ.Stream.Client
             }
             catch (TimeoutException)
             {
-                _logger.LogError(
+                _logger.LogDebug(
                     "Timeout while closing the connection. The connection will be closed anyway");
             }
             catch (Exception e)

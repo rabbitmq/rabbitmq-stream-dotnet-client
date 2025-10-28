@@ -773,7 +773,7 @@ namespace RabbitMQ.Stream.Client
 
             catch (TimeoutException)
             {
-                Logger.LogError(
+                Logger.LogDebug(
                     "Timeout removing the consumer id: {SubscriberId}, {EntityInfo} from the server. " +
                     "The consumer will be closed anyway",
                     EntityId, DumpEntityConfiguration());
