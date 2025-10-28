@@ -392,8 +392,11 @@ namespace RabbitMQ.Stream.Client
                 // in this case we reduce the waiting time
                 // the producer could be removed because of stream deleted 
                 // so it is not necessary to wait.
+                // we can ignore if the ignoreIfAlreadyDeleted or the socket is already closed
+                // DeletePublisher must be called anyway because it cleans the internal lists
+                var ignore = ignoreIfAlreadyDeleted || _client.IsClosed;
                 var closeResponse =
-                    await _client.DeletePublisher(EntityId, ignoreIfAlreadyDeleted).ConfigureAwait(false);
+                    await _client.DeletePublisher(EntityId, ignore).ConfigureAwait(false);
                 return closeResponse.ResponseCode;
             }
             catch (Exception e)
