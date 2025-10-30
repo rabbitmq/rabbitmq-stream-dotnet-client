@@ -457,7 +457,7 @@ namespace RabbitMQ.Stream.Client
             {
                 // need to wait the subscription is completed 
                 // else the _subscriberId could be incorrect
-                _completeSubscription.Task.Wait();
+                await _completeSubscription.Task.ConfigureAwait(false);
 
                 try
                 {
@@ -554,6 +554,18 @@ namespace RabbitMQ.Stream.Client
                     Logger?.LogError(e,
                         "Error while process chunks the stream: {EntityInfo} The ProcessChunks task will be closed",
                         DumpEntityConfiguration());
+                }
+                finally
+                {
+                    // best-effort: mark the writer complete so no producers stay blocked
+                    try
+                    {
+                        _chunksBuffer.Writer.TryComplete();
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
             }, Token);
         }
@@ -764,7 +776,7 @@ namespace RabbitMQ.Stream.Client
 
             catch (TimeoutException)
             {
-                Logger.LogError(
+                Logger.LogDebug(
                     "Timeout removing the consumer id: {SubscriberId}, {EntityInfo} from the server. " +
                     "The consumer will be closed anyway",
                     EntityId, DumpEntityConfiguration());
@@ -785,7 +797,7 @@ namespace RabbitMQ.Stream.Client
             // when the consumer is closed we must be sure that the 
             // subscription is completed to avoid problems with the connection
             // It could happen when the closing is called just after the creation
-            _completeSubscription.Task.Wait();
+            await _completeSubscription.Task.ConfigureAwait(false);
             return await Shutdown(_config).ConfigureAwait(false);
         }
 
