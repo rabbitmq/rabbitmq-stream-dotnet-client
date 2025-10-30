@@ -562,7 +562,10 @@ namespace RabbitMQ.Stream.Client
                     {
                         _chunksBuffer.Writer.TryComplete();
                     }
-                    catch { }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
             }, Token);
         }
