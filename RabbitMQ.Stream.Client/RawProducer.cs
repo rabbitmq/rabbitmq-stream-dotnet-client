@@ -346,7 +346,7 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
-                while (!Token.IsCancellationRequested && await _messageBuffer.Reader.WaitToReadAsync().ConfigureAwait(false))
+                while (await _messageBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
                 {
                     while (_messageBuffer.Reader.TryRead(out var msg))
                     {
