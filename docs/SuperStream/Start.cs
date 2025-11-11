@@ -10,7 +10,7 @@ public class Start
     {
         if (arguments.Length == 0)
         {
-            Console.WriteLine("Unknown command (values: --producer / --consumer)");
+            await SuperStreamConsumer.Start("default@consumer").ConfigureAwait(false);
             return;
         }
 
@@ -23,11 +23,11 @@ public class Start
                 await SuperStreamProducerKey.Start().ConfigureAwait(false);
                 break;
             case "--consumer":
-                if (arguments.Length == 1)
-                {
-                    Console.WriteLine("Missing Consumer name");
-                    return;
-                }
+                // if (arguments.Length == 1)
+                // {
+                //     Console.WriteLine("Missing Consumer name");
+                //     return;
+                // }
                 await SuperStreamConsumer.Start(arguments[1]).ConfigureAwait(false);
                 break;
             default:

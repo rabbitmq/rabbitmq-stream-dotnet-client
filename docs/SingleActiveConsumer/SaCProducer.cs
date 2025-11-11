@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System.Net;
 using Microsoft.Extensions.Logging;
 
 namespace SingleActiveConsumer;
@@ -23,8 +24,13 @@ public class SaCProducer
         var loggerProducer = loggerFactory.CreateLogger<Producer>();
         var loggerMain = loggerFactory.CreateLogger<StreamSystem>();
 
+        loggerMain.LogInformation("Starting SaC Producer...to my-sac-stream");
 
-        var streamSystem = await StreamSystem.Create(new StreamSystemConfig(), loggerMain).ConfigureAwait(false);
+        var streamSystem = await StreamSystem
+            .Create(
+                new StreamSystemConfig()
+                {
+                }, loggerMain).ConfigureAwait(false);
         await streamSystem.CreateStream(new StreamSpec("my-sac-stream")).ConfigureAwait(false);
         var producer = await Producer.Create(new ProducerConfig(streamSystem, "my-sac-stream"), loggerProducer)
             .ConfigureAwait(false);

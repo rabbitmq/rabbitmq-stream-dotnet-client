@@ -22,4 +22,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\..\..\tests\net_stream_client\examples\.dockerignore">
+      <Link>.dockerignore</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>

@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
@@ -24,58 +25,68 @@ public class SuperStreamConsumer
         loggerMain.LogInformation("Starting SuperStream Consumer {ConsumerName}", consumerName);
 
 
-        var config = new StreamSystemConfig();
+        var config = new StreamSystemConfig()
+        {
+        };
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
 
         Console.WriteLine("Super Stream Consumer connected to RabbitMQ. ConsumerName {0}", consumerName);
         // tag::consumer-simple[]
-        var consumer = await Consumer.Create(new ConsumerConfig(system, Costants.StreamName)
+
+        for (var i = 0; i < 3; i++)
         {
-            IsSuperStream = true, // Mandatory for enabling the super stream // <1>
-            // this is mandatory for super stream single active consumer
-            // must have the same ReferenceName for all the consumers
-            Reference = "MyApp",
-            OffsetSpec = new OffsetTypeFirst(),
-            MessageHandler = async (stream, consumerSource, context, message) => // <2>
+
+
+            var consumer = await Consumer.Create(new ConsumerConfig(system, Costants.StreamName)
             {
-                loggerMain.LogInformation("Consumer Name {ConsumerName} " +
-                                          "-Received message id: {PropertiesMessageId} body: {S}, Stream {Stream}, Offset {Offset}",
-                    consumerName, message.Properties.MessageId, Encoding.UTF8.GetString(message.Data.Contents),
-                    stream, context.Offset);
-                //end::consumer-simple[]
-                // tag::sac-manual-offset-tracking[]
-                await consumerSource.StoreOffset(context.Offset).ConfigureAwait(false); // <1>
-                await Task.CompletedTask.ConfigureAwait(false);
-            },
-            IsSingleActiveConsumer = true, // mandatory for enabling the Single Active Consumer // <2>
-            ConsumerUpdateListener = async (reference, stream, isActive) => // <3>
-            {
-                loggerMain.LogInformation($"******************************************************");
-                loggerMain.LogInformation("reference {Reference} stream {Stream} is active: {IsActive}", reference,
-                    stream, isActive);
-
-                ulong offset = 0;
-                try
+                IsSuperStream = true, // Mandatory for enabling the super stream // <1>
+                // this is mandatory for super stream single active consumer
+                // must have the same ReferenceName for all the consumers
+                Reference = consumerName,
+                OffsetSpec = new OffsetTypeFirst(),
+                MessageHandler = async (stream, consumerSource, context, message) => // <2>
                 {
-                    offset = await system.QueryOffset(reference, stream).ConfigureAwait(false);
-                }
-                catch (OffsetNotFoundException e)
+                    loggerMain.LogInformation("Consumer Name {ConsumerName} " +
+                                              "-Received message id: {PropertiesMessageId} body: {S}, Stream {Stream}, Offset {Offset}",
+                        consumerName, message.Properties.MessageId, Encoding.UTF8.GetString(message.Data.Contents),
+                        stream, context.Offset);
+                    //end::consumer-simple[]
+                    // tag::sac-manual-offset-tracking[]
+                    // await consumerSource.StoreOffset(context.Offset).ConfigureAwait(false); // <1>
+                    await Task.Delay(TimeSpan.FromMilliseconds(2000)).ConfigureAwait(false);
+                    await Task.CompletedTask.ConfigureAwait(false);
+                },
+                IsSingleActiveConsumer = true, // mandatory for enabling the Single Active Consumer // <2>
+                ConsumerUpdateListener = async (reference, stream, isActive) => // <3>
                 {
-                    loggerMain.LogInformation("OffsetNotFoundException {Message}, will use OffsetTypeNext", e.Message);
-                    return new OffsetTypeNext();
-                }
+                    loggerMain.LogInformation($"******************************************************");
+                    loggerMain.LogInformation("reference {Reference} stream {Stream} is active: {IsActive}", reference,
+                        stream, isActive);
 
-                if (isActive)
-                {
-                    loggerMain.LogInformation("Restart Offset {Offset}", offset);
-                }
+                    ulong offset = 0;
+                    try
+                    {
+                        offset = await system.QueryOffset(reference, stream).ConfigureAwait(false);
+                    }
+                    catch (OffsetNotFoundException e)
+                    {
+                        loggerMain.LogInformation("OffsetNotFoundException {Message}, will use OffsetTypeNext",
+                            e.Message);
+                        return new OffsetTypeNext();
+                    }
 
-                loggerMain.LogInformation($"******************************************************");
-                await Task.CompletedTask.ConfigureAwait(false);
-                return new OffsetTypeOffset(offset + 1); // <4>
-            },
-            //end::sac-manual-offset-tracking[]
-        }, logger).ConfigureAwait(false);
-        // 
+                    if (isActive)
+                    {
+                        loggerMain.LogInformation("Restart Offset {Offset}", offset);
+                    }
+
+                    loggerMain.LogInformation($"******************************************************");
+                    await Task.CompletedTask.ConfigureAwait(false);
+                    return new OffsetTypeOffset(offset + 1); // <4>
+                },
+                //end::sac-manual-offset-tracking[]
+            }, logger).ConfigureAwait(false);
+            // 
+        }
     }
 }

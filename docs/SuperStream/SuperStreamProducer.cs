@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2007-2020 Broadcom. All Rights Reserved. The term Broadcom refers to Broadcom Inc. and/or its subsidiaries..
 
+using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
@@ -27,13 +28,16 @@ public class SuperStreamProducer
         var loggerMain = loggerFactory.CreateLogger<SuperStreamProducer>();
 
         loggerMain.LogInformation("Starting SuperStream Producer");
-        var config = new StreamSystemConfig();
+        var config = new StreamSystemConfig()
+        {
+        };
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
         loggerMain.LogInformation("Super Stream Producer connected to RabbitMQ");
-        
-        
+
+
+        await system.DeleteSuperStream(Costants.StreamName).ConfigureAwait(false);
         // tag::super-stream-creation[]
-        await system.CreateSuperStream(new PartitionsSuperStreamSpec(Costants.StreamName, 3)).ConfigureAwait(false);
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(Costants.StreamName, 5)).ConfigureAwait(false);
         // end::super-stream-creation[]
         // We define a Producer with the SuperStream name (that is the Exchange name)
         // tag::super-stream-producer[]
