@@ -18,6 +18,8 @@ namespace RabbitMQ.Stream.Client
         public Message(Data data)
         {
             Data = data;
+            Properties = new Properties();
+            ApplicationProperties = new ApplicationProperties();
         }
 
         public Annotations Annotations { get; internal set; }
