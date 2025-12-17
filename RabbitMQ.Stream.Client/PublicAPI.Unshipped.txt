@@ -233,6 +233,7 @@ RabbitMQ.Stream.Client.LastSecret.Update(string secret) -> void
 RabbitMQ.Stream.Client.MessageContext.ChunkId.get -> ulong
 RabbitMQ.Stream.Client.MessageContext.ChunkMessagesCount.get -> uint
 RabbitMQ.Stream.Client.MessageContext.MessageContext(ulong offset, System.TimeSpan timestamp, uint chunkMessagesCount, ulong chunkId) -> void
+RabbitMQ.Stream.Client.Metrics.StreamMetricsConstants
 RabbitMQ.Stream.Client.OffsetTypeTimestamp.OffsetTypeTimestamp(System.DateTime dateTime) -> void
 RabbitMQ.Stream.Client.OffsetTypeTimestamp.OffsetTypeTimestamp(System.DateTimeOffset dateTimeOffset) -> void
 RabbitMQ.Stream.Client.PartitionsSuperStreamSpec
@@ -416,3 +417,4 @@ static RabbitMQ.Stream.Client.Reliable.ReliableBase.FromConnectionClosedReasonTo
 static RabbitMQ.Stream.Client.Reliable.ReliableBase.RandomWait() -> System.Threading.Tasks.Task
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderOrRandomReplicasConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
+static readonly RabbitMQ.Stream.Client.Metrics.StreamMetricsConstants.Name -> string

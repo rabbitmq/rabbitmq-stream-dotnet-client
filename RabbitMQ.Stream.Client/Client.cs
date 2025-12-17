@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using RabbitMQ.Stream.Client.Metrics;
 
 namespace RabbitMQ.Stream.Client
 {
@@ -261,6 +262,7 @@ namespace RabbitMQ.Stream.Client
             client.correlationId = 100;
             // start heart beat only when the client is connected
             client.StartHeartBeat();
+            StreamMetrics.ConnectionOpened();
             return client;
         }
 
@@ -287,6 +289,14 @@ namespace RabbitMQ.Stream.Client
 
             publishCommandsSent += 1;
             messagesSent += publishMsg.MessageCount;
+
+            if (publishers.TryGetValue(publishMsg.publisherId, out var publisher))
+            {
+                var streamName = publisher.Item1;
+                StreamMetrics.Published(publishMsg.MessageCount, streamName);
+                StreamMetrics.OutstandingConfirmInc(publishMsg.MessageCount, streamName);
+            }
+
             return publishTask;
         }
 
@@ -294,6 +304,7 @@ namespace RabbitMQ.Stream.Client
         {
             try
             {
+                StreamMetrics.WrittenBytes(msg.SizeNeeded + 4);
                 return _connection.Write(msg);
             }
             catch (Exception e)
@@ -501,6 +512,7 @@ namespace RabbitMQ.Stream.Client
 
         private async Task HandleIncoming(Memory<byte> frameMemory)
         {
+            StreamMetrics.ReadBytes(frameMemory.Length);
             var frame = new ReadOnlySequence<byte>(frameMemory);
             WireFormatting.ReadUInt16(frame, out var tag);
             if ((tag & 0x8000) != 0)
@@ -519,7 +531,9 @@ namespace RabbitMQ.Stream.Client
                     confirmFrames += 1;
                     if (publishers.TryGetValue(confirm.PublisherId, out var publisherConf))
                     {
-                        var (_, (confirmCallback, _)) = (publisherConf);
+                        var (streamName, (confirmCallback, _)) = (publisherConf);
+                        StreamMetrics.Confirmed(confirm.PublishingIds.Length, streamName);
+                        StreamMetrics.OutstandingConfirmDec(confirm.PublishingIds.Length, streamName);
 
                         confirmCallback(confirm.PublishingIds);
                         if (MemoryMarshal.TryGetArray(confirm.PublishingIds, out var confirmSegment))
@@ -544,7 +558,10 @@ namespace RabbitMQ.Stream.Client
                     Deliver.Read(frame, out var deliver);
                     if (consumers.TryGetValue(deliver.SubscriptionId, out var consumerEvent))
                     {
-                        var (_, deliverHandler) = consumerEvent;
+                        var (streamName, deliverHandler) = consumerEvent;
+                        StreamMetrics.ChunkReceived(deliver.Chunk.NumEntries);
+                        StreamMetrics.Consumed(deliver.Chunk.NumRecords, streamName);
+
                         await deliverHandler.DeliverHandler(deliver).ConfigureAwait(false);
                     }
                     else
@@ -564,7 +581,10 @@ namespace RabbitMQ.Stream.Client
                     PublishError.Read(frame, out var error);
                     if (publishers.TryGetValue(error.PublisherId, out var publisher))
                     {
-                        var (_, (_, errorCallback)) = publisher;
+                        var (streamName, (_, errorCallback)) = publisher;
+                        StreamMetrics.Errored(error.PublishingErrors.Length, streamName);
+                        StreamMetrics.OutstandingConfirmDec(error.PublishingErrors.Length, streamName);
+
                         errorCallback(error.PublishingErrors);
                     }
                     else
@@ -744,6 +764,11 @@ namespace RabbitMQ.Stream.Client
 
         private void InternalClose()
         {
+            if (!_connection.IsClosed)
+            {
+                StreamMetrics.ConnectionClosed();
+            }
+
             _heartBeatHandler.Close();
             _connection.Close();
         }

@@ -1,5 +1,5 @@
 # vim: noexpandtab:ts=4:sw=4
-.PHONY: build test format rabbitmq-server stop-rabbitmq-server run-test-in-docker publish-github-pages
+.PHONY: build test clean format rabbitmq-server stop-rabbitmq-server run-test-in-docker publish-github-pages
 
 RABBITMQ_DOCKER_NAME ?= rabbitmq-stream-dotnet-client-rabbitmq
 
@@ -7,7 +7,10 @@ build:
 	dotnet build $(CURDIR)/Build.csproj
 
 test: build
-	dotnet test -c Debug $(CURDIR)/Tests/Tests.csproj --no-build --logger:"console;verbosity=detailed" /p:AltCover=true
+	dotnet test -c Debug $(CURDIR)/Tests/Tests.csproj --no-build --logger:"console;verbosity=detailed" /p:AltCover=true $(TEST_FLAGS)
+
+clean:
+	dotnet clean $(CURDIR)/Build.csproj
 
 format:
 	dotnet format $(CURDIR)/rabbitmq-stream-dotnet-client.sln
