@@ -32,14 +32,14 @@ class Program
             Endpoints = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) },
         };
         var system = await StreamSystem.Create(config).ConfigureAwait(false);
-        
+
         // Create the stream to use for the producer and consumer.
         await system.CreateStream(new StreamSpec("my-stream")).ConfigureAwait(false);
-        
+
         // Run the producer and consumer tasks.
         var producerTask = RunProducer(system, s_cancel.Token);
         var consumerTask = RunConsumer(system, s_cancel.Token);
-        
+
         Console.WriteLine("Application started.");
         Console.WriteLine("Press the ENTER key to cancel...\n");
         var cancelTask = Task.Run(() =>
@@ -86,7 +86,8 @@ class Program
     static async Task RunConsumer(StreamSystem system, CancellationToken cancellationToken)
     {
         var count = 0;
-        var c = new ConsumerConfig(system, "my-stream"){
+        var c = new ConsumerConfig(system, "my-stream")
+        {
             MessageHandler = async (stream, consumer, context, message) =>
             {
                 count += 1;

@@ -1,4 +1,4 @@
-// This source code is dual-licensed under the Apache License, version
+﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -15,11 +15,11 @@ namespace RabbitMQ.Stream.Client.Metrics
     internal static class StreamMetrics
     {
         private static readonly Meter s_meter = new Meter(StreamMetricsConstants.Name);
-        
+
         private static readonly UpDownCounter<long> s_connections = s_meter.CreateUpDownCounter<long>(
             "rabbitmq.stream.connections",
             description: "Number of active connections");
-        
+
         private static readonly Counter<long> s_published = s_meter.CreateCounter<long>(
             "rabbitmq.stream.published",
             description: "Number of messages published");
@@ -60,10 +60,10 @@ namespace RabbitMQ.Stream.Client.Metrics
             description: "Number of messages awaiting confirmation");
 
         public static void ConnectionOpened() => s_connections.Add(1);
-        
+
         public static void ConnectionClosed() => s_connections.Add(-1);
-        
-        public static void Published(long count, string stream) 
+
+        public static void Published(long count, string stream)
         {
             s_published.Add(count, new KeyValuePair<string, object>("stream", stream));
         }
@@ -90,14 +90,14 @@ namespace RabbitMQ.Stream.Client.Metrics
         }
 
         public static void WrittenBytes(long bytes) => s_writtenBytes.Add(bytes);
-        
+
         public static void ReadBytes(long bytes) => s_readBytes.Add(bytes);
 
         public static void OutstandingConfirmInc(long count, string stream)
         {
             s_outstandingPublishConfirm.Add(count, new KeyValuePair<string, object>("stream", stream));
         }
-        
+
         public static void OutstandingConfirmDec(long count, string stream)
         {
             s_outstandingPublishConfirm.Add(-count, new KeyValuePair<string, object>("stream", stream));

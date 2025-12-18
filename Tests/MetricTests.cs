@@ -1,4 +1,4 @@
-// This source code is dual-licensed under the Apache License, version
+﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -59,14 +59,14 @@ namespace Tests
             // 7. Bytes
             StreamMetrics.WrittenBytes(1024);
             Assert.Contains(writtenBytesCollector.GetMeasurementSnapshot(), m => m.Value == 1024);
-            
+
             StreamMetrics.ReadBytes(2048);
             Assert.Contains(readBytesCollector.GetMeasurementSnapshot(), m => m.Value == 2048);
 
             // 8. Outstanding Confirms
             StreamMetrics.OutstandingConfirmInc(10, "my-stream");
             Assert.Contains(outstandingCollector.GetMeasurementSnapshot(), m => m.Value == 10 && HasTag(m, "stream", "my-stream"));
-            
+
             StreamMetrics.OutstandingConfirmDec(5, "my-stream");
             Assert.Contains(outstandingCollector.GetMeasurementSnapshot(), m => m.Value == -5 && HasTag(m, "stream", "my-stream"));
 
