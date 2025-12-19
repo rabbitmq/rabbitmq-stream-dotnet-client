@@ -5,7 +5,7 @@ This project is a library for RabbitMQ Streams. It is written in C#.
 ## Build
 
 Use the `Makefile` to build the project. Use `make build` to build the project. Use `make clean` to clean the project.
-When running on Darwin, use `gmake` instead of `make`.
+When running on Darwin, try to use `gmake` instead of `make`. If you don't have `gmake`, use `make`.
 
 ## Tests
 
@@ -13,7 +13,7 @@ The tests are written in xUnit and are located in the `Tests` folder. Use the `M
 
 Filter tests by running `make test TEST_FLAGS="--filter FullyQualifiedName~Tests.<ClassName>.<MethodName>"`. Where `<ClassName>` and `<MethodName>` are the name of the class and method to filter by.
 
-When running on Darwin, use `gmake` instead of `make`.
+When running on Darwin, try to use `gmake` instead of `make`. If you don't have `gmake`, use `make`.
 
 ## Documentation
 
