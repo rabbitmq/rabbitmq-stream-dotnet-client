@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -o errexit
 set -o pipefail
@@ -20,7 +20,12 @@ if [[ -d $GITHUB_WORKSPACE ]]
 then
     echo "[INFO] GITHUB_WORKSPACE is set: '$GITHUB_WORKSPACE'"
 else
-    GITHUB_WORKSPACE="$(readlink --canonicalize-existing "$script_dir/../..")"
+    if [[ "$(uname)" == "Darwin" ]]
+    then
+        GITHUB_WORKSPACE="$(readlink -f "$script_dir/../..")"
+    else
+        GITHUB_WORKSPACE="$(readlink --canonicalize-existing "$script_dir/../..")"
+    fi
     echo "[INFO] set GITHUB_WORKSPACE to: '$GITHUB_WORKSPACE'"
 fi
 

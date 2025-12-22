@@ -125,3 +125,5 @@ Tests/coverage.*
 ##
 docs/temp/
 
+# Container logs
+**/rabbitmq.log

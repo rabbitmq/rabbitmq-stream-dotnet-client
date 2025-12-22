@@ -26,7 +26,7 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        private readonly byte publisherId;
+        internal readonly byte publisherId;
         private readonly List<(ulong, Message)> messages;
         public int MessageCount { get; }
 

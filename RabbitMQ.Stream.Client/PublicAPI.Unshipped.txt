@@ -5,6 +5,7 @@ abstract RabbitMQ.Stream.Client.AbstractEntity.GetStream() -> string
 abstract RabbitMQ.Stream.Client.Reliable.ReliableBase.CreateNewEntity(bool boot) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Info>
 const RabbitMQ.Stream.Client.CreateSuperStreamResponse.Key = 29 -> ushort
 const RabbitMQ.Stream.Client.DeleteSuperStreamResponse.Key = 30 -> ushort
+const RabbitMQ.Stream.Client.Metrics.StreamMetricsConstants.Name = "RabbitMQ.Stream.Client" -> string
 const RabbitMQ.Stream.Client.RouteQueryResponse.Key = 24 -> ushort
 const RabbitMQ.Stream.Client.StreamStatsResponse.Key = 28 -> ushort
 override RabbitMQ.Stream.Client.Broker.ToString() -> string
@@ -233,6 +234,7 @@ RabbitMQ.Stream.Client.LastSecret.Update(string secret) -> void
 RabbitMQ.Stream.Client.MessageContext.ChunkId.get -> ulong
 RabbitMQ.Stream.Client.MessageContext.ChunkMessagesCount.get -> uint
 RabbitMQ.Stream.Client.MessageContext.MessageContext(ulong offset, System.TimeSpan timestamp, uint chunkMessagesCount, ulong chunkId) -> void
+RabbitMQ.Stream.Client.Metrics.StreamMetricsConstants
 RabbitMQ.Stream.Client.OffsetTypeTimestamp.OffsetTypeTimestamp(System.DateTime dateTime) -> void
 RabbitMQ.Stream.Client.OffsetTypeTimestamp.OffsetTypeTimestamp(System.DateTimeOffset dateTimeOffset) -> void
 RabbitMQ.Stream.Client.PartitionsSuperStreamSpec
