@@ -1,0 +1,183 @@
+:test-examples: ../Metrics
+
+=== Metrics
+
+The RabbitMQ Stream .NET Client provides detailed metrics to monitor the behavior and performance of your streaming applications.
+These metrics follow the https://opentelemetry.io/[OpenTelemetry] standard and can be exported to various observability backends using OpenTelemetry exporters.
+
+==== Available Metrics
+
+The client exposes the following metrics through the `RabbitMQ.Stream.Client` meter:
+
+[%header,cols="25%,20%,40%,15%"]
+|===
+|Metric Name
+|Type
+|Description
+|Tags
+
+|`rabbitmq.stream.connections`
+|UpDownCounter
+|Number of active connections to the broker
+|
+
+|`rabbitmq.stream.published`
+|Counter
+|Total number of messages published
+|`stream`
+
+|`rabbitmq.stream.confirmed`
+|Counter
+|Total number of messages confirmed by the broker
+|`stream`
+
+|`rabbitmq.stream.errored`
+|Counter
+|Total number of messages that encountered errors during publishing
+|`stream`
+
+|`rabbitmq.stream.chunk`
+|Counter
+|Total number of chunks received from the broker
+|
+
+|`rabbitmq.stream.chunk_size`
+|Histogram
+|Distribution of the number of entries in each chunk received
+|
+
+|`rabbitmq.stream.consumed`
+|Counter
+|Total number of messages consumed
+|`stream`
+
+|`rabbitmq.stream.written_bytes`
+|Counter
+|Total number of bytes written to the broker
+|
+
+|`rabbitmq.stream.read_bytes`
+|Counter
+|Total number of bytes read from the broker
+|
+
+|`rabbitmq.stream.outstanding_publish_confirm`
+|UpDownCounter
+|Number of messages currently awaiting confirmation from the broker
+|`stream`
+
+|===
+
+==== Consuming Metrics with OpenTelemetry
+
+To collect and export metrics from the RabbitMQ Stream .NET Client, you need to:
+
+1. Add the OpenTelemetry NuGet packages to your project
+2. Create a `MeterProvider` configured to listen to the `RabbitMQ.Stream.Client` meter
+3. Add an exporter (e.g., console exporter for testing, OTLP exporter for production)
+
+===== Setting Up the Console Exporter
+
+The simplest way to get started is to use the OpenTelemetry console exporter for development and testing:
+
+.Configuring the console exporter for metrics
+[source,csharp,indent=0]
+--------
+include::{test-examples}/Program.cs[tag=otel-config,indent=0]
+--------
+
+<1> Create a `MeterProvider` that listens to the `RabbitMQ.Stream.Client` meter
+<2> Add the console exporter to output metrics
+<3> Build the provider
+
+===== Full Example Application
+
+Here is a complete example application that demonstrates how to use the RabbitMQ Stream .NET Client with OpenTelemetry metrics:
+
+.Complete example with producer and consumer
+[source,csharp,indent=0]
+--------
+include::{test-examples}/Program.cs[tag=full-example,indent=0]
+--------
+
+<1> Create a `MeterProvider` that listens to the `RabbitMQ.Stream.Client` meter
+<2> Add the console exporter to output metrics
+<3> Build the provider
+<4> Create the `StreamSystem` to connect to RabbitMQ
+<5> Create a stream named `my-stream`
+<6> Start the producer task to publish messages
+<7> Start the consumer task to consume messages
+
+The example creates a `StreamSystem`, sets up a producer and consumer, and automatically publishes metrics to the console. The metrics are displayed in real-time as the application runs.
+
+===== Producer Implementation
+
+The producer continuously publishes messages to the stream. Each published message will increment the `rabbitmq.stream.published` metric and update related metrics such as `rabbitmq.stream.written_bytes`:
+
+.Producer that publishes messages continuously
+[source,csharp,indent=0]
+--------
+include::{test-examples}/Program.cs[tag=producer,indent=0]
+--------
+
+===== Consumer Implementation
+
+The consumer receives and processes messages from the stream. Each consumed message will increment the `rabbitmq.stream.consumed` metric and update the `rabbitmq.stream.read_bytes` metric:
+
+.Consumer that processes messages
+[source,csharp,indent=0]
+--------
+include::{test-examples}/Program.cs[tag=consumer,indent=0]
+--------
+
+===== Running the Example
+
+To run this example:
+
+. Ensure you have RabbitMQ with the Stream plugin running on `localhost:5552`
+. The metrics output will appear on the console while the producer and consumer are active
+. Press ENTER to gracefully stop the application
+
+==== Using Production Exporters
+
+For production environments, use the appropriate OpenTelemetry exporter:
+
+===== OTLP Exporter
+
+To export metrics to an OpenTelemetry Collector or compatible backend:
+
+[source,csharp]
+----
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter(StreamMetricsConstants.Name)
+    .AddOtlpExporter(options =>
+    {
+        options.Endpoint = new Uri("http://your-collector:4317");
+    })
+    .Build();
+----
+
+===== Prometheus Exporter
+
+To expose metrics in Prometheus format:
+
+[source,csharp]
+----
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter(StreamMetricsConstants.Name)
+    .AddPrometheusHttpListener()
+    .Build();
+----
+
+Refer to the https://opentelemetry.io/docs/languages/dotnet/[OpenTelemetry .NET documentation] for more information on available exporters and configuration options.
+
+==== Monitoring Best Practices
+
+- **Connection Metrics**: Use `rabbitmq.stream.connections` to monitor the number of active connections and detect connection leaks
+- **Message Throughput**: Combine `rabbitmq.stream.published` and `rabbitmq.stream.consumed` to measure end-to-end throughput
+- **Confirm Rate**: Monitor the ratio of `rabbitmq.stream.confirmed` to `rabbitmq.stream.published` to ensure message reliability
+- **Error Rate**: Track `rabbitmq.stream.errored` to detect issues with message publishing
+- **Outstanding Confirms**: Use `rabbitmq.stream.outstanding_publish_confirm` to detect potential confirmation bottlenecks
+- **Network I/O**: Monitor `rabbitmq.stream.written_bytes` and `rabbitmq.stream.read_bytes` to understand network utilization
+- **Chunk Analysis**: Use `rabbitmq.stream.chunk_size` to analyze the efficiency of message batching
+

@@ -35,6 +35,8 @@ include::super-streams.adoc[]
 
 include::advanced-topics.adoc[]
 
+include::metrics.adoc[]
+
 // include::building.adoc[]
 
 // include::performance-tool.adoc[]

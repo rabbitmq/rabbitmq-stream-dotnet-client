@@ -4,26 +4,31 @@
 
 namespace Metrics;
 
+// tag::using[]
 using System.Net;
 using System.Threading;
-using OpenTelemetry;
-using OpenTelemetry.Metrics;
+using OpenTelemetry; // <1>
+using OpenTelemetry.Metrics; // <1>
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Metrics;
 using RabbitMQ.Stream.Client.Reliable;
+// end::using[]
 
 class Program
 {
     static readonly CancellationTokenSource s_cancel = new();
+    // tag::full-example[]
     static async Task Main()
     {
+        // tag::otel-config[]
         // Configure OTEL console exporter to collect metrics from the client and print to console
         // Read OTEL docs for more information:
         // https://opentelemetry.io/docs/languages/dotnet/metrics/getting-started-console/
         using var meterProvider = Sdk.CreateMeterProviderBuilder()
-        .AddMeter(StreamMetricsConstants.Name)
-        .AddConsoleExporter()
-        .Build();
+        .AddMeter(StreamMetricsConstants.Name) // <1>
+        .AddConsoleExporter() // <2>
+        .Build(); // <3>
+        // end::otel-config[]
 
         // Configure the stream to connect to localhost. Adjust if your server is running on a different host.
         var config = new StreamSystemConfig()
@@ -31,14 +36,14 @@ class Program
             Heartbeat = TimeSpan.Zero,
             Endpoints = new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) },
         };
-        var system = await StreamSystem.Create(config).ConfigureAwait(false);
+        var system = await StreamSystem.Create(config).ConfigureAwait(false); // <4>
 
         // Create the stream to use for the producer and consumer.
-        await system.CreateStream(new StreamSpec("my-stream")).ConfigureAwait(false);
+        await system.CreateStream(new StreamSpec("my-stream")).ConfigureAwait(false); // <5>
 
         // Run the producer and consumer tasks.
-        var producerTask = RunProducer(system, s_cancel.Token);
-        var consumerTask = RunConsumer(system, s_cancel.Token);
+        var producerTask = RunProducer(system, s_cancel.Token); // <6>
+        var consumerTask = RunConsumer(system, s_cancel.Token); // <7>
 
         Console.WriteLine("Application started.");
         Console.WriteLine("Press the ENTER key to cancel...\n");
@@ -65,7 +70,9 @@ class Program
         await system.Close().ConfigureAwait(false);
         Console.WriteLine("Application closed");
     }
+    // end::full-example[]
 
+    // tag::producer[]
     static async Task RunProducer(StreamSystem system, CancellationToken cancellationToken)
     {
         var producer = await Producer.Create(new ProducerConfig(system, "my-stream")).ConfigureAwait(false);
@@ -82,7 +89,9 @@ class Program
 
         await producer.Close().ConfigureAwait(false);
     }
+    // end::producer[]
 
+    // tag::consumer[]
     static async Task RunConsumer(StreamSystem system, CancellationToken cancellationToken)
     {
         var count = 0;
@@ -107,4 +116,5 @@ class Program
 
         await consumer.Close().ConfigureAwait(false);
     }
+    // end::consumer[]
 }
