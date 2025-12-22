@@ -9,7 +9,7 @@ namespace RabbitMQ.Stream.Client.Metrics
 {
     public static class StreamMetricsConstants
     {
-        public static readonly string Name = "RabbitMQ.Stream.Client";
+        public const string Name = "RabbitMQ.Stream.Client";
     }
 
     internal static class StreamMetrics
@@ -18,37 +18,37 @@ namespace RabbitMQ.Stream.Client.Metrics
 
         private static readonly object s_lock = new();
 
-        internal static UpDownCounter<long> Connections { get; } = s_meter.CreateUpDownCounter<long>(
+        private static UpDownCounter<long> Connections { get; } = s_meter.CreateUpDownCounter<long>(
             "rabbitmq.stream.connections",
             description: "Number of active connections");
-        internal static Counter<long> PublishedMessages { get; } = s_meter.CreateCounter<long>(
+        private static Counter<long> PublishedMessages { get; } = s_meter.CreateCounter<long>(
             "rabbitmq.stream.published",
             description: "Number of messages published");
-        internal static Counter<long> ConfirmedMessages { get; } = s_meter.CreateCounter<long>(
+        private static Counter<long> ConfirmedMessages { get; } = s_meter.CreateCounter<long>(
             "rabbitmq.stream.confirmed",
             description: "Number of messages confirmed");
-        internal static Counter<long> ErroredMessages { get; } = s_meter.CreateCounter<long>(
+        private static Counter<long> ErroredMessages { get; } = s_meter.CreateCounter<long>(
             "rabbitmq.stream.errored",
             description: "Number of messages errored");
-        internal static Counter<long> Chunks { get; } = s_meter.CreateCounter<long>(
+        private static Counter<long> Chunks { get; } = s_meter.CreateCounter<long>(
             "rabbitmq.stream.chunk",
             description: "Number of chunks received");
-        internal static Histogram<long> ChunkSize { get; } = s_meter.CreateHistogram<long>(
+        private static Histogram<long> ChunkSize { get; } = s_meter.CreateHistogram<long>(
             "rabbitmq.stream.chunk_size",
             unit: "{entries}",
             description: "Number of entries in a chunk");
-        internal static Counter<long> ConsumedMessages { get; } = s_meter.CreateCounter<long>(
+        private static Counter<long> ConsumedMessages { get; } = s_meter.CreateCounter<long>(
             "rabbitmq.stream.consumed",
             description: "Number of messages consumed");
-        internal static Counter<long> WrittenBytesCount { get; } = s_meter.CreateCounter<long>(
+        private static Counter<long> WrittenBytesCount { get; } = s_meter.CreateCounter<long>(
             "rabbitmq.stream.written_bytes",
             unit: "By",
             description: "Number of bytes written");
-        internal static Counter<long> ReadBytesCount { get; } = s_meter.CreateCounter<long>(
+        private static Counter<long> ReadBytesCount { get; } = s_meter.CreateCounter<long>(
             "rabbitmq.stream.read_bytes",
             unit: "By",
             description: "Number of bytes read");
-        internal static UpDownCounter<long> OutstandingPublishConfirm { get; } = s_meter.CreateUpDownCounter<long>(
+        private static UpDownCounter<long> OutstandingPublishConfirm { get; } = s_meter.CreateUpDownCounter<long>(
             "rabbitmq.stream.outstanding_publish_confirm",
             description: "Number of messages awaiting confirmation");
 
