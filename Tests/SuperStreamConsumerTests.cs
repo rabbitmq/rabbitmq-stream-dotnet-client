@@ -596,4 +596,58 @@ public class SuperStreamConsumerTests
             consumer.Info.ToString());
         await consumer.Close();
     }
+
+    [Fact]
+    public async Task RequestingCreditsShouldNotFailIfConsumerCreditsFlowControlStrategySpecified()
+    {
+        await SystemUtils.ResetSuperStreams();
+
+        var testResult = new TaskCompletionSource<InvalidOperationException>();
+
+        const int NumberOfMessages = 1;
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        // Publish to super stream hands sometimes, for unknow reason
+        var publishTask = SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, NumberOfMessages,
+            "", _testOutputHelper);
+        if (await Task.WhenAny(publishTask, Task.Delay(10000)) != publishTask)
+        {
+            Assert.Fail("timed out awaiting to publish messages to super stream");
+        }
+
+        await publishTask;
+
+        var consumer = await system.CreateSuperStreamConsumer(
+            new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange)
+            {
+                ClientProvidedName = Guid.NewGuid().ToString(),
+                Identifier = "super_stream_consumer_24680",
+                OffsetSpec = await SystemUtils.OffsetsForSuperStreamConsumer(system, SystemUtils.InvoicesExchange, new OffsetTypeFirst()),
+                FlowControl = new FlowControl
+                {
+                    Strategy = ConsumerFlowStrategy.ConsumerCredits
+                },
+                MessageHandler = async (stream, sourceConsumer, _, _) =>
+                {
+                    try
+                    {
+                        await sourceConsumer.Credits();
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        testResult.SetResult(e);
+                        return;
+                    }
+
+                    testResult.SetResult(null);
+                }
+            });
+
+        Assert.NotNull(consumer);
+        await SystemUtils.WaitAsync();
+
+        var exception = await testResult.Task;
+        Assert.Null(exception);
+
+        await system.Close();
+    }
 }
