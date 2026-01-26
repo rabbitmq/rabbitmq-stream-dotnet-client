@@ -212,7 +212,7 @@ public abstract class ConsumerFactory : ReliableBase
                         }
                         catch (Exception e)
                         {
-                            BaseLogger?.LogError("MessageHandler {Error} for stream {Stream} ", e.Message,
+                            BaseLogger?.LogError(e, "MessageHandler {Error} for stream {Stream} ", e.Message,
                                 _consumerConfig.Stream);
                         }
                     },
