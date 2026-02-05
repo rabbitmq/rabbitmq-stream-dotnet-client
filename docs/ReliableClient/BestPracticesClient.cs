@@ -113,7 +113,6 @@ public class BestPracticesClient
                 };
             }
 
-
             var system = await StreamSystem.Create(streamConf, ls).ConfigureAwait(false);
             var streamsList = new List<string>();
             if (config.SuperStream)

@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -41,7 +41,7 @@ public class ConnectionCloseConfig
     /// <summary>
     /// Interval to check the idle time.
     /// Default is high because the check is done in a separate thread.
-    /// The filed is internal to help the test.
+    /// The field is internal to help the test.
     /// </summary>
     internal TimeSpan CheckIdleTime { get; set; } = TimeSpan.FromSeconds(60);
 }
@@ -59,7 +59,7 @@ public class ConnectionPoolConfig
 
     /// <summary>
     /// A single TCP connection can handle multiple producers.
-    /// From 1 to 255 consumers per connection.
+    /// From 1 to 255 producers per connection.
     /// The default value is 1. So one connection per producer.
     /// An high value can be useful to reduce the number of connections
     /// but it is not the best for performance.
@@ -136,12 +136,10 @@ public class ConnectionsPool : IDisposable
     {
         lock (s_lock)
         {
-            var originalList = ids.ToList();
-            // // in this way we can avoid to recycle the same ids in a short time
-            ids.Sort();
-            var l = ids.Where(b => b >= nextId).ToList();
-            l.Sort();
-            if (l.Count == 0)
+            var sortedIds = ids.ToList();
+            sortedIds.Sort();
+            var idsAtOrAboveNext = sortedIds.Where(b => b >= nextId).ToList();
+            if (idsAtOrAboveNext.Count == 0)
             {
                 // not necessary to start from 0 because the ids are recycled
                 // nextid is passed as parameter to avoid to start from 0
@@ -149,14 +147,16 @@ public class ConnectionsPool : IDisposable
                 return nextId;
             }
 
-            if (l[^1] != byte.MaxValue)
-                return (byte)(l[^1] + 1);
+            if (idsAtOrAboveNext[^1] != byte.MaxValue)
+            {
+                return (byte)(idsAtOrAboveNext[^1] + 1);
+            }
 
             // let's try to find a free id in the list
-            originalList.Reverse();
+            var idSet = ids.ToHashSet();
             for (byte i = 0; i < byte.MaxValue; i++)
             {
-                if (!originalList.Contains(i))
+                if (!idSet.Contains(i))
                 {
                     return i;
                 }
@@ -184,10 +184,9 @@ public class ConnectionsPool : IDisposable
         _idsPerConnection = idsPerConnection;
         ConnectionPoolConfig = connectionCloseConfig;
         _isRunning = true;
-        if (ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmptyAndIdle)
-        {
-            _checkIdleConnectionTimeTask = Task.Run(CheckIdleConnectionTime);
-        }
+        _checkIdleConnectionTimeTask = ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmptyAndIdle
+            ? Task.Run(CheckIdleConnectionTime)
+            : Task.CompletedTask;
     }
 
     private ConnectionCloseConfig ConnectionPoolConfig { get; }
@@ -199,22 +198,23 @@ public class ConnectionsPool : IDisposable
             await Task.Delay(ConnectionPoolConfig.CheckIdleTime)
                 .ConfigureAwait(false);
 
+            var connectionItems = Connections.Values.ToList();
+            var now = DateTime.UtcNow;
+
             if (!_isRunning)
             {
-                var now = DateTime.UtcNow;
-                var connectionItems = Connections.Values.ToList();
-                foreach (var connectionItem in connectionItems.Where(connectionItem =>
-                             connectionItem.EntitiesCount == 0 &&
-                             connectionItem.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now))
+                // Shutting down: close all empty connections
+                foreach (var connectionItem in connectionItems.Where(c => c.EntitiesCount == 0))
                 {
                     CloseItemAndConnection("Idle connection", connectionItem);
                 }
             }
             else
             {
-                var connectionItems = Connections.Values.ToList();
-                foreach (var connectionItem in connectionItems.Where(
-                             connectionItem => connectionItem.EntitiesCount == 0))
+                // Running: close only empty connections that have been idle for IdleTime
+                foreach (var connectionItem in connectionItems.Where(c =>
+                             c.EntitiesCount == 0 &&
+                             c.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now))
                 {
                     CloseItemAndConnection("Idle connection", connectionItem);
                 }
@@ -375,9 +375,14 @@ public class ConnectionsPool : IDisposable
                 return;
             }
 
-            connectionItem.Client.Consumers.Where(x =>
-                    x.Key == id && x.Value.Item1 == stream).ToList()
-                .ForEach(x => connectionItem.Client.Consumers.Remove(x.Key));
+            var keysToRemove = connectionItem.Client.Consumers
+                .Where(x => x.Key == id && x.Value.Item1 == stream)
+                .Select(x => x.Key)
+                .ToList();
+            foreach (var key in keysToRemove)
+            {
+                connectionItem.Client.Consumers.Remove(key);
+            }
         }
         finally
         {
@@ -387,7 +392,7 @@ public class ConnectionsPool : IDisposable
 
     /// <summary>
     /// Removes the producer entity from the client.
-    /// When the metadata update is called we need to remove the consumer entity from the client.
+    /// When the metadata update is called we need to remove the producer entity from the client.
     /// </summary>
     public void RemoveProducerEntityFromStream(string clientId, byte id, string stream)
     {
@@ -399,10 +404,14 @@ public class ConnectionsPool : IDisposable
                 return;
             }
 
-            var l = connectionItem.Client.Publishers.Where(x =>
-                x.Key == id && x.Value.Item1 == stream).ToList();
-
-            l.ForEach(x => connectionItem.Client.Publishers.Remove(x.Key));
+            var keysToRemove = connectionItem.Client.Publishers
+                .Where(x => x.Key == id && x.Value.Item1 == stream)
+                .Select(x => x.Key)
+                .ToList();
+            foreach (var key in keysToRemove)
+            {
+                connectionItem.Client.Publishers.Remove(key);
+            }
         }
         finally
         {
@@ -429,7 +438,7 @@ public class ConnectionsPool : IDisposable
         }
 
         _isRunning = false;
-        if (_checkIdleConnectionTimeTask is not null)
+        if (!_checkIdleConnectionTimeTask.IsCompleted)
         {
             await _checkIdleConnectionTimeTask.ConfigureAwait(false);
         }
@@ -437,6 +446,7 @@ public class ConnectionsPool : IDisposable
 
     public void Dispose()
     {
+        _isRunning = false;
         _semaphoreSlim.Dispose();
         GC.SuppressFinalize(this);
     }
