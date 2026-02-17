@@ -1,4 +1,4 @@
-// This source code is dual-licensed under the Apache License, version
+﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -359,7 +359,7 @@ public class ConnectionsPool : IDisposable
         Connections.TryRemove(connectionItem.Client.ClientId, out _);
     }
 
-    internal int PendingConnections => Connections.Values.Count(x => x.EntitiesCount > 0);
+    private int PendingConnections => Connections.Values.Count(x => x.EntitiesCount > 0);
 
     /// <summary>
     /// Removes the consumer entity from the client.

@@ -803,7 +803,7 @@ namespace RabbitMQ.Stream.Client
 
         public void Dispose()
         {
-            _completeSubscription.Task.Wait();
+            _completeSubscription.Task.Wait(TimeSpan.FromSeconds(10));
             try
             {
                 Dispose(true);
