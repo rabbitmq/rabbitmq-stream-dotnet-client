@@ -95,9 +95,10 @@ namespace RabbitMQ.Stream.Client
             var attemptNo = 0;
             while (broker.Host != advertisedHost || broker.Port != uint.Parse(advertisedPort))
             {
-                logger?.LogInformation(
-                    "advertised_host or advertised_port doesn't match. Expected: {ExpectedHost}:{ExpectedPort}, Actual: {AdvertisedHost}:{AdvertisedPort}",
-                    broker.Host, broker.Port, advertisedHost, advertisedPort);
+                logger?.LogDebug(
+                    "advertised_host or advertised_port doesn't match. Expected: {ExpectedHost}:{ExpectedPort}, " +
+                    "Actual: {AdvertisedHost}:{AdvertisedPort}. Attempt number: {AttemptNo}/{MaxAttempts}",
+                    broker.Host, broker.Port, advertisedHost, advertisedPort, attemptNo, maxAttempts);
                 attemptNo++;
                 await client.Close("advertised_host or advertised_port doesn't match").ConfigureAwait(false);
 
