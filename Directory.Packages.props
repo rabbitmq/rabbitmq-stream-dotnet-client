@@ -41,4 +41,12 @@
     <!-- RabbitMQ.Stream.Client.PerfTest -->
     <PackageVersion Include="FSharp.Core" Version="9.0.201" />
   </ItemGroup>
+  <ItemGroup Label="net10.0 specific" Condition="'$(TargetFramework)' == 'net10.0'">
+    <!-- RabbitMQ.Stream.Client -->
+    <PackageVersion Include="System.IO.Hashing" Version="10.0.3" />
+    <PackageVersion Include="System.IO.Pipelines" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+    <!-- RabbitMQ.Stream.Client.PerfTest -->
+    <PackageVersion Include="FSharp.Core" Version="10.0.103" />
+  </ItemGroup>
 </Project>
