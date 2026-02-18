@@ -811,6 +811,7 @@ namespace RabbitMQ.Stream.Client
                     "The consumer will be disposed anyway.",
                     EntityId, DumpEntityConfiguration());
             }
+
             try
             {
                 Dispose(true);
