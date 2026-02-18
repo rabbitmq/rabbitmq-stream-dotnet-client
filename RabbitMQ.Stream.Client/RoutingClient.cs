@@ -47,8 +47,7 @@ namespace RabbitMQ.Stream.Client
         {
             var routing = new T();
 
-            if (clientParameters.AddressResolver == null
-                || clientParameters.AddressResolver.Enabled == false)
+            if (clientParameters.AddressResolver is not { Enabled: true })
             {
                 // We use the localhost ip as default
                 // this is mostly to have a default value.
@@ -96,6 +95,9 @@ namespace RabbitMQ.Stream.Client
             var attemptNo = 0;
             while (broker.Host != advertisedHost || broker.Port != uint.Parse(advertisedPort))
             {
+                logger?.LogInformation(
+                    "advertised_host or advertised_port doesn't match. Expected: {ExpectedHost}:{ExpectedPort}, Actual: {AdvertisedHost}:{AdvertisedPort}",
+                    broker.Host, broker.Port, advertisedHost, advertisedPort);
                 attemptNo++;
                 await client.Close("advertised_host or advertised_port doesn't match").ConfigureAwait(false);
 
@@ -115,6 +117,9 @@ namespace RabbitMQ.Stream.Client
                     await client.Close($"advertised_host or advertised_port doesn't match after {attemptNo} attempts")
                         .ConfigureAwait(false);
 
+                    logger?.LogError(
+                        "Could not find broker ({BrokerHost}:{BrokerPort}) after {MaxAttempts} attempts. Last advertised_host: {AdvertisedHost}, Last advertised_port: {AdvertisedPort}",
+                        broker.Host, broker.Port, maxAttempts, advertisedHost, advertisedPort);
                     throw new RoutingClientException(
                         $"Could not find broker ({broker.Host}:{broker.Port}) after {maxAttempts} attempts");
                 }
