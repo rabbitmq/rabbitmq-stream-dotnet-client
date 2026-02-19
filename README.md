@@ -27,7 +27,7 @@ Please refer to the [documentation](https://rabbitmq.github.io/rabbitmq-stream-d
 
 ### Pre-requisites
 
-The library requires .NET 6, .NET 7 or .NET 8.
+The library requires .NET 6, .NET 7, .NET 8, .NET 9 or .NET 10
 
 ### Documentation
 - [HTML documentation](https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html)
@@ -55,7 +55,7 @@ Test:
 make test
 ```
 
-To execute the tests you need a RabbitMQ `3.13.x` running with the following plugins enabled:
+To execute the tests you need a RabbitMQ `4.x` running with the following plugins enabled:
 - `rabbitmq_management`
 - `rabbitmq_stream`
 - `rabbitmq_stream_management`
