@@ -7,6 +7,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -429,8 +430,10 @@ namespace Tests
         public async Task VirtualHostFailureAccess()
         {
             var clientParameters = new ClientParameters { VirtualHost = "DOES_NOT_EXIST" };
-            await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
-                async () => { await Client.Create(clientParameters); }
+            await Assert.ThrowsAsync<VirtualHostAccessFailureException>(async () =>
+                {
+                    await Client.Create(clientParameters);
+                }
             );
         }
 
@@ -453,8 +456,12 @@ namespace Tests
             const string SuperStream = "my_super_stream_with_2_partitions";
             var partitions = new List<string> { "partition_0", "partition_1" };
             var bindingKeys = new List<string>() { "0", "1" };
-            var args = new Dictionary<string, string> { { "queue-leader-locator", "least-leaders"},
-                { "max-length-bytes", "10000"}, {"max-age", "30000s"}};
+            var args = new Dictionary<string, string>
+            {
+                { "queue-leader-locator", "least-leaders" },
+                { "max-length-bytes", "10000" },
+                { "max-age", "30000s" }
+            };
             var response = await client.CreateSuperStream(SuperStream, partitions, bindingKeys, args);
             Assert.Equal(ResponseCode.Ok, response.ResponseCode);
             await SystemUtils.WaitAsync(TimeSpan.FromSeconds(1));
@@ -466,6 +473,36 @@ namespace Tests
             var responseDeleteError = await client.DeleteSuperStream(SuperStream);
             Assert.Equal(ResponseCode.StreamDoesNotExist, responseDeleteError.ResponseCode);
             await client.Close("done");
+        }
+
+        [Fact]
+        public async Task ConnectWithDifferentSocketOptions()
+        {
+            var clientParameters = new ClientParameters
+            {
+                SocketOptions = new SocketOptions
+                {
+                    KeepAlive = true,
+                    NoDelay = true,
+                    ReceiveBufferSize = 1024 * 64,
+                    SendBufferSize = 1024 * 64,
+                }
+            };
+            var client = await Client.Create(clientParameters);
+            Assert.NotNull(client);
+            await client.Close("done");
+           
+            
+            var clientParameters1 = new ClientParameters
+            {
+                SocketOptions = new SocketOptions
+                {
+                    LingerOption = new LingerOption(false, 0),
+                }
+            };
+            var client1 = await Client.Create(clientParameters1);
+            Assert.NotNull(client1);
+            await client1.Close("done");
         }
     }
 }
