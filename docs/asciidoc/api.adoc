@@ -144,7 +144,7 @@ The following table sums up the main settings to create an `StreamSystem` using 
 |===
 
 [[socket-options]]
-===== Socket oOptions
+===== Socket Options
 The `SocketOptions` property allows configuring the socket options for the connections to the broker.
 Default is `null` with the default values:
 ```csharp
