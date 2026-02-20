@@ -491,8 +491,7 @@ namespace Tests
             var client = await Client.Create(clientParameters);
             Assert.NotNull(client);
             await client.Close("done");
-           
-            
+
             var clientParameters1 = new ClientParameters
             {
                 SocketOptions = new SocketOptions
