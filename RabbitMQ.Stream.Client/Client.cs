@@ -73,6 +73,11 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
 
+        /// <summary>
+        /// TCP socket options (buffer sizes, NoDelay, KeepAlive, Linger). When null, library defaults are used.
+        /// </summary>
+        public SocketOptions SocketOptions { get; set; }
+
         public IAddressResolver AddressResolver { get; set; } = null;
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
@@ -191,7 +196,8 @@ namespace RabbitMQ.Stream.Client
         {
             var client = new Client(parameters, logger);
             client._connection = await Connection
-                .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl, logger)
+                .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl, logger,
+                    parameters.SocketOptions)
                 .ConfigureAwait(false);
             client._connection.ClientId = client.ClientId;
             // exchange properties

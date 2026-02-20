@@ -137,7 +137,22 @@ The following table sums up the main settings to create an `StreamSystem` using 
 |Define the connection pool policies. See <<connection-pool,Connection Pool>> for more details.
 |1 producer/consumer per connection
 
+|`SocketOptions`
+|The <<socket-options, socket options>> to use for the connections.
+|`null` provide default socket options
+
 |===
+
+[[socket-options]]
+===== Socket Options
+The `SocketOptions` property allows configuring the socket options for the connections to the broker.
+Default is `null` with the default values:
+```csharp
+ socket.NoDelay = true;
+ socket.SendBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
+ socket.ReceiveBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
+ socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+```
 
 [[connection-pool]]
 ===== Connection pool

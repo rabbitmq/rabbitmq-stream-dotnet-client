@@ -803,7 +803,15 @@ namespace RabbitMQ.Stream.Client
 
         public void Dispose()
         {
-            _completeSubscription.Task.Wait();
+            var subscriptionCompleted = _completeSubscription.Task.Wait(TimeSpan.FromSeconds(10));
+            if (!subscriptionCompleted)
+            {
+                Logger.LogWarning(
+                    "Timeout waiting for subscription completion during Dispose for consumer id: {SubscriberId}, {EntityInfo}. " +
+                    "The consumer will be disposed anyway.",
+                    EntityId, DumpEntityConfiguration());
+            }
+
             try
             {
                 Dispose(true);
