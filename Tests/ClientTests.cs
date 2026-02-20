@@ -491,15 +491,17 @@ namespace Tests
             var client = await Client.Create(clientParameters);
             Assert.NotNull(client);
             await client.Close("done");
-            _ = new ClientParameters
+           
+            
+            var clientParameters1 = new ClientParameters
             {
                 SocketOptions = new SocketOptions
                 {
                     LingerOption = new LingerOption(false, 0),
                 }
             };
-            var client1 = await Client.Create(clientParameters);
-            Assert.NotNull(client);
+            var client1 = await Client.Create(clientParameters1);
+            Assert.NotNull(client1);
             await client1.Close("done");
         }
     }
