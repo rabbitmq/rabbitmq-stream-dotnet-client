@@ -56,6 +56,11 @@ namespace RabbitMQ.Stream.Client
         /// Low value can cause false errors in the client.
         /// </summary>
         public TimeSpan RpcTimeOut { get; set; } = TimeSpan.FromSeconds(10);
+
+        /// <summary>
+        /// See <see cref="SocketOptions"/> for configurable TCP socket options for a connection. Use this to tune buffer sizes,
+        /// </summary>
+        public SocketOptions SocketOptions { get; set; } = null;
     }
 
     public class StreamSystem
@@ -87,6 +92,7 @@ namespace RabbitMQ.Stream.Client
         public static async Task<StreamSystem> Create(StreamSystemConfig config, ILogger<StreamSystem> logger = null)
         {
             config.Validate();
+
             var clientParams = new ClientParameters
             {
                 UserName = config.UserName,
@@ -98,7 +104,8 @@ namespace RabbitMQ.Stream.Client
                 Heartbeat = config.Heartbeat,
                 Endpoints = config.Endpoints,
                 AuthMechanism = config.AuthMechanism,
-                RpcTimeOut = config.RpcTimeOut
+                RpcTimeOut = config.RpcTimeOut,
+                SocketOptions = config.SocketOptions
             };
             // create the metadata client connection
             foreach (var endPoint in clientParams.Endpoints)

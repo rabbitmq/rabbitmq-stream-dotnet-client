@@ -74,8 +74,8 @@ RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.OnMetadataUpdate -> RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.get -> System.TimeSpan
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.set -> void
-RabbitMQ.Stream.Client.ClientParameters.Socket.get -> RabbitMQ.Stream.Client.SocketOptions
-RabbitMQ.Stream.Client.ClientParameters.Socket.set -> void
+RabbitMQ.Stream.Client.ClientParameters.SocketOptions.get -> RabbitMQ.Stream.Client.SocketOptions
+RabbitMQ.Stream.Client.ClientParameters.SocketOptions.set -> void
 RabbitMQ.Stream.Client.Connection.UpdateCloseStatus(string reason) -> void
 RabbitMQ.Stream.Client.ConnectionCloseConfig
 RabbitMQ.Stream.Client.ConnectionCloseConfig.ConnectionCloseConfig() -> void
@@ -404,6 +404,8 @@ RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.get -> RabbitMQ.S
 RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.RpcTimeOut.get -> System.TimeSpan
 RabbitMQ.Stream.Client.StreamSystemConfig.RpcTimeOut.set -> void
+RabbitMQ.Stream.Client.StreamSystemConfig.SocketOptions.get -> RabbitMQ.Stream.Client.SocketOptions
+RabbitMQ.Stream.Client.StreamSystemConfig.SocketOptions.set -> void
 RabbitMQ.Stream.Client.SuperStreamSpec
 RabbitMQ.Stream.Client.SuperStreamSpec.Args.get -> System.Collections.Generic.IDictionary<string, string>
 RabbitMQ.Stream.Client.SuperStreamSpec.LeaderLocator.set -> void

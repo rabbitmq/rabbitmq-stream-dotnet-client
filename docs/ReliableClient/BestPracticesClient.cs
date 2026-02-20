@@ -4,6 +4,7 @@
 
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -104,6 +105,14 @@ public class BestPracticesClient
                     AddressResolver = resolver,
                     UserName = config.Username,
                     Password = config.Password,
+                    // here you can set the socket options. 
+                    // Default values are good for most of the use cases, but
+                    // you can change them if you want to optimize the performance of the producer and consumer.
+                    // SocketOptions = new SocketOptions()
+                    // {
+                    //    // KeepAlive = true,
+                    //
+                    // },
                     ConnectionPoolConfig = new ConnectionPoolConfig()
                     {
                         ProducersPerConnection = config.ProducersPerConnection,
