@@ -74,6 +74,8 @@ RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.OnMetadataUpdate -> RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.get -> System.TimeSpan
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.set -> void
+RabbitMQ.Stream.Client.ClientParameters.Socket.get -> RabbitMQ.Stream.Client.SocketOptions
+RabbitMQ.Stream.Client.ClientParameters.Socket.set -> void
 RabbitMQ.Stream.Client.Connection.UpdateCloseStatus(string reason) -> void
 RabbitMQ.Stream.Client.ConnectionCloseConfig
 RabbitMQ.Stream.Client.ConnectionCloseConfig.ConnectionCloseConfig() -> void
@@ -357,6 +359,18 @@ RabbitMQ.Stream.Client.RouteQueryResponse.Write(System.Span<byte> span) -> int
 RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Hash = 0 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Key = 1 -> RabbitMQ.Stream.Client.RoutingStrategyType
+RabbitMQ.Stream.Client.SocketOptions
+RabbitMQ.Stream.Client.SocketOptions.SocketOptions() -> void
+RabbitMQ.Stream.Client.SocketOptions.KeepAlive.get -> bool
+RabbitMQ.Stream.Client.SocketOptions.KeepAlive.set -> void
+RabbitMQ.Stream.Client.SocketOptions.LingerOption.get -> System.Net.Sockets.LingerOption
+RabbitMQ.Stream.Client.SocketOptions.LingerOption.set -> void
+RabbitMQ.Stream.Client.SocketOptions.NoDelay.get -> bool
+RabbitMQ.Stream.Client.SocketOptions.NoDelay.set -> void
+RabbitMQ.Stream.Client.SocketOptions.ReceiveBufferSize.get -> int?
+RabbitMQ.Stream.Client.SocketOptions.ReceiveBufferSize.set -> void
+RabbitMQ.Stream.Client.SocketOptions.SendBufferSize.get -> int?
+RabbitMQ.Stream.Client.SocketOptions.SendBufferSize.set -> void
 RabbitMQ.Stream.Client.StreamCrc32
 RabbitMQ.Stream.Client.StreamCrc32.FailAction.get -> System.Func<RabbitMQ.Stream.Client.IConsumer, RabbitMQ.Stream.Client.ChunkAction>
 RabbitMQ.Stream.Client.StreamCrc32.FailAction.init -> void
@@ -407,7 +421,7 @@ RabbitMQ.Stream.Client.UnsupportedOperationException
 RabbitMQ.Stream.Client.UnsupportedOperationException.UnsupportedOperationException(string s) -> void
 RabbitMQ.Stream.Client.UpdateSecretFailureException
 RabbitMQ.Stream.Client.UpdateSecretFailureException.UpdateSecretFailureException(string s) -> void
-static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption, Microsoft.Extensions.Logging.ILogger logger) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>
+static RabbitMQ.Stream.Client.Connection.Create(System.Net.EndPoint endpoint, System.Func<System.Memory<byte>, System.Threading.Tasks.Task> commandCallback, System.Func<string, System.Threading.Tasks.Task> closedCallBack, RabbitMQ.Stream.Client.SslOption sslOption, Microsoft.Extensions.Logging.ILogger logger, RabbitMQ.Stream.Client.SocketOptions socketOptions = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.Connection>
 static RabbitMQ.Stream.Client.Message.From(ref System.Buffers.ReadOnlySequence<byte> seq, uint len) -> RabbitMQ.Stream.Client.Message
 static RabbitMQ.Stream.Client.RawConsumer.Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.RawConsumerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IConsumer>
 static RabbitMQ.Stream.Client.RawProducer.Create(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.RawProducerConfig config, RabbitMQ.Stream.Client.StreamInfo metaStreamInfo, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IProducer>

@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -72,6 +72,11 @@ namespace RabbitMQ.Stream.Client
         /// TLS options setting.
         /// </summary>
         public SslOption Ssl { get; set; } = new SslOption();
+
+        /// <summary>
+        /// TCP socket options (buffer sizes, NoDelay, KeepAlive, Linger). When null, library defaults are used.
+        /// </summary>
+        public SocketOptions Socket { get; set; }
 
         public IAddressResolver AddressResolver { get; set; } = null;
 
@@ -191,7 +196,8 @@ namespace RabbitMQ.Stream.Client
         {
             var client = new Client(parameters, logger);
             client._connection = await Connection
-                .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl, logger)
+                .Create(parameters.Endpoint, client.HandleIncoming, client.HandleClosed, parameters.Ssl, logger,
+                    parameters.Socket)
                 .ConfigureAwait(false);
             client._connection.ClientId = client.ClientId;
             // exchange properties

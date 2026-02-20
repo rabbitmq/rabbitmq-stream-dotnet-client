@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -83,14 +83,33 @@ namespace RabbitMQ.Stream.Client
             socket.Close();
         }
 
+        private static void ApplySocketOptions(Socket socket, SocketOptions options)
+        {
+            if (options == null)
+            {
+                socket.NoDelay = true;
+                socket.SendBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
+                socket.ReceiveBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                return;
+            }
+
+            socket.NoDelay = options.NoDelay;
+            socket.SendBufferSize = options.SendBufferSize ?? socket.SendBufferSize * SocketOptions.DefaultBufferSizeMultiplier;
+            socket.ReceiveBufferSize = options.ReceiveBufferSize ?? socket.ReceiveBufferSize * SocketOptions.DefaultBufferSizeMultiplier;
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, options.KeepAlive);
+            if (options.LingerOption != null)
+            {
+                socket.LingerState = options.LingerOption;
+            }
+        }
+
         public static async Task<Connection> Create(EndPoint endpoint, Func<Memory<byte>, Task> commandCallback,
-            Func<string, Task> closedCallBack, SslOption sslOption, ILogger logger)
+            Func<string, Task> closedCallBack, SslOption sslOption, ILogger logger,
+            SocketOptions socketOptions = null)
         {
             var socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            socket.NoDelay = true;
-            //TODO: make configurable
-            socket.SendBufferSize *= 10;
-            socket.ReceiveBufferSize *= 10;
+            ApplySocketOptions(socket, socketOptions);
 
             try
             {
