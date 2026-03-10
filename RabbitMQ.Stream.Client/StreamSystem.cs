@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -64,7 +64,7 @@ namespace RabbitMQ.Stream.Client
         public SocketOptions SocketOptions { get; set; } = null;
     }
 
-    public class StreamSystem
+    public class StreamSystem : IAsyncDisposable
     {
         private readonly ClientParameters _clientParameters;
         private Client _client;
@@ -165,6 +165,18 @@ namespace RabbitMQ.Stream.Client
             }
 
             _logger?.LogDebug("Client Closed");
+        }
+
+        /// <summary>
+        /// Disposes the stream system asynchronously, closing all connections and releasing resources.
+        /// Enables <c>await using</c> and automatic cleanup by DI containers.
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            await Close().ConfigureAwait(false);
+
+            // Suppress finalization.
+            GC.SuppressFinalize(this);
         }
 
         private readonly SemaphoreSlim _semClientProvidedName = new(1);

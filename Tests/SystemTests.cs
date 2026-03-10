@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -47,6 +47,28 @@ namespace Tests
             Assert.False(system.IsClosed);
             await system.Close();
             Assert.True(system.IsClosed);
+        }
+
+        [Fact]
+        public async Task StreamSystem_SupportsAwaitUsing()
+        {
+            var config = new StreamSystemConfig
+            {
+                Endpoints = new List<EndPoint>
+                {
+                    new IPEndPoint(IPAddress.Loopback, 9999), // this should not be bound
+                    new IPEndPoint(IPAddress.Loopback, 5552),
+                }
+            };
+            await using (var system = await StreamSystem.Create(config))
+            {
+                Assert.False(system.IsClosed);
+            }
+            // After await using block, DisposeAsync was called; create another system to confirm no resource leak
+            await using (var system2 = await StreamSystem.Create(config))
+            {
+                Assert.False(system2.IsClosed);
+            }
         }
 
         [Fact]
