@@ -57,7 +57,7 @@ public class ReliableTests
         // if the message doesn't receive the confirmation within X time, the timeout error is raised.
         Assert.Equal(ConfirmationStatus.ClientTimeoutError, l[0]);
         Assert.Equal(ConfirmationStatus.ClientTimeoutError, l[1]);
-        confirmationPipe.Stop();
+        await confirmationPipe.StopAsync();
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class ReliableTests
         var result = await confirmationTask.Task;
         Assert.Equal(ConfirmationStatus.Confirmed, result[0].Status);
         Assert.Equal(ConfirmationStatus.Confirmed, result[1].Status);
-        confirmationPipe.Stop();
+        await confirmationPipe.StopAsync();
     }
 
     [Fact]

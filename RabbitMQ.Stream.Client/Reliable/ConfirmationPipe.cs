@@ -111,9 +111,9 @@ public class ConfirmationPipe
         _invalidateTimer.Enabled = true;
     }
 
-    internal void Stop()
+    internal async Task StopAsync()
     {
-        FlushPendingMessages();
+        await FlushPendingMessages().ConfigureAwait(false);
         _invalidateTimer.Enabled = false;
         _waitForConfirmationActionBlock.Complete();
     }
@@ -130,7 +130,7 @@ public class ConfirmationPipe
         }
     }
 
-    private async void FlushPendingMessages()
+    private async Task FlushPendingMessages()
     {
         foreach (var pair in _waitForConfirmation)
         {
