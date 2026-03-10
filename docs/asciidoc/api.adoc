@@ -33,6 +33,16 @@ Note the streamSystem must be closed to release resources when it is no longer n
 Consider the environment like a long-lived object.
 An application will usually create one `StreamSystem` instance when it starts up and close it when it exits.
 
+.Creating an environment with disposable pattern
+[source,c#,indent=0]
+--------
+include::{test-examples}/StreamSystemUsage.cs[tag=create-disposable]
+--------
+
+`StreamSystem` implements `IAsyncDisposable`, so you can use the `using` statement to automatically close it after usage.
+
+
+
 It is possible to use a multiple end-points to connect to a cluster of nodes.
 The:
 

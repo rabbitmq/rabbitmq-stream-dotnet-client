@@ -1,4 +1,4 @@
-// This source code is dual-licensed under the Apache License, version
+﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -63,6 +63,11 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SocketOptions SocketOptions { get; set; } = null;
     }
+    /// <summary>
+    /// StreamSystem is the main entry point of the client.
+    /// It is responsible for managing the connections to the server and providing methods to create producers and consumers.
+    /// Implements IAsyncDisposable to allow using <c>await using</c> and automatic cleanup producers, consumers.
+    /// </summary>
 
     public class StreamSystem : IAsyncDisposable
     {

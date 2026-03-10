@@ -1,4 +1,4 @@
-// This source code is dual-licensed under the Apache License, version
+﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -58,15 +58,21 @@ namespace Tests
                 {
                     new IPEndPoint(IPAddress.Loopback, 9999), // this should not be bound
                     new IPEndPoint(IPAddress.Loopback, 5552),
-                }
+                },
+                ClientProvidedName = "StreamSystem_SupportsAwaitUsing"
             };
             await using (var system = await StreamSystem.Create(config))
             {
+                await SystemUtils.WaitUntilAsync(() => SystemUtils.IsConnectionOpen("StreamSystem_SupportsAwaitUsing"));
                 Assert.False(system.IsClosed);
             }
+
+            await SystemUtils.WaitUntilAsync(() => (SystemUtils.ConnectionsCountByName("StreamSystem_SupportsAwaitUsing").Result == 0));
+
             // After await using block, DisposeAsync was called; create another system to confirm no resource leak
             await using (var system2 = await StreamSystem.Create(config))
             {
+                await SystemUtils.WaitUntilAsync(() => SystemUtils.IsConnectionOpen("StreamSystem_SupportsAwaitUsing"));
                 Assert.False(system2.IsClosed);
             }
         }
@@ -81,8 +87,10 @@ namespace Tests
                     new IPEndPoint(IPAddress.Loopback, 9999) // this should not be bound
                 }
             };
-            await Assert.ThrowsAsync<StreamSystemInitialisationException>(
-                async () => { await StreamSystem.Create(config); }
+            await Assert.ThrowsAsync<StreamSystemInitialisationException>(async () =>
+                {
+                    await StreamSystem.Create(config);
+                }
             );
         }
 
@@ -100,8 +108,7 @@ namespace Tests
                                              SslPolicyErrors.RemoteCertificateNameMismatch
                 },
             };
-            await Assert.ThrowsAsync<SslException>(
-                async () => { await StreamSystem.Create(config); }
+            await Assert.ThrowsAsync<SslException>(async () => { await StreamSystem.Create(config); }
             );
         }
 
@@ -164,8 +171,10 @@ namespace Tests
         public async Task CreateSystemThrowsWhenVirtualHostFailureAccess()
         {
             var config = new StreamSystemConfig { VirtualHost = "DOES_NOT_EXIST" };
-            await Assert.ThrowsAsync<VirtualHostAccessFailureException>(
-                async () => { await StreamSystem.Create(config); }
+            await Assert.ThrowsAsync<VirtualHostAccessFailureException>(async () =>
+                {
+                    await StreamSystem.Create(config);
+                }
             );
         }
 
@@ -173,8 +182,7 @@ namespace Tests
         public async Task CreateSystemThrowsWhenAuthenticationAccess()
         {
             var config = new StreamSystemConfig { UserName = "user_does_not_exist" };
-            await Assert.ThrowsAsync<AuthenticationFailureException>(
-                async () => { await StreamSystem.Create(config); }
+            await Assert.ThrowsAsync<AuthenticationFailureException>(async () => { await StreamSystem.Create(config); }
             );
         }
 
@@ -194,8 +202,10 @@ namespace Tests
             var config = new StreamSystemConfig { UserName = "guest", Password = "guest" }; // specified for readability
             var streamSystem = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<AuthenticationFailureException>(
-                async () => { await streamSystem.UpdateSecret("not_valid_secret"); }
+            await Assert.ThrowsAsync<AuthenticationFailureException>(async () =>
+                {
+                    await streamSystem.UpdateSecret("not_valid_secret");
+                }
             );
             await streamSystem.Close();
         }
@@ -228,8 +238,10 @@ namespace Tests
             var system = await StreamSystem.Create(config);
             await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 20, });
 
-            await Assert.ThrowsAsync<CreateStreamException>(
-                async () => { await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 10000, }); }
+            await Assert.ThrowsAsync<CreateStreamException>(async () =>
+                {
+                    await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 10000, });
+                }
             );
             await system.DeleteStream(stream);
             await system.Close();
@@ -245,20 +257,28 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.QueryOffset(string.Empty, "stream_we_don_t_care"); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.QueryOffset(string.Empty, "stream_we_don_t_care");
+                }
             );
 
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.QueryOffset("reference_we_don_care", string.Empty); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.QueryOffset("reference_we_don_care", string.Empty);
+                }
             );
 
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.QueryOffset(string.Empty, string.Empty); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.QueryOffset(string.Empty, string.Empty);
+                }
             );
 
-            await Assert.ThrowsAsync<QueryException>(
-                async () => { await system.QueryPartition("stream_does_not_exist"); }
+            await Assert.ThrowsAsync<QueryException>(async () =>
+                {
+                    await system.QueryPartition("stream_does_not_exist");
+                }
             );
 
             await system.Close();
@@ -273,16 +293,22 @@ namespace Tests
             var config = new StreamSystemConfig();
             var system = await StreamSystem.Create(config);
 
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.QuerySequence(string.Empty, "stream_we_don_t_care"); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.QuerySequence(string.Empty, "stream_we_don_t_care");
+                }
             );
 
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.QuerySequence("reference_we_don_care", string.Empty); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.QuerySequence("reference_we_don_care", string.Empty);
+                }
             );
 
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.QuerySequence(string.Empty, string.Empty); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.QuerySequence(string.Empty, string.Empty);
+                }
             );
             await system.Close();
         }
@@ -293,8 +319,10 @@ namespace Tests
             // the user can set the SALs configuration externally
             // this test validates that the configuration is supported by the server
             var config = new StreamSystemConfig() { AuthMechanism = AuthMechanism.External };
-            await Assert.ThrowsAsync<AuthMechanismNotSupportedException>(
-                async () => { await StreamSystem.Create(config); }
+            await Assert.ThrowsAsync<AuthMechanismNotSupportedException>(async () =>
+                {
+                    await StreamSystem.Create(config);
+                }
             );
         }
 
@@ -302,8 +330,7 @@ namespace Tests
         public async Task ValidateRpCtimeOut()
         {
             var config = new StreamSystemConfig() { RpcTimeOut = TimeSpan.FromMilliseconds(1) };
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await StreamSystem.Create(config); }
+            await Assert.ThrowsAsync<ArgumentException>(async () => { await StreamSystem.Create(config); }
             );
         }
 
@@ -405,23 +432,28 @@ namespace Tests
             var system = await StreamSystem.Create(new StreamSystemConfig());
             var specZeroPartitions = new PartitionsSuperStreamSpec(SuperStream, 0) { };
 
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.CreateSuperStream(specZeroPartitions); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.CreateSuperStream(specZeroPartitions);
+                }
             );
 
             var specNullBindings = new BindingsSuperStreamSpec(SuperStream, null);
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.CreateSuperStream(specNullBindings); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.CreateSuperStream(specNullBindings);
+                }
             );
 
             var specDuplicationBindings =
                 new BindingsSuperStreamSpec(SuperStream, new[] { "duplication", "duplication" });
-            await Assert.ThrowsAsync<ArgumentException>(
-                async () => { await system.CreateSuperStream(specDuplicationBindings); }
+            await Assert.ThrowsAsync<ArgumentException>(async () =>
+                {
+                    await system.CreateSuperStream(specDuplicationBindings);
+                }
             );
 
-            await Assert.ThrowsAsync<DeleteStreamException>(
-                async () => { await system.DeleteSuperStream("not-exist"); }
+            await Assert.ThrowsAsync<DeleteStreamException>(async () => { await system.DeleteSuperStream("not-exist"); }
             );
             await system.Close();
         }
