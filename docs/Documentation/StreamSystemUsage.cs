@@ -21,6 +21,21 @@ public class StreamSystemUsage
         await streamSystem.Close().ConfigureAwait(false); // <2>
     }
     // end::create-simple[]
+    
+    
+    // tag::create-disposable[]
+    private static async Task CreateDisposable()
+    {
+        await using (var system = (
+                         await StreamSystem.Create(
+                             new StreamSystemConfig()).ConfigureAwait(false)).ConfigureAwait(false))
+        {
+                // use the system
+                
+            
+        }
+    }
+    // end::create-disposable[]
 
 
     // tag::create-multi-endpoints[]

@@ -63,8 +63,13 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SocketOptions SocketOptions { get; set; } = null;
     }
+    /// <summary>
+    /// StreamSystem is the main entry point of the client.
+    /// It is responsible for managing the connections to the server and providing methods to create producers and consumers.
+    /// Implements IAsyncDisposable to allow using <c>await using</c> and automatic cleanup producers, consumers.
+    /// </summary>
 
-    public class StreamSystem
+    public class StreamSystem : IAsyncDisposable
     {
         private readonly ClientParameters _clientParameters;
         private Client _client;
@@ -165,6 +170,18 @@ namespace RabbitMQ.Stream.Client
             }
 
             _logger?.LogDebug("Client Closed");
+        }
+
+        /// <summary>
+        /// Disposes the stream system asynchronously, closing all connections and releasing resources.
+        /// Enables <c>await using</c> and automatic cleanup by DI containers.
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            await Close().ConfigureAwait(false);
+
+            // Suppress finalization.
+            GC.SuppressFinalize(this);
         }
 
         private readonly SemaphoreSlim _semClientProvidedName = new(1);
