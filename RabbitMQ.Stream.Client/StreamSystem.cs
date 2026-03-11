@@ -62,6 +62,11 @@ namespace RabbitMQ.Stream.Client
         /// Nagle's algorithm, linger on close, and TCP keep-alive.
         /// </summary>
         public SocketOptions SocketOptions { get; set; } = null;
+
+        /// <summary>
+        /// LookupLocatorStrategy see <see cref="ILookupLocatorStrategy"/> for the strategy to reconnect the locator client in case of connection failure.
+        /// </summary>
+        public ILookupLocatorStrategy LookupLocatorStrategy { get; set; } = new BackOffLookupLocatorStrategy();
     }
 
     /// <summary>
@@ -111,7 +116,8 @@ namespace RabbitMQ.Stream.Client
                 Endpoints = config.Endpoints,
                 AuthMechanism = config.AuthMechanism,
                 RpcTimeOut = config.RpcTimeOut,
-                SocketOptions = config.SocketOptions
+                SocketOptions = config.SocketOptions,
+                LookupLocatorStrategy = config.LookupLocatorStrategy,
             };
             // create the metadata client connection
             foreach (var endPoint in clientParams.Endpoints)
@@ -198,14 +204,7 @@ namespace RabbitMQ.Stream.Client
             // but then the connection was closed.
             // We try to reconnect to all the endpoints before giving up.
             // We could have a load balancer in front of the cluster.
-            var numberRetries = _clientParameters.Endpoints.Count * 2;
-            if (_clientParameters.AddressResolver != null)
-            {
-                // if we have an address resolver, we can have more endpoints to try to connect to
-                // we don't know exactly how many endpoints we can have because
-                // it depends on the address resolver implementation and the cluster topology,
-                numberRetries = Math.Max(numberRetries, 10);
-            }
+            var maxAttempts = _clientParameters.LookupLocatorStrategy.MaxAttempts;
 
             try
             {
@@ -214,7 +213,7 @@ namespace RabbitMQ.Stream.Client
                 {
                     var retryCount = 0;
                     var advId = Random.Shared.Next(0, _clientParameters.Endpoints.Count);
-                    while (retryCount < numberRetries)
+                    while (retryCount < maxAttempts)
                     {
                         try
                         {
@@ -229,12 +228,13 @@ namespace RabbitMQ.Stream.Client
                         }
                         catch (Exception e)
                         {
+                            var delay = _clientParameters.LookupLocatorStrategy.Delay;
                             _logger?.LogError(e,
-                                "Failed to reconnect locator to {@EndPoint}, will retry again. Retry count: {@retryCount}",
-                                _clientParameters.Endpoints[advId], retryCount);
-                            await Task.Delay(1000).ConfigureAwait(false);
+                                "Failed to reconnect locator to {@EndPoint}, will retry again. Retry count: {@retryCount} in {@Delay}",
+                                _clientParameters.Endpoints[advId], retryCount, delay);
+                            await Task.Delay(_clientParameters.LookupLocatorStrategy.Delay).ConfigureAwait(false);
                             advId = (advId + 1) % _clientParameters.Endpoints.Count;
-                            if (retryCount >= numberRetries)
+                            if (retryCount >= maxAttempts)
                                 throw;
                         }
                     }

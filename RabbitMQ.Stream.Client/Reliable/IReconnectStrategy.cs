@@ -34,15 +34,10 @@ public interface IReconnectStrategy
 /// implementation for Producer and Consumer
 /// It implements a BackOff pattern.
 /// </summary>
-internal class BackOffReconnectStrategy : IReconnectStrategy
+internal class BackOffReconnectStrategy(ILogger logger = null) : IReconnectStrategy
 {
     private int Tentatives { get; set; } = 1;
-    private readonly ILogger _logger;
-
-    public BackOffReconnectStrategy(ILogger logger = null)
-    {
-        _logger = logger ?? NullLogger.Instance;
-    }
+    private readonly ILogger _logger = logger ?? NullLogger.Instance;
 
     // reset the tentatives after a while 
     // else the backoff will be too long
