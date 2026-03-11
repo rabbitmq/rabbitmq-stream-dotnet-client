@@ -210,7 +210,7 @@ public class Producer : ProducerFactory
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
-            _confirmationPipe.Stop();
+            await _confirmationPipe.StopAsync().ConfigureAwait(false);
             if (_producer != null)
             {
                 await _producer.Close().ConfigureAwait(false);
