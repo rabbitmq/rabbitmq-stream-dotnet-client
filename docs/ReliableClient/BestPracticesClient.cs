@@ -215,7 +215,8 @@ public class BestPracticesClient
                     };
 
                     // This is the callback that will be called when the consumer status changes
-                    // DON'T PUT ANY BLOCKING CODE HERE
+                    // DON'T PUT ANY BLOCKING CODE HERE and NOT SAFE code since it will be called by the
+                    // internal thread of the consumer and it could cause performance issues or even deadlocks
                     conf.StatusChanged += (status) =>
                     {
                         var streamInfo = $"Stream: {status.Stream}";

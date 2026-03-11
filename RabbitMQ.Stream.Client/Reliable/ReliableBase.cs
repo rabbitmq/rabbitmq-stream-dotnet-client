@@ -85,6 +85,18 @@ public record ReliableConfig
 
     public delegate void StatusChangedHandler(StatusInfo statusInfo);
 
+    /// <summary>
+    /// StatusChanged is an event that is triggered when the status of the ReliableEntity changes.
+    /// The Event runs in the main thread of the producer/ consumer,
+    /// so it is important to avoid blocking operations in the event handler.
+    /// The code should be executed as fast as possible. The code _must_ be safe.
+    /// If you need to execute a long operation, it is better to run it in a separate thread.
+    /// Avoid calling back into the same producer/consumer from the handler (e.g. synchronous publish)
+    /// as this can cause deadlocks or re-entrancy issues.
+    /// Note: The status does not handle exceptions thrown by the user in the event handler.
+    /// If an exception is thrown, it will be propagated to the main thread. 
+    /// The user should handle the exception and avoid to throw it.
+    /// </summary>
     public event StatusChangedHandler StatusChanged;
 
     protected internal void OnStatusChanged(StatusInfo statusInfo)

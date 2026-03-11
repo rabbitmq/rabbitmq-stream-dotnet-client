@@ -63,12 +63,12 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public SocketOptions SocketOptions { get; set; } = null;
     }
+
     /// <summary>
     /// StreamSystem is the main entry point of the client.
     /// It is responsible for managing the connections to the server and providing methods to create producers and consumers.
     /// Implements IAsyncDisposable to allow using <c>await using</c> and automatic cleanup producers, consumers.
     /// </summary>
-
     public class StreamSystem : IAsyncDisposable
     {
         private readonly ClientParameters _clientParameters;
@@ -186,21 +186,58 @@ namespace RabbitMQ.Stream.Client
 
         private readonly SemaphoreSlim _semClientProvidedName = new(1);
 
+        /// <summary>
+        /// MayBeReconnectLocator tries to reconnect the locator client if the connection is closed.
+        /// Reconnection is needed in case of network issues or server rebooting.
+        /// The method will try to reconnect to all the endpoints before giving up and throwing an exception.
+        /// </summary>
         private async Task MayBeReconnectLocator()
         {
-            var advId = Random.Shared.Next(0, _clientParameters.Endpoints.Count);
+            // if we are here, at least one endpoint was reachable,
+            // the first connection was successful,
+            // but then the connection was closed.
+            // We try to reconnect to all the endpoints before giving up.
+            // We could have a load balancer in front of the cluster.
+            var numberRetries = _clientParameters.Endpoints.Count * 2;
+            if (_clientParameters.AddressResolver != null)
+            {
+                // if we have an address resolver, we can have more endpoints to try to connect to
+                // we don't know exactly how many endpoints we can have because
+                // it depends on the address resolver implementation and the cluster topology,
+                numberRetries = Math.Max(numberRetries, 10);
+            }
 
             try
             {
                 await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
                 if (_client.IsClosed)
                 {
-                    _client = await Client.Create(_client.Parameters with
+                    var retryCount = 0;
+                    var advId = Random.Shared.Next(0, _clientParameters.Endpoints.Count);
+                    while (retryCount < numberRetries)
                     {
-                        ClientProvidedName = _clientParameters.ClientProvidedName,
-                        Endpoint = _clientParameters.Endpoints[advId]
-                    }).ConfigureAwait(false);
-                    _logger?.LogDebug("Locator reconnected to {@EndPoint}", _clientParameters.Endpoints[advId]);
+                        try
+                        {
+                            retryCount++;
+                            _client = await Client.Create(_client.Parameters with
+                            {
+                                ClientProvidedName = _clientParameters.ClientProvidedName,
+                                Endpoint = _clientParameters.Endpoints[advId]
+                            }).ConfigureAwait(false);
+                            _logger?.LogDebug("Locator reconnected to {@EndPoint}", _clientParameters.Endpoints[advId]);
+                            break;
+                        }
+                        catch (Exception e)
+                        {
+                            _logger?.LogError(e,
+                                "Failed to reconnect locator to {@EndPoint}, will retry again. Retry count: {@retryCount}",
+                                _clientParameters.Endpoints[advId], retryCount);
+                            await Task.Delay(1000).ConfigureAwait(false);
+                            advId = (advId + 1) % _clientParameters.Endpoints.Count;
+                            if (retryCount >= numberRetries)
+                                throw;
+                        }
+                    }
                 }
             }
             finally
@@ -504,6 +541,7 @@ namespace RabbitMQ.Stream.Client
         /// <returns></returns>
         public async Task<ulong> QueryOffset(string reference, string stream)
         {
+            await MayBeReconnectLocator().ConfigureAwait(false);
             var offset = await TryQueryOffset(reference, stream).ConfigureAwait(false);
             return offset ??
                    throw new OffsetNotFoundException($"QueryOffset stream: {stream}, reference: {reference}");
