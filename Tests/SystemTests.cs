@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -469,6 +469,40 @@ namespace Tests
             Assert.Equal((ulong)4, await system.QueryOffset(consumerRef, stream));
             await system.DeleteStream(stream);
             await system.Close();
+        }
+
+        [Fact]
+        public async Task CreateSystemWithCustomLookupLocatorStrategy()
+        {
+            var expectedDelay = TimeSpan.FromMilliseconds(500);
+            var customStrategy = new TestLookupLocatorStrategy(5, expectedDelay);
+            var config = new StreamSystemConfig
+            {
+                Endpoints = new List<EndPoint>
+                {
+                    new IPEndPoint(IPAddress.Loopback, 9999),
+                    new IPEndPoint(IPAddress.Loopback, 5552),
+                },
+                LookupLocatorStrategy = customStrategy
+            };
+            var system = await StreamSystem.Create(config);
+            Assert.False(system.IsClosed);
+            Assert.Equal(5, customStrategy.MaxAttempts);
+            Assert.Equal(expectedDelay, customStrategy.Delay);
+            await system.Close();
+            Assert.True(system.IsClosed);
+        }
+
+        private sealed class TestLookupLocatorStrategy : ILookupLocatorStrategy
+        {
+            public TestLookupLocatorStrategy(int maxAttempts, TimeSpan delay)
+            {
+                MaxAttempts = maxAttempts;
+                Delay = delay;
+            }
+
+            public int MaxAttempts { get; init; }
+            public TimeSpan Delay { get; }
         }
     }
 }
