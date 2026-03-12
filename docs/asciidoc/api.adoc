@@ -78,6 +78,7 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-tls]
 <1> Enable TLS
 <2> Load certificates from PEM files
 
+[[create-tls-external-auth]]
 .Creating an StreamSystem that uses TLS and external authentication
 [source,c#,indent=0]
 --------
@@ -134,14 +135,25 @@ The following table sums up the main settings to create an `StreamSystem` using 
 |`localhost:5552`
 
 
-|`addressResolver`
+|`AddressResolver`
 |Contract to change resolved node address to connect to.
 |Pass-through (no-op)
 
+|`AuthMechanism`
+|Authentication mechanism to use (e.g. `Plain` or `External` for TLS client certificates). See <<create-tls-external-auth>> for external authentication.
+|`Plain`
+
 |`Ssl`
 |Configuration helper for TLS.
-|`null`
+|`SslOption` (empty)
 
+|`RpcTimeOut`
+|Timeout for RPC calls (e.g. PeerProperties, QueryMetadata). Must be at least 1 second. Low values can cause false errors.
+|`10 seconds`
+
+|`LookupLocatorStrategy`
+|Strategy to reconnect the locator client in case of connection failure. See `ILookupLocatorStrategy`.
+|`BackOffLookupLocatorStrategy`
 
 |`ConnectionPoolConfig`
 |Define the connection pool policies. See <<connection-pool,Connection Pool>> for more details.
@@ -149,7 +161,7 @@ The following table sums up the main settings to create an `StreamSystem` using 
 
 |`SocketOptions`
 |The <<socket-options, socket options>> to use for the connections.
-|`null` provide default socket options
+|`null` (default socket options)
 
 |===
 
