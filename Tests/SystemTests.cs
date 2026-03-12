@@ -470,5 +470,39 @@ namespace Tests
             await system.DeleteStream(stream);
             await system.Close();
         }
+
+        [Fact]
+        public async Task CreateSystemWithCustomLookupLocatorStrategy()
+        {
+            var expectedDelay = TimeSpan.FromMilliseconds(500);
+            var customStrategy = new TestLookupLocatorStrategy(5, expectedDelay);
+            var config = new StreamSystemConfig
+            {
+                Endpoints = new List<EndPoint>
+                {
+                    new IPEndPoint(IPAddress.Loopback, 9999),
+                    new IPEndPoint(IPAddress.Loopback, 5552),
+                },
+                LookupLocatorStrategy = customStrategy
+            };
+            var system = await StreamSystem.Create(config);
+            Assert.False(system.IsClosed);
+            Assert.Equal(5, customStrategy.MaxAttempts);
+            Assert.Equal(expectedDelay, customStrategy.Delay);
+            await system.Close();
+            Assert.True(system.IsClosed);
+        }
+
+        private sealed class TestLookupLocatorStrategy : ILookupLocatorStrategy
+        {
+            public TestLookupLocatorStrategy(int maxAttempts, TimeSpan delay)
+            {
+                MaxAttempts = maxAttempts;
+                Delay = delay;
+            }
+
+            public int MaxAttempts { get; init; }
+            public TimeSpan Delay { get; }
+        }
     }
 }

@@ -84,6 +84,8 @@ namespace RabbitMQ.Stream.Client
 
         public TimeSpan RpcTimeOut { get; set; } = TimeSpan.FromSeconds(10);
 
+        public ILookupLocatorStrategy LookupLocatorStrategy { get; set; } = new BackOffLookupLocatorStrategy();
+
         internal void FireMetadataUpdate(MetaDataUpdate metaDataUpdate)
         {
             OnMetadataUpdate?.Invoke(metaDataUpdate);

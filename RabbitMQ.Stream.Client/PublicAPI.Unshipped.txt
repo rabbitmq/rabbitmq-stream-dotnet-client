@@ -70,6 +70,8 @@ RabbitMQ.Stream.Client.ClientParameters.AddressResolver.get -> RabbitMQ.Stream.C
 RabbitMQ.Stream.Client.ClientParameters.AddressResolver.set -> void
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.get -> RabbitMQ.Stream.Client.AuthMechanism
 RabbitMQ.Stream.Client.ClientParameters.AuthMechanism.set -> void
+RabbitMQ.Stream.Client.ClientParameters.LookupLocatorStrategy.get -> RabbitMQ.Stream.Client.ILookupLocatorStrategy
+RabbitMQ.Stream.Client.ClientParameters.LookupLocatorStrategy.set -> void
 RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.OnMetadataUpdate -> RabbitMQ.Stream.Client.ClientParameters.MetadataUpdateHandler
 RabbitMQ.Stream.Client.ClientParameters.RpcTimeOut.get -> System.TimeSpan
@@ -209,6 +211,10 @@ RabbitMQ.Stream.Client.ICrc32
 RabbitMQ.Stream.Client.ICrc32.FailAction.get -> System.Func<RabbitMQ.Stream.Client.IConsumer, RabbitMQ.Stream.Client.ChunkAction>
 RabbitMQ.Stream.Client.ICrc32.FailAction.init -> void
 RabbitMQ.Stream.Client.ICrc32.Hash(byte[] data) -> byte[]
+RabbitMQ.Stream.Client.ILookupLocatorStrategy
+RabbitMQ.Stream.Client.ILookupLocatorStrategy.Delay.get -> System.TimeSpan
+RabbitMQ.Stream.Client.ILookupLocatorStrategy.MaxAttempts.get -> int
+RabbitMQ.Stream.Client.ILookupLocatorStrategy.MaxAttempts.init -> void
 RabbitMQ.Stream.Client.Info
 RabbitMQ.Stream.Client.Info.Identifier.get -> string
 RabbitMQ.Stream.Client.Info.Info(string stream, string identifier, System.Collections.Generic.List<string> partitions) -> void
@@ -403,6 +409,8 @@ RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.get -> RabbitMQ.Stream.C
 RabbitMQ.Stream.Client.StreamSystemConfig.AuthMechanism.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.get -> RabbitMQ.Stream.Client.ConnectionPoolConfig
 RabbitMQ.Stream.Client.StreamSystemConfig.ConnectionPoolConfig.set -> void
+RabbitMQ.Stream.Client.StreamSystemConfig.LookupLocatorStrategy.get -> RabbitMQ.Stream.Client.ILookupLocatorStrategy
+RabbitMQ.Stream.Client.StreamSystemConfig.LookupLocatorStrategy.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.RpcTimeOut.get -> System.TimeSpan
 RabbitMQ.Stream.Client.StreamSystemConfig.RpcTimeOut.set -> void
 RabbitMQ.Stream.Client.StreamSystemConfig.SocketOptions.get -> RabbitMQ.Stream.Client.SocketOptions
