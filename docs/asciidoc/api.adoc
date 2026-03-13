@@ -411,6 +411,10 @@ The following table sums up the main settings to create a `ProducerConfig`:
 |The TCP connection name to identify the client.
 |`dotnet-stream-producer`
 
+|`Filter`
+|Function used to set the value of the filter. The filter enables the server to filter the messages sent to the consumer.
+|`null`
+
 |`MaxInFlight`
 |The maximum number of messages that can be in flight at any given time. Messages sent - Messages confirmed. To avoid to flood the broker with messages.
 |1000
@@ -419,6 +423,14 @@ The following table sums up the main settings to create a `ProducerConfig`:
 |The strategy to use when the connection to the broker is lost.
 |`BackOffReconnectStrategy`
 
+|`ResourceAvailableReconnectStrategy`
+|The strategy to check if the stream is available (e.g. during broker restart). From `ReliableConfig`.
+|`null`
+
+|`Identifier`
+|Identifies the entity in logs and UI. From `ReliableConfig`. No effect on the server.
+|`null`
+
 |`MessagesBufferSize`
 |Number of the messages sent for each frame-send.
 This value is valid only for the `Send(Message)` method.
@@ -426,7 +438,7 @@ This value is valid only for the `Send(Message)` method.
 
 |`TimeoutMessageAfter`
 |Time to wait before considering a message as not confirmed.
-| 3 seconds
+|10 seconds
 
 |`SuperStreamConfig`
 |The super stream configuration.
@@ -547,7 +559,7 @@ Any long processing should be done in a separate thread (e.g. with an asynchrono
 ====
 You can mix different send methods.
 For example you can send a message with `send(Message)` and then send a batch of messages with `send(List<Message>)`.
-Avoid to sent the `Refence` property in the `ProducerConfig` it enables the deduplication and you could have unexpected results.
+Avoid setting the `Reference` property in the `ProducerConfig`; it enables deduplication and you could have unexpected results.
 
 `Reference` is deprecated in the version `1.2.0`  see deduplication section for more details.
 ====
@@ -839,21 +851,44 @@ The following table sums up the main settings to create a `Consumer` with `Consu
 |`BackOffReconnectStrategy`
 
 |`ClientProvidedName`
-| To identify the client in the management UI
-|`dotnet-stream-conusmer`
-
+|To identify the client in the management UI.
+|`dotnet-stream-consumer`
 
 |`IsSingleActiveConsumer`
-|Enable the Single Active Consumer feature
+|Enable the Single Active Consumer feature.
 |`false`
 
 |`IsSuperStream`
-|Enable the Super Stream feature
+|Enable the Super Stream feature.
 |`false`
 
-|`ICrc32`
-|The <<crc-on-delivery,CRC32 implementation>> to use to validate the chunk server crc32 .
-| `StreamCrc32()`
+|`ConsumerUpdateListener`
+|Callback invoked when the consumer becomes active (single active consumer only). Lets the consumer decide where to start consuming from. See <<consumer-update-listener,Reacting to Consumer State Change>>.
+|`null`
+
+|`InitialCredits`
+|Initial number of chunks the consumer will receive before requesting more. Higher values can increase throughput but use more memory.
+|`2`
+
+|`Filter`
+|Consumer filter to receive only messages matching the filter (bloom filter with optional post-filter).
+|`null`
+
+|`FlowControl`
+|Strategy for when the broker sends more messages. See <<consumer-flow-control,Flow Control>>.
+|`new FlowControl()` (default strategy)
+
+|`Crc32`
+|The <<crc-on-delivery,CRC32 implementation>> to use to validate the chunk server crc32.
+|`StreamCrc32()`
+
+|`ResourceAvailableReconnectStrategy`
+|The strategy to check if the stream is available (e.g. during broker restart). From `ReliableConfig`.
+|default back-off
+
+|`Identifier`
+|Identifies the entity in logs and UI. From `ReliableConfig`. No effect on the server.
+|`null`
 
 |`StatusChanged`
 |The callback invoked when the consumer status changes. See <<entity-status,Consumer Status>> for more details.

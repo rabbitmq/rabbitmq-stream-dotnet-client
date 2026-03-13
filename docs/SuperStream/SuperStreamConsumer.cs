@@ -50,6 +50,10 @@ public class SuperStreamConsumer
             IsSingleActiveConsumer = true, // mandatory for enabling the Single Active Consumer // <2>
             ConsumerUpdateListener = async (reference, stream, isActive) => // <3>
             {
+                // don't put slow code inside this callback,
+                // since it runs in the socket thread, and it could impact the consumer promotion to Active.
+                // In case of exception, the library will use the default behavior that is to start consuming from OffsetNext().
+                
                 loggerMain.LogInformation($"******************************************************");
                 loggerMain.LogInformation("reference {Reference} stream {Stream} is active: {IsActive}", reference,
                     stream, isActive);
