@@ -48,6 +48,7 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
     /// In case of exception, the library will use the default behavior that is to start consuming from OffsetNext().
     /// The code _must_ be fast since it runs in the
     /// socket thread, and it could impact the consumer promotion to Active.
+    /// if null, the library will use the default behavior that is to start consuming from OffsetNext().
     /// </summary>
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
 
