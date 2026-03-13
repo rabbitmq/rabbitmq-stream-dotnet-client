@@ -92,6 +92,11 @@ public record ConsumerConfig : ReliableConfig
     /// The broker notifies a consumer that becomes active before dispatching messages to it. 
     /// With ConsumerUpdateListener the consumer can decide where to start consuming from.
     /// The event is raised only in case of single active consumer.
+    /// The Code inside ConsumerUpdateListener _must_ be safe and should not throw exceptions.
+    /// In case of exception, the library will use the default behavior that is to start consuming from OffsetNext().
+    /// The code _must_ be fast since it runs in the
+    /// socket thread, and it could impact the consumer promotion to Active.
+    /// if null, the library will use the default behavior that is to start consuming from OffsetNext().
     /// </summary>
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; }
 

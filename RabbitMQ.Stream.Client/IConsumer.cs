@@ -40,10 +40,16 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
     // Consumer Reference can't be null or Empty.
     public bool IsSingleActiveConsumer { get; set; } = false;
 
-    // config.ConsumerUpdateListener is the callback for when the consumer is updated due
-    // to single active consumer. 
-    // return IOffsetType to indicate the offset to be used for the next consumption.
-    // if the ConsumerUpdateListener==null the OffsetSpec will be used.
+    /// <summary>
+    /// The broker notifies a consumer that becomes active before dispatching messages to it. 
+    /// With ConsumerUpdateListener the consumer can decide where to start consuming from.
+    /// The event is raised only in case of single active consumer.
+    /// The Code inside ConsumerUpdateListener _must_ be safe and should not throw exceptions.
+    /// In case of exception, the library will use the default behavior that is to start consuming from OffsetNext().
+    /// The code _must_ be fast since it runs in the
+    /// socket thread, and it could impact the consumer promotion to Active.
+    /// if null, the library will use the default behavior that is to start consuming from OffsetNext().
+    /// </summary>
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
 
     public string Reference { get; set; }
@@ -122,5 +128,4 @@ public enum ConsumerFlowStrategy
 public class FlowControl
 {
     public ConsumerFlowStrategy Strategy { get; set; } = ConsumerFlowStrategy.CreditsBeforeParseChunk;
-
 }

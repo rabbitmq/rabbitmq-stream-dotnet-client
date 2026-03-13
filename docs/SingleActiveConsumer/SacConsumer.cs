@@ -44,6 +44,9 @@ public class SacConsumer
             },
             ConsumerUpdateListener = async (consumerRef, stream, isActive) =>
             {
+                // don't put slow code inside this callback,
+                // since it runs in the socket thread, and it could impact the consumer promotion to Active.
+                // In case of exception, the library will use the default behavior that is to start consuming from OffsetNext().
                 var status = isActive ? "active" : "inactive";
                 loggerConsumer.LogInformation($"Consumer {consumerRef} is {status} on stream {stream}");
                 if (!isActive) return new OffsetTypeNext();

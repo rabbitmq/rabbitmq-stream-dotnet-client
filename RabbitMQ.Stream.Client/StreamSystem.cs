@@ -41,12 +41,19 @@ namespace RabbitMQ.Stream.Client
             new List<EndPoint> { new IPEndPoint(IPAddress.Loopback, 5552) };
 
         public IAddressResolver AddressResolver { get; set; }
+
+        /// <summary>
+        /// ClientProvidedName is a string that identifies the client connection.
+        /// It used on the management UI and in the connection details.
+        /// </summary>
+
         public string ClientProvidedName { get; set; } = "dotnet-stream-locator";
 
         public AuthMechanism AuthMechanism { get; set; } = AuthMechanism.Plain;
 
         /// <summary>
         ///  Configure the connection pool for producers and consumers.
+        /// See <see cref="ConnectionPoolConfig"/> for more details about the configuration options.
         /// </summary>
         public ConnectionPoolConfig ConnectionPoolConfig { get; set; } = new();
 
