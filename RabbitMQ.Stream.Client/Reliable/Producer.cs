@@ -236,7 +236,7 @@ public class Producer : ProducerFactory
     /// <param name="message">The message to send.</param>
     /// <remarks>
     /// This method does not throw during send. On error the message is treated as timed out;
-    /// <see cref="ProducerConfig.ConfirmationHandler"/> will be invoked with status <see cref="ConfirmationStatus.TimedOut"/>.
+    /// <see cref="ProducerConfig.ConfirmationHandler"/> will be invoked with status <see cref="ConfirmationStatus.ClientTimeoutError"/>.
     /// </remarks>
     public async ValueTask Send(Message message)
     {
@@ -303,6 +303,7 @@ public class Producer : ProducerFactory
     /// This method does not throw during send. On error the batch is treated as timed out;
     /// <see cref="ProducerConfig.ConfirmationHandler"/> will be invoked with status <see cref="ConfirmationStatus.ClientTimeoutError"/>.
     /// </remarks>
+    /// </summary>
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
         ThrowIfClosed();
