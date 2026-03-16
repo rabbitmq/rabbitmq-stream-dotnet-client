@@ -199,7 +199,7 @@ public class BestPracticesClient
                         Reference = "myApp", // needed for the Single Active Consumer or fot the store offset 
                         // can help to identify the consumer on the logs and RabbitMQ Management
                         Identifier = $"my_consumer_{z}",
-                        InitialCredits = 10,
+                        InitialCredits = 2,
                         MessageHandler = (source, consumer, ctx, _) =>
                         {
                             // if (totalConsumed % 10_000 == 0)

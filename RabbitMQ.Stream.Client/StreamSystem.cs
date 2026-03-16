@@ -215,8 +215,9 @@ namespace RabbitMQ.Stream.Client
                 await PoolProducers.Close()
                     .ConfigureAwait(false);
             }
-            catch
+            catch (Exception e)
             {
+                _logger?.LogError(e, "Error closing stream system");
             }
             finally
             {
@@ -224,7 +225,7 @@ namespace RabbitMQ.Stream.Client
                 PoolProducers.Dispose();
             }
 
-            _logger?.LogDebug("Client Closed");
+            _logger?.LogDebug("Stream system closed");
         }
 
         /// <summary>
@@ -517,7 +518,7 @@ namespace RabbitMQ.Stream.Client
         public async Task<StreamInfo> StreamInfo(string streamName)
         {
             // force localhost connection for single node clusters and when address resolver is not provided
-            // when theres 1 endpoint and an address resolver, there could be a cluster behind a load balancer
+            // when there is 1 endpoint and an address resolver, there could be a cluster behind a load balancer
             var forceLocalHost = false;
             var localPort = 0;
             var localHostOrAddress = "";
@@ -666,6 +667,7 @@ namespace RabbitMQ.Stream.Client
         public async Task<ulong?> TryQueryOffset(string reference, string stream)
         {
             MaybeThrowQueryException(reference, stream);
+            await MayBeReconnectLocator().ConfigureAwait(false);
 
             var response = await _client.QueryOffset(reference, stream).ConfigureAwait(false);
 
