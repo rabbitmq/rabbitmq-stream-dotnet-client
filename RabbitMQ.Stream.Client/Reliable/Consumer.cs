@@ -89,8 +89,8 @@ public record ConsumerConfig : ReliableConfig
     public bool IsSingleActiveConsumer { get; set; }
 
     /// <summary>
-    /// The broker notifies a consumer that becomes active before dispatching messages to it. 
-    /// With ConsumerUpdateListener the consumer can decide where to start consuming from.
+    /// The broker notifies a consumer that becomes active or inactive. 
+    /// With ConsumerUpdateListener the consumer, when active, can decide where to start consuming from.
     /// The event is raised only in case of single active consumer.
     /// The Code inside ConsumerUpdateListener _must_ be safe and should not throw exceptions.
     /// In case of exception, the library will use the default behavior that is to start consuming from OffsetNext().
@@ -100,12 +100,13 @@ public record ConsumerConfig : ReliableConfig
     /// </summary>
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; }
 
-    // InitialCredits is the initial credits to be used for the consumer.
-    // if the InitialCredits is not set, the default value will be 2.
-    // It is the number of the chunks that the consumer will receive at beginning.
-    // A high value can increase the throughput but could increase the memory usage and server-side CPU usage.
-    // The RawConsumer uses this value to create the Channel buffer so all the chunks will be stored in the buffer memory.
-    // The default value it is usually a good value.
+    /// <summary>
+    /// Initial credits for the consumer. If not set, the default value is 2.
+    /// This is the number of chunks the consumer will receive at the beginning.
+    /// A higher value can increase throughput but may increase memory usage and server-side CPU usage.
+    /// The <see cref="RawConsumer"/> uses this value to create the channel buffer, so all chunks are stored in buffer memory.
+    /// The default value is usually sufficient.
+    /// </summary>
     public ushort InitialCredits { get; set; } = Consts.ConsumerInitialCredits;
 
     /// <summary>
@@ -123,8 +124,16 @@ public record ConsumerConfig : ReliableConfig
     /// </summary>
     public ICrc32 Crc32 { get; set; } = new StreamCrc32();
 
+    /// <summary>
+    /// Controls the flow of the consumer. See <see cref="ConsumerFlowStrategy"/> for the available strategies.
+    /// </summary>
     public FlowControl FlowControl { get; set; } = new FlowControl();
 
+    /// <summary>
+    /// Creates a new consumer configuration for the given stream system and stream.
+    /// </summary>
+    /// <param name="streamSystem">The stream system to consume from.</param>
+    /// <param name="stream">The name of the stream (or super stream) to consume from.</param>
     public ConsumerConfig(StreamSystem streamSystem, string stream) : base(streamSystem, stream)
     {
     }
@@ -160,6 +169,15 @@ public class Consumer : ConsumerFactory
         _consumerConfig = consumerConfig;
     }
 
+    /// <summary>
+    /// Creates and initializes a reliable consumer with the given configuration.
+    /// The consumer will auto-reconnect on connection loss and resume from the last consumed offset.
+    /// </summary>
+    /// <param name="consumerConfig">The consumer configuration. <see cref="ConsumerConfig.Reference"/> is mandatory
+    /// to track the offset or to identify the consumer 
+    /// <see cref="ConsumerConfig.MessageHandler"/> to handle the messages.</param>
+    /// <param name="logger">Optional logger for diagnostics. If null, a null logger is used.</param>
+    /// <returns>A fully initialized <see cref="Consumer"/> instance ready to receive messages.</returns>
     public static async Task<Consumer> Create(ConsumerConfig consumerConfig, ILogger<Consumer> logger = null)
     {
         consumerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
@@ -171,6 +189,11 @@ public class Consumer : ConsumerFactory
         return rConsumer;
     }
 
+    /// <summary>
+    /// Creates or recreates the underlying consumer (standard or super stream) and establishes the connection.
+    /// </summary>
+    /// <param name="boot">True on first creation; false when reconnecting after a disconnect.</param>
+    /// <returns>The info of the newly created consumer entity.</returns>
     protected override async Task<Info> CreateNewEntity(bool boot)
     {
         _consumer = await CreateConsumer(boot).ConfigureAwait(false);
@@ -178,7 +201,9 @@ public class Consumer : ConsumerFactory
         return _consumer.Info;
     }
 
-    // just close the consumer. See base/metadataupdate
+    /// <summary>
+    /// Closes the underlying raw consumer and releases resources. Used internally on close and on metadata updates.
+    /// </summary>
     protected override async Task CloseEntity()
     {
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
@@ -195,6 +220,10 @@ public class Consumer : ConsumerFactory
         }
     }
 
+    /// <summary>
+    /// Closes the consumer gracefully, stops receiving messages, and releases connections and resources.
+    /// After closing, the consumer cannot be used again.
+    /// </summary>
     public override async Task Close()
     {
         if (_status == ReliableEntityStatus.Initialization)
@@ -208,6 +237,10 @@ public class Consumer : ConsumerFactory
         _logger?.LogDebug("Consumer {Identity} closed", ToString());
     }
 
+    /// <summary>
+    /// Returns a string representation of this consumer, including reference, stream, identifier, and client name.
+    /// </summary>
+    /// <returns>A string describing the consumer instance.</returns>
     public override string ToString()
     {
         return $"Consumer reference: {_consumerConfig.Reference}, " +
@@ -216,6 +249,9 @@ public class Consumer : ConsumerFactory
                $"client name: {_consumerConfig.ClientProvidedName} ";
     }
 
+    /// <summary>
+    /// Gets the consumer information (stream, reference, identifier, and partitions for super streams).
+    /// </summary>
     public ConsumerInfo Info
     {
         get { return _consumer.Info; }

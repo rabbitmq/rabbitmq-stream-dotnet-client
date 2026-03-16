@@ -149,10 +149,11 @@ public class Producer : ProducerFactory
     }
 
     /// <summary>
-    /// Create a new Producer.
-    /// <param name="producerConfig">Producer Configuration. Where StreamSystem and Stream are mandatory.</param>
-    /// <param name="logger">Enable the logging. By default is null. Add a logging is suggested</param>
-    /// </summary> 
+    /// Creates a new Producer.
+    /// </summary>
+    /// <param name="producerConfig">Producer configuration. StreamSystem and Stream are mandatory.</param>
+    /// <param name="logger">Optional logger for producer events. Logging is recommended for production.</param>
+    /// <returns>A task that completes with the created Producer instance.</returns>
     public static async Task<Producer> Create(ProducerConfig producerConfig, ILogger<Producer> logger = null)
     {
         producerConfig.ReconnectStrategy ??= new BackOffReconnectStrategy(logger);
@@ -198,6 +199,11 @@ public class Producer : ProducerFactory
         }
     }
 
+    /// <summary>
+    /// Closes the producer and releases all associated resources.
+    /// Stops the confirmation pipe and closes the underlying connection to the broker.
+    /// Call this method when the producer is no longer needed (e.g. during application shutdown).
+    /// </summary>
     public override async Task Close()
     {
         if (ReliableEntityStatus.Initialization == _status)
@@ -224,13 +230,14 @@ public class Producer : ProducerFactory
     }
 
     /// <summary>
-    /// This is the standard way to send messages.
-    /// The client aggregates the messages and sends them to the server in batches.
-    /// The publisherId is automatically set.
+    /// Sends a single message to the stream.
+    /// The client aggregates messages and sends them to the server in batches; the publisher ID is set automatically.
     /// </summary>
-    /// <param name="message">Standard Message</param>
-    /// The method does not raise any exception during the send.
-    /// In case of error the message is considered as timed out, you will receive a confirmation with the status TimedOut.
+    /// <param name="message">The message to send.</param>
+    /// <remarks>
+    /// This method does not throw during send. On error the message is treated as timed out;
+    /// <see cref="ProducerConfig.ConfirmationHandler"/> will be invoked with status <see cref="ConfirmationStatus.ClientTimeoutError"/>.
+    /// </remarks>
     public async ValueTask Send(Message message)
     {
         await SemaphoreSlim.WaitAsync().ConfigureAwait(false);
@@ -286,17 +293,17 @@ public class Producer : ProducerFactory
     }
 
     /// <summary>
-    /// Enable sub-entry batch feature.
-    /// It is needed when you need to sub aggregate the messages and compress them.
-    /// For example you can aggregate 100 log messages and compress to reduce the space.
-    /// One single publishingId can have multiple sub-batches messages.
-    /// See also: https://rabbitmq.github.io/rabbitmq-stream-java-client/stable/htmlsingle/#sub-entry-batching-and-compression
+    /// Sends a batch of messages using sub-entry batching and compression.
+    /// Use this when aggregating many messages (e.g. logs) and compressing to save space.
+    /// A single publishing ID can contain multiple sub-batches.
+    /// See also: https://rabbitmq.github.io/rabbitmq-stream-dotnet-client/stable/htmlsingle/index.html#sub-entry-batching-and-compressionsummary>
+    /// <param name="messages">The messages to aggregate and send.</param>
+    /// <param name="compressionType">Compression type (e.g. GZIP or None).</param>
+    /// <remarks>
+    /// This method does not throw during send. On error the batch is treated as timed out;
+    /// <see cref="ProducerConfig.ConfirmationHandler"/> will be invoked with status <see cref="ConfirmationStatus.ClientTimeoutError"/>.
+    /// </remarks>
     /// </summary>
-    /// <param name="messages">Messages to aggregate</param>
-    /// <param name="compressionType"> Type of compression. By default the client supports GZIP and none</param>
-    /// <returns></returns>
-    /// The method does not raise any exception during the send.
-    /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
     public async ValueTask Send(List<Message> messages, CompressionType compressionType)
     {
         ThrowIfClosed();
@@ -334,6 +341,10 @@ public class Producer : ProducerFactory
         }
     }
 
+    /// <summary>
+    /// Returns a string representation of the producer including stream name, identifier, and client name.
+    /// </summary>
+    /// <returns>A string describing the producer instance.</returns>
     public override string ToString()
     {
         return $"Producer stream: {_producerConfig.Stream}, " +
@@ -342,14 +353,14 @@ public class Producer : ProducerFactory
     }
 
     /// <summary>
-    /// Send the messages in batch to the stream in synchronous mode.
-    /// The aggregation is provided by the user.
-    /// The client will send the messages in the order they are provided.
+    /// Sends a batch of messages to the stream.
+    /// The caller provides the batch; messages are sent in the given order with no additional buffering.
     /// </summary>
-    /// <param name="messages">Batch messages to send</param>
-    /// <returns></returns>
-    /// The method does not raise any exception during the send.
-    /// In case of error the messages are considered as timed out, you will receive a confirmation with the status TimedOut.
+    /// <param name="messages">The batch of messages to send.</param>
+    /// <remarks>
+    /// This method does not throw during send. On error the messages are treated as timed out;
+    /// <see cref="ProducerConfig.ConfirmationHandler"/> will be invoked with status <see cref="ConfirmationStatus.ClientTimeoutError"/>.
+    /// </remarks>
     public async ValueTask Send(List<Message> messages)
     {
         ThrowIfClosed();
@@ -402,5 +413,9 @@ public class Producer : ProducerFactory
         }
     }
 
+    /// <summary>
+    /// Gets the producer information including stream name and connection details.
+    /// Available after the producer has been successfully created.
+    /// </summary>
     public ProducerInfo Info { get { return _producer.Info; } }
 }
