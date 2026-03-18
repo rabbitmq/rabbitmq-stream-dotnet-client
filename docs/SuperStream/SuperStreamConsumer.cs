@@ -53,30 +53,32 @@ public class SuperStreamConsumer
                 // don't put slow code inside this callback,
                 // since it runs in the socket thread, and it could impact the consumer promotion to Active.
                 // In case of exception, the library will use the default behavior that is to start consuming from OffsetNext().
-                
+
                 loggerMain.LogInformation($"******************************************************");
                 loggerMain.LogInformation("reference {Reference} stream {Stream} is active: {IsActive}", reference,
                     stream, isActive);
 
-                ulong offset = 0;
-                try
+                if (!isActive)
                 {
-                    offset = await system.QueryOffset(reference, stream).ConfigureAwait(false);
-                }
-                catch (OffsetNotFoundException e)
-                {
-                    loggerMain.LogInformation("OffsetNotFoundException {Message}, will use OffsetTypeNext", e.Message);
+                    // when the consumer is not active the server is excepting a reply from the client.
+                    // even the server does not use it (a.t.m.), it is mandatory to reply with an offset type.
                     return new OffsetTypeNext();
                 }
 
-                if (isActive)
+                var offset = await system.TryQueryOffset(reference, stream).ConfigureAwait(false);
+                if (offset == null)
                 {
-                    loggerMain.LogInformation("Restart Offset {Offset}", offset);
+                    loggerMain.LogInformation("Offset not found, will use OffsetTypeNext");
+                    return new OffsetTypeNext();
                 }
 
+                
+                // in this example it restarts from the last offset stored + 1,
+                // but it is just an example, you can decide to restart from any offset you want.
+                loggerMain.LogInformation("Restart Offset {Offset}", offset.Value + 1);
                 loggerMain.LogInformation($"******************************************************");
-                await Task.CompletedTask.ConfigureAwait(false);
-                return new OffsetTypeOffset(offset + 1); // <4>
+
+                return new OffsetTypeOffset(offset.Value + 1); // <4>
             },
             //end::sac-manual-offset-tracking[]
         }, logger).ConfigureAwait(false);
