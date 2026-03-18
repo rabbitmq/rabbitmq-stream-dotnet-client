@@ -97,6 +97,8 @@ public record ConsumerConfig : ReliableConfig
     /// The code _must_ be fast since it runs in the
     /// socket thread, and it could impact the consumer promotion to Active.
     /// if null, the library will use the default behavior that is to start consuming from OffsetNext().
+    /// if ConsumerUpdateListener takes more than 60s (default value) to execute,
+    /// the server closes the connection.
     /// </summary>
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; }
 
