@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -8,7 +8,7 @@ namespace RabbitMQ.Stream.Client
 {
     /// <summary>
     /// Configurable TCP socket options for a connection. Use this to tune buffer sizes,
-    /// Nagle's algorithm, linger on close, and TCP keep-alive.
+    /// Nagle's algorithm, and linger on close.
     /// </summary>
     public class SocketOptions
     {
@@ -33,11 +33,6 @@ namespace RabbitMQ.Stream.Client
         /// Disable Nagle's algorithm when true (default), reducing latency for small messages.
         /// </summary>
         public bool NoDelay { get; set; } = true;
-
-        /// <summary>
-        /// Enable TCP keep-alive to detect dead connections. Default is true.
-        /// </summary>
-        public bool KeepAlive { get; set; } = true;
 
         /// <summary>
         /// Linger option on close. When set, controls whether the socket waits for unsent data

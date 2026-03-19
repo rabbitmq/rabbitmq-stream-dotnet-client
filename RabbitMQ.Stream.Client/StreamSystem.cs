@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -94,7 +94,7 @@ namespace RabbitMQ.Stream.Client
 
         /// <summary>
         /// See <see cref="SocketOptions"/> for configurable TCP socket options for a connection. Use this to tune buffer sizes,
-        /// Nagle's algorithm, linger on close, and TCP keep-alive.
+        /// Nagle's algorithm, and linger on close.
         /// </summary>
         public SocketOptions SocketOptions { get; set; } = null;
 

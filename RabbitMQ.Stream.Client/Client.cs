@@ -1,4 +1,4 @@
-﻿// This source code is dual-licensed under the Apache License, version
+// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
@@ -74,7 +74,7 @@ namespace RabbitMQ.Stream.Client
         public SslOption Ssl { get; set; } = new SslOption();
 
         /// <summary>
-        /// TCP socket options (buffer sizes, NoDelay, KeepAlive, Linger). When null, library defaults are used.
+        /// TCP socket options (buffer sizes, NoDelay, Linger). When null, library defaults are used.
         /// </summary>
         public SocketOptions SocketOptions { get; set; }
 

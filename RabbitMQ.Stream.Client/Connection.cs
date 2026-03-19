@@ -90,14 +90,12 @@ namespace RabbitMQ.Stream.Client
                 socket.NoDelay = true;
                 socket.SendBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
                 socket.ReceiveBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
-                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
                 return;
             }
 
             socket.NoDelay = options.NoDelay;
             socket.SendBufferSize = options.SendBufferSize ?? socket.SendBufferSize * SocketOptions.DefaultBufferSizeMultiplier;
             socket.ReceiveBufferSize = options.ReceiveBufferSize ?? socket.ReceiveBufferSize * SocketOptions.DefaultBufferSizeMultiplier;
-            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, options.KeepAlive);
             if (options.LingerOption != null)
             {
                 socket.LingerState = options.LingerOption;
