@@ -504,7 +504,7 @@ namespace Tests
             public int MaxAttempts { get; init; }
             public TimeSpan Delay { get; }
         }
-        
+
         [Fact]
         public async Task UseDnsEndpointShouldWork()
         {
@@ -514,7 +514,9 @@ namespace Tests
             };
             var system = await StreamSystem.Create(config);
             Assert.False(system.IsClosed);
-            
+            await system.Close();
+            Assert.True(system.IsClosed);
+
         }
     }
 }

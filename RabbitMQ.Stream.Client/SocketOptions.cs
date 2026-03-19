@@ -1,7 +1,8 @@
-// This source code is dual-licensed under the Apache License, version
+﻿// This source code is dual-licensed under the Apache License, version
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Net.Sockets;
 
 namespace RabbitMQ.Stream.Client
@@ -33,6 +34,13 @@ namespace RabbitMQ.Stream.Client
         /// Disable Nagle's algorithm when true (default), reducing latency for small messages.
         /// </summary>
         public bool NoDelay { get; set; } = true;
+
+        // don't use it.
+        // It is not needed since the library will automatically reconnect in case of connection failure.
+        // The property is here to avoid breaking changes.
+        // mark as deprecated since it is not needed and it can be misleading for the user.
+        [Obsolete("KeepAlive is not needed since the library will automatically reconnect in case of connection failure.")]
+        public bool KeepAlive { get; set; } = true;
 
         /// <summary>
         /// Linger option on close. When set, controls whether the socket waits for unsent data
