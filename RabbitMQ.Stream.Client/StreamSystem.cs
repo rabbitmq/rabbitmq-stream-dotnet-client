@@ -94,7 +94,7 @@ namespace RabbitMQ.Stream.Client
 
         /// <summary>
         /// See <see cref="SocketOptions"/> for configurable TCP socket options for a connection. Use this to tune buffer sizes,
-        /// Nagle's algorithm, linger on close, and TCP keep-alive.
+        /// Nagle's algorithm, and linger on close.
         /// </summary>
         public SocketOptions SocketOptions { get; set; } = null;
 

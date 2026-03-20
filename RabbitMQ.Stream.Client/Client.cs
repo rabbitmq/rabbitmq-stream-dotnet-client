@@ -74,7 +74,7 @@ namespace RabbitMQ.Stream.Client
         public SslOption Ssl { get; set; } = new SslOption();
 
         /// <summary>
-        /// TCP socket options (buffer sizes, NoDelay, KeepAlive, Linger). When null, library defaults are used.
+        /// TCP socket options (buffer sizes, NoDelay, Linger). When null, library defaults are used.
         /// </summary>
         public SocketOptions SocketOptions { get; set; }
 

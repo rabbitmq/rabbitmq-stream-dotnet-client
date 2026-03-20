@@ -366,9 +366,9 @@ RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Hash = 0 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.RoutingStrategyType.Key = 1 -> RabbitMQ.Stream.Client.RoutingStrategyType
 RabbitMQ.Stream.Client.SocketOptions
-RabbitMQ.Stream.Client.SocketOptions.SocketOptions() -> void
 RabbitMQ.Stream.Client.SocketOptions.KeepAlive.get -> bool
 RabbitMQ.Stream.Client.SocketOptions.KeepAlive.set -> void
+RabbitMQ.Stream.Client.SocketOptions.SocketOptions() -> void
 RabbitMQ.Stream.Client.SocketOptions.LingerOption.get -> System.Net.Sockets.LingerOption
 RabbitMQ.Stream.Client.SocketOptions.LingerOption.set -> void
 RabbitMQ.Stream.Client.SocketOptions.NoDelay.get -> bool

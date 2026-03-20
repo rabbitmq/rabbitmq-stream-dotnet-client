@@ -504,5 +504,19 @@ namespace Tests
             public int MaxAttempts { get; init; }
             public TimeSpan Delay { get; }
         }
+
+        [Fact]
+        public async Task UseDnsEndpointShouldWork()
+        {
+            var config = new StreamSystemConfig()
+            {
+                Endpoints = new List<EndPoint> { new DnsEndPoint("localhost", 5552) }
+            };
+            var system = await StreamSystem.Create(config);
+            Assert.False(system.IsClosed);
+            await system.Close();
+            Assert.True(system.IsClosed);
+
+        }
     }
 }

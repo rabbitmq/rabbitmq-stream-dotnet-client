@@ -482,7 +482,6 @@ namespace Tests
             {
                 SocketOptions = new SocketOptions
                 {
-                    KeepAlive = true,
                     NoDelay = true,
                     ReceiveBufferSize = 1024 * 64,
                     SendBufferSize = 1024 * 64,

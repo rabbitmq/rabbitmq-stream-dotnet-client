@@ -206,7 +206,6 @@ Default is `null` with the default values:
  socket.NoDelay = true;
  socket.SendBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
  socket.ReceiveBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
- socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 ```
 
 [[connection-pool]]
