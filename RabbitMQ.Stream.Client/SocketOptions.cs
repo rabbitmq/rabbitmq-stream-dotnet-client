@@ -35,10 +35,16 @@ namespace RabbitMQ.Stream.Client
         /// </summary>
         public bool NoDelay { get; set; } = true;
 
-        // don't use it.
-        // It is not needed since the library will automatically reconnect in case of connection failure.
-        // The property is here to avoid breaking changes.
-        // mark as deprecated since it is not needed and it can be misleading for the user.
+        /// <summary>
+        /// Deprecated TCP keep-alive option.
+        /// </summary>
+        /// <remarks>
+        /// This property is intentionally ignored by the connection implementation and does not
+        /// enable TCP keep-alive on the underlying socket. The client library automatically
+        /// reconnects in case of connection failures, so explicit TCP keep-alive is not required.
+        /// The property is retained only for backward compatibility and to avoid a breaking
+        /// change in the public API; new code should not rely on it.
+        /// </remarks>
         [Obsolete("KeepAlive is not needed since the library will automatically reconnect in case of connection failure.")]
         public bool KeepAlive { get; set; } = true;
 
