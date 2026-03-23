@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.23">
+<meta name="generator" content="Asciidoctor 2.0.26">
 <title>RabbitMQ Stream .Net Client</title>
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -542,6 +542,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#understanding-connection-logic">Understanding Connection Logic</a></li>
 <li><a href="#_enabling_tls">Enabling TLS</a></li>
 <li><a href="#_configuring_the_stream_system">Configuring the Stream System</a></li>
+<li><a href="#logging-ilogger">Logging (ILogger)</a></li>
+<li><a href="#socket-options">Socket Options</a></li>
 <li><a href="#connection-pool">Connection pool</a></li>
 <li><a href="#address-resolver">When a Load Balancer is in Use</a></li>
 <li><a href="#_managing_streams">Managing Streams</a></li>
@@ -627,6 +629,27 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </li>
 <li><a href="#_deal_with_broker_disconnections_reconnections_and_metadata_update_events">Deal with broker disconnections, reconnections and metadata update events</a></li>
 <li><a href="#_update_secret">Update Secret</a></li>
+<li><a href="#_metrics">Metrics</a>
+<ul class="sectlevel3">
+<li><a href="#_available_metrics">Available Metrics</a></li>
+<li><a href="#_consuming_metrics_with_opentelemetry">Consuming Metrics with OpenTelemetry</a>
+<ul class="sectlevel4">
+<li><a href="#_setting_up_the_console_exporter">Setting Up the Console Exporter</a></li>
+<li><a href="#_full_example_application">Full Example Application</a></li>
+<li><a href="#_producer_implementation">Producer Implementation</a></li>
+<li><a href="#_consumer_implementation">Consumer Implementation</a></li>
+<li><a href="#_running_the_example">Running the Example</a></li>
+</ul>
+</li>
+<li><a href="#_using_production_exporters">Using Production Exporters</a>
+<ul class="sectlevel4">
+<li><a href="#_otlp_exporter">OTLP Exporter</a></li>
+<li><a href="#_prometheus_exporter">Prometheus Exporter</a></li>
+</ul>
+</li>
+<li><a href="#_monitoring_best_practices">Monitoring Best Practices</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -829,22 +852,13 @@ same host).</p>
 <div class="listingblock">
 <div class="title">Running the stream plugin with Docker</div>
 <div class="content">
-<pre>docker run -it --rm --name rabbitmq -p 5552:5552 \
+<pre>docker run -it --rm --name rabbitmq -p 5552:5552 -p 5672:5672 -p 15672:15672 \
     -e RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS='-rabbitmq_stream advertised_host localhost' \
-    rabbitmq:3.11</pre>
+    rabbitmq:4-management</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The previous command exposes only the stream port (5552), you can expose
-ports for other protocols:</p>
-</div>
-<div class="listingblock">
-<div class="title">Exposing the AMQP 0.9.1 and management ports:</div>
-<div class="content">
-<pre>docker run -it --rm --name rabbitmq -p 5552:5552 -p 5672:5672 -p 15672:15672 \
-    -e RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS='-rabbitmq_stream advertised_host localhost' \
-    rabbitmq:3.11-management</pre>
-</div>
+<p>The previous command exposes stream port (5552), AMQP 0.9.1/ AMQP 1.0 (5672) and Management UI port (15672).</p>
 </div>
 <div class="paragraph">
 <p>Refer to the official <a href="https://hub.docker.com/_/rabbitmq">RabbitMQ Docker image web page</a>
@@ -1311,6 +1325,25 @@ Here is the simplest way to create an <code>StreamSystem</code> instance:</p>
 <p>Consider the environment like a long-lived object.
 An application will usually create one <code>StreamSystem</code> instance when it starts up and close it when it exits.</p>
 </div>
+<div class="listingblock">
+<div class="title">Creating an environment with disposable pattern</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateDisposable()
+{
+    await using (var system = (
+                     await StreamSystem.Create(
+                         new StreamSystemConfig()).ConfigureAwait(false)).ConfigureAwait(false))
+    {
+            // use the system
+            
+        
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>StreamSystem</code> implements <code>IAsyncDisposable</code>, so you can use the <code>using</code> statement to automatically close it after usage.</p>
+</div>
 <div class="paragraph">
 <p>It is possible to use a multiple end-points to connect to a cluster of nodes.
 The:</p>
@@ -1396,7 +1429,7 @@ If you hit some connection problems at some point – like hostnames impossible 
 </li>
 </ol>
 </div>
-<div class="listingblock">
+<div id="create-tls-external-auth" class="listingblock">
 <div class="title">Creating an StreamSystem that uses TLS and external authentication</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateTlsExternal()
@@ -1525,22 +1558,129 @@ If you hit some connection problems at some point – like hostnames impossible 
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>localhost:5552</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addressResolver</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AddressResolver</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Contract to change resolved node address to connect to.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Pass-through (no-op)</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AuthMechanism</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Authentication mechanism to use (e.g. <code>Plain</code> or <code>External</code> for TLS client certificates). See <a href="#create-tls-external-auth">Creating an StreamSystem that uses TLS and external authentication</a> for external authentication.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Plain</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>Ssl</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configuration helper for TLS.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SslOption</code> (empty)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RpcTimeOut</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout for RPC calls (e.g. PeerProperties, QueryMetadata). Must be at least 1 second. Low values can cause false errors.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10 seconds</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LookupLocatorStrategy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strategy to reconnect the locator client in case of connection failure. See <code>ILookupLocatorStrategy</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BackOffLookupLocatorStrategy</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ConnectionPoolConfig</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Define the connection pool policies. See <a href="#connection-pool">Connection Pool</a> for more details.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 producer/consumer per connection</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SocketOptions</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <a href="#socket-options">socket options</a> to use for the connections.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code> (default socket options)</p></td>
+</tr>
 </tbody>
 </table>
+</div>
+<div class="sect4">
+<h5 id="logging-ilogger">Logging (ILogger)</h5>
+<div class="paragraph">
+<p>The client uses the standard .NET logging abstraction <code>Microsoft.Extensions.Logging.ILogger</code> from the <code>Microsoft.Extensions.Logging.Abstractions</code> package.
+Logging is optional: when no logger is provided, the client uses a no-op logger and does not emit any log output.</p>
+</div>
+<div class="paragraph">
+<p>The following factory methods accept an optional <code>ILogger</code> (or <code>ILogger&lt;T&gt;</code>) parameter:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>StreamSystem.Create(StreamSystemConfig config, ILogger&lt;StreamSystem&gt; logger = null)</code> – logger for the stream system</p>
+</li>
+<li>
+<p><code>Producer.Create(ProducerConfig producerConfig, ILogger&lt;Producer&gt; logger = null)</code> – reliable producer</p>
+</li>
+<li>
+<p><code>Consumer.Create(ConsumerConfig consumerConfig, ILogger&lt;Consumer&gt; logger = null)</code> – reliable consumer</p>
+</li>
+<li>
+<p><code>StreamSystem.CreateRawProducer(RawProducerConfig rawProducerConfig, ILogger logger = null)</code> – raw producer</p>
+</li>
+<li>
+<p><code>StreamSystem.CreateRawConsumer(RawConsumerConfig rawConsumerConfig, ILogger logger = null)</code> – raw consumer</p>
+</li>
+<li>
+<p><code>StreamSystem.CreateRawSuperStreamProducer(RawSuperStreamProducerConfig rawSuperStreamProducerConfig, ILogger logger = null)</code> – super stream producer</p>
+</li>
+<li>
+<p><code>StreamSystem.CreateSuperStreamConsumer(RawSuperStreamConsumerConfig rawSuperStreamConsumerConfig, ILogger logger = null)</code> – super stream consumer</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>A concrete logging implementation (for example <code>Microsoft.Extensions.Logging.Console</code>) is not shipped with the client; you add the logging packages you need to your application.</p>
+</div>
+<div class="paragraph">
+<p>Example: configuring a logger with <code>LoggerFactory</code> and passing it when creating the stream system and producers/consumers:</p>
+</div>
+<div class="listingblock">
+<div class="title">Configuring ILogger with LoggerFactory</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">var factory = LoggerFactory.Create(builder =&gt;
+{
+    builder.AddSimpleConsole();
+    builder.AddFilter(&quot;RabbitMQ.Stream&quot;, LogLevel.Information);
+});
+
+// Define the logger for the StreamSystem and the Producer/Consumer
+var producerLogger = factory.CreateLogger&lt;Producer&gt;(); // <b class="conum">(1)</b>
+var consumerLogger = factory.CreateLogger&lt;Consumer&gt;(); // <b class="conum">(2)</b>
+var streamLogger = factory.CreateLogger&lt;StreamSystem&gt;(); // <b class="conum">(3)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Create a logger for the reliable producer</p>
+</li>
+<li>
+<p>Create a logger for the reliable consumer</p>
+</li>
+<li>
+<p>Create a logger for the stream system</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Use the same logger (or category) when creating the <code>StreamSystem</code> and the producers/consumers so that connection and protocol events are visible in your logs.
+You can filter by the <code>RabbitMQ.Stream</code> namespace to control verbosity.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="socket-options">Socket Options</h5>
+<div class="paragraph">
+<p>The <code>SocketOptions</code> property allows configuring the socket options for the connections to the broker.
+Default is <code>null</code> with the default values:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="csharp"> socket.NoDelay = true;
+ socket.SendBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;
+ socket.ReceiveBufferSize *= SocketOptions.DefaultBufferSizeMultiplier;</code></pre>
+</div>
+</div>
 </div>
 <div class="sect4">
 <h5 id="connection-pool">Connection pool</h5>
@@ -1958,6 +2098,11 @@ Starting from version 1.2.0 the <code>Reference</code> field is deprecated.
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>dotnet-stream-producer</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Filter</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Function used to set the value of the filter. The filter enables the server to filter the messages sent to the consumer.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>MaxInFlight</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The maximum number of messages that can be in flight at any given time. Messages sent - Messages confirmed. To avoid to flood the broker with messages.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1000</p></td>
@@ -1968,6 +2113,16 @@ Starting from version 1.2.0 the <code>Reference</code> field is deprecated.
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BackOffReconnectStrategy</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ResourceAvailableReconnectStrategy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The strategy to check if the stream is available (e.g. during broker restart). From <code>ReliableConfig</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Identifier</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Identifies the entity in logs. From <code>ReliableConfig</code>. No effect on the server.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>MessagesBufferSize</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Number of the messages sent for each frame-send.
 This value is valid only for the <code>Send(Message)</code> method.</p></td>
@@ -1976,7 +2131,7 @@ This value is valid only for the <code>Send(Message)</code> method.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>TimeoutMessageAfter</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Time to wait before considering a message as not confirmed.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">3 seconds</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10 seconds</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SuperStreamConfig</code></p></td>
@@ -2209,7 +2364,7 @@ Any long processing should be done in a separate thread (e.g. with an asynchrono
 <div class="paragraph">
 <p>You can mix different send methods.
 For example you can send a message with <code>send(Message)</code> and then send a batch of messages with <code>send(List&lt;Message&gt;)</code>.
-Avoid to sent the <code>Refence</code> property in the <code>ProducerConfig</code> it enables the deduplication and you could have unexpected results.</p>
+Avoid setting the <code>Reference</code> property in the <code>ProducerConfig</code>; it enables deduplication and you could have unexpected results.</p>
 </div>
 <div class="paragraph">
 <p><code>Reference</code> is deprecated in the version <code>1.2.0</code>  see deduplication section for more details.</p>
@@ -2825,23 +2980,53 @@ await streamSystem.Close().ConfigureAwait(false);</code></pre>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ClientProvidedName</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">To identify the client in the management UI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dotnet-stream-conusmer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To identify the client in the management UI.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dotnet-stream-consumer</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>IsSingleActiveConsumer</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable the Single Active Consumer feature</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable the Single Active Consumer feature.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>IsSuperStream</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable the Super Stream feature</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enable the Super Stream feature.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ICrc32</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The <a href="#crc-on-delivery">CRC32 implementation</a> to use to validate the chunk server crc32 .</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ConsumerUpdateListener</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Callback invoked when the consumer becomes active (single active consumer only). Lets the consumer decide where to start consuming from. See <a href="#consumer-update-listener">Reacting to Consumer State Change</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>InitialCredits</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Initial number of chunks the consumer will receive before requesting more. Higher values can increase throughput but use more memory.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Filter</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Consumer filter to receive only messages matching the filter (bloom filter with optional post-filter).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FlowControl</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strategy for when the broker sends more messages. See <a href="#consumer-flow-control">Flow Control</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>new FlowControl()</code> (default strategy)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Crc32</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The <a href="#crc-on-delivery">CRC32 implementation</a> to use to validate the chunk server crc32.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>StreamCrc32()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ResourceAvailableReconnectStrategy</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The strategy to check if the stream is available (e.g. during broker restart). From <code>ReliableConfig</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">default back-off</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Identifier</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Identifies the entity in logs and UI. From <code>ReliableConfig</code>. No effect on the server.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>StatusChanged</code></p></td>
@@ -4262,29 +4447,35 @@ The following snippet illustrates the use of the <code>ConsumerUpdateListener</c
 IsSingleActiveConsumer = true, // mandatory for enabling the Single Active Consumer // <b class="conum">(2)</b>
 ConsumerUpdateListener = async (reference, stream, isActive) =&gt; // <b class="conum">(3)</b>
 {
+    // don't put slow code inside this callback,
+    // since it runs in the socket thread, and it could impact the consumer promotion to Active.
+    // In case of exception, the library will use the default behavior that is to start consuming from OffsetNext().
+
     loggerMain.LogInformation($&quot;******************************************************&quot;);
     loggerMain.LogInformation(&quot;reference {Reference} stream {Stream} is active: {IsActive}&quot;, reference,
         stream, isActive);
 
-    ulong offset = 0;
-    try
+    if (!isActive)
     {
-        offset = await system.QueryOffset(reference, stream).ConfigureAwait(false);
-    }
-    catch (OffsetNotFoundException e)
-    {
-        loggerMain.LogInformation(&quot;OffsetNotFoundException {Message}, will use OffsetTypeNext&quot;, e.Message);
+        // when the consumer is not active the server is excepting a reply from the client.
+        // even the server does not use it (a.t.m.), it is mandatory to reply with an offset type.
         return new OffsetTypeNext();
     }
 
-    if (isActive)
+    var offset = await system.TryQueryOffset(reference, stream).ConfigureAwait(false);
+    if (offset == null)
     {
-        loggerMain.LogInformation(&quot;Restart Offset {Offset}&quot;, offset);
+        loggerMain.LogInformation(&quot;Offset not found, will use OffsetTypeNext&quot;);
+        return new OffsetTypeNext();
     }
 
+    
+    // in this example it restarts from the last offset stored + 1,
+    // but it is just an example, you can decide to restart from any offset you want.
+    loggerMain.LogInformation(&quot;Restart Offset {Offset}&quot;, offset.Value + 1);
     loggerMain.LogInformation($&quot;******************************************************&quot;);
-    await Task.CompletedTask.ConfigureAwait(false);
-    return new OffsetTypeOffset(offset + 1); // <b class="conum">(4)</b>
+
+    return new OffsetTypeOffset(offset.Value + 1); // <b class="conum">(4)</b>
 },</code></pre>
 </div>
 </div>
@@ -4426,7 +4617,7 @@ It sets a filter value to <code>Alabama</code> and a predicate that accepts a me
     <span class="comment">// This is mandatory for enabling the filter</span>
     <span class="predefined-type">Filter</span> = <span class="keyword">new</span> ConsumerFilter()
     {
-        Values = <span class="keyword">new</span> <span class="predefined-type">List</span>&lt;string&gt;() {<span class="string"><span class="delimiter">&quot;</span><span class="content">Alabama</span><span class="delimiter">&quot;</span></span>}, // <b class="conum">(1)</b>
+        Values = [<span class="string"><span class="delimiter">&quot;</span><span class="content">Alabama</span><span class="delimiter">&quot;</span></span>], // <b class="conum">(1)</b>
         PostFilter = message =&gt; message.ApplicationProperties[<span class="string"><span class="delimiter">&quot;</span><span class="content">state</span><span class="delimiter">&quot;</span></span>].Equals(<span class="string"><span class="delimiter">&quot;</span><span class="content">Alabama</span><span class="delimiter">&quot;</span></span>), // <b class="conum">(2)</b>
         MatchUnfiltered = <span class="predefined-constant">true</span>
     },
@@ -4531,12 +4722,391 @@ You can provide your own implementation of these interfaces to customize the rec
 <p>You can see a full example with a Keycloak integration  <a href="https://github.com/rabbitmq/rabbitmq-oauth2-tutorial/tree/main/stream_dot_net/Keycloak">here</a></p>
 </div>
 </div>
+<div class="sect2">
+<h3 id="_metrics">Metrics</h3>
+<div class="paragraph">
+<p>The RabbitMQ Stream .NET Client provides detailed metrics to monitor the behavior and performance of your streaming applications.
+These metrics follow the <a href="https://opentelemetry.io/">OpenTelemetry</a> standard and can be exported to various observability backends using OpenTelemetry exporters.</p>
+</div>
+<div class="sect3">
+<h4 id="_available_metrics">Available Metrics</h4>
+<div class="paragraph">
+<p>The client exposes the following metrics through the <code>RabbitMQ.Stream.Client</code> meter:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 15%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Metric Name</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Tags</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.connections</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UpDownCounter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of active connections to the broker</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.published</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of messages published</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stream</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.confirmed</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of messages confirmed by the broker</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stream</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.errored</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of messages that encountered errors during publishing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stream</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.chunk</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of chunks received from the broker</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.chunk_size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Histogram</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Distribution of the number of entries in each chunk received</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.consumed</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of messages consumed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stream</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.written_bytes</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of bytes written to the broker</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.read_bytes</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of bytes read from the broker</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rabbitmq.stream.outstanding_publish_confirm</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UpDownCounter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of messages currently awaiting confirmation from the broker</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stream</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_consuming_metrics_with_opentelemetry">Consuming Metrics with OpenTelemetry</h4>
+<div class="paragraph">
+<p>To collect and export metrics from the RabbitMQ Stream .NET Client, you need to:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Add the OpenTelemetry NuGet packages to your project</p>
+</li>
+<li>
+<p>Create a <code>MeterProvider</code> configured to listen to the <code>RabbitMQ.Stream.Client</code> meter</p>
+</li>
+<li>
+<p>Add an exporter (e.g., console exporter for testing, OTLP exporter for production)</p>
+</li>
+</ol>
+</div>
+<div class="sect4">
+<h5 id="_setting_up_the_console_exporter">Setting Up the Console Exporter</h5>
+<div class="paragraph">
+<p>The simplest way to get started is to use the OpenTelemetry console exporter for development and testing:</p>
+</div>
+<div class="listingblock">
+<div class="title">Configuring the console exporter for metrics</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="csharp">// Configure OTEL console exporter to collect metrics from the client and print to console
+// Read OTEL docs for more information:
+// https://opentelemetry.io/docs/languages/dotnet/metrics/getting-started-console/
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+.AddMeter(StreamMetricsConstants.Name) // <b class="conum">(1)</b>
+.AddConsoleExporter() // <b class="conum">(2)</b>
+.Build(); // <b class="conum">(3)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Create a <code>MeterProvider</code> that listens to the <code>RabbitMQ.Stream.Client</code> meter</p>
+</li>
+<li>
+<p>Add the console exporter to output metrics</p>
+</li>
+<li>
+<p>Build the provider</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_full_example_application">Full Example Application</h5>
+<div class="paragraph">
+<p>Here is a complete example application that demonstrates how to use the RabbitMQ Stream .NET Client with OpenTelemetry metrics:</p>
+</div>
+<div class="listingblock">
+<div class="title">Complete example with producer and consumer</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="csharp">static async Task Main()
+{
+    // Configure OTEL console exporter to collect metrics from the client and print to console
+    // Read OTEL docs for more information:
+    // https://opentelemetry.io/docs/languages/dotnet/metrics/getting-started-console/
+    using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter(StreamMetricsConstants.Name) // <b class="conum">(1)</b>
+    .AddConsoleExporter() // <b class="conum">(2)</b>
+    .Build(); // <b class="conum">(3)</b>
+
+    // Configure the stream to connect to localhost. Adjust if your server is running on a different host.
+    var config = new StreamSystemConfig()
+    {
+        Heartbeat = TimeSpan.Zero,
+        Endpoints = new List&lt;EndPoint&gt; { new IPEndPoint(IPAddress.Loopback, 5552) },
+    };
+    var system = await StreamSystem.Create(config).ConfigureAwait(false); // <b class="conum">(4)</b>
+
+    // Create the stream to use for the producer and consumer.
+    await system.CreateStream(new StreamSpec(&quot;my-stream&quot;)).ConfigureAwait(false); // <b class="conum">(5)</b>
+
+    // Run the producer and consumer tasks.
+    var producerTask = RunProducer(system, s_cancel.Token); // <b class="conum">(6)</b>
+    var consumerTask = RunConsumer(system, s_cancel.Token); // <b class="conum">(7)</b>
+
+    Console.WriteLine(&quot;Application started.&quot;);
+    Console.WriteLine(&quot;Press the ENTER key to cancel...\n&quot;);
+    var cancelTask = Task.Run(() =&gt;
+    {
+        while (Console.ReadKey().Key != ConsoleKey.Enter)
+        {
+            Console.WriteLine(&quot;Press the ENTER key to cancel...&quot;);
+        }
+
+        Console.WriteLine(&quot;\nENTER key pressed: cancelling application.\n&quot;);
+        s_cancel.Cancel();
+    });
+
+    await Task.WhenAny(producerTask, consumerTask, cancelTask).ConfigureAwait(false);
+    if (cancelTask.IsCanceled)
+    {
+        // re-await the producer and consumer tasks to ensure they are closed and to catch any exceptions
+        await Task.WhenAll(producerTask, consumerTask).ConfigureAwait(false);
+    }
+
+    // Delete the stream and close the system. Good practice to clean up after the example is done.
+    await system.DeleteStream(&quot;my-stream&quot;).ConfigureAwait(false);
+    await system.Close().ConfigureAwait(false);
+    Console.WriteLine(&quot;Application closed&quot;);
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Create a <code>MeterProvider</code> that listens to the <code>RabbitMQ.Stream.Client</code> meter</p>
+</li>
+<li>
+<p>Add the console exporter to output metrics</p>
+</li>
+<li>
+<p>Build the provider</p>
+</li>
+<li>
+<p>Create the <code>StreamSystem</code> to connect to RabbitMQ</p>
+</li>
+<li>
+<p>Create a stream named <code>my-stream</code></p>
+</li>
+<li>
+<p>Start the producer task to publish messages</p>
+</li>
+<li>
+<p>Start the consumer task to consume messages</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The example creates a <code>StreamSystem</code>, sets up a producer and consumer, and automatically publishes metrics to the console. The metrics are displayed in real-time as the application runs.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_producer_implementation">Producer Implementation</h5>
+<div class="paragraph">
+<p>The producer continuously publishes messages to the stream. Each published message will increment the <code>rabbitmq.stream.published</code> metric and update related metrics such as <code>rabbitmq.stream.written_bytes</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">Producer that publishes messages continuously</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="csharp">static async Task RunProducer(StreamSystem system, CancellationToken cancellationToken)
+{
+    var producer = await Producer.Create(new ProducerConfig(system, &quot;my-stream&quot;)).ConfigureAwait(false);
+    var count = 0;
+    while (!cancellationToken.IsCancellationRequested)
+    {
+        await producer.Send(new Message(System.Text.Encoding.UTF8.GetBytes($&quot;Message {count}&quot;))).ConfigureAwait(false);
+        count++;
+        if (count % 100 == 0)
+        {
+            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    await producer.Close().ConfigureAwait(false);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_consumer_implementation">Consumer Implementation</h5>
+<div class="paragraph">
+<p>The consumer receives and processes messages from the stream. Each consumed message will increment the <code>rabbitmq.stream.consumed</code> metric and update the <code>rabbitmq.stream.read_bytes</code> metric:</p>
+</div>
+<div class="listingblock">
+<div class="title">Consumer that processes messages</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="csharp">static async Task RunConsumer(StreamSystem system, CancellationToken cancellationToken)
+{
+    var count = 0;
+    var c = new ConsumerConfig(system, &quot;my-stream&quot;)
+    {
+        MessageHandler = async (stream, consumer, context, message) =&gt;
+        {
+            count += 1;
+            if (count % 1_000 == 0)
+            {
+                Console.Write(&quot;.&quot;);
+            }
+
+            await Task.CompletedTask.ConfigureAwait(false);
+        }
+    };
+    var consumer = await Consumer.Create(c).ConfigureAwait(false);
+    while (!cancellationToken.IsCancellationRequested)
+    {
+        await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+    }
+
+    await consumer.Close().ConfigureAwait(false);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_running_the_example">Running the Example</h5>
+<div class="paragraph">
+<p>To run this example:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Ensure you have RabbitMQ with the Stream plugin running on <code>localhost:5552</code></p>
+</li>
+<li>
+<p>The metrics output will appear on the console while the producer and consumer are active</p>
+</li>
+<li>
+<p>Press ENTER to gracefully stop the application</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_using_production_exporters">Using Production Exporters</h4>
+<div class="paragraph">
+<p>For production environments, use the appropriate OpenTelemetry exporter:</p>
+</div>
+<div class="sect4">
+<h5 id="_otlp_exporter">OTLP Exporter</h5>
+<div class="paragraph">
+<p>To export metrics to an OpenTelemetry Collector or compatible backend:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="csharp">using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter(StreamMetricsConstants.Name)
+    .AddOtlpExporter(options =&gt;
+    {
+        options.Endpoint = new Uri(&quot;http://your-collector:4317&quot;);
+    })
+    .Build();</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_prometheus_exporter">Prometheus Exporter</h5>
+<div class="paragraph">
+<p>To expose metrics in Prometheus format:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="csharp">using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter(StreamMetricsConstants.Name)
+    .AddPrometheusHttpListener()
+    .Build();</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Refer to the <a href="https://opentelemetry.io/docs/languages/dotnet/">OpenTelemetry .NET documentation</a> for more information on available exporters and configuration options.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_monitoring_best_practices">Monitoring Best Practices</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Connection Metrics</strong>: Use <code>rabbitmq.stream.connections</code> to monitor the number of active connections and detect connection leaks</p>
+</li>
+<li>
+<p><strong>Message Throughput</strong>: Combine <code>rabbitmq.stream.published</code> and <code>rabbitmq.stream.consumed</code> to measure end-to-end throughput</p>
+</li>
+<li>
+<p><strong>Confirm Rate</strong>: Monitor the ratio of <code>rabbitmq.stream.confirmed</code> to <code>rabbitmq.stream.published</code> to ensure message reliability</p>
+</li>
+<li>
+<p><strong>Error Rate</strong>: Track <code>rabbitmq.stream.errored</code> to detect issues with message publishing</p>
+</li>
+<li>
+<p><strong>Outstanding Confirms</strong>: Use <code>rabbitmq.stream.outstanding_publish_confirm</code> to detect potential confirmation bottlenecks</p>
+</li>
+<li>
+<p><strong>Network I/O</strong>: Monitor <code>rabbitmq.stream.written_bytes</code> and <code>rabbitmq.stream.read_bytes</code> to understand network utilization</p>
+</li>
+<li>
+<p><strong>Chunk Analysis</strong>: Use <code>rabbitmq.stream.chunk_size</code> to analyze the efficiency of message batching</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-04-28 07:02:21 UTC
+Last updated 2026-01-14 09:04:47 UTC
 </div>
 </div>
 </body>
