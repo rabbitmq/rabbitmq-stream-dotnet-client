@@ -51,7 +51,7 @@ this is perfect for experimenting locally.
 
 .Running RabbitMQ Stream with the host network driver
 ----
-docker run -it --rm --name rabbitmq --network host rabbitmq:3.11
+docker run -it --rm --name rabbitmq --network host rabbitmq:4
 ----
 
 Once the container is started, **the stream plugin must be enabled**:
