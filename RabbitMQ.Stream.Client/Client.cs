@@ -155,6 +155,8 @@ namespace RabbitMQ.Stream.Client
 
         public int IncomingFrames => _connection.NumFrames;
 
+        public IDictionary<string, string> ServerProperties { get; private set; } = new Dictionary<string, string>();
+
         private static readonly object Obj = new();
 
         private readonly ILogger _logger;
@@ -206,7 +208,7 @@ namespace RabbitMQ.Stream.Client
             var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                 new PeerPropertiesRequest(corr, parameters.Properties)).ConfigureAwait(false);
             logger?.LogDebug("Server properties: {@Properties}", peerPropertiesResponse.Properties);
-
+            client.ServerProperties = peerPropertiesResponse.Properties;
             //auth
             var saslHandshakeResponse =
                 await client

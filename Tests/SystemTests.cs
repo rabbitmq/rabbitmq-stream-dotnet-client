@@ -459,6 +459,27 @@ namespace Tests
         }
 
         [Fact]
+        public async Task ServerPropertiesShouldBeNotEmpty()
+        {
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            var properties = await system.ServerProperties();
+            Assert.NotEmpty(properties);
+            Assert.Contains("product", properties);
+            Assert.Contains("platform", properties);
+            Assert.Contains("cluster_name", properties);
+            Assert.Contains("information", properties);
+            Assert.Contains("copyright", properties);
+            Assert.Contains("RabbitMQ", properties["product"]);
+            Assert.Contains("rabbit", properties["cluster_name"]);
+            Assert.Contains("Erlang", properties["platform"]);
+            Assert.Contains("rabbitmq.com", properties["information"]);
+            Assert.Contains("Copyright", properties["copyright"]);
+            Assert.Contains("version", properties);
+
+            await system.Close();
+        }
+
+        [Fact]
         public async Task ClientShouldStoreOffset()
         {
             var stream = Guid.NewGuid().ToString();
