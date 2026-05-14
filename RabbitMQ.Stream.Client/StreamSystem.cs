@@ -778,6 +778,17 @@ namespace RabbitMQ.Stream.Client
                 _semClientProvidedName.Release();
             }
         }
+
+        /// <summary>
+        /// Returns the server properties as a dictionary of key-value pairs.
+        /// Useful for debugging and monitoring.
+        /// </summary>
+        /// <returns></returns>
+        public async Task<IDictionary<string, string>> ServerProperties()
+        {
+            await MayBeReconnectLocator().ConfigureAwait(false);
+            return _client.ServerProperties;
+        }
     }
 
     /// <summary>
