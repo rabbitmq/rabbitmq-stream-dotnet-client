@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.11.2]
+### 1.11.2 - 2026-18-05
+- [Release notes 1.11.2](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.11.2)
+### Enhancements
+- Expose server ServerProperties by @Gsantomaggio in [#465](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/465)
+
 ## [1.11.0]
 ### 1.11.0 - 2026-17-03
 - [Release notes 1.11.0](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.11.0)
