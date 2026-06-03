@@ -304,6 +304,36 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-address-resolver]
 
 The blog post covers the https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/#client-workaround-with-a-load-balancer[underlying details of this workaround].
 
+[[dns-address-resolver]]
+====== Using DNS Round-Robin Instead of a Load Balancer
+
+Starting from version 1.12 (https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/466[#466]), the client ships a built-in `DnsAddressResolver` that relies on DNS round-robin instead of a dedicated load balancer.
+
+This is useful when the cluster nodes are exposed behind a single DNS name that resolves to multiple `A`/`AAAA` records (for example a Kubernetes headless service or a DNS-based service discovery setup). Instead of routing every connection through a load balancer, the client resolves the DNS name on each connection attempt and picks one of the returned IP addresses, distributing connections across the cluster nodes.
+
+`DnsAddressResolver` implements `IAddressResolver`, so it can be assigned directly to `StreamSystemConfig#AddressResolver`:
+
+.Using the DNS address resolver
+[source,c#,indent=0]
+--------
+var dnsResolver = new DnsAddressResolver(new DnsEndPoint("rabbitmq-stream.my-cluster.local", 5552)); // <1>
+
+var streamSystem = await StreamSystem.Create(
+    new StreamSystemConfig
+    {
+        AddressResolver = dnsResolver, // <2>
+        Endpoints = new List<EndPoint> { dnsResolver.EndPoint } // <3>
+    }).ConfigureAwait(false);
+--------
+
+<1> Create the resolver with the `DnsEndPoint` (host and port) shared by all cluster nodes
+<2> Use the DNS resolver to resolve node addresses before each connection
+<3> Use the same endpoint for the initial locator connection
+
+On every connection the resolver calls `ResolveAsync(...)`, which performs a DNS lookup of the configured host and returns one of the resolved IP addresses, achieving round-robin distribution across the nodes the DNS name points to.
+
+NOTE: `DnsAddressResolver` ignores the per-node metadata hints returned by the broker, exactly like the custom load-balancer resolver above. The difference is that the node selection is driven by DNS resolution rather than by a load balancer.
+
 ===== Managing Streams
 
 Streams are usually long-lived, centrally-managed entities, that is, applications are not supposed to create and delete them.
