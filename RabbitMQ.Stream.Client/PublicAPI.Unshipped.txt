@@ -179,6 +179,7 @@ RabbitMQ.Stream.Client.HashRoutingMurmurStrategy.Route(RabbitMQ.Stream.Client.Me
 RabbitMQ.Stream.Client.HeartBeatHandler.HeartBeatHandler(System.Func<System.Threading.Tasks.ValueTask<bool>> sendHeartbeatFunc, System.Func<string, string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.CloseResponse>> close, int heartbeat, Microsoft.Extensions.Logging.ILogger<RabbitMQ.Stream.Client.HeartBeatHandler> logger = null) -> void
 RabbitMQ.Stream.Client.IAddressResolver
 RabbitMQ.Stream.Client.IAddressResolver.Enabled.get -> bool
+RabbitMQ.Stream.Client.IAddressResolver.Resolve(string address, int port) -> System.Net.EndPoint
 RabbitMQ.Stream.Client.IAddressResolver.ResolveAsync(string address, int port) -> System.Threading.Tasks.Task<System.Net.EndPoint>
 RabbitMQ.Stream.Client.IClient.ClientId.get -> string
 RabbitMQ.Stream.Client.IClient.ClientId.init -> void
