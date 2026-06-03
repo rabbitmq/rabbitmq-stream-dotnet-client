@@ -323,7 +323,19 @@ include::{test-examples}/StreamSystemUsage.cs[tag=create-dsn-address-resolver]
 
 On every connection the resolver calls `ResolveAsync(...)`, which performs a DNS lookup of the configured host and returns one of the resolved IP addresses, achieving round-robin distribution across the nodes the DNS name points to.
 
-NOTE: `DnsAddressResolver` ignores the per-node metadata hints returned by the broker, exactly like the custom load-balancer resolver above. The difference is that the node selection is driven by DNS resolution rather than by a load balancer.
+NOTE: `DnsAddressResolver` ignores the per-node metadata hints returned by the broker, exactly like the custom load-balancer resolver above. 
+The difference is that the node selection is driven by DNS resolution rather than by a load balancer.
+
+You can use tour own implementation of `IAddressResolver` to implement custom address resolution strategies, 
+for example based on service discovery or other mechanisms.
+
+[NOTE]
+.IAddressResolver Derepcation
+====
+Starting from version 1.12.0 the `Resolve` field is deprecated.
+Use `ResolveAsync` instead.
+====
+
 
 ===== Managing Streams
 
