@@ -153,6 +153,28 @@ public class StreamSystemUsage
         await streamSystem.Close().ConfigureAwait(false);
     }
     // end::create-address-resolver[]
+    
+    
+    // tag::create-dsn-address-resolver[]
+    private static async Task CreateDnsAddressResolver()
+    {
+        var dnsResolver = new DnsAddressResolver(new DnsEndPoint("rabbitmq-stream.my-cluster.local", 5552)); // <1>
+        
+        var streamSystem = await StreamSystem.Create(
+            new StreamSystemConfig()
+            {
+                UserName = "myuser",
+                Password = "mypassword",
+                AddressResolver = dnsResolver, // <2>
+                Endpoints = new List<EndPoint> {dnsResolver.EndPoint} // <3>
+            }
+        ).ConfigureAwait(false);
+
+
+        await streamSystem.Close().ConfigureAwait(false);
+    }
+    // end::create-dns-address-resolver[]
+    
 
     // tag::stream-creation[]
     private static async Task CreateStream()
