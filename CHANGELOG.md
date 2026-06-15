@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.0]
+### 1.12.0 - 2026-15-06
+- [Release notes 1.12.0](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.12.0)
+### Enhancements
+- Implement `DnsAddressResolver` and `ResolveAsync` for DNS Load Balanced clusters by @lukas8219 in [#466](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/466)
+
+### Documentation
+- Add documentation about `DnsAddressResolver` by @lukas8219 in [#467](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/467)
+- Update documentation for DNS address resolver by @Gsantomaggio in [#468](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/468)
+
 ## [1.11.2]
 ### 1.11.2 - 2026-18-05
 - [Release notes 1.11.2](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.11.2)
