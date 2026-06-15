@@ -545,7 +545,11 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#logging-ilogger">Logging (ILogger)</a></li>
 <li><a href="#socket-options">Socket Options</a></li>
 <li><a href="#connection-pool">Connection pool</a></li>
-<li><a href="#address-resolver">When a Load Balancer is in Use</a></li>
+<li><a href="#address-resolver">When a Load Balancer is in Use</a>
+<ul class="sectlevel5">
+<li><a href="#dns-address-resolver">Using DNS Round-Robin Instead of a Load Balancer</a></li>
+</ul>
+</li>
 <li><a href="#_managing_streams">Managing Streams</a></li>
 </ul>
 </li>
@@ -1813,6 +1817,164 @@ Applications can use this hook to ignore metadata hints and always use the load 
 </div>
 <div class="paragraph">
 <p>The blog post covers the <a href="https://blog.rabbitmq.com/posts/2021/07/connecting-to-streams/#client-workaround-with-a-load-balancer">underlying details of this workaround</a>.</p>
+</div>
+<div class="sect5">
+<h6 id="dns-address-resolver">Using DNS Round-Robin Instead of a Load Balancer</h6>
+<div class="paragraph">
+<p><code>DnsAddressResolver</code> relies on DNS round-robin instead of a dedicated load balancer.</p>
+</div>
+<div class="paragraph">
+<p>This is useful when the cluster nodes are exposed behind a single DNS name that resolves to multiple <code>A</code>/<code>AAAA</code> records (for example a Kubernetes headless service or a DNS-based service discovery setup). Instead of routing every connection through a load balancer, the client resolves the DNS name on each connection attempt and picks one of the returned IP addresses, distributing connections across the cluster nodes.</p>
+</div>
+<div class="paragraph">
+<p><code>DnsAddressResolver</code> implements <code>IAddressResolver</code>, so it can be assigned directly to <code>StreamSystemConfig#AddressResolver</code>:</p>
+</div>
+<div class="listingblock">
+<div class="title">Using the DNS address resolver</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateDnsAddressResolver()
+{
+    var dnsResolver = new DnsAddressResolver(new DnsEndPoint(&quot;rabbitmq-stream.my-cluster.local&quot;, 5552)); // <b class="conum">(1)</b>
+    
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+        {
+            UserName = &quot;myuser&quot;,
+            Password = &quot;mypassword&quot;,
+            AddressResolver = dnsResolver, // <b class="conum">(2)</b>
+            Endpoints = new List&lt;EndPoint&gt; {dnsResolver.EndPoint} // <b class="conum">(3)</b>
+        }
+    ).ConfigureAwait(false);</code></pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>    await streamSystem.Close().ConfigureAwait(false);
+}</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>private static async Task CreateStream()
+{
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>    await streamSystem.CreateStream( // <b class="conum">(1)</b>
+        new StreamSpec("my-stream")
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); // <b class="conum">(2)</b>
+}
+
+private static async Task DeleteStream()
+{
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>    await streamSystem.DeleteStream("my-stream").ConfigureAwait(false); // <b class="conum">(1)</b>
+    await streamSystem.Close().ConfigureAwait(false);
+}
+
+
+private static async Task CreateStreamRetentionLen()
+{
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>    await streamSystem.CreateStream( 
+        new StreamSpec("my-stream")
+        {
+            MaxLengthBytes = 10_737_418_240, // <b class="conum">(1)</b>
+            MaxSegmentSizeBytes = 524_288_000 // <b class="conum">(2)</b>
+        }
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); 
+}
+
+
+private static async Task CreateStreamRetentionAge()
+{
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>        await streamSystem.CreateStream( 
+            new StreamSpec("my-stream")
+            {
+                MaxAge = TimeSpan.FromHours(6),  // <b class="conum">(1)</b>
+                MaxSegmentSizeBytes = 524_288_000 // <b class="conum">(2)</b>
+            }
+        ).ConfigureAwait(false);
+        await streamSystem.Close().ConfigureAwait(false); 
+    }
+    
+}</pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Create the resolver with the <code>DnsEndPoint</code> (host and port) shared by all cluster nodes</p>
+</li>
+<li>
+<p>Use the DNS resolver to resolve node addresses before each connection</p>
+</li>
+<li>
+<p>Use the same endpoint for the initial locator connection</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>On every connection the resolver calls <code>ResolveAsync(&#8230;&#8203;)</code>, which performs a DNS lookup of the configured host and returns one of the resolved IP addresses, achieving round-robin distribution across the nodes the DNS name points to.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+<code>DnsAddressResolver</code> ignores the per-node metadata hints returned by the broker, exactly like the custom load-balancer resolver above.
+The difference is that the node selection is driven by DNS resolution rather than by a load balancer.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>You can use tour own implementation of <code>IAddressResolver</code> to implement custom address resolution strategies,
+for example based on service discovery or other mechanisms.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+<div class="title">IAddressResolver Derepcation</div>
+<div class="paragraph">
+<p>Starting from version 1.12.0 the <code>Resolve</code> field is deprecated.
+Use <code>ResolveAsync</code> instead.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </div>
 </div>
 <div class="sect4">
@@ -5106,7 +5268,7 @@ using var meterProvider = Sdk.CreateMeterProviderBuilder()
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-03-23 09:57:43 UTC
+Last updated 2026-03-23 10:02:29 UTC
 </div>
 </div>
 </body>
