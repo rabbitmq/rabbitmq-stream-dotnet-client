@@ -118,6 +118,7 @@ public abstract class ProducerFactory : ReliableBase
         return await _producerConfig.StreamSystem.CreateRawProducer(new RawProducerConfig(_producerConfig.Stream)
         {
             ClientProvidedName = _producerConfig.ClientProvidedName,
+            MessagesBufferSize = _producerConfig.MessagesBufferSize,
             Reference = _producerConfig.Reference,
             MaxInFlight = _producerConfig.MaxInFlight,
             Filter = _producerConfig.Filter,
