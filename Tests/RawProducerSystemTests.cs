@@ -319,6 +319,47 @@ namespace Tests
         }
 
         [Fact]
+        public async Task ProducerSplitsAggregatedBatchBiggerThanMaxFrameSize()
+        {
+            // The background aggregation in ProcessBuffer used to flush only once the batch
+            // reached MessagesBufferSize, so a few large messages could end up in a single
+            // Publish frame bigger than MaxFrameSize (1048576 by default). The broker closes
+            // the connection on an oversized frame, so none of the messages get confirmed.
+            // Here a single message fits in a frame but any two of them do not, so the
+            // aggregation has to split the batch on the frame size and not only on the count.
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var testPassed = new TaskCompletionSource<bool>();
+            const int NumberOfMessages = 20;
+            var confirmed = 0;
+            var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream)
+            {
+                Reference = "producer",
+                ConfirmHandler = confirmation =>
+                {
+                    if (confirmation.Code == ResponseCode.Ok &&
+                        Interlocked.Increment(ref confirmed) == NumberOfMessages)
+                    {
+                        testPassed.SetResult(true);
+                    }
+                }
+            });
+
+            var body = new byte[600 * 1024];
+            for (ulong i = 1; i <= NumberOfMessages; i++)
+            {
+                await rawProducer.Send(i, new Message(body));
+            }
+
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed, true, TimeSpan.FromSeconds(30));
+            testOutputHelper.WriteLine(
+                $"confirmed {confirmed} publish commands sent {rawProducer.PublishCommandsSent}");
+            Assert.Equal(NumberOfMessages, confirmed);
+            Assert.Equal(NumberOfMessages, rawProducer.PublishCommandsSent);
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
         public async Task ProducerBatchConfirmNumberOfMessages()
         {
             // test the batch confirm number of messages for batch send

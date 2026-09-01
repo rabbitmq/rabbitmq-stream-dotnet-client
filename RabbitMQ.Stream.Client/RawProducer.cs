@@ -345,21 +345,31 @@ namespace RabbitMQ.Stream.Client
         {
             try
             {
+                // per Publish.cs we need 9 bytes for preamble and 12 bytes overhead per message.
                 var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
+                var runningSize = 9;
                 while (await _messageBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
                 {
                     while (_messageBuffer.Reader.TryRead(out var msg))
                     {
-                        messages.Add((msg.PublishingId, msg.Data));
-                        if (messages.Count == _config.MessagesBufferSize)
+                        var cost = 12 + msg.Data.Size;
+
+                        if (messages.Count > 0 &&
+                                (messages.Count >= _config.MessagesBufferSize ||
+                                runningSize + cost > _client.MaxFrameSize))
                         {
                             await SendMessages(messages).ConfigureAwait(false);
+                            runningSize = 9;
                         }
+
+                        messages.Add((msg.PublishingId, msg.Data));
+                        runningSize += cost;
                     }
 
                     if (messages.Count > 0)
                     {
                         await SendMessages(messages).ConfigureAwait(false);
+                        runningSize = 9;
                     }
                 }
             }
