@@ -345,7 +345,6 @@ namespace RabbitMQ.Stream.Client
         {
             try
             {
-                // per Publish.cs we need 9 bytes for preamble and 12 bytes overhead per message.
                 var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
                 var runningSize = 9;
                 while (await _messageBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
@@ -353,6 +352,8 @@ namespace RabbitMQ.Stream.Client
                     while (_messageBuffer.Reader.TryRead(out var msg))
                     {
                         var cost = 12 + msg.Data.Size;
+
+                        // handle the cost of using publish filter 
                         if (IsFilteringEnabled)
                         {
                             try
@@ -364,6 +365,34 @@ namespace RabbitMQ.Stream.Client
                                 // PublishFilter skips messages whose extractor throws, so this message
                                 // costs nothing on the wire, keeping the base cost only overestimates.
                             }
+                        }
+
+                        // Guard against a single message being just under the max frame size 
+                        // Eg. max frame size is 1,048,576 bytes, we send a single message with the size
+                        // 1,048,570, which is lower than the max frame, which leaves 6 bytes, 
+                        // but we need 21 byts overhead (in the best case), so we need to cause an error here.
+
+                        if (9 + cost > _client.MaxFrameSize)
+                        {
+                            try
+                            {
+                                _config.ConfirmHandler(new Confirmation
+                                {
+                                    PublishingId = msg.PublishingId,
+                                    Code = ResponseCode.FrameTooLarge,
+                                    Stream = _config.Stream
+                                });
+                            }
+                            catch (Exception e)
+                            {
+                                Logger.LogError(e, "Error during confirm handler, publishing id: {Id}. {ProducerInfo} Hint: Check the user ConfirmHandler callback", msg.PublishingId, DumpEntityConfiguration());
+                            }
+
+                            // calls to Send calls for SemaphoreAwaitAsync, taking one of the 1000 default permits, maxinflights.
+                            // Since we drop the message, we have to release the lock
+                            _semaphore.Release();
+                            continue;
+
                         }
 
                         if (messages.Count > 0 &&

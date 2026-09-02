@@ -363,6 +363,48 @@ namespace Tests
         }
 
         [Fact]
+        public async Task ProducerReportsFrameTooLargeForMessageThatDoesNotFitAlone()
+        {
+            // A Publish frame is 9 bytes of preamble plus 12 bytes per message, so a message
+            // has to be at most MaxFrameSize - 21 to fit in a frame on its own. A message in
+            // that 21 byte band passes the size check in Send, but cannot be split by the
+            // aggregation, so it would be written as an oversized frame and the broker would
+            // close the connection. It has to be reported as FrameTooLarge instead.
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var tooLarge = new TaskCompletionSource<bool>();
+            var stillUsable = new TaskCompletionSource<bool>();
+            var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream)
+            {
+                Reference = "producer",
+                ConfirmHandler = confirmation =>
+                {
+                    switch (confirmation.PublishingId)
+                    {
+                        case 1 when confirmation.Code == ResponseCode.FrameTooLarge:
+                            tooLarge.SetResult(true);
+                            break;
+                        case 2 when confirmation.Code == ResponseCode.Ok:
+                            stillUsable.SetResult(true);
+                            break;
+                    }
+                }
+            });
+
+            // Message.Size adds 8 bytes of AMQP framing to the body, so this is 1048570 bytes:
+            // below the default MaxFrameSize of 1048576, but 15 bytes too big once framed.
+            var message = new Message(new byte[1_048_562]);
+            Assert.Equal(1_048_570, message.Size);
+
+            await rawProducer.Send(1, message);
+            await rawProducer.Send(2, new Message(Encoding.UTF8.GetBytes("still here")));
+
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(tooLarge, true, TimeSpan.FromSeconds(10));
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(stillUsable, true, TimeSpan.FromSeconds(10));
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
         public async Task ProducerBatchConfirmNumberOfMessages()
         {
             // test the batch confirm number of messages for batch send
