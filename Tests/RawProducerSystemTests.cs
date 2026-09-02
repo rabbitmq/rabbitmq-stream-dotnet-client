@@ -329,7 +329,7 @@ namespace Tests
             // aggregation has to split the batch on the frame size and not only on the count.
             SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
             var testPassed = new TaskCompletionSource<bool>();
-            const int NumberOfMessages = 20;
+            const int NumberOfMessages = 500;
             var confirmed = 0;
             var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream)
             {
@@ -345,10 +345,13 @@ namespace Tests
             });
 
             var body = new byte[600 * 1024];
+            var sendTasks = new List<Task>(NumberOfMessages);
             for (ulong i = 1; i <= NumberOfMessages; i++)
             {
-                await rawProducer.Send(i, new Message(body));
+                sendTasks.Add(rawProducer.Send(i, new Message(body)).AsTask());
             }
+
+            await Task.WhenAll(sendTasks);
 
             new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed, true, TimeSpan.FromSeconds(30));
             testOutputHelper.WriteLine(
