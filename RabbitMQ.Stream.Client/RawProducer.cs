@@ -353,6 +353,18 @@ namespace RabbitMQ.Stream.Client
                     while (_messageBuffer.Reader.TryRead(out var msg))
                     {
                         var cost = 12 + msg.Data.Size;
+                        if (IsFilteringEnabled)
+                        {
+                            try
+                            {
+                                cost += WireFormatting.StringSize(_config.Filter.FilterValue(msg.Data));
+                            }
+                            catch
+                            {
+                                // PublishFilter skips messages whose extractor throws, so this message
+                                // costs nothing on the wire, keeping the base cost only overestimates.
+                            }
+                        }
 
                         if (messages.Count > 0 &&
                                 (messages.Count >= _config.MessagesBufferSize ||
