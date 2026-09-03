@@ -353,7 +353,7 @@ namespace RabbitMQ.Stream.Client
                     {
                         var cost = 12 + msg.Data.Size;
 
-                        // handle the cost of using publish filter 
+                        // handle the cost of using publish filter
                         if (IsFilteringEnabled)
                         {
                             try
@@ -367,10 +367,10 @@ namespace RabbitMQ.Stream.Client
                             }
                         }
 
-                        // Guard against a single message being just under the max frame size 
+                        // Guard against a single message being just under the max frame size
                         // Eg. max frame size is 1,048,576 bytes, we send a single message with the size
-                        // 1,048,570, which is lower than the max frame, which leaves 6 bytes, 
-                        // but we need 21 byts overhead (in the best case), so we need to cause an error here.
+                        // 1,048,570, which is lower than the max frame, which leaves 6 bytes,
+                        // but we need 21 bytes overhead (in the best case), so we need to cause an error here.
 
                         if (9 + cost > _client.MaxFrameSize)
                         {
