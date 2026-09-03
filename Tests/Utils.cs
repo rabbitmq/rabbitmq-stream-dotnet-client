@@ -280,7 +280,7 @@ namespace Tests
             {
                 null => 0,
                 IEnumerable<Connection> connections => connections.Sum(connection =>
-                    connection.client_properties["connection_name"] == connectionName ? 1 : 0),
+                    connection.client_properties.TryGetValue("connection_name", out var name) && name == connectionName ? 1 : 0),
                 _ => 0
             };
         }
@@ -302,7 +302,7 @@ namespace Tests
             if (obj != null)
             {
                 var connections = obj as IEnumerable<Connection>;
-                isOpen = connections.Any(x => x.client_properties["connection_name"].Contains(connectionName));
+                isOpen = connections.Any(x => x.client_properties.TryGetValue("connection_name", out var name) && name.Contains(connectionName));
             }
 
             return isOpen;
@@ -328,7 +328,7 @@ namespace Tests
 
             // we kill _only_ producer and consumer connections
             // leave the locator up and running to delete the stream
-            var iEnumerable = connections.Where(x => x.client_properties["connection_name"].Contains(connectionName));
+            var iEnumerable = connections.Where(x => x.client_properties.TryGetValue("connection_name", out var name) && name.Contains(connectionName));
             var enumerable = iEnumerable as Connection[] ?? iEnumerable.ToArray();
             var killed = 0;
             foreach (var conn in enumerable)
@@ -346,7 +346,7 @@ namespace Tests
                  */
                 var s = Uri.EscapeDataString(conn.name);
                 var deleteResult = await client.DeleteAsync($"http://localhost:15672/api/connections/{s}");
-                if (!deleteResult.IsSuccessStatusCode && result.StatusCode != HttpStatusCode.NotFound)
+                if (!deleteResult.IsSuccessStatusCode && deleteResult.StatusCode != HttpStatusCode.NotFound)
                 {
                     throw new XunitException(
                         $"HTTP DELETE failed: {deleteResult.StatusCode} {deleteResult.ReasonPhrase}");
