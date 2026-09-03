@@ -346,7 +346,7 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
-                var runningSize = 9;
+                long runningSize = 9;
                 while (await _messageBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
                 {
                     while (_messageBuffer.Reader.TryRead(out var msg))
