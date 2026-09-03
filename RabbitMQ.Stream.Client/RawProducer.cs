@@ -372,7 +372,7 @@ namespace RabbitMQ.Stream.Client
                         // 1,048,570, which is lower than the max frame, which leaves 6 bytes,
                         // but we need 21 bytes overhead (in the best case), so we need to cause an error here.
 
-                        if (9 + cost > _client.MaxFrameSize)
+                        if (cost > _client.MaxFrameSize - 9)
                         {
                             try
                             {
