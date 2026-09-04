@@ -14,7 +14,6 @@ namespace RabbitMQ.Stream.Client
         internal static int HeaderSize => 9;
         internal static int MessageHeaderSize => 8 + 4; // publishingId + message size
 
-
         public int SizeNeeded
         {
             get
