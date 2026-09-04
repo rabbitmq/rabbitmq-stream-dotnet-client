@@ -319,6 +319,92 @@ namespace Tests
         }
 
         [Fact]
+        public async Task ProducerSplitsAggregatedBatchBiggerThanMaxFrameSize()
+        {
+            // The background aggregation in ProcessBuffer used to flush only once the batch
+            // reached MessagesBufferSize, so a few large messages could end up in a single
+            // Publish frame bigger than MaxFrameSize (1048576 by default). The broker closes
+            // the connection on an oversized frame, so none of the messages get confirmed.
+            // Here a single message fits in a frame but any two of them do not, so the
+            // aggregation has to split the batch on the frame size and not only on the count.
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var testPassed = new TaskCompletionSource<bool>();
+            const int NumberOfMessages = 500;
+            var confirmed = 0;
+            var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream)
+            {
+                Reference = "producer",
+                ConfirmHandler = confirmation =>
+                {
+                    if (confirmation.Code == ResponseCode.Ok &&
+                        Interlocked.Increment(ref confirmed) == NumberOfMessages)
+                    {
+                        testPassed.SetResult(true);
+                    }
+                }
+            });
+
+            var body = new byte[600 * 1024];
+            var sendTasks = new List<Task>(NumberOfMessages);
+            for (ulong i = 1; i <= NumberOfMessages; i++)
+            {
+                sendTasks.Add(rawProducer.Send(i, new Message(body)).AsTask());
+            }
+
+            await Task.WhenAll(sendTasks);
+
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(testPassed, true, TimeSpan.FromSeconds(30));
+            testOutputHelper.WriteLine(
+                $"confirmed {confirmed} publish commands sent {rawProducer.PublishCommandsSent}");
+            Assert.Equal(NumberOfMessages, confirmed);
+            Assert.Equal(NumberOfMessages, rawProducer.PublishCommandsSent);
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
+        public async Task ProducerReportsFrameTooLargeForMessageThatDoesNotFitAlone()
+        {
+            // A Publish frame is 9 bytes of preamble plus 12 bytes per message, so a message
+            // has to be at most MaxFrameSize - 21 to fit in a frame on its own. A message in
+            // that 21 byte band passes the size check in Send, but cannot be split by the
+            // aggregation, so it would be written as an oversized frame and the broker would
+            // close the connection. It has to be reported as FrameTooLarge instead.
+            SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+            var tooLarge = new TaskCompletionSource<bool>();
+            var stillUsable = new TaskCompletionSource<bool>();
+            var rawProducer = await system.CreateRawProducer(new RawProducerConfig(stream)
+            {
+                Reference = "producer",
+                ConfirmHandler = confirmation =>
+                {
+                    switch (confirmation.PublishingId)
+                    {
+                        case 1 when confirmation.Code == ResponseCode.FrameTooLarge:
+                            tooLarge.SetResult(true);
+                            break;
+                        case 2 when confirmation.Code == ResponseCode.Ok:
+                            stillUsable.SetResult(true);
+                            break;
+                    }
+                }
+            });
+
+            // Message.Size adds 8 bytes of AMQP framing to the body, so this is 1048570 bytes:
+            // below the default MaxFrameSize of 1048576, but 15 bytes too big once framed.
+            var message = new Message(new byte[1_048_562]);
+            Assert.Equal(1_048_570, message.Size);
+
+            await rawProducer.Send(1, message);
+            await rawProducer.Send(2, new Message(Encoding.UTF8.GetBytes("still here")));
+
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(tooLarge, true, TimeSpan.FromSeconds(10));
+            new Utils<bool>(testOutputHelper).WaitUntilTaskCompletes(stillUsable, true, TimeSpan.FromSeconds(10));
+            await system.DeleteStream(stream);
+            await system.Close();
+        }
+
+        [Fact]
         public async Task ProducerBatchConfirmNumberOfMessages()
         {
             // test the batch confirm number of messages for batch send
