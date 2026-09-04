@@ -8,6 +8,7 @@
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <PackageVersion Include="MinVer" Version="6.0.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.14.0" />
+    <PackageVersion Include="RabbitMQ.AMQP.Client" Version="1.3.0" />
     <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.1" />
     <!-- Tests -->
     <PackageVersion Include="AltCover" Version="8.6.45" />

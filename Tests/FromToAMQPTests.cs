@@ -8,15 +8,17 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Amqp;
+using RabbitMQ.AMQP.Client;
+using RabbitMQ.AMQP.Client.Impl;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Stream.Client;
-using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit.Abstractions;
+using ApplicationProperties = RabbitMQ.Stream.Client.AMQP.ApplicationProperties;
 using ConnectionFactory = RabbitMQ.Client.ConnectionFactory;
 using Message = RabbitMQ.Stream.Client.Message;
+using Properties = RabbitMQ.Stream.Client.AMQP.Properties;
 
 namespace Tests;
 
@@ -114,11 +116,11 @@ public class FromToAmqpTests
             properties.UserId = "guest";
             properties.Headers = new Dictionary<string, object>()
             {
-                {"stream_key", $"stream_value{i}"},
-                {"stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日"},
-                {"bool", true},
-                {"decimal", 10_000_000_000},
-                {"int", i},
+                { "stream_key", $"stream_value{i}" },
+                { "stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日" },
+                { "bool", true },
+                { "decimal", 10_000_000_000 },
+                { "int", i },
                 {
                     "alan",
                     $"Alan Mathison Turing（1912 年 6 月 23 日 - 1954 年 6 月 7 日）是英国数学家、计算机科学家、逻辑学家、密码分析家、哲学家和理论生物学家。 [6] 图灵在理论计算机科学的发展中具有很大的影响力，用图灵机提供了算法和计算概念的形式化，可以被认为是通用计算机的模型。[7][8][9] 他被广泛认为是理论计算机科学和人工智能之父{i}"
@@ -235,10 +237,10 @@ public class FromToAmqpTests
                 },
                 ApplicationProperties = new ApplicationProperties()
                 {
-                    {"stream_key", "stream_value"},
-                    {"stream_key2", 100},
-                    {"stream_key3", 10_000_009},
-                    {"stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日"},
+                    { "stream_key", "stream_value" },
+                    { "stream_key2", 100 },
+                    { "stream_key3", 10_000_009 },
+                    { "stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日" },
                 }
             });
         }
@@ -289,14 +291,14 @@ public class FromToAmqpTests
             properties.UserId = "guest";
             properties.Headers = new Dictionary<string, object>()
             {
-                {"stream_key", "stream_value"},
-                {"stream_key2", 100},
-                {"stream_key3", 10_000_009},
-                {"stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日"},
-                {"bool", true},
-                {"decimal", 10_000_000_000},
-                {"int", 1111},
-                {"string", "value"},
+                { "stream_key", "stream_value" },
+                { "stream_key2", 100 },
+                { "stream_key3", 10_000_009 },
+                { "stream_key4", "Alan Mathison Turing（1912 年 6 月 23 日" },
+                { "bool", true },
+                { "decimal", 10_000_000_000 },
+                { "int", 1111 },
+                { "string", "value" },
             };
             channel.BasicPublish("", stream, properties, Encoding.ASCII.GetBytes($"FromAMQP{i}"));
             i++;
@@ -358,36 +360,32 @@ public class FromToAmqpTests
     }
 
     /// <summary>
-    /// In this test se send 1 message using the Amqp10 Producer https://github.com/Azure/amqpnetlite to
-    /// a stream and then we read it using.
-    /// See https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/217
+    /// Original issue https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/217
+    /// Moved from AzureLite to our RabbitMQ AMQP 1.0 client to ensure that the conversion from AMQP to Stream AMQP 1.0 is correct.
+    /// Stream sends the message and AMQP client reads it.
+    /// In this case the server decodes and converts the message
     /// </summary>
     [Fact]
     public async Task StreamShouldReadTheAmqp10PropertiesMessages()
     {
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var environment = AmqpEnvironment.Create(
+            ConnectionSettingsBuilder.Create().Build());
 
-        var address = new Address("amqp://guest:guest@localhost:5672");
-        var connection = new Amqp.Connection(address);
-        var session = new Session(connection);
+        var connection = await environment.CreateConnectionAsync();
 
-        var message = new Amqp.Message("msg from amqp 1.0");
-        message.Properties = new Amqp.Framing.Properties()
-        {
-            MessageId = "1",
-            Subject = "test",
-            ContentType = "text/plain"
-        };
-        message.ApplicationProperties = new Amqp.Framing.ApplicationProperties()
-        {
-            Map = { { "key1", "value1" }, { "key2", 2 }, { "bool", true } }
-        };
+        var publisher = await connection.PublisherBuilder().Queue(stream)
+            .BuildAsync();
 
-        var sender = new SenderLink(session, "mixing", $"/amq/queue/{stream}");
-        await sender.SendAsync(message);
-        await sender.CloseAsync();
-        await session.CloseAsync();
-        await connection.CloseAsync();
+        var message = new AmqpMessage($"msg from amqp 1.0");
+        message.MessageId("1");
+        message.Subject("test");
+        message.ContentType("text/plain");
+        message.Property("key1", "value1");
+        message.Property("key2", 2);
+        message.Property("bool", true);
+        var pr = await publisher.PublishAsync(message);
+        Assert.Equal(OutcomeState.Accepted, pr.Outcome.State);
 
         var tcs = new TaskCompletionSource<Message>();
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
@@ -402,7 +400,13 @@ public class FromToAmqpTests
 
         new Utils<Message>(_testOutputHelper).WaitUntilTaskCompletes(tcs);
         var result = await tcs.Task;
-        Assert.Equal("msg from amqp 1.0", result.AmqpValue);
+        Assert.Equal("msg from amqp 1.0", Encoding.ASCII.GetString(result.Data.Contents.ToArray()));
+        Assert.Equal("1", result.Properties.MessageId);
+        Assert.Equal("test", result.Properties.Subject);
+        Assert.Equal("text/plain", result.Properties.ContentType);
+        Assert.Equal("value1", result.ApplicationProperties["key1"]);
+        Assert.Equal(2, result.ApplicationProperties["key2"]);
+        Assert.Equal(true, result.ApplicationProperties["bool"]);
         await consumer.Close();
         await system.DeleteStream(stream);
         await system.Close();

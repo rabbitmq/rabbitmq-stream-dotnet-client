@@ -12,8 +12,8 @@
 
   <ItemGroup>
     <PackageReference Include="AltCover" />
-    <PackageReference Include="AmqpNetLite" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="RabbitMQ.AMQP.Client" />
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
     <PackageReference Include="xunit" />
