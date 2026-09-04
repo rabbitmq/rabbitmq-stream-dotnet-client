@@ -11,8 +11,8 @@ namespace RabbitMQ.Stream.Client
     {
         private const ushort Key = 2;
         private static byte Version => Consts.Version1;
-        internal static int HeaderSize => 9;
-        internal static int MessageHeaderSize => 8 + 4; // publishingId + message size
+        internal const int HeaderSize = 9;
+        internal const int MessageHeaderSize = 8 + 4; // publishingId + message size
 
         public int SizeNeeded
         {
