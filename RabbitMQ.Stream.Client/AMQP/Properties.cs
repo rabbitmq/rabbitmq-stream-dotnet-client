@@ -99,8 +99,18 @@ namespace RabbitMQ.Stream.Client.AMQP
             return p;
         }
 
+        private int? _propertySizeCache;
+
+        // PropertySize is called from both Size and Write (for the length prefix), and Size
+        // itself is queried multiple times across the send pipeline. Cache it to avoid
+        // repeating the boxed type-switch over every field on each call.
         private int PropertySize()
         {
+            if (_propertySizeCache.HasValue)
+            {
+                return _propertySizeCache.Value;
+            }
+
             var size = AmqpWireFormatting.GetAnySize(MessageId);
             size += AmqpWireFormatting.GetAnySize(UserId);
             size += AmqpWireFormatting.GetAnySize(To);
@@ -114,6 +124,7 @@ namespace RabbitMQ.Stream.Client.AMQP
             size += AmqpWireFormatting.GetAnySize(GroupId);
             size += AmqpWireFormatting.GetAnySize(GroupSequence);
             size += AmqpWireFormatting.GetAnySize(ReplyToGroupId);
+            _propertySizeCache = size;
             return size;
         }
 

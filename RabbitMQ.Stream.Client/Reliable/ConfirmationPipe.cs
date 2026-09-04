@@ -121,7 +121,7 @@ public class ConfirmationPipe
     private async void OnTimedEvent(object sender, ElapsedEventArgs e)
     {
         var timedOutMessages = _waitForConfirmation.Where(pair =>
-            (DateTime.Now - pair.Value.InsertDateTime).TotalSeconds > _messageTimeout.TotalSeconds);
+            (DateTime.UtcNow - pair.Value.InsertDateTime).TotalSeconds > _messageTimeout.TotalSeconds);
 
         foreach (var pair in timedOutMessages)
         {
@@ -152,7 +152,7 @@ public class ConfirmationPipe
                 // We need to copy the messages because the user can reuse the same message or deleted them.
                 Messages = new List<Message>(messages),
                 PublishingId = publishingId,
-                InsertDateTime = DateTime.Now
+                InsertDateTime = DateTime.UtcNow
             });
     }
 

@@ -31,8 +31,18 @@ namespace RabbitMQ.Stream.Client.AMQP
             return amqpMap;
         }
 
+        private int? _mapSizeCache;
+
+        // MapSize is called from both Size and Write (for the length prefix), and Size itself
+        // is queried multiple times across the send pipeline. Cache it to avoid repeating the
+        // dictionary scan and boxed type-switch on each call.
         private int MapSize()
         {
+            if (_mapSizeCache.HasValue)
+            {
+                return _mapSizeCache.Value;
+            }
+
             var size = 0;
             foreach (var (key, value) in this)
             {
@@ -43,6 +53,7 @@ namespace RabbitMQ.Stream.Client.AMQP
                 }
             }
 
+            _mapSizeCache = size;
             return size;
         }
 

@@ -36,10 +36,23 @@ namespace RabbitMQ.Stream.Client
 
         internal ulong MessageOffset { get; set; }
 
-        public int Size => Data.Size +
-                           (Properties?.Size ?? 0) +
-                           (Annotations?.Size ?? 0) +
-                           (ApplicationProperties?.Size ?? 0);
+        private int? _sizeCache;
+
+        // Size walks Properties/Annotations/ApplicationProperties (dictionary scans with a
+        // boxed type switch per entry) and is queried repeatedly for the same message across
+        // the send pipeline (frame-size guard, aggregation, wire framing). Cache it since a
+        // Message's AMQP sections are not expected to change once it is being sent.
+        public int Size
+        {
+            get
+            {
+                _sizeCache ??= Data.Size +
+                               (Properties?.Size ?? 0) +
+                               (Annotations?.Size ?? 0) +
+                               (ApplicationProperties?.Size ?? 0);
+                return _sizeCache.Value;
+            }
+        }
 
         public int Write(Span<byte> span)
         {

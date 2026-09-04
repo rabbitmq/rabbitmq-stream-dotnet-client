@@ -5,7 +5,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -215,17 +214,12 @@ namespace RabbitMQ.Stream.Client
             ThrowIfClosed();
             if (subEntryMessages.Count != 0)
             {
-                await SemaphoreAwaitAsync().ConfigureAwait(false);
+                await _semaphore.WaitAsync(Token).ConfigureAwait(false);
                 var publishTask =
                     _client.Publish(new SubEntryPublish(EntityId, publishingId,
                         CompressionHelper.Compress(subEntryMessages, compressionType)));
                 await publishTask.ConfigureAwait(false);
             }
-        }
-
-        private async Task SemaphoreAwaitAsync()
-        {
-            await _semaphore.WaitAsync(Token).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -246,7 +240,7 @@ namespace RabbitMQ.Stream.Client
         {
             for (var i = 0; i < messages.Count; i++)
             {
-                await SemaphoreAwaitAsync().ConfigureAwait(false);
+                await _semaphore.WaitAsync(Token).ConfigureAwait(false);
             }
 
             if (messages.Count != 0 && !_client.IsClosed)
@@ -319,7 +313,6 @@ namespace RabbitMQ.Stream.Client
         /// <param name="publishingId">The Id for the message and has to be an incremental value.</param>>
         /// <param name="message">Message to store</param>>
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async ValueTask Send(ulong publishingId, Message message)
         {
             ThrowIfClosed();
@@ -329,7 +322,7 @@ namespace RabbitMQ.Stream.Client
                                                     $"Max allowed is {_client.MaxFrameSize}");
             }
 
-            await SemaphoreAwaitAsync().ConfigureAwait(false);
+            await _semaphore.WaitAsync(Token).ConfigureAwait(false);
             var msg = new OutgoingMsg(EntityId, publishingId, message);
 
             // Let's see if we can write a message to the channel without having to wait
@@ -340,7 +333,6 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private async Task ProcessBuffer()
         {
             try
