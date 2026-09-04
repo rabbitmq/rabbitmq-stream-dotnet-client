@@ -346,22 +346,27 @@ namespace RabbitMQ.Stream.Client
             try
             {
                 var messages = new List<(ulong, Message)>(_config.MessagesBufferSize);
-                long runningSize = 9;
+                // the 9 bytes are the minimum overhead for a Publish frame with no messages, so we start with that
+                long wireFrameSize = Publish.HeaderSize;
                 while (await _messageBuffer.Reader.WaitToReadAsync(Token).ConfigureAwait(false))
                 {
                     while (_messageBuffer.Reader.TryRead(out var msg))
                     {
-                        var cost = 12 + msg.Data.Size;
+                        // the 8 bytes are the publishingId and the 4 bytes are the message size
+                        // so every message has a minimum overhead of 12 bytes, plus the size of the message itself
+                        // that must be added to the frame size to check if we can send the message or not
+                        var wireMessageSize = Publish.MessageHeaderSize + msg.Data.Size;
 
                         // handle the cost of using publish filter
                         if (IsFilteringEnabled)
                         {
                             try
                             {
-                                cost += WireFormatting.StringSize(_config.Filter.FilterValue(msg.Data));
+                                wireMessageSize += WireFormatting.StringSize(_config.Filter.FilterValue(msg.Data));
                             }
-                            catch
+                            catch (Exception e)
                             {
+                                Logger.LogError(e, $"Filter size calculation failed. {msg.Data}");
                                 // PublishFilter skips messages whose extractor throws, so this message
                                 // costs nothing on the wire, keeping the base cost only overestimates.
                             }
@@ -372,7 +377,7 @@ namespace RabbitMQ.Stream.Client
                         // 1,048,570, which is lower than the max frame, which leaves 6 bytes,
                         // but we need 21 bytes overhead (in the best case), so we need to cause an error here.
 
-                        if (cost > _client.MaxFrameSize - 9)
+                        if (wireMessageSize > _client.MaxFrameSize - Publish.HeaderSize)
                         {
                             try
                             {
@@ -395,22 +400,26 @@ namespace RabbitMQ.Stream.Client
 
                         }
 
+                        // the next frame size is the current frame size plus the size of the next message,
+                        // if it exceeds the max frame size we need to send the current frame and start a new one
+                        var nextFrameWireSize = wireFrameSize + wireMessageSize;
                         if (messages.Count > 0 &&
                                 (messages.Count >= _config.MessagesBufferSize ||
-                                runningSize + cost > _client.MaxFrameSize))
+                                 nextFrameWireSize > _client.MaxFrameSize))
                         {
+                            // send the current frame and start a new one
                             await SendMessages(messages).ConfigureAwait(false);
-                            runningSize = 9;
+                            wireFrameSize = Publish.HeaderSize;
                         }
 
                         messages.Add((msg.PublishingId, msg.Data));
-                        runningSize += cost;
+                        wireFrameSize += wireMessageSize;
                     }
 
                     if (messages.Count > 0)
                     {
                         await SendMessages(messages).ConfigureAwait(false);
-                        runningSize = 9;
+                        wireFrameSize = Publish.HeaderSize;
                     }
                 }
             }

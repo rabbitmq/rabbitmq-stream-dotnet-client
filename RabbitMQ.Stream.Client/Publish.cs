@@ -11,15 +11,18 @@ namespace RabbitMQ.Stream.Client
     {
         private const ushort Key = 2;
         private static byte Version => Consts.Version1;
+        internal static int HeaderSize => 9;
+        internal static int MessageHeaderSize => 8 + 4; // publishingId + message size
+
 
         public int SizeNeeded
         {
             get
             {
-                var size = 9; // pre amble 
+                var size = Publish.HeaderSize; // pre amble 
                 foreach (var (_, msg) in messages)
                 {
-                    size += 8 + 4 + msg.Size;
+                    size += Publish.MessageHeaderSize + msg.Size;
                 }
 
                 return size;
