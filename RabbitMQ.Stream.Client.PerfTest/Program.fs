@@ -1,12 +1,25 @@
 // Learn more about F# at http://docs.microsoft.com/dotnet/fsharp
 
 open System
-open System.Buffers
-open System.Net
+open System.Diagnostics
 open System.Threading
 open System.Threading.Tasks
-open RabbitMQ.Stream
 open RabbitMQ.Stream.Client
+
+let formatCount (n: int) = n.ToString("N0")
+
+let formatRate (delta: int) (elapsed: TimeSpan) =
+    let rate = if elapsed.TotalSeconds > 0.0 then float delta / elapsed.TotalSeconds else 0.0
+    rate.ToString("N0")
+
+let formatThroughput (bytesPerSecond: float) =
+    let units = [| "B/s"; "KB/s"; "MB/s"; "GB/s" |]
+    let mutable value = bytesPerSecond
+    let mutable unitIndex = 0
+    while value >= 1024.0 && unitIndex < units.Length - 1 do
+        value <- value / 1024.0
+        unitIndex <- unitIndex + 1
+    sprintf "%.2f %s" value units.[unitIndex]
 
 // Define a function to construct a message to print
 [<EntryPoint>]
@@ -14,12 +27,15 @@ let main argv =
     ThreadPool.SetMinThreads(16 * Environment.ProcessorCount, 16 * Environment.ProcessorCount) |> ignore
     let mutable run = true
     let mutable publishingId = 0UL
-    let mutable lastPublishingId = 0
+    let mutable lastPublished = 0
+    let mutable lastFrames = 0
     let mutable lastConfirmed = 0
+    let mutable lastConsumed = 0
     let mutable consumed = 0
     let mutable confirmed = 0
     let mutable prod = null
     let streamName = "dotnet-perftest"
+    let payload = "asdf"B
     let consumerConfig = RawConsumerConfig(streamName,
                                         Reference = Guid.NewGuid().ToString(),
                                         MessageHandler =
@@ -40,29 +56,35 @@ let main argv =
         let! producer = system.CreateRawProducer producerConfig
         //make producer available to metrics async
         prod <- producer
-        let msg = Message "asdf"B
+        let msg = Message payload
         while run do
             let! _ = producer.Send(publishingId, msg)
             publishingId <- publishingId + 1UL
             ()
     }
-    
-    let mutable lastFrames = 0
-    let mutable lastConsumed = 0
-    async{
+
+    let stopwatch = Stopwatch.StartNew()
+    async {
         while run do
+            let intervalStart = stopwatch.Elapsed
             do! Async.Sleep 1000
-            let p = prod.MessagesSent
-            let f = prod.PublishCommandsSent
-            let c = confirmed
-            let cs = consumed;
-            printfn $"published %i{p - lastPublishingId} msg/s in %i{f - lastFrames} publish frames, confirmed %i{c - lastConfirmed} msg/s, consumed: %i{c - lastConsumed} msg/sec total confirm frames %i{prod.ConfirmFrames} %i{prod.IncomingFrames} pending commands: {prod.PendingCount} "
-            lastConsumed <- cs
-            lastFrames <- f
-            lastPublishingId <- p
-            lastConfirmed <- c
+            let elapsed = stopwatch.Elapsed - intervalStart
+
+            let published = prod.MessagesSent
+            let frames = prod.PublishCommandsSent
+            let confirmedNow = confirmed
+            let consumedNow = consumed
+
+            let publishedDelta = published - lastPublished
+            let throughput = formatThroughput (float publishedDelta * float payload.Length / elapsed.TotalSeconds)
+
+            printfn $"published %s{formatRate publishedDelta elapsed} msg/s (%s{formatRate (frames - lastFrames) elapsed} frames/s, {throughput}) | confirmed %s{formatRate (confirmedNow - lastConfirmed) elapsed} msg/s | consumed %s{formatRate (consumedNow - lastConsumed) elapsed} msg/s | totals: confirm frames %s{formatCount prod.ConfirmFrames}, incoming frames %s{formatCount prod.IncomingFrames}, pending %s{formatCount prod.PendingCount}"
+
+            lastPublished <- published
+            lastFrames <- frames
+            lastConfirmed <- confirmedNow
+            lastConsumed <- consumedNow
     } |> Async.Start
-    //t.Wait()
-    Console.ReadKey()  |> ignore
+    Console.ReadKey() |> ignore
     run <- false
     0

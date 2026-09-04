@@ -135,16 +135,6 @@ namespace RabbitMQ.Stream.Client
 
         public async ValueTask<bool> Write<T>(T command) where T : struct, ICommand
         {
-            await WriteCommand(command).ConfigureAwait(false);
-            // we return true to indicate that the command was written
-            // In this PR https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/220
-            // we made all WriteCommand async so await is enough to indicate that the command was written
-            // We decided to keep the return value to avoid a breaking change
-            return true;
-        }
-
-        private async Task WriteCommand<T>(T command) where T : struct, ICommand
-        {
             if (Token.IsCancellationRequested)
             {
                 throw new OperationCanceledException("Token Cancellation Requested Connection");
@@ -159,18 +149,34 @@ namespace RabbitMQ.Stream.Client
             await _writeLock.WaitAsync(Token).ConfigureAwait(false);
             try
             {
-                var size = command.SizeNeeded;
-                var mem = new byte[4 + size]; // + 4 to write the size
-                WireFormatting.WriteUInt32(mem, (uint)size);
-                var written = command.Write(mem.AsSpan()[4..]);
-                await writer.WriteAsync(new ReadOnlyMemory<byte>(mem), Token).ConfigureAwait(false);
-                Debug.Assert(size == written);
+                WriteFrame(command);
                 await writer.FlushAsync(Token).ConfigureAwait(false);
             }
             finally
             {
                 _writeLock.Release();
             }
+
+            // we return true to indicate that the command was written
+            // In this PR https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/220
+            // we made all WriteCommand async so await is enough to indicate that the command was written
+            // We decided to keep the return value to avoid a breaking change
+            return true;
+        }
+
+        // Span<byte> can't be a local in an async method under the C# 12 language version
+        // (net8.0 target), so the GetSpan/Advance frame write is kept in its own synchronous
+        // method. Writing directly into the PipeWriter's own buffer instead of building the
+        // frame in a throwaway byte[] and copying it in via WriteAsync saves an allocation
+        // and a full extra copy of the frame on every write.
+        private void WriteFrame<T>(T command) where T : struct, ICommand
+        {
+            var size = command.SizeNeeded;
+            var span = writer.GetSpan(4 + size); // + 4 to write the size
+            WireFormatting.WriteUInt32(span, (uint)size);
+            var written = command.Write(span[4..]);
+            Debug.Assert(size == written);
+            writer.Advance(4 + size);
         }
 
         private async Task ProcessIncomingFrames()
