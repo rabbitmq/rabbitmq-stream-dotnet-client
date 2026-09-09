@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.1]
+### 1.12.1 - 2026-09-09
+- [Release notes 1.12.1](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.12.1)
+### Enhancements
+- Split aggregated publish batches on MaxFrameSize by @KristianS93 in [#473](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/473)
+- Replace azure lite client with rabbitmq amqp1.0 client by @Gsantomaggio in [#474](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/474)
+
+### Bug Fix
+- Fix message buffer size by @Gsantomaggio in [#471](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/471)
+
 ## [1.12.0]
 ### 1.12.0 - 2026-15-06
 - [Release notes 1.12.0](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.12.0)
