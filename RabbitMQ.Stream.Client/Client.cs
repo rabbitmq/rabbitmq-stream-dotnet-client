@@ -196,7 +196,9 @@ namespace RabbitMQ.Stream.Client
             }
         }
 
-        public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
+        // Opens the socket without the protocol handshake.
+        // The unit tests use it to exercise the request/response flow without a broker.
+        internal static async Task<Client> CreateWithoutHandshake(ClientParameters parameters, ILogger logger = null)
         {
             var client = new Client(parameters, logger);
             client._connection = await Connection
@@ -204,6 +206,12 @@ namespace RabbitMQ.Stream.Client
                     parameters.SocketOptions)
                 .ConfigureAwait(false);
             client._connection.ClientId = client.ClientId;
+            return client;
+        }
+
+        public static async Task<Client> Create(ClientParameters parameters, ILogger logger = null)
+        {
+            var client = await CreateWithoutHandshake(parameters, logger).ConfigureAwait(false);
             // exchange properties
             var peerPropertiesResponse = await client.Request<PeerPropertiesRequest, PeerPropertiesResponse>(corr =>
                 new PeerPropertiesRequest(corr, parameters.Properties)).ConfigureAwait(false);
@@ -489,24 +497,40 @@ namespace RabbitMQ.Stream.Client
                 new CommandVersionsRequest(corr)).ConfigureAwait(false);
         }
 
-        private async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
+        internal async ValueTask<TOut> Request<TIn, TOut>(Func<uint, TIn> request, TimeSpan? timeout = null)
             where TIn : struct, ICommand where TOut : struct, ICommand
         {
             var corr = NextCorrelationId();
             var tcs = PooledTaskSource<TOut>.Rent();
             requests.TryAdd(corr, tcs);
-            await Publish(request(corr)).ConfigureAwait(false);
-            using var cts = new CancellationTokenSource(timeout ?? Parameters.RpcTimeOut);
-            await using (cts.Token.Register(
-                             valueTaskSource =>
-                                 ((ManualResetValueTaskSource<TOut>)valueTaskSource).SetException(
-                                     new TimeoutException()), tcs).ConfigureAwait(false))
+            TOut result;
+            try
             {
-                var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
-                var result = await valueTask.ConfigureAwait(false);
-                PooledTaskSource<TOut>.Return(tcs);
-                return result;
+                await Publish(request(corr)).ConfigureAwait(false);
+                using var cts = new CancellationTokenSource(timeout ?? Parameters.RpcTimeOut);
+                await using (cts.Token.Register(
+                                 valueTaskSource =>
+                                     ((ManualResetValueTaskSource<TOut>)valueTaskSource).SetException(
+                                         new TimeoutException()), tcs).ConfigureAwait(false))
+                {
+                    var valueTask = new ValueTask<TOut>(tcs, tcs.Version);
+                    result = await valueTask.ConfigureAwait(false);
+                }
             }
+            catch
+            {
+                // The request failed (timeout, publish error..).
+                // Remove it so a late response from the server can't complete it again.
+                // The task source is not returned to the pool: a late response could still be
+                // completing it in HandleCorrelatedResponse.
+                requests.TryRemove(corr, out _);
+                throw;
+            }
+
+            // Return the task source to the pool only after the timeout registration is disposed,
+            // so the timeout callback can't complete a task source that was already reused.
+            PooledTaskSource<TOut>.Return(tcs);
+            return result;
         }
 
         private uint NextCorrelationId()
@@ -520,7 +544,7 @@ namespace RabbitMQ.Stream.Client
             await OnConnectionClosed(reason).ConfigureAwait(false);
         }
 
-        private async Task HandleIncoming(Memory<byte> frameMemory)
+        internal async Task HandleIncoming(Memory<byte> frameMemory)
         {
             StreamMetrics.ReadBytes(frameMemory.Length);
             var frame = new ReadOnlySequence<byte>(frameMemory);
@@ -618,16 +642,30 @@ namespace RabbitMQ.Stream.Client
                     tuneReceived.SetResult(tuneResponse);
                     break;
                 case ConsumerUpdateQueryResponse.Key:
+                    // ConsumerUpdateQuery is a request initiated by the server.
+                    // Its correlation id belongs to the server sequence, so it must not be
+                    // matched against the client pending requests.
                     ConsumerUpdateQueryResponse.Read(frame, out var consumerUpdateQueryResponse);
-                    HandleCorrelatedResponse(consumerUpdateQueryResponse);
-                    var consumerEventsUpd = consumers[consumerUpdateQueryResponse.SubscriptionId];
-                    var consumer = consumerEventsUpd.Item2;
-                    var off = await consumer.ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive)
-                        .ConfigureAwait(false);
-                    if (off == null)
+                    IOffsetType off;
+                    if (consumers.TryGetValue(consumerUpdateQueryResponse.SubscriptionId,
+                            out var consumerEventsUpd))
                     {
-                        _logger?.LogWarning(
-                            "ConsumerUpdateHandler can't returned null, a default offsetType (OffsetTypeNext) will be used");
+                        off = await consumerEventsUpd.Item2
+                            .ConsumerUpdateHandler(consumerUpdateQueryResponse.IsActive)
+                            .ConfigureAwait(false);
+                        if (off == null)
+                        {
+                            _logger?.LogWarning(
+                                "ConsumerUpdateHandler can't returned null, a default offsetType (OffsetTypeNext) will be used");
+                            off = new OffsetTypeNext();
+                        }
+                    }
+                    else
+                    {
+                        _logger?.LogDebug(
+                            "Could not find stream subscription {ID} for consumer update. " +
+                            "A possible cause it that the subscription was closed",
+                            consumerUpdateQueryResponse.SubscriptionId);
                         off = new OffsetTypeNext();
                     }
 
@@ -761,9 +799,13 @@ namespace RabbitMQ.Stream.Client
                 throw new UnknownCommandException($"unhandled incoming command {command.GetType()}");
             }
 
-            if (requests.TryRemove(command.CorrelationId, out var tsc))
+            if (requests.TryRemove(command.CorrelationId, out var tsc) &&
+                !((ManualResetValueTaskSource<T>)tsc).TrySetResult(command))
             {
-                ((ManualResetValueTaskSource<T>)tsc).SetResult(command);
+                // the request was already completed, most likely by the timeout
+                _logger?.LogDebug(
+                    "Response {Command} with correlation id {CorrelationId} arrived after the request was completed",
+                    typeof(T).Name, command.CorrelationId);
             }
         }
 
@@ -994,6 +1036,20 @@ namespace RabbitMQ.Stream.Client
         public short Version => _logic.Version;
         public void Reset() => _logic.Reset();
         public void SetResult(T result) => _logic.SetResult(result);
+
+        public bool TrySetResult(T result)
+        {
+            // the source can be already completed by the timeout (SetException)
+            try
+            {
+                _logic.SetResult(result);
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        }
 
         public void SetException(Exception error)
         {
