@@ -9,7 +9,7 @@ WORKDIR /src
 # two project folders.
 COPY . .
 
-RUN dotnet restore docs/ReliableClient/ReliableClient.csproj -p:NuGetAudit=false
+RUN dotnet restore docs/ReliableClient/ReliableClient.csproj
 
 RUN dotnet publish docs/ReliableClient/ReliableClient.csproj \
     -c Release \
