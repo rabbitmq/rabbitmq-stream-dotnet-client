@@ -2,10 +2,14 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
@@ -350,16 +354,43 @@ public class BestPracticesClient
             }
 
 
-            Console.WriteLine("Press any key to close all the consumers");
-            Console.ReadKey();
+            // Console.ReadKey() throws when input is redirected (e.g. running in a Docker
+            // container without a TTY), so wait on a cancellation signal (Ctrl+C / container stop) instead.
+            if (Console.IsInputRedirected)
+            {
+                Console.WriteLine("Running non-interactively. Send SIGINT/SIGTERM (Ctrl+C or 'docker stop') to close all the consumers");
+                using var cts = new CancellationTokenSource();
+                Console.CancelKeyPress += (_, e) =>
+                {
+                    e.Cancel = true;
+                    cts.Cancel();
+                };
+                AppDomain.CurrentDomain.ProcessExit += (_, _) => cts.Cancel();
+                try
+                {
+                    await Task.Delay(Timeout.Infinite, cts.Token).ConfigureAwait(false);
+                }
+                catch (TaskCanceledException)
+                {
+                }
+            }
+            else
+            {
+                Console.WriteLine("Press any key to close all the consumers");
+                Console.ReadKey();
+            }
+
             isRunning = false;
             Console.WriteLine("closing the producers ..... ");
             producersList.ForEach(async p => await p.Close().ConfigureAwait(false));
             Console.WriteLine("closing the consumers ..... ");
             consumersList.ForEach(async c => await c.Close().ConfigureAwait(false));
 
-            Console.WriteLine("Press any key to close all");
-            Console.ReadKey();
+            if (!Console.IsInputRedirected)
+            {
+                Console.WriteLine("Press any key to close all");
+                Console.ReadKey();
+            }
         }
 
         Console.WriteLine("Closed all the consumers and producers");

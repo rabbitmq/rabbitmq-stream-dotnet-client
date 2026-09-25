@@ -1,53 +1,55 @@
-﻿// See https://aka.ms/new-console-template for more information
+// See https://aka.ms/new-console-template for more information
 
-using Microsoft.Extensions.Configuration;
+using System;
 using ReliableClient;
 
 Console.WriteLine("Starting RabbitMQ Streaming Client");
-const string FileName = "appsettings.json";
 
-var fs = File.OpenRead(FileName);
+static string GetEnvString(string name, string defaultValue) =>
+    Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : defaultValue;
 
+static int GetEnvInt(string name, int defaultValue) =>
+    int.TryParse(Environment.GetEnvironmentVariable(name), out var value) ? value : defaultValue;
 
-var section = new ConfigurationBuilder()
-    .AddJsonFile(FileName)
-    .Build()
-    .GetSection("RabbitMQ");
-fs.Dispose();
+static byte GetEnvByte(string name, byte defaultValue) =>
+    byte.TryParse(Environment.GetEnvironmentVariable(name), out var value) ? value : defaultValue;
 
+static bool GetEnvBool(string name, bool defaultValue) =>
+    bool.TryParse(Environment.GetEnvironmentVariable(name), out var value) ? value : defaultValue;
 
 var rClient = BestPracticesClient.Start(new BestPracticesClient.Config()
 {
+    Host = GetEnvString("HOST", "localhost"),
+    Port = GetEnvInt("PORT", 5552),
+    Username = GetEnvString("USERNAME", "guest"),
+    Password = GetEnvString("PASSWORD", "guest"),
+    StreamName = GetEnvString("STREAM_NAME", "DotNetClientTest"),
+    LoadBalancer = GetEnvBool("LOAD_BALANCER", false),
+
+    // Enable the SuperStream stream feature.
+    SuperStream = GetEnvBool("SUPER_STREAM", false),
+
+    // The number of streams that will be created. in case of super stream, this is the number of the partitions.
+    Streams = GetEnvInt("STREAMS", 1),
+    // The number of producers that will be created for each stream.
+    Producers = GetEnvInt("PRODUCERS", 9),
     // set the ProducersPerConnection. This is the number of producers that will be created for each connection.
     // a low value can improve the throughput of the producer since the connection is shared between the producers.
     // a high value can reduce the resource usage of the producer since the connection is shared between the producers.
-    ProducersPerConnection = section.GetSection("ProducersPerConnection").Get<byte>(),
+    ProducersPerConnection = GetEnvByte("PRODUCERS_PER_CONNECTION", 7),
+
+    // The number of messages that will be sent by each producer.
+    MessagesPerProducer = GetEnvInt("MESSAGES_PER_PRODUCER", 5_000_000),
+    Consumers = GetEnvInt("CONSUMERS", 9),
     // Same rules as ProducersPerConnection but for the consumers.
     // Note that if a consumer is slow can impact the other consumers on the same connection.
     // There is a small internal buffer that can help to mitigate this issue.
     // but if the consumer is too slow, the buffer will be full and the other consumers will be impacted.
-    ConsumersPerConnection = section.GetSection("ConsumersPerConnection").Get<byte>(),
-    Host = section.GetSection("Host").Get<string>(),
-    Port = section.GetSection("Port").Get<int>(),
-    LoadBalancer = section.GetSection("LoadBalancer").Get<bool>(),
+    ConsumersPerConnection = GetEnvByte("CONSUMERS_PER_CONNECTION", 8),
 
-    // Enable the SuperStream stream feature.
-    SuperStream = section.GetSection("SuperStream").Get<bool>(),
-
-    // The number of streams that will be created. in case of super stream, this is the number of the partitions.
-    Streams = section.GetSection("Streams").Get<int>(),
-    // The number of producers that will be created for each stream.
-    Producers = section.GetSection("Producers").Get<int>(),
-
-    // The number of messages that will be sent by each producer.
-    MessagesPerProducer = section.GetSection("MessagesPerProducer").Get<int>(),
-    Consumers = section.GetSection("Consumers").Get<int>(),
-    Username = section.GetSection("Username").Get<string>(),
-    Password = section.GetSection("Password").Get<string>(),
     // The delay between each message sent by the producer.
-    DelayDuringSendMs = section.GetSection("DelayDuringSendMs").Get<int>(),
-    StreamName = section.GetSection("StreamName").Get<string>(),
-    EnableResending = section.GetSection("EnableResending").Get<bool>(),
+    DelayDuringSendMs = GetEnvInt("DELAY_DURING_SEND_MS", 0),
+    EnableResending = GetEnvBool("ENABLE_RESENDING", false),
 });
 
 await rClient.ConfigureAwait(false);
