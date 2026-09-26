@@ -41,6 +41,8 @@ public class BestPracticesClient
         public int DelayDuringSendMs { get; set; } = 0;
 
         public bool EnableResending { get; set; } = false;
+
+        public bool DeleteStreamsOnStart { get; set; } = true;
     }
 
     public static async Task Start(Config config)
@@ -170,9 +172,11 @@ public class BestPracticesClient
             {
                 if (await system.SuperStreamExists(streamsList[0]).ConfigureAwait(false))
                 {
-                    await system.DeleteSuperStream(streamsList[0]).ConfigureAwait(false);
+                    if (config.DeleteStreamsOnStart)
+                    {
+                        await system.DeleteSuperStream(streamsList[0]).ConfigureAwait(false);
+                    }
                 }
-
 
                 await system.CreateSuperStream(new PartitionsSuperStreamSpec(streamsList[0], config.Streams))
                     .ConfigureAwait(false);
@@ -185,11 +189,15 @@ public class BestPracticesClient
                 {
                     if (await system.StreamExists(stream).ConfigureAwait(false))
                     {
-                        await system.DeleteStream(stream).ConfigureAwait(false);
+                        if (config.DeleteStreamsOnStart)
+                        {
+                            await system.DeleteStream(stream).ConfigureAwait(false);
+                        }
                     }
 
                     await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 30_000_000_000, })
                         .ConfigureAwait(false);
+
                     await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
                 }
 
@@ -358,7 +366,8 @@ public class BestPracticesClient
             // container without a TTY), so wait on a cancellation signal (Ctrl+C / container stop) instead.
             if (Console.IsInputRedirected)
             {
-                Console.WriteLine("Running non-interactively. Send SIGINT/SIGTERM (Ctrl+C or 'docker stop') to close all the consumers");
+                Console.WriteLine(
+                    "Running non-interactively. Send SIGINT/SIGTERM (Ctrl+C or 'docker stop') to close all the consumers");
                 using var cts = new CancellationTokenSource();
                 Console.CancelKeyPress += (_, e) =>
                 {
