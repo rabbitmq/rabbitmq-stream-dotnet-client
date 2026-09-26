@@ -20,6 +20,7 @@ namespace Tests
         private TcpListener _listener;
         private TcpClient _serverSide;
         private Client _client;
+        private Task _serverSideClosed;
 
         public async Task InitializeAsync()
         {
@@ -28,10 +29,12 @@ namespace Tests
             var accept = _listener.AcceptTcpClientAsync();
             _client = await Client.CreateWithoutHandshake(new ClientParameters
             {
-                Endpoint = _listener.LocalEndpoint
+                Endpoint = _listener.LocalEndpoint,
+                RpcTimeOut = TimeSpan.FromMilliseconds(200)
             });
             _serverSide = await accept;
-            _ = DrainAsync(_serverSide.GetStream());
+            // completes when the client closes the socket
+            _serverSideClosed = DrainAsync(_serverSide.GetStream());
         }
 
         public Task DisposeAsync()
@@ -134,6 +137,26 @@ namespace Tests
             await _client.HandleIncoming(MetaDataResponseFrame(correlationId));
             var response = await request;
             Assert.Equal(correlationId, response.CorrelationId);
+        }
+        [Fact]
+        public async Task SubscribeTimeoutMustNotLeaveAZombieSubscription()
+        {
+            // The server does not answer the subscribe (e.g. cluster under stress) but it could
+            // have registered the subscription. The client can't remove it (the unsubscribe
+            // times out too), so it must close the socket: leaving the connection open keeps
+            // the subscription alive on the server, and with single active consumer the server
+            // can promote it as active while nobody processes the messages.
+            await Assert.ThrowsAsync<TimeoutException>(() =>
+                _client.Subscribe(new RawConsumerConfig("stream"), 10,
+                    new System.Collections.Generic.Dictionary<string, string>(),
+                    _ => Task.CompletedTask,
+                    _ => Task.FromResult<IOffsetType>(new OffsetTypeNext())));
+
+            Assert.Empty(_client.Consumers);
+            // the socket is closed also when the close request times out
+            var closed = await Task.WhenAny(_serverSideClosed, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.Same(_serverSideClosed, closed);
+            Assert.True(_client.IsClosed);
         }
     }
 }

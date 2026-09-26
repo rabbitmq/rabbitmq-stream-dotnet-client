@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -423,7 +424,8 @@ namespace RabbitMQ.Stream.Client
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
             var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList(), IncrementEntityId());
-            SubscribeResponse response;
+            SubscribeResponse response = default;
+            ExceptionDispatchInfo subscribeError = null;
             try
             {
                 consumers.Add(subscriptionId,
@@ -436,9 +438,20 @@ namespace RabbitMQ.Stream.Client
                     new SubscribeRequest(corr, subscriptionId, config.Stream, config.OffsetSpec, initialCredit,
                         properties)).ConfigureAwait(false);
             }
+            catch (Exception e)
+            {
+                // handled after releasing the semaphore since the clean up needs it
+                subscribeError = ExceptionDispatchInfo.Capture(e);
+            }
             finally
             {
                 _poolSemaphore.Release();
+            }
+
+            if (subscribeError != null)
+            {
+                await RemoveFailedSubscription(subscriptionId, config).ConfigureAwait(false);
+                subscribeError.Throw();
             }
 
             if (response.ResponseCode == ResponseCode.Ok)
@@ -447,6 +460,33 @@ namespace RabbitMQ.Stream.Client
             consumers.Remove(subscriptionId);
             config.Pool.MaybeClose(ClientId, "Subscription failed");
             return (subscriptionId, response);
+        }
+
+        // The subscribe request failed (most likely timed out), but the server could have
+        // registered the subscription anyway. Leaving it there creates a zombie consumer:
+        // with single active consumer the server can promote it as active
+        // and its messages are never processed.
+        private async Task RemoveFailedSubscription(byte subscriptionId, RawConsumerConfig config)
+        {
+            try
+            {
+                // Unsubscribe removes the local subscription in any case.
+                // The server returns SubscriptionIdDoesNotExist if it did not register the subscription.
+                await Unsubscribe(subscriptionId).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                // The server did not answer, the connection is not healthy.
+                // Closing it is the only way to be sure the server removes the subscription.
+                // The status is Unexpected so the other entities on this connection reconnect.
+                _logger.LogWarning(e,
+                    "Could not remove the subscription {SubscriptionId} after a failed subscribe. " +
+                    "The connection will be closed", subscriptionId);
+                await Close("Subscription failed", ConnectionClosedReason.Unexpected).ConfigureAwait(false);
+                return;
+            }
+
+            config.Pool?.MaybeClose(ClientId, "Subscription failed");
         }
 
         public async Task<UnsubscribeResponse> Unsubscribe(byte subscriptionId, bool ignoreIfAlreadyRemoved = false)
@@ -839,13 +879,8 @@ namespace RabbitMQ.Stream.Client
 
             try
             {
-                var result =
-                    await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
-                        TimeSpan.FromSeconds(10)).ConfigureAwait(false);
-                InternalClose();
-                _connection.UpdateCloseStatus(closedStatus);
-
-                return result;
+                return await Request<CloseRequest, CloseResponse>(corr => new CloseRequest(corr, reason),
+                    TimeSpan.FromSeconds(10)).ConfigureAwait(false);
             }
             catch (TimeoutException)
             {
@@ -858,6 +893,12 @@ namespace RabbitMQ.Stream.Client
             }
             finally
             {
+                // The socket must be closed even when the close request fails or times out.
+                // Otherwise the heartbeat keeps the connection alive on the server side
+                // with all its producers and consumers (zombie connection).
+                // The status is updated before closing the socket, so the reader reports the right reason.
+                _connection.UpdateCloseStatus(closedStatus);
+                InternalClose();
                 _connection.Dispose();
             }
 
