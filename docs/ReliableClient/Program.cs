@@ -50,6 +50,8 @@ var rClient = BestPracticesClient.Start(new BestPracticesClient.Config()
     // The delay between each message sent by the producer.
     DelayDuringSendMs = GetEnvInt("DELAY_DURING_SEND_MS", 0),
     EnableResending = GetEnvBool("ENABLE_RESENDING", false),
+    
+    DeleteStreamsOnStart = GetEnvBool("DELETE_STREAMS_ON_START", true),
 });
 
 await rClient.ConfigureAwait(false);
