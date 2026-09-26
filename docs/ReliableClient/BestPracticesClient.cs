@@ -178,12 +178,8 @@ public class BestPracticesClient
                     }
                 }
 
-                if (config.DeleteStreamsOnStart)
-                {
-                    await system.CreateSuperStream(new PartitionsSuperStreamSpec(streamsList[0], config.Streams))
+                await system.CreateSuperStream(new PartitionsSuperStreamSpec(streamsList[0], config.Streams))
                     .ConfigureAwait(false);
-                }
-
             }
 
 
@@ -199,11 +195,9 @@ public class BestPracticesClient
                         }
                     }
 
-                    if (config.DeleteStreamsOnStart)
-                    {
-                        await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 30_000_000_000, })
-                            .ConfigureAwait(false);
-                    }
+                    await system.CreateStream(new StreamSpec(stream) { MaxLengthBytes = 30_000_000_000, })
+                        .ConfigureAwait(false);
+
                     await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
                 }
 
