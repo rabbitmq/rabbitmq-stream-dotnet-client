@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Stream.Client;
@@ -154,11 +155,13 @@ namespace Tests
                 new List<Broker>());
             var c1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
             c1.Publishers.Add(0, default);
+            pool.ReleaseReservation(c1.ClientId, "test");
             for (byte i = 0; i < 2; i++)
             {
                 var c1_1 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
                     pool);
                 c1_1.Publishers.Add((byte)(i + 1), default);
+                pool.ReleaseReservation(c1_1.ClientId, "test");
                 Assert.Equal(c1.ClientId, c1_1.ClientId);
             }
 
@@ -173,8 +176,8 @@ namespace Tests
         /// <summary>
         /// The pool has 3 ids per connection.
         /// We request 3 connections with the same brokerInfo
-        /// then release one id and again we request a new connection with the same brokerInfo
-        /// so the pool should have one connection with 3 ids 
+        /// each request reserves one id, so the 4th request needs a new connection.
+        /// Removing the connections empties the pool
         /// </summary>
         [Fact]
         public async Task ReleaseFromThePoolShouldNotRemoveTheConnection()
@@ -192,12 +195,15 @@ namespace Tests
                 Assert.Equal(c1.ClientId, c1_1.ClientId);
             }
 
-            _ = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
+            var c2 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo,
                 pool);
+            Assert.NotEqual(c1.ClientId, c2.ClientId);
+            Assert.Equal(2, pool.ConnectionsCount);
 
-            // the client id is the same since we reuse the connection
-            // we release the connection    
+            // we release the connections
             pool.Remove(c1.ClientId);
+            Assert.Equal(1, pool.ConnectionsCount);
+            pool.Remove(c2.ClientId);
             Assert.Equal(0, pool.ConnectionsCount);
         }
 
@@ -216,10 +222,277 @@ namespace Tests
                 new List<Broker>());
             var c = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
             c.Consumers.Add(1, default);
+            pool.ReleaseReservation(c.ClientId, "test");
             var c2 = await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool);
             c2.Consumers.Add(2, default);
+            pool.ReleaseReservation(c2.ClientId, "test");
             await Assert.ThrowsAsync<TooManyConnectionsException>(async () =>
                 await RoutingHelper<PoolRouting>.LookupLeaderConnection(clientParameters, metaDataInfo, pool));
+        }
+
+        /// <summary>
+        /// A fake client that is closed when Close is called
+        /// </summary>
+        private class ClosableFakeClient : IClient
+        {
+            public ClientParameters Parameters { get; set; } = new();
+            public IDictionary<string, string> ConnectionProperties { get; } = new Dictionary<string, string>();
+
+            public Task<CloseResponse> Close(string reason)
+            {
+                IsClosed = true;
+                return Task.FromResult(new CloseResponse());
+            }
+
+            public string ClientId { get; init; } = Guid.NewGuid().ToString();
+
+            public IDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))>
+                Publishers { get; } =
+                new ConcurrentDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>,
+                    Action<(ulong, ResponseCode)[]>))>();
+
+            public IDictionary<byte, (string, ConsumerEvents)> Consumers { get; } =
+                new ConcurrentDictionary<byte, (string, ConsumerEvents)>();
+
+            public Task UpdateSecret(string newSecret) => Task.CompletedTask;
+
+            public bool IsClosed { get; private set; }
+        }
+
+        private static Task<IClient> NewClosableClient() => Task.FromResult<IClient>(new ClosableFakeClient());
+
+        private static readonly TimeSpan s_testTimeout = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// GetOrCreateClient reserves a slot for the caller.
+        /// With one id per connection a second request must get a new connection
+        /// even if the first caller has not registered the entity yet
+        /// </summary>
+        [Fact]
+        public async Task GetOrCreateClientShouldReserveTheSlotUntilReleased()
+        {
+            var pool = new ConnectionsPool(0, 1, new ConnectionCloseConfig());
+            var c1 = await pool.GetOrCreateClient("node1:5552", NewClosableClient);
+            var c2 = await pool.GetOrCreateClient("node1:5552", NewClosableClient);
+
+            Assert.NotEqual(c1.ClientId, c2.ClientId);
+            Assert.Equal(2, pool.ConnectionsCount);
+        }
+
+        /// <summary>
+        /// Many producers/consumers request a connection at the same time, like during a reconnection.
+        /// The ids per connection must be respected
+        /// </summary>
+        [Fact]
+        public async Task ConcurrentGetOrCreateClientShouldRespectIdsPerConnection()
+        {
+            const int IdsPerConnection = 2;
+            const int Requests = 20;
+            var pool = new ConnectionsPool(0, IdsPerConnection, new ConnectionCloseConfig());
+
+            var clients = await Task.WhenAll(Enumerable.Range(0, Requests).Select(_ =>
+                Task.Run(() => pool.GetOrCreateClient("node1:5552", async () =>
+                {
+                    await Task.Delay(10);
+                    return new ClosableFakeClient();
+                }))));
+
+            Assert.All(clients.GroupBy(c => c.ClientId), g => Assert.True(g.Count() <= IdsPerConnection));
+            Assert.Equal(Requests / IdsPerConnection, pool.ConnectionsCount);
+        }
+
+        /// <summary>
+        /// Producer P1 is closing and its connection looks empty.
+        /// At the same time producer P2 gets the same connection from the pool.
+        /// The connection must not be closed since P2 is about to use it.
+        /// </summary>
+        [Fact]
+        public async Task MaybeCloseShouldNotCloseAReservedConnection()
+        {
+            var pool = new ConnectionsPool(0, 1, new ConnectionCloseConfig());
+
+            // P1 is created on the connection
+            var c1 = await pool.GetOrCreateClient("node1:5552", NewClosableClient);
+            c1.Publishers.Add(0, default);
+            pool.ReleaseReservation(c1.ClientId, "test");
+
+            // P1 is removed from the client (DeletePublisher) but pool.MaybeClose is not called yet
+            c1.Publishers.Remove(0);
+
+            // P2 gets the same connection
+            var c2 = await pool.GetOrCreateClient("node1:5552", NewClosableClient);
+            Assert.Equal(c1.ClientId, c2.ClientId);
+
+            // P1 completes the close
+            pool.MaybeClose(c1.ClientId, "P1 closed");
+            Assert.False(c2.IsClosed);
+            Assert.Equal(1, pool.ConnectionsCount);
+
+            // P2 is registered
+            c2.Publishers.Add(1, default);
+            pool.ReleaseReservation(c2.ClientId, "test");
+            Assert.False(c2.IsClosed);
+            Assert.Equal(1, pool.ConnectionsCount);
+        }
+
+        /// <summary>
+        /// When the entity registration fails the reservation is released and
+        /// the empty connection is closed
+        /// </summary>
+        [Fact]
+        public async Task ReleaseReservationShouldCloseTheEmptyConnection()
+        {
+            var pool = new ConnectionsPool(0, 1, new ConnectionCloseConfig());
+            var c1 = await pool.GetOrCreateClient("node1:5552", NewClosableClient);
+            Assert.Equal(1, pool.ConnectionsCount);
+
+            pool.ReleaseReservation(c1.ClientId, "creation failed");
+            Assert.True(c1.IsClosed);
+            Assert.Equal(0, pool.ConnectionsCount);
+        }
+
+        /// <summary>
+        /// The idle check must not close a connection reserved by a producer/consumer
+        /// that is not registered yet
+        /// </summary>
+        [Fact]
+        public async Task IdleCheckShouldNotCloseAReservedConnection()
+        {
+            var pool = new ConnectionsPool(0, 1,
+                new ConnectionCloseConfig()
+                {
+                    Policy = ConnectionClosePolicy.CloseWhenEmptyAndIdle,
+                    IdleTime = TimeSpan.Zero,
+                    CheckIdleTime = TimeSpan.FromMilliseconds(50)
+                });
+            var c1 = await pool.GetOrCreateClient("node1:5552", NewClosableClient);
+
+            // give time to the idle check to run more than one time
+            await Task.Delay(300);
+            Assert.False(c1.IsClosed);
+            Assert.Equal(1, pool.ConnectionsCount);
+
+            pool.ReleaseReservation(c1.ClientId, "test");
+            await SystemUtils.WaitUntilAsync(() => pool.ConnectionsCount == 0);
+            Assert.True(c1.IsClosed);
+            await pool.Close();
+        }
+
+        /// <summary>
+        /// Opening a connection can take a long time (retries, unreachable broker).
+        /// It must not block the other operations of the pool
+        /// </summary>
+        [Fact]
+        public async Task OpeningAConnectionShouldNotBlockThePool()
+        {
+            var pool = new ConnectionsPool(0, 1, new ConnectionCloseConfig());
+            var existing = await pool.GetOrCreateClient("node2:5552", NewClosableClient);
+
+            var connecting = new TaskCompletionSource<IClient>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var slowConnection = pool.GetOrCreateClient("node1:5552", () => connecting.Task);
+
+            // a connection to another broker is opened
+            var other = await pool.GetOrCreateClient("node3:5552", NewClosableClient).WaitAsync(s_testTimeout);
+            Assert.NotNull(other);
+
+            // the sync operations called by the connection closed/metadata handlers are not blocked
+            await Task.Run(() =>
+            {
+                pool.ReleaseReservation(existing.ClientId, "test");
+                pool.Remove(other.ClientId);
+            }).WaitAsync(s_testTimeout);
+
+            Assert.False(slowConnection.IsCompleted);
+            var slowClient = new ClosableFakeClient();
+            connecting.SetResult(slowClient);
+            Assert.Equal(slowClient.ClientId, (await slowConnection.WaitAsync(s_testTimeout)).ClientId);
+            Assert.Equal(1, pool.ConnectionsCount);
+        }
+
+        /// <summary>
+        /// A connection is being opened and it has free slots.
+        /// The requests for the same broker wait for it instead of opening a new connection
+        /// </summary>
+        [Fact]
+        public async Task RequestsShouldShareAConnectionThatIsBeingOpened()
+        {
+            var pool = new ConnectionsPool(0, 2, new ConnectionCloseConfig());
+            var created = 0;
+
+            var connecting = new TaskCompletionSource<IClient>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var first = pool.GetOrCreateClient("node1:5552", () =>
+            {
+                Interlocked.Increment(ref created);
+                return connecting.Task;
+            });
+            var second = pool.GetOrCreateClient("node1:5552", () =>
+            {
+                Interlocked.Increment(ref created);
+                return NewClosableClient();
+            });
+
+            Assert.False(second.IsCompleted);
+            connecting.SetResult(new ClosableFakeClient());
+
+            var c1 = await first.WaitAsync(s_testTimeout);
+            var c2 = await second.WaitAsync(s_testTimeout);
+            Assert.Equal(c1.ClientId, c2.ClientId);
+            Assert.Equal(1, created);
+            Assert.Equal(1, pool.ConnectionsCount);
+
+            // the connection is full (2 reservations) so a new connection is needed
+            var c3 = await pool.GetOrCreateClient("node1:5552", NewClosableClient);
+            Assert.NotEqual(c1.ClientId, c3.ClientId);
+            Assert.Equal(2, pool.ConnectionsCount);
+        }
+
+        /// <summary>
+        /// The requests waiting for a connection that fails to open must fail as well
+        /// and the pool must be consistent
+        /// </summary>
+        [Fact]
+        public async Task RequestsWaitingForAConnectionShouldFailWhenTheConnectionFails()
+        {
+            var pool = new ConnectionsPool(1, 2, new ConnectionCloseConfig());
+
+            var connecting = new TaskCompletionSource<IClient>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var first = pool.GetOrCreateClient("node1:5552", () => connecting.Task);
+            var second = pool.GetOrCreateClient("node1:5552", NewClosableClient);
+
+            connecting.SetException(new Exception("unreachable"));
+            await Assert.ThrowsAsync<Exception>(() => first.WaitAsync(s_testTimeout));
+            await Assert.ThrowsAsync<Exception>(() => second.WaitAsync(s_testTimeout));
+            Assert.Equal(0, pool.ConnectionsCount);
+
+            // the max connections is 1: the failed connection must not be counted
+            var c = await pool.GetOrCreateClient("node1:5552", NewClosableClient);
+            Assert.NotNull(c);
+            Assert.Equal(1, pool.ConnectionsCount);
+        }
+
+        /// <summary>
+        /// The connections that are being opened count for the max connections.
+        /// A failed connection must not be counted.
+        /// </summary>
+        [Fact]
+        public async Task PendingConnectionsShouldCountForMaxConnections()
+        {
+            var pool = new ConnectionsPool(1, 1, new ConnectionCloseConfig());
+
+            var connecting = new TaskCompletionSource<IClient>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var slowConnection = pool.GetOrCreateClient("node1:5552", () => connecting.Task);
+
+            await Assert.ThrowsAsync<TooManyConnectionsException>(() =>
+                pool.GetOrCreateClient("node2:5552", NewClosableClient));
+
+            connecting.SetException(new Exception("unreachable"));
+            await Assert.ThrowsAsync<Exception>(() => slowConnection);
+            Assert.Equal(0, pool.ConnectionsCount);
+
+            // the failed connection is not pending anymore
+            var c = await pool.GetOrCreateClient("node2:5552", NewClosableClient);
+            Assert.NotNull(c);
+            Assert.Equal(1, pool.ConnectionsCount);
         }
 
         /// Integration tests to validate the pool with actual connections
