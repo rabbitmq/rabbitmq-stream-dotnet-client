@@ -247,7 +247,8 @@ namespace Tests
             public string ClientId { get; init; } = Guid.NewGuid().ToString();
 
             public IDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>, Action<(ulong, ResponseCode)[]>))>
-                Publishers { get; } =
+                Publishers
+            { get; } =
                 new ConcurrentDictionary<byte, (string, (Action<ReadOnlyMemory<ulong>>,
                     Action<(ulong, ResponseCode)[]>))>();
 
