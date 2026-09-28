@@ -472,7 +472,13 @@ namespace RabbitMQ.Stream.Client
             {
                 // Unsubscribe removes the local subscription in any case.
                 // The server returns SubscriptionIdDoesNotExist if it did not register the subscription.
-                await Unsubscribe(subscriptionId).ConfigureAwait(false);
+var response = await Unsubscribe(subscriptionId).ConfigureAwait(false);
+if (response.ResponseCode != ResponseCode.Ok &&
+    response.ResponseCode != ResponseCode.SubscriptionIdDoesNotExist)
+{
+    ClientExceptions.MaybeThrowException(response.ResponseCode,
+        $"Could not remove subscription {subscriptionId}");
+}
             }
             catch (Exception e)
             {
