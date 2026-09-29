@@ -98,16 +98,18 @@ public class ConnectionItem
     public IClient Client { get; }
     public string BrokerInfo { get; }
 
-    public bool Available
-    {
-        get
-        {
-            var c = Client.Consumers.Count + Client.Publishers.Count;
-            return c < IdsPerConnection;
-        }
-    }
+    public bool Available => EntitiesCount + Reservations < IdsPerConnection;
 
     public int EntitiesCount => Client.Consumers.Count + Client.Publishers.Count;
+
+    /// <summary>
+    /// Slots handed out by the pool to producers or consumers that are not registered yet.
+    /// The pool returns the client before the entity is added to the client (DeclarePublisher/Subscribe),
+    /// so without the reservation the same slot could be given twice, or the connection could be closed
+    /// because it looks empty.
+    /// It is changed only under the pool lock.
+    /// </summary>
+    internal int Reservations { get; set; }
 
     public byte IdsPerConnection { get; }
     public DateTime LastUsed { get; set; }
@@ -173,6 +175,28 @@ public class ConnectionsPool : IDisposable
     private readonly Task _checkIdleConnectionTimeTask;
 
     /// <summary>
+    /// A connection that is being opened outside the lock.
+    /// Other requests for the same broker can reserve a slot on it and wait for it,
+    /// so a burst of requests (ex: reconnection) does not open more connections than needed.
+    /// </summary>
+    private class PendingConnection
+    {
+        public PendingConnection(string brokerInfo)
+        {
+            BrokerInfo = brokerInfo;
+        }
+
+        public string BrokerInfo { get; }
+        public int Reservations { get; set; } = 1;
+
+        public TaskCompletionSource<IClient> Client { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    // changed only under the lock. They count for the max connections.
+    private readonly List<PendingConnection> _pendingConnections = new();
+
+    /// <summary>
     /// Init the pool with the max connections and the max ids per connection
     /// </summary>
     /// <param name="maxConnections"> The max connections are allowed for session</param>
@@ -198,29 +222,40 @@ public class ConnectionsPool : IDisposable
             await Task.Delay(ConnectionPoolConfig.CheckIdleTime)
                 .ConfigureAwait(false);
 
-            var connectionItems = Connections.Values.ToList();
-            var now = DateTime.UtcNow;
-
-            if (!_isRunning)
+            try
             {
+                // the lock is needed to not close a connection reserved by GetOrCreateClient
+                await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException)
+            {
+                // the pool is disposed
+                return;
+            }
+
+            try
+            {
+                var connectionItems = Connections.Values.ToList();
+                var now = DateTime.UtcNow;
+
                 // Shutting down: close all empty connections
-                foreach (var connectionItem in connectionItems.Where(c => c.EntitiesCount == 0))
+                // Running: close only empty connections that have been idle for IdleTime
+                foreach (var connectionItem in connectionItems.Where(c =>
+                             IsEmpty(c) &&
+                             (!_isRunning || c.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now)))
                 {
                     CloseItemAndConnection("Idle connection", connectionItem);
                 }
             }
-            else
+            finally
             {
-                // Running: close only empty connections that have been idle for IdleTime
-                foreach (var connectionItem in connectionItems.Where(c =>
-                             c.EntitiesCount == 0 &&
-                             c.LastUsed.Add(ConnectionPoolConfig.IdleTime) < now))
-                {
-                    CloseItemAndConnection("Idle connection", connectionItem);
-                }
+                _semaphoreSlim.Release();
             }
         }
     }
+
+    private static bool IsEmpty(ConnectionItem connectionItem) =>
+        connectionItem.EntitiesCount == 0 && connectionItem.Reservations == 0;
 
     /// <summary>
     ///  Key: is the client id a GUID
@@ -232,42 +267,152 @@ public class ConnectionsPool : IDisposable
     /// <summary>
     /// GetOrCreateClient returns a client for the given brokerInfo.
     /// The broker info is the string representation of the broker ip and port.
-    /// See Metadata.cs Broker.ToString() method, ex: Broker(localhost,5552) is "localhost:5552" 
+    /// See Metadata.cs Broker.ToString() method, ex: Broker(localhost,5552) is "localhost:5552"
+    /// The returned client has a slot reserved for the caller.
+    /// The caller must call <see cref="ReleaseReservation"/> once the producer or consumer
+    /// is registered on the client, or when the registration failed.
     /// </summary>
     internal async Task<IClient> GetOrCreateClient(string brokerInfo, Func<Task<IClient>> createClient)
+    {
+        PendingConnection pendingConnection;
+        Task<IClient> connectionTask;
+        await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var connectionItems = Connections.Values.Where(x => x.BrokerInfo == brokerInfo && x.Available)
+                .ToLookup(x => x.Client.IsClosed);
+
+            // remove closed connections
+            foreach (var closedItem in connectionItems[true])
+            {
+                Connections.TryRemove(closedItem.Client.ClientId, out _);
+            }
+
+            var connectionItem = connectionItems[false].OrderBy(x => x.EntitiesCount + x.Reservations)
+                .FirstOrDefault();
+            if (connectionItem != null)
+            {
+                connectionItem.Reservations++;
+                connectionItem.LastUsed = DateTime.UtcNow;
+                return connectionItem.Client;
+            }
+
+            // a connection to the same broker is being opened and it has free slots
+            // reserve a slot and wait for it
+            var waitingFor = _pendingConnections.FirstOrDefault(x =>
+                x.BrokerInfo == brokerInfo && x.Reservations < _idsPerConnection);
+            if (waitingFor != null)
+            {
+                waitingFor.Reservations++;
+                pendingConnection = null;
+                connectionTask = waitingFor.Client.Task;
+            }
+            else
+            {
+                if (_maxConnections > 0 && Connections.Count + _pendingConnections.Count >= _maxConnections)
+                {
+                    throw new TooManyConnectionsException($"Max connections {_maxConnections} reached");
+                }
+
+                pendingConnection = new PendingConnection(brokerInfo);
+                _pendingConnections.Add(pendingConnection);
+                connectionTask = pendingConnection.Client.Task;
+            }
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
+
+        if (pendingConnection == null)
+        {
+            // the connection is opened by another request
+            return await connectionTask.ConfigureAwait(false);
+        }
+
+        // The connection is opened outside the lock.
+        // It can take a long time (retries, handshake, unreachable broker) and it must not block
+        // the other producers and consumers that use the pool, for example during a reconnection.
+        try
+        {
+            var client = await createClient().ConfigureAwait(false);
+            await AddPendingConnection(pendingConnection, client).ConfigureAwait(false);
+            pendingConnection.Client.SetResult(client);
+        }
+        catch (Exception e)
+        {
+            await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                _pendingConnections.Remove(pendingConnection);
+            }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
+
+            // the requests waiting for this connection fail as well
+            pendingConnection.Client.SetException(e);
+        }
+
+        return await connectionTask.ConfigureAwait(false);
+    }
+
+    private async Task AddPendingConnection(PendingConnection pendingConnection, IClient client)
     {
         await _semaphoreSlim.WaitAsync().ConfigureAwait(false);
         try
         {
-            var connectionItems = Connections.Values.Where(x => x.BrokerInfo == brokerInfo && x.Available).ToList();
-
-            if (connectionItems.Any())
+            _pendingConnections.Remove(pendingConnection);
+            var connectionItem = new ConnectionItem(pendingConnection.BrokerInfo, _idsPerConnection, client)
             {
-                var connectionItem = connectionItems.OrderBy(x => x.EntitiesCount).First();
-                connectionItem.LastUsed = DateTime.UtcNow;
+                Reservations = pendingConnection.Reservations
+            };
+            Connections.TryAdd(client.ClientId, connectionItem);
 
-                if (connectionItem.Client is not { IsClosed: true })
-                    return connectionItem.Client;
+            // the secret was updated while the connection was being opened
+            // so the new connection uses the old secret
+            if (_lastSecret.IsValid && client.Parameters?.Password != _lastSecret.Secret)
+            {
+                try
+                {
+                    await client.UpdateSecret(_lastSecret.Secret).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // the requests won't get the client, so they can't release the reservations
+                    CloseItemAndConnection("Secret update failed", connectionItem);
+                    throw;
+                }
+            }
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
+    }
 
-                // remove closed connection
-                Connections.TryRemove(connectionItem.Client.ClientId, out _);
-
-                // create and add new connection item with the new client's id
-                var newConnectionItem = new ConnectionItem(brokerInfo, _idsPerConnection,
-                    await createClient().ConfigureAwait(false));
-                Connections.TryAdd(newConnectionItem.Client.ClientId, newConnectionItem);
-
-                return newConnectionItem.Client;
+    /// <summary>
+    /// Releases the slot reserved by <see cref="GetOrCreateClient"/>.
+    /// To call when the producer or consumer is registered on the client or when the registration failed.
+    /// If the connection is empty it is closed following the close policy.
+    /// </summary>
+    internal void ReleaseReservation(string clientId, string reason)
+    {
+        _semaphoreSlim.Wait();
+        try
+        {
+            if (!Connections.TryGetValue(clientId, out var connectionItem))
+            {
+                return;
             }
 
-            if (_maxConnections > 0 && Connections.Count >= _maxConnections)
+            if (connectionItem.Reservations > 0)
             {
-                throw new TooManyConnectionsException($"Max connections {_maxConnections} reached");
+                connectionItem.Reservations--;
             }
 
-            var client = await createClient().ConfigureAwait(false);
-            Connections.TryAdd(client.ClientId, new ConnectionItem(brokerInfo, _idsPerConnection, client));
-            return client;
+            MaybeCloseItem(connectionItem, reason);
         }
         finally
         {
@@ -331,21 +476,28 @@ public class ConnectionsPool : IDisposable
                 return;
             }
 
-            if (connectionItem.EntitiesCount > 0)
-            {
-                return;
-            }
-
-            connectionItem.LastUsed = DateTime.UtcNow;
-
-            if (ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmpty)
-            {
-                CloseItemAndConnection(reason, connectionItem);
-            }
+            MaybeCloseItem(connectionItem, reason);
         }
         finally
         {
             _semaphoreSlim.Release();
+        }
+    }
+
+    // to call under the lock
+    private void MaybeCloseItem(ConnectionItem connectionItem, string reason)
+    {
+        // the connection is not closed if a producer or consumer is about to use it
+        if (!IsEmpty(connectionItem))
+        {
+            return;
+        }
+
+        connectionItem.LastUsed = DateTime.UtcNow;
+
+        if (ConnectionPoolConfig.Policy == ConnectionClosePolicy.CloseWhenEmpty)
+        {
+            CloseItemAndConnection(reason, connectionItem);
         }
     }
 

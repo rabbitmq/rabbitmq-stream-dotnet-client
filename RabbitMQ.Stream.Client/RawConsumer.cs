@@ -248,9 +248,18 @@ namespace RabbitMQ.Stream.Client
             var client = await RoutingHelper<Routing>
                 .LookupLeaderOrRandomReplicasConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
-            var consumer = new RawConsumer((Client)client, config, logger);
-            await consumer.Init().ConfigureAwait(false);
-            return consumer;
+            try
+            {
+                var consumer = new RawConsumer((Client)client, config, logger);
+                await consumer.Init().ConfigureAwait(false);
+                return consumer;
+            }
+            finally
+            {
+                // the consumer is registered on the client or the creation failed.
+                // In both cases the slot reserved by the pool is not needed anymore
+                config.Pool.ReleaseReservation(client.ClientId, "Consumer creation failed");
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -80,9 +80,18 @@ namespace RabbitMQ.Stream.Client
                     metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
 
-            var producer = new RawProducer((Client)client, config, logger);
-            await producer.Init().ConfigureAwait(false);
-            return producer;
+            try
+            {
+                var producer = new RawProducer((Client)client, config, logger);
+                await producer.Init().ConfigureAwait(false);
+                return producer;
+            }
+            finally
+            {
+                // the producer is registered on the client or the creation failed.
+                // In both cases the slot reserved by the pool is not needed anymore
+                config.Pool.ReleaseReservation(client.ClientId, "Producer creation failed");
+            }
         }
 
         private RawProducer(Client client, RawProducerConfig config, ILogger logger = null)
