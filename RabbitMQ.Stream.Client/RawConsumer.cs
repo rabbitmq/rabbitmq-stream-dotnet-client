@@ -207,7 +207,14 @@ namespace RabbitMQ.Stream.Client
         // it is in progress. In this way, the promotion will be faster
         // avoiding to block the consumer handler if the user put some
         // long task
-        private bool IsPromotedAsActive { get; set; }
+        // volatile: it is written by the socket thread (consumer update) and read by the ProcessChunks task
+        private volatile bool _isPromotedAsActive;
+
+        private bool IsPromotedAsActive
+        {
+            get => _isPromotedAsActive;
+            set => _isPromotedAsActive = value;
+        }
 
         // PromotionLock avoids race conditions when the consumer is promoted as active
         // and the messages are dispatched in parallel.
@@ -219,21 +226,29 @@ namespace RabbitMQ.Stream.Client
         /// MaybeLockDispatch locks the dispatch of the messages
         /// it is needed only when the consumer is single active consumer.
         /// MaybeLockDispatch is an optimization to avoid lock the dispatch
-        /// when the consumer is not single active consumer
+        /// when the consumer is not single active consumer.
+        /// Returns true only if the lock has been acquired: the result must be
+        /// passed to MaybeReleaseLock, otherwise a timed-out wait would release a lock not held.
         /// </summary>
-        private async Task MaybeLockDispatch()
+        private async Task<bool> MaybeLockDispatch()
         {
-            if (_config.IsSingleActiveConsumer)
-                await PromotionLock.WaitAsync(TimeSpan.FromSeconds(5), Token).ConfigureAwait(false);
+            if (!_config.IsSingleActiveConsumer)
+                return false;
+
+            if (await PromotionLock.WaitAsync(TimeSpan.FromSeconds(5), Token).ConfigureAwait(false))
+                return true;
+
+            Logger.LogWarning("Timeout acquiring the promotion lock, {EntityInfo}", DumpEntityConfiguration());
+            return false;
         }
 
         /// <summary>
         /// MaybeReleaseLock releases the lock on the dispatch of the messages
         /// Following the MaybeLockDispatch method
         /// </summary>
-        private void MaybeReleaseLock()
+        private void MaybeReleaseLock(bool acquired)
         {
-            if (_config.IsSingleActiveConsumer)
+            if (acquired)
                 PromotionLock.Release();
         }
 
@@ -245,6 +260,9 @@ namespace RabbitMQ.Stream.Client
             ILogger logger = null
         )
         {
+            // fail fast: no need to acquire a connection from the pool with an invalid configuration
+            config.Validate();
+
             var client = await RoutingHelper<Routing>
                 .LookupLeaderOrRandomReplicasConnection(clientParameters, metaStreamInfo, config.Pool, logger)
                 .ConfigureAwait(false);
@@ -309,6 +327,10 @@ namespace RabbitMQ.Stream.Client
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 async Task DispatchMessage(Message message, ulong i)
                 {
+                    // the message failed to parse: the error is already logged by MessageFromSequence
+                    if (message is null)
+                        return;
+
                     try
                     {
                         message.MessageOffset = chunk.ChunkId + i;
@@ -317,9 +339,9 @@ namespace RabbitMQ.Stream.Client
                             if (!Token.IsCancellationRequested)
                             {
                                 // we need to lock the dispatch only if the consumer is single active consumer
-                                await MaybeLockDispatch().ConfigureAwait(false);
+                                var lockAcquired = await MaybeLockDispatch().ConfigureAwait(false);
                                 var lockedIsPromotedAsActive = IsPromotedAsActive;
-                                MaybeReleaseLock();
+                                MaybeReleaseLock(lockAcquired);
 
                                 // it is usually active
                                 // it is useful only in single active consumer
@@ -339,7 +361,7 @@ namespace RabbitMQ.Stream.Client
                                     // If the consumer is not open we can just skip the messages
                                     var canDispatch = _status == EntityStatus.Open;
 
-                                    if (_config.IsFiltering)
+                                    if (canDispatch && _config.IsFiltering)
                                     {
                                         try
                                         {
@@ -532,8 +554,19 @@ namespace RabbitMQ.Stream.Client
                                     if (_config.FlowControl.Strategy == ConsumerFlowStrategy.CreditsAfterParseChunk)
                                     {
                                         // it avoids flooding the network with credits
-                                        await _client.Credit(EntityId, 1)
-                                            .ConfigureAwait(false);
+                                        try
+                                        {
+                                            await _client.Credit(EntityId, 1)
+                                                .ConfigureAwait(false);
+                                        }
+                                        catch (InvalidOperationException)
+                                        {
+                                            // same as CreditsBeforeParseChunk: the TCP client has been closed
+                                            Logger?.LogDebug(
+                                                "Can't send the credit {EntityInfo}: The TCP client has been closed",
+                                                DumpEntityConfiguration());
+                                            return;
+                                        }
                                     }
 
                                     break;
@@ -563,6 +596,10 @@ namespace RabbitMQ.Stream.Client
                     Logger?.LogError(e,
                         "Error while process chunks the stream: {EntityInfo} The ProcessChunks task will be closed",
                         DumpEntityConfiguration());
+
+                    // without the ProcessChunks task the consumer can't receive messages or credits:
+                    // it must not stay open and silently stalled
+                    await CloseAfterProcessChunksFailure().ConfigureAwait(false);
                 }
                 finally
                 {
@@ -579,10 +616,38 @@ namespace RabbitMQ.Stream.Client
             }, Token);
         }
 
+        private async Task CloseAfterProcessChunksFailure()
+        {
+            try
+            {
+                await Shutdown(_config).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Logger.LogDebug(e, "Error closing the consumer after a ProcessChunks failure {EntityInfo}",
+                    DumpEntityConfiguration());
+            }
+        }
+
         private async Task Init()
         {
-            _config.Validate();
+            try
+            {
+                await InitCore().ConfigureAwait(false);
+            }
+            catch
+            {
+                // the creation failed: nobody owns the consumer, so release the ProcessChunks task
+                // (it waits for the subscription) and any Close/Dispose waiting on it.
+                UpdateStatusToClosed();
+                _chunksBuffer.Writer.TryComplete();
+                _completeSubscription.TrySetResult();
+                throw;
+            }
+        }
 
+        private async Task InitCore()
+        {
             var consumerProperties = new Dictionary<string, string>();
 
             if (!string.IsNullOrEmpty(_config.Reference))
@@ -672,6 +737,13 @@ namespace RabbitMQ.Stream.Client
                         await _chunksBuffer.Writer.WriteAsync((deliver.Chunk, chunkAction), Token)
                             .ConfigureAwait(false);
                     }
+                    catch (ChannelClosedException)
+                    {
+                        // ProcessChunks is already terminated: nothing can process the chunk
+                        Logger?.LogDebug(
+                            "The chunks buffer is closed, the chunk is skipped. {EntityInfo}",
+                            DumpEntityConfiguration());
+                    }
                     catch (OperationCanceledException)
                     {
                         // The consumer is closing from the user but some chunks are still in the buffer
@@ -682,13 +754,20 @@ namespace RabbitMQ.Stream.Client
                             "Token.IsCancellationRequested: {IsCancellationRequested}",
                             DumpEntityConfiguration(), Token.IsCancellationRequested);
                     }
+                    catch (Exception e)
+                    {
+                        // e.g. the user Crc32.FailAction throws: the exception must not reach the socket thread
+                        Logger?.LogError(e,
+                            "Error while handling the delivered chunk, the chunk is skipped. {EntityInfo}",
+                            DumpEntityConfiguration());
+                    }
                 }, async promotedAsActive =>
                 {
                     if (_config.ConsumerUpdateListener != null)
                     {
                         // in this case the StoredOffsetSpec is overridden by the ConsumerUpdateListener
                         // since the user decided to override the default behavior
-                        await MaybeLockDispatch().ConfigureAwait(false);
+                        var lockAcquired = await MaybeLockDispatch().ConfigureAwait(false);
                         try
                         {
                             _config.StoredOffsetSpec = await _config.ConsumerUpdateListener(
@@ -706,7 +785,7 @@ namespace RabbitMQ.Stream.Client
                         }
                         finally
                         {
-                            MaybeReleaseLock();
+                            MaybeReleaseLock(lockAcquired);
                         }
                     }
 
@@ -858,7 +937,7 @@ namespace RabbitMQ.Stream.Client
             if (_config.FlowControl.Strategy != ConsumerFlowStrategy.ConsumerCredits)
             {
                 throw new InvalidOperationException(
-                    "RequestCredits can be used only with ConsumerFlowStrategy.ManualRequestCredit.");
+                    "RequestCredits can be used only with ConsumerFlowStrategy.ConsumerCredits.");
             }
 
             await _client.Credit(EntityId, credits).ConfigureAwait(false);
