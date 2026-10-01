@@ -933,7 +933,10 @@ namespace RabbitMQ.Stream.Client
                 throw new ArgumentException(
                     $"Credits must be greater than 0");
             }
-
+            // the operations are manually controlled by the user,
+            // so we need to check if the strategy is set to ConsumerFlowStrategy.ConsumerCredits
+            // in other cases the user should not call this method since the credits are automatically requested by the consumer
+            // depending on the strategy set in the configuration
             if (_config.FlowControl.Strategy != ConsumerFlowStrategy.ConsumerCredits)
             {
                 throw new InvalidOperationException(

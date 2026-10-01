@@ -81,6 +81,7 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
     // It is recommended to keep it enabled. Disable it only for performance reasons.
     public ICrc32 Crc32 { get; set; } = new StreamCrc32();
 
+    // see <see cref="ConsumerFlowStrategy"/> for the available strategies.
     public FlowControl FlowControl { get; set; } = new FlowControl();
 }
 
