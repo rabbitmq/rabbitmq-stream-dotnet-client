@@ -467,5 +467,14 @@ namespace Tests
 
             Assert.True(AvailableFeaturesSingleton.Instance.PublishFilter);
         }
+
+        [Fact]
+        public async Task RawConsumerCreateShouldValidateBeforeAcquiringAConnection()
+        {
+            // Pool is null and the routing is never reached: the validation must fail first
+            var config = new RawConsumerConfig("stream") { IsSingleActiveConsumer = true, Reference = null };
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                RawConsumer.Create(new ClientParameters(), config, default));
+        }
     }
 }
