@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.12.2]
+### 1.12.2 - 2026-19-10
+- [Release notes 1.12.2](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.12.2)
+### Enhancements
+- Add docker test image by @Gsantomaggio in [#477](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/477)
+- Fix connection pool races during reconnection by @Gsantomaggio in [#481](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/481)
+- Consumer improvements by @Gsantomaggio in [#482](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/482)
+
+### Bug Fix
+- Fix connection value task by @Gsantomaggio in [#478](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/478)
+- Avoid zombie consumers when requests time out by @Gsantomaggio in [#480](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/480)
+
 ## [1.12.1]
 ### 1.12.1 - 2026-09-09
 - [Release notes 1.12.1](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.12.1)
