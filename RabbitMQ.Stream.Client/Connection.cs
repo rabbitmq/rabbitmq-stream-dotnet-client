@@ -143,12 +143,6 @@ namespace RabbitMQ.Stream.Client
             return true;
         }
 
-#pragma warning disable RS0016 // Add public types and members to the declared API
-#pragma warning disable CA2211 // Non-constant fields should not be visible
-        public static bool UseArrayPool = false;
-#pragma warning restore CA2211 // Non-constant fields should not be visible
-#pragma warning restore RS0016 // Add public types and members to the declared API
-
         private async Task WriteCommand<T>(T command) where T : struct, ICommand
         {
             if (Token.IsCancellationRequested)
@@ -165,35 +159,22 @@ namespace RabbitMQ.Stream.Client
             await _writeLock.WaitAsync(Token).ConfigureAwait(false);
             try
             {
-                if (UseArrayPool)
-                {
-                    const int dataLengthInfoBytes = 4; // for info about data size
-                    var size = command.SizeNeeded;
-                    var fullSize = dataLengthInfoBytes + size;
+                const int dataLengthInfoBytes = 4; // for info about data size
+                var size = command.SizeNeeded;
+                var fullSize = dataLengthInfoBytes + size;
 
-                    var mem = ArrayPool<byte>.Shared.Rent(fullSize);
-                    try
-                    {
-                        WireFormatting.WriteUInt32(mem, (uint)size);
-                        var written = command.Write(mem.AsSpan(dataLengthInfoBytes, size));
-                        Debug.Assert(size == written);
-                        await writer.WriteAsync(new ReadOnlyMemory<byte>(mem, 0, fullSize), Token).ConfigureAwait(false);
-                        await writer.FlushAsync(Token).ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        ArrayPool<byte>.Shared.Return(mem);
-                    }
-                }
-                else
+                var mem = ArrayPool<byte>.Shared.Rent(fullSize);
+                try
                 {
-                    var size = command.SizeNeeded;
-                    var mem = new byte[4 + size]; // + 4 to write the size
                     WireFormatting.WriteUInt32(mem, (uint)size);
-                    var written = command.Write(mem.AsSpan()[4..]);
-                    await writer.WriteAsync(new ReadOnlyMemory<byte>(mem), Token).ConfigureAwait(false);
+                    var written = command.Write(mem.AsSpan(dataLengthInfoBytes, size));
                     Debug.Assert(size == written);
+                    await writer.WriteAsync(new ReadOnlyMemory<byte>(mem, 0, fullSize), Token).ConfigureAwait(false);
                     await writer.FlushAsync(Token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(mem);
                 }
             }
             finally

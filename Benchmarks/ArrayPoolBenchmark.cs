@@ -45,20 +45,9 @@ namespace Benchmarks
             await OneTimeTearDown().ConfigureAwait(false);
         }
 
-        [Benchmark(Baseline = false, Description = "ArrayPool")]
+        [Benchmark(Baseline = true, Description = "ArrayPool")]
         public async Task GetArrayFromPoolAsync()
         {
-            Connection.UseArrayPool = true;
-            for (var i = 0; i < MessagesCount; i++)
-            {
-                await _producer.Send(new Message(s_messageData)).ConfigureAwait(false);
-            }
-        }
-
-        [Benchmark(Baseline = true, Description = "new byte[]")]
-        public async Task AllocateNewArrayAsync()
-        {
-            Connection.UseArrayPool = false;
             for (var i = 0; i < MessagesCount; i++)
             {
                 await _producer.Send(new Message(s_messageData)).ConfigureAwait(false);
