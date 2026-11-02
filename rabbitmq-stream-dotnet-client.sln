@@ -1,15 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 18
-VisualStudioVersion = 18.11.12324.101 stable
+# Visual Studio Version 16
+VisualStudioVersion = 16.6.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitMQ.Stream.Client", "RabbitMQ.Stream.Client\RabbitMQ.Stream.Client.csproj", "{3492C000-0F7D-42C0-BFC0-A7401CFB6E30}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{57283B49-FC40-4910-9647-DC51433B3A79}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RabbitMQ.Stream.Client.PerfTest", "RabbitMQ.Stream.Client.PerfTest\RabbitMQ.Stream.Client.PerfTest.fsproj", "{8EEF75BF-F0E5-493B-B642-40A4860733BA}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{E06540AA-6CD9-42CA-9613-80E280BA6899}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,23 +55,8 @@ Global
 		{8EEF75BF-F0E5-493B-B642-40A4860733BA}.Release|x64.Build.0 = Release|Any CPU
 		{8EEF75BF-F0E5-493B-B642-40A4860733BA}.Release|x86.ActiveCfg = Release|Any CPU
 		{8EEF75BF-F0E5-493B-B642-40A4860733BA}.Release|x86.Build.0 = Release|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Debug|x64.Build.0 = Debug|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Debug|x86.Build.0 = Debug|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Release|x64.ActiveCfg = Release|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Release|x64.Build.0 = Release|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Release|x86.ActiveCfg = Release|Any CPU
-		{E06540AA-6CD9-42CA-9613-80E280BA6899}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {9306975B-A8CD-4E2D-AA70-572EDE36E6FE}
 	EndGlobalSection
 EndGlobal
