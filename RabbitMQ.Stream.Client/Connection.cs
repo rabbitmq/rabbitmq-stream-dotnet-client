@@ -159,13 +159,23 @@ namespace RabbitMQ.Stream.Client
             await _writeLock.WaitAsync(Token).ConfigureAwait(false);
             try
             {
+                const int dataLengthInfoBytes = 4; // for info about data size
                 var size = command.SizeNeeded;
-                var mem = new byte[4 + size]; // + 4 to write the size
-                WireFormatting.WriteUInt32(mem, (uint)size);
-                var written = command.Write(mem.AsSpan()[4..]);
-                await writer.WriteAsync(new ReadOnlyMemory<byte>(mem), Token).ConfigureAwait(false);
-                Debug.Assert(size == written);
-                await writer.FlushAsync(Token).ConfigureAwait(false);
+                var fullSize = dataLengthInfoBytes + size;
+
+                var mem = ArrayPool<byte>.Shared.Rent(fullSize);
+                try
+                {
+                    WireFormatting.WriteUInt32(mem, (uint)size);
+                    var written = command.Write(mem.AsSpan(dataLengthInfoBytes, size));
+                    Debug.Assert(size == written);
+                    await writer.WriteAsync(new ReadOnlyMemory<byte>(mem, 0, fullSize), Token).ConfigureAwait(false);
+                    await writer.FlushAsync(Token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(mem);
+                }
             }
             finally
             {
