@@ -62,6 +62,7 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
         var offsets = new ConcurrentQueue<IOffsetType>();
         var consumed = 0;
         var clientName = Guid.NewGuid().ToString();
+        var consumed = 0;
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
             ClientProvidedName = clientName,
@@ -84,6 +85,7 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
         // otherwise the recovery offset is not deterministic
         await SystemUtils.WaitUntilAsync(() => System.Threading.Volatile.Read(ref consumed) == 10);
         await SystemUtils.WaitUntilAsync(() => SystemUtils.ConnectionsCountByName(clientName).Result == 1);
+        await SystemUtils.WaitUntilAsync(() => System.Threading.Volatile.Read(ref consumed) == 10);
         await SystemUtils.HttpKillConnections(clientName);
         await SystemUtils.WaitUntilAsync(() => offsets.Count == 2);
         // 10 messages consumed => recovery starts from offset 10
