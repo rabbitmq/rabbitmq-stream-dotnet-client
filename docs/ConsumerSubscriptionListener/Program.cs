@@ -26,18 +26,21 @@ var consumer = await Consumer.Create(new ConsumerConfig(system, StreamName)
     Reference = "my-consumer",
     // Without the listener, OffsetTypeNext would not return the existing messages.
     OffsetSpec = new OffsetTypeFirst(),
-    SubscriptionListener = ctx =>
+    SubscriptionListener = async ctx =>
     {
         // ctx.Stream and ctx.Reference identify the subscription.
+       // ctx.OffsetSpec = new OffsetTypeOffset(10); // e.g. an offset loaded from a database
         // On recovery ctx.OffsetSpec is the last consumed offset + 1: change it only if you need to.
+        await system.TryQueryOffset(ctx.Reference, ctx.Stream).ConfigureAwait(false); // e.g. to check the last stored offset in a database
         Console.WriteLine($"Subscribing to {ctx.Stream} ({ctx.Reference}) with offset {ctx.OffsetSpec}");
-        ctx.OffsetSpec = new OffsetTypeOffset(10); // e.g. an offset loaded from a database
-        return Task.CompletedTask;
     },
-    MessageHandler = (stream, _, context, message) =>
+    MessageHandler = async (stream, consumer, context, message) =>
     {
-        Console.WriteLine($"[{DateTime.Now}] [{stream}] offset {context.Offset}: {System.Text.Encoding.UTF8.GetString(message.Data.Contents)}");
-        return Task.CompletedTask;
+        Console.WriteLine(
+            $"[{DateTime.Now}] [{stream}] offset {context.Offset}: {System.Text.Encoding.UTF8.GetString(message.Data.Contents)}");
+        await consumer.StoreOffset(context.Offset)
+            .ConfigureAwait(
+                false); // store offset for each message is not a good practice, here is only for demo purpose
     }
 }).ConfigureAwait(false);
 

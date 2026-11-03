@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
 using RabbitMQ.Stream.Client.Reliable;
@@ -59,6 +60,7 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         await SystemUtils.PublishMessages(system, stream, 10, testOutputHelper);
         var offsets = new ConcurrentQueue<IOffsetType>();
+        var consumed = 0;
         var clientName = Guid.NewGuid().ToString();
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
         {
@@ -69,11 +71,18 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
                 offsets.Enqueue(ctx.OffsetSpec);
                 return Task.CompletedTask;
             },
-            MessageHandler = (_, _, _, _) => Task.CompletedTask
+            MessageHandler = (_, _, _, _) =>
+            {
+                System.Threading.Interlocked.Increment(ref consumed);
+                return Task.CompletedTask;
+            }
         });
 
         await SystemUtils.WaitUntilAsync(() => offsets.Count == 1);
         Assert.IsType<OffsetTypeFirst>(offsets.First());
+        // all the messages must be dispatched before killing the connection,
+        // otherwise the recovery offset is not deterministic
+        await SystemUtils.WaitUntilAsync(() => System.Threading.Volatile.Read(ref consumed) == 10);
         await SystemUtils.WaitUntilAsync(() => SystemUtils.ConnectionsCountByName(clientName).Result == 1);
         await SystemUtils.HttpKillConnections(clientName);
         await SystemUtils.WaitUntilAsync(() => offsets.Count == 2);
@@ -126,6 +135,53 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
         await SystemUtils.WaitUntilAsync(() => streams.Count == 3);
         Assert.Equal(3, streams.Distinct().Count());
         Assert.All(streams, s => Assert.StartsWith(SystemUtils.InvoicesExchange, s));
+        await consumer.Close();
+        await system.Close();
+    }
+
+    [Fact]
+    public async Task StandardConsumerListenerCanQueryTheOffset()
+    {
+        // the listener runs while the consumer is created: querying the offset from it must not deadlock
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        ulong? queried = 42;
+        var called = 0;
+        var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+        {
+            Reference = "sub-listener-query",
+            SubscriptionListener = async ctx =>
+            {
+                Interlocked.Increment(ref called);
+                queried = await system.TryQueryOffset(ctx.Reference, ctx.Stream);
+            },
+            MessageHandler = (_, _, _, _) => Task.CompletedTask
+        }).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(1, called);
+        Assert.Null(queried);
+        await consumer.Close();
+        await SystemUtils.CleanUpStreamSystem(system, stream);
+    }
+
+    [Fact]
+    public async Task SuperStreamListenerCanQueryTheOffset()
+    {
+        await SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var called = 0;
+        var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        {
+            Reference = "sub-listener-query",
+            IsSuperStream = true,
+            SubscriptionListener = async ctx =>
+            {
+                Interlocked.Increment(ref called);
+                await system.TryQueryOffset(ctx.Reference, ctx.Stream);
+            },
+            MessageHandler = (_, _, _, _) => Task.CompletedTask
+        }).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(3, called);
         await consumer.Close();
         await system.Close();
     }
