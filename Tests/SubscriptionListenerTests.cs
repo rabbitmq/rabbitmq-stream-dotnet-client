@@ -4,10 +4,13 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.AMQP;
 using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
@@ -183,6 +186,104 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
         }).WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.Equal(3, called);
+        await consumer.Close();
+        await system.Close();
+    }
+
+    [Fact]
+    public async Task SuperStreamListenerSetsADifferentOffsetForEachPartitionOnRecovery()
+    {
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        var mySuperStream = "SuperStreamListenerSetsADifferentOffsetForEachPartitionOnRecovery_" +
+                            Guid.NewGuid().ToString("N");
+        var spec = new PartitionsSuperStreamSpec(mySuperStream, 3) { };
+
+        await system.CreateSuperStream(spec);
+        var producer = await Producer.Create(new ProducerConfig(system, mySuperStream)
+        {
+            SuperStreamConfig = new SuperStreamConfig()
+            {
+                Routing = message => message.Properties.MessageId.ToString(),
+                RoutingStrategyType = RoutingStrategyType.Key
+            }
+        });
+
+        // routing keys are 0,1,2: 20 messages for each partition
+        for (var i = 0; i < 60; i++)
+        {
+            await producer.Send(new Message(Encoding.Default.GetBytes("hello"))
+            {
+                Properties = new Properties() { MessageId = $"{i % 3}" }
+            });
+        }
+
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(mySuperStream + "-0") == 20);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(mySuperStream + "-1") == 20);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(mySuperStream + "-2") == 20);
+        await producer.Close();
+
+        // what an external offset store would return for each partition
+        var storedOffsets = new Dictionary<string, ulong>
+        {
+            [mySuperStream + "-0"] = 17,
+            [mySuperStream + "-1"] = 8,
+            [mySuperStream + "-2"] = 19
+        };
+        var recovering = 0;
+        var consumed = 0;
+        var listenerCalls = new ConcurrentQueue<(string Stream, bool Recovery)>();
+        var firstOffsetAfterRecovery = new ConcurrentDictionary<string, ulong>();
+        var clientName = Guid.NewGuid().ToString();
+        var consumer = await Consumer.Create(new ConsumerConfig(system, mySuperStream)
+        {
+            ClientProvidedName = clientName,
+            IsSuperStream = true,
+            OffsetSpec = new OffsetTypeFirst(),
+            SubscriptionListener = ctx =>
+            {
+                var isRecovery = Volatile.Read(ref recovering) == 1;
+                listenerCalls.Enqueue((ctx.Stream, isRecovery));
+                if (isRecovery)
+                {
+                    // storedOffsets simulates an external store that returns a different offset for each partition
+                    ctx.OffsetSpec = new OffsetTypeOffset(storedOffsets[ctx.Stream]);
+                }
+
+                return Task.CompletedTask;
+            },
+            MessageHandler = (stream, _, context, _) =>
+            {
+                if (Volatile.Read(ref recovering) == 1)
+                {
+                    firstOffsetAfterRecovery.TryAdd(stream, context.Offset);
+                }
+                else
+                {
+                    Interlocked.Increment(ref consumed);
+                }
+
+                return Task.CompletedTask;
+            }
+        });
+
+        // all the messages must be consumed before killing the connections,
+        // so the first messages received after the recovery come only from the new offsets
+        await SystemUtils.WaitUntilAsync(() => Volatile.Read(ref consumed) == 60);
+        Assert.Equal(3, listenerCalls.Count(c => !c.Recovery));
+        // the partition connections are named <clientName>_<index>
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.IsConnectionOpen(clientName).Result);
+        Volatile.Write(ref recovering, 1);
+        await SystemUtils.HttpKillConnections(clientName);
+
+        // the partitions are recovered one after the other, each one with a random delay
+        await SystemUtils.WaitUntilAsync(() => firstOffsetAfterRecovery.Count == 3, 120);
+        Assert.Equal(3, listenerCalls.Count(c => c.Recovery));
+        foreach (var (stream, offset) in storedOffsets)
+        {
+            Assert.Equal(offset, firstOffsetAfterRecovery[stream]);
+        }
+
+        await system.DeleteSuperStream(mySuperStream);
         await consumer.Close();
         await system.Close();
     }
