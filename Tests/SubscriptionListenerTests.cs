@@ -60,7 +60,6 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
         SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
         await SystemUtils.PublishMessages(system, stream, 10, testOutputHelper);
         var offsets = new ConcurrentQueue<IOffsetType>();
-        var consumed = 0;
         var clientName = Guid.NewGuid().ToString();
         var consumed = 0;
         var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
