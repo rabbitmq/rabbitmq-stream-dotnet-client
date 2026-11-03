@@ -456,3 +456,5 @@ static RabbitMQ.Stream.Client.Reliable.ReliableBase.FromConnectionClosedReasonTo
 static RabbitMQ.Stream.Client.Reliable.ReliableBase.RandomWait() -> System.Threading.Tasks.Task
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderOrRandomReplicasConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.ResumeOffsetProvider.get -> System.Func<string, System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IOffsetType>>
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.ResumeOffsetProvider.set -> void

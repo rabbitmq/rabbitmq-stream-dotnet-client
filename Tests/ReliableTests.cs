@@ -722,6 +722,86 @@ public class ReliableTests
         await system.DeleteStream(stream);
         await system.Close();
     }
+
+    [Fact]
+    public async Task ConsumerResumesFromResumeOffsetProviderAfterReconnect()
+    {
+        // The message handler fails on offset 2 and stores offsets 0 and 1.
+        // After a reconnection the consumer must resume from the offset returned by
+        // ResumeOffsetProvider (the stored offset + 1), so offset 2 is delivered again.
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        const int NumberOfMessages = 5;
+        const ulong FailingOffset = 2;
+        await SystemUtils.PublishMessages(system, stream, NumberOfMessages, Guid.NewGuid().ToString(),
+            _testOutputHelper);
+
+        var reference = Guid.NewGuid().ToString();
+        var clientProvidedName = Guid.NewGuid().ToString();
+        var firstPassCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstAfterReconnect = new TaskCompletionSource<ulong>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reconnected = 0;
+        var resumedStreams = new List<string>();
+
+        var config = new ConsumerConfig(system, stream)
+        {
+            Reference = reference,
+            ClientProvidedName = clientProvidedName,
+            OffsetSpec = new OffsetTypeFirst(),
+            ReconnectStrategy = new TestBackOffReconnectStrategy(),
+            MessageHandler = async (_, consumer, ctx, _) =>
+            {
+                if (Volatile.Read(ref reconnected) == 1)
+                {
+                    firstAfterReconnect.TrySetResult(ctx.Offset);
+                    return;
+                }
+
+                if (ctx.Offset == NumberOfMessages - 1)
+                {
+                    firstPassCompleted.TrySetResult(true);
+                }
+
+                if (ctx.Offset == FailingOffset)
+                {
+                    throw new InvalidOperationException("processing failed");
+                }
+
+                if (ctx.Offset < FailingOffset)
+                {
+                    await consumer.StoreOffset(ctx.Offset);
+                }
+            },
+            ResumeOffsetProvider = async resumedStream =>
+            {
+                lock (resumedStreams)
+                {
+                    resumedStreams.Add(resumedStream);
+                }
+
+                Volatile.Write(ref reconnected, 1);
+                var storedOffset = await system.QueryOffset(reference, resumedStream);
+                return new OffsetTypeOffset(storedOffset + 1);
+            }
+        };
+
+        var consumer = await Consumer.Create(config);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(firstPassCompleted);
+        await SystemUtils.WaitUntilAsync(async () =>
+            await system.QueryOffset(reference, stream) == FailingOffset - 1);
+
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections(clientProvidedName).Result == 1);
+
+        new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(firstAfterReconnect);
+        Assert.Equal(FailingOffset, await firstAfterReconnect.Task);
+        lock (resumedStreams)
+        {
+            Assert.Equal([stream], resumedStreams);
+        }
+
+        await consumer.Close();
+        await system.DeleteStream(stream);
+        await system.Close();
+    }
 }
 
 internal class ReliableExceptionTestCases : IEnumerable<object[]>

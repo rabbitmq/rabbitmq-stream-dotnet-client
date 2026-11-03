@@ -931,6 +931,10 @@ The following table sums up the main settings to create a `Consumer` with `Consu
 |Callback invoked when the consumer becomes active (single active consumer only). Lets the consumer decide where to start consuming from. See <<consumer-update-listener,Reacting to Consumer State Change>>.
 |`null`
 
+|`ResumeOffsetProvider`
+|Callback invoked before the consumer reconnects after a disconnection or a metadata update, once per stream (once per partition for a super stream). Returns the offset to resume from, for example the stored offset + 1 so that messages whose processing failed are delivered again. Returning `null` keeps the default: resume from the last position delivered to `MessageHandler`, even if the handler threw. Not called on the first connection, which uses `OffsetSpec`.
+|`null`
+
 |`InitialCredits`
 |Initial number of chunks the consumer will receive before requesting more. Higher values can increase throughput but use more memory.
 |`2`

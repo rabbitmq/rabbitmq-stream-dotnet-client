@@ -103,6 +103,23 @@ public record ConsumerConfig : ReliableConfig
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; }
 
     /// <summary>
+    /// Chooses the offset the consumer resumes from when it reconnects after a disconnection
+    /// or a stream topology change. It is called once per stream, or once per partition
+    /// for a super stream, with the name of the stream (partition) being reconnected.
+    /// <br/>
+    /// Return the offset to resume from, for example the last offset stored with
+    /// <see cref="RawConsumer.StoreOffset"/> plus one, so that messages whose processing failed
+    /// are delivered again. Return null to keep the default behavior.
+    /// <br/>
+    /// If null, or if the function returns null, the consumer resumes from the last position it
+    /// delivered to <see cref="MessageHandler"/>, whether or not the handler succeeded.
+    /// It is not called on the first connection, which uses <see cref="OffsetSpec"/>.
+    /// If the function throws, the reconnection attempt fails and the
+    /// <see cref="ReliableConfig.ReconnectStrategy"/> decides whether to retry.
+    /// </summary>
+    public Func<string, Task<IOffsetType>> ResumeOffsetProvider { get; set; }
+
+    /// <summary>
     /// Initial credits for the consumer. If not set, the default value is 2.
     /// This is the number of chunks the consumer will receive at the beginning.
     /// A higher value can increase throughput but may increase memory usage and server-side CPU usage.

@@ -165,6 +165,15 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
         {
             _consumers.TryRemove(streamInfo.Stream, out var consumer);
             consumer?.Dispose();
+            if (_config.ResumeOffsetProvider != null)
+            {
+                var resumeOffset = await _config.ResumeOffsetProvider(streamInfo.Stream).ConfigureAwait(false);
+                if (resumeOffset != null)
+                {
+                    _config.OffsetSpec[streamInfo.Stream] = resumeOffset;
+                }
+            }
+
             _streamInfos[streamInfo.Stream] = streamInfo;
             await MaybeAddConsumer(streamInfo.Stream).ConfigureAwait(false);
         }
@@ -229,6 +238,12 @@ public record RawSuperStreamConsumerConfig : IConsumerConfig
     /// the user can specify the offset for each stream
     /// </summary>
     public ConcurrentDictionary<string, IOffsetType> OffsetSpec { get; set; } = new();
+
+    /// <summary>
+    /// Set by the reliable consumer: chooses the offset a partition resumes from
+    /// when it is reconnected. See <see cref="Reliable.ConsumerConfig.ResumeOffsetProvider"/>.
+    /// </summary>
+    internal Func<string, Task<IOffsetType>> ResumeOffsetProvider { get; init; }
 
     /// <summary>
     /// MessageHandler is called when a message is received

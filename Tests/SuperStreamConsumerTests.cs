@@ -650,4 +650,85 @@ public class SuperStreamConsumerTests
 
         await system.Close();
     }
+
+    [Fact]
+    public async Task SuperConsumerResumesPartitionFromResumeOffsetProviderAfterReconnect()
+    {
+        // On partition invoices-0 the message handler fails on offset 2 and stores offsets 0 and 1.
+        // After the partition is reconnected it must resume from the offset returned by
+        // ResumeOffsetProvider (the stored offset + 1), so offset 2 is delivered again.
+        await SystemUtils.ResetSuperStreams();
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        // 20 messages: 9 on invoices-0, 7 on invoices-1, 4 on invoices-2
+        await SystemUtils.PublishMessagesSuperStream(system, SystemUtils.InvoicesExchange, 20, "",
+            _testOutputHelper);
+        const ulong FailingOffset = 2;
+        const ulong LastOffsetOnPartition0 = 8;
+
+        var reference = Guid.NewGuid().ToString();
+        var clientProvidedName = Guid.NewGuid().ToString();
+        var firstPassCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstAfterReconnect = new TaskCompletionSource<ulong>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reconnected = 0;
+        var resumedStreams = new ConcurrentQueue<string>();
+
+        var config = new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        {
+            Reference = reference,
+            ClientProvidedName = clientProvidedName,
+            OffsetSpec = new OffsetTypeFirst(),
+            IsSuperStream = true,
+            ReconnectStrategy = new TestBackOffReconnectStrategy(),
+            MessageHandler = async (stream, consumer, ctx, _) =>
+            {
+                if (stream != SystemUtils.InvoicesStream0)
+                {
+                    return;
+                }
+
+                if (Volatile.Read(ref reconnected) == 1)
+                {
+                    firstAfterReconnect.TrySetResult(ctx.Offset);
+                    return;
+                }
+
+                if (ctx.Offset == LastOffsetOnPartition0)
+                {
+                    firstPassCompleted.TrySetResult(true);
+                }
+
+                if (ctx.Offset == FailingOffset)
+                {
+                    throw new InvalidOperationException("processing failed");
+                }
+
+                if (ctx.Offset < FailingOffset)
+                {
+                    await consumer.StoreOffset(ctx.Offset);
+                }
+            },
+            ResumeOffsetProvider = async stream =>
+            {
+                resumedStreams.Enqueue(stream);
+                Volatile.Write(ref reconnected, 1);
+                var storedOffset = await system.QueryOffset(reference, stream);
+                return new OffsetTypeOffset(storedOffset + 1);
+            }
+        };
+
+        var consumer = await Consumer.Create(config);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(firstPassCompleted);
+        await SystemUtils.WaitUntilAsync(async () =>
+            await system.QueryOffset(reference, SystemUtils.InvoicesStream0) == FailingOffset - 1);
+
+        await SystemUtils.WaitUntilAsync(() =>
+            SystemUtils.HttpKillConnections($"{clientProvidedName}_0").Result == 1);
+
+        new Utils<ulong>(_testOutputHelper).WaitUntilTaskCompletes(firstAfterReconnect);
+        Assert.Equal(FailingOffset, await firstAfterReconnect.Task);
+        Assert.Equal([SystemUtils.InvoicesStream0], resumedStreams.ToArray());
+
+        await consumer.Close();
+        await system.Close();
+    }
 }

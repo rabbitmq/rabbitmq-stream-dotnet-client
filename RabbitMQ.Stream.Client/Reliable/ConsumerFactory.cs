@@ -37,9 +37,17 @@ public abstract class ConsumerFactory : ReliableBase
     private async Task<IConsumer> StandardConsumer(bool boot)
     {
         var offsetSpec = _consumerConfig.OffsetSpec;
+        // if it is not the boot time, the application can choose where to resume from
+        var resumeOffset = !boot && _consumerConfig.ResumeOffsetProvider != null
+            ? await _consumerConfig.ResumeOffsetProvider(_consumerConfig.Stream).ConfigureAwait(false)
+            : null;
+        if (resumeOffset != null)
+        {
+            offsetSpec = resumeOffset;
+        }
         // if is not the boot time and at least one message was consumed
         // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume from the next)
-        if (!boot && _consumedFirstTime)
+        else if (!boot && _consumedFirstTime)
         {
             offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_consumerConfig.Stream] + 1);
         }
@@ -154,6 +162,7 @@ public abstract class ConsumerFactory : ReliableBase
                     ConsumerFilter = _consumerConfig.Filter,
                     Crc32 = _consumerConfig.Crc32,
                     OffsetSpec = offsetSpecs,
+                    ResumeOffsetProvider = _consumerConfig.ResumeOffsetProvider,
                     Identifier = _consumerConfig.Identifier,
                     FlowControl = _consumerConfig.FlowControl,
                     ConnectionClosedHandler = async (closeReason, partitionStream) =>
