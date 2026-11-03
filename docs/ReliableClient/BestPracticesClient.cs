@@ -89,6 +89,8 @@ public class BestPracticesClient
                         throw new ArgumentOutOfRangeException();
                 }
             }
+            
+            ls.LogInformation("Connecting to {Host}:{Port} with user {User}, with the configuration {@Config}", ep.Address, ep.Port, config.Username, config);
 
             var streamConf = new StreamSystemConfig()
             {

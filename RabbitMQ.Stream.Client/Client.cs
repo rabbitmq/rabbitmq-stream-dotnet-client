@@ -122,6 +122,7 @@ namespace RabbitMQ.Stream.Client
     public class Client : IClient
     {
         private uint correlationId = 0; // allow for some pre-amble
+        private int _connectionIsOpened = 0;
 
         private Connection _connection;
 
@@ -281,6 +282,7 @@ namespace RabbitMQ.Stream.Client
             client.correlationId = 100;
             // start heart beat only when the client is connected
             client.StartHeartBeat();
+            Interlocked.Exchange(ref client._connectionIsOpened, 1);
             StreamMetrics.ConnectionOpened();
             return client;
         }
@@ -856,7 +858,7 @@ namespace RabbitMQ.Stream.Client
 
         private void InternalClose()
         {
-            if (!_connection.IsClosed)
+            if (Interlocked.Exchange(ref _connectionIsOpened, 0) == 1)
             {
                 StreamMetrics.ConnectionClosed();
             }
