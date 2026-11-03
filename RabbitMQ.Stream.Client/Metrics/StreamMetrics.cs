@@ -16,8 +16,6 @@ namespace RabbitMQ.Stream.Client.Metrics
     {
         private static readonly Meter s_meter = new Meter(StreamMetricsConstants.Name);
 
-        private static readonly object s_lock = new();
-
         private static UpDownCounter<long> Connections { get; } = s_meter.CreateUpDownCounter<long>(
             "rabbitmq.stream.connections",
             description: "Number of active connections");
@@ -54,91 +52,58 @@ namespace RabbitMQ.Stream.Client.Metrics
 
         internal static void ConnectionOpened()
         {
-            lock (s_lock)
-            {
-                Connections.Add(1);
-            }
+            Connections.Add(1);
         }
 
         internal static void ConnectionClosed()
         {
-            lock (s_lock)
-            {
-                Connections.Add(-1);
-            }
+            Connections.Add(-1);
         }
 
         internal static void Published(long count, string stream)
         {
-            lock (s_lock)
-            {
-                PublishedMessages.Add(count, new KeyValuePair<string, object>("stream", stream));
-            }
+            PublishedMessages.Add(count, new KeyValuePair<string, object>("stream", stream));
         }
 
         internal static void Confirmed(long count, string stream)
         {
-            lock (s_lock)
-            {
-                ConfirmedMessages.Add(count, new KeyValuePair<string, object>("stream", stream));
-            }
+            ConfirmedMessages.Add(count, new KeyValuePair<string, object>("stream", stream));
         }
 
         internal static void Errored(long count, string stream)
         {
-            lock (s_lock)
-            {
-                ErroredMessages.Add(count, new KeyValuePair<string, object>("stream", stream));
-            }
+            ErroredMessages.Add(count, new KeyValuePair<string, object>("stream", stream));
         }
 
         internal static void ChunkReceived(long entries)
         {
-            lock (s_lock)
-            {
-                Chunks.Add(1);
-                ChunkSize.Record(entries);
-            }
+            Chunks.Add(1);
+            ChunkSize.Record(entries);
         }
 
         internal static void Consumed(long count, string stream)
         {
-            lock (s_lock)
-            {
-                ConsumedMessages.Add(count, new KeyValuePair<string, object>("stream", stream));
-            }
+            ConsumedMessages.Add(count, new KeyValuePair<string, object>("stream", stream));
         }
 
         internal static void WrittenBytes(long bytes)
         {
-            lock (s_lock)
-            {
-                WrittenBytesCount.Add(bytes);
-            }
+            WrittenBytesCount.Add(bytes);
         }
 
         internal static void ReadBytes(long bytes)
         {
-            lock (s_lock)
-            {
-                ReadBytesCount.Add(bytes);
-            }
+            ReadBytesCount.Add(bytes);
         }
 
         internal static void OutstandingConfirmInc(long count, string stream)
         {
-            lock (s_lock)
-            {
-                OutstandingPublishConfirm.Add(count, new KeyValuePair<string, object>("stream", stream));
-            }
+            OutstandingPublishConfirm.Add(count, new KeyValuePair<string, object>("stream", stream));
         }
 
         internal static void OutstandingConfirmDec(long count, string stream)
         {
-            lock (s_lock)
-            {
-                OutstandingPublishConfirm.Add(-count, new KeyValuePair<string, object>("stream", stream));
-            }
+            OutstandingPublishConfirm.Add(-count, new KeyValuePair<string, object>("stream", stream));
         }
     }
 }
