@@ -103,6 +103,16 @@ public record ConsumerConfig : ReliableConfig
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; }
 
     /// <summary>
+    /// Called before each subscription: the first one and every recovery
+    /// (reconnection or metadata update). It works for standard and super stream consumers
+    /// (for super streams it is called once per partition).
+    /// The <see cref="SubscriptionContext.OffsetSpec"/> can be changed to override where the consumer starts from.
+    /// On recovery the default offset is the last consumed offset + 1.
+    /// If null, the default behavior is used. If it throws, the error is logged and the offset is unchanged.
+    /// </summary>
+    public Func<SubscriptionContext, Task> SubscriptionListener { get; set; }
+
+    /// <summary>
     /// Initial credits for the consumer. If not set, the default value is 2.
     /// This is the number of chunks the consumer will receive at the beginning.
     /// A higher value can increase throughput but may increase memory usage and server-side CPU usage.

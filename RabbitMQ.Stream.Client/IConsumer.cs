@@ -21,6 +21,32 @@ public interface IConsumer : IClosable
     public ConsumerInfo Info { get; }
 }
 
+/// <summary>
+/// Context passed to the subscription listener before each subscription.
+/// </summary>
+public class SubscriptionContext
+{
+    internal SubscriptionContext(string stream, string reference, IOffsetType offsetSpec)
+    {
+        Stream = stream;
+        Reference = reference;
+        OffsetSpec = offsetSpec;
+    }
+
+    /// <summary>The stream the consumer is about to subscribe to (the partition for super streams).</summary>
+    public string Stream { get; }
+
+    /// <summary>The consumer reference (name), can be null.</summary>
+    public string Reference { get; }
+
+    /// <summary>
+    /// The offset the consumer is about to use. Set it to override the offset.
+    /// On the first subscription it is the configured OffsetSpec,
+    /// on recovery it is the offset computed by the library (last consumed + 1).
+    /// </summary>
+    public IOffsetType OffsetSpec { get; set; }
+}
+
 public record IConsumerConfig : EntityCommonConfig, INamedEntity
 {
     private ushort _initialCredits = Consts.ConsumerInitialCredits;
@@ -51,6 +77,14 @@ public record IConsumerConfig : EntityCommonConfig, INamedEntity
     /// if null, the library will use the default behavior that is to start consuming from OffsetNext().
     /// </summary>
     public Func<string, string, bool, Task<IOffsetType>> ConsumerUpdateListener { get; set; } = null;
+
+    /// <summary>
+    /// Called before each subscription (first one and every recovery after a disconnection or metadata update)
+    /// with the chance to override the offset, e.g. to read it from an external store.
+    /// Like the Java client SubscriptionListener. If null, the default behavior is used.
+    /// If it throws, the error is logged and the offset is left unchanged.
+    /// </summary>
+    public Func<SubscriptionContext, Task> SubscriptionListener { get; set; } = null;
 
     public string Reference { get; set; }
 

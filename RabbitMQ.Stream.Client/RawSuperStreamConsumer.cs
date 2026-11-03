@@ -71,6 +71,7 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
             SuperStream = _config.SuperStream,
             IsSingleActiveConsumer = _config.IsSingleActiveConsumer,
             ConsumerUpdateListener = _config.ConsumerUpdateListener,
+            SubscriptionListener = _config.SubscriptionListener,
             ConsumerFilter = _config.ConsumerFilter,
             Pool = _config.Pool,
             Crc32 = _config.Crc32,

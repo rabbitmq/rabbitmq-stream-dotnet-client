@@ -456,3 +456,12 @@ static RabbitMQ.Stream.Client.Reliable.ReliableBase.FromConnectionClosedReasonTo
 static RabbitMQ.Stream.Client.Reliable.ReliableBase.RandomWait() -> System.Threading.Tasks.Task
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
 static RabbitMQ.Stream.Client.RoutingHelper<T>.LookupLeaderOrRandomReplicasConnection(RabbitMQ.Stream.Client.ClientParameters clientParameters, RabbitMQ.Stream.Client.StreamInfo metaDataInfo, RabbitMQ.Stream.Client.ConnectionsPool pool, Microsoft.Extensions.Logging.ILogger logger = null) -> System.Threading.Tasks.Task<RabbitMQ.Stream.Client.IClient>
+RabbitMQ.Stream.Client.SubscriptionContext
+RabbitMQ.Stream.Client.SubscriptionContext.OffsetSpec.get -> RabbitMQ.Stream.Client.IOffsetType
+RabbitMQ.Stream.Client.SubscriptionContext.OffsetSpec.set -> void
+RabbitMQ.Stream.Client.SubscriptionContext.Reference.get -> string
+RabbitMQ.Stream.Client.SubscriptionContext.Stream.get -> string
+RabbitMQ.Stream.Client.IConsumerConfig.SubscriptionListener.get -> System.Func<RabbitMQ.Stream.Client.SubscriptionContext, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.IConsumerConfig.SubscriptionListener.set -> void
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.SubscriptionListener.get -> System.Func<RabbitMQ.Stream.Client.SubscriptionContext, System.Threading.Tasks.Task>
+RabbitMQ.Stream.Client.Reliable.ConsumerConfig.SubscriptionListener.set -> void
