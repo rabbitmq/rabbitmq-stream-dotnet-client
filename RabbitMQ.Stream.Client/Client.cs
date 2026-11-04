@@ -341,7 +341,7 @@ namespace RabbitMQ.Stream.Client
             Action<(ulong, ResponseCode)[]> errorCallback, ConnectionsPool pool = null)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
-            var publisherId = ConnectionsPool.FindNextValidId(publishers.Keys.ToList(), IncrementEntityId());
+            var publisherId = ConnectionsPool.FindNextValidId(publishers.Keys.ToArray(), IncrementEntityId());
             DeclarePublisherResponse response;
 
             try
@@ -425,7 +425,7 @@ namespace RabbitMQ.Stream.Client
             Func<bool, Task<IOffsetType>> consumerUpdateHandler)
         {
             await _poolSemaphore.WaitAsync().ConfigureAwait(false);
-            var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToList(), IncrementEntityId());
+            var subscriptionId = ConnectionsPool.FindNextValidId(consumers.Keys.ToArray(), IncrementEntityId());
             SubscribeResponse response = default;
             ExceptionDispatchInfo subscribeError = null;
             try
