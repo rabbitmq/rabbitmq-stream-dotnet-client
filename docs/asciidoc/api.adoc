@@ -931,6 +931,10 @@ The following table sums up the main settings to create a `Consumer` with `Consu
 |Callback invoked when the consumer becomes active (single active consumer only). Lets the consumer decide where to start consuming from. See <<consumer-update-listener,Reacting to Consumer State Change>>.
 |`null`
 
+|`SubscriptionListener`
+|Callback invoked before each subscription (first subscription and every recovery). Lets the consumer override the offset to start from. Works for standard and super stream consumers. See <<consumer-subscription-listener,Subscription Listener>>.
+|`null`
+
 |`InitialCredits`
 |Initial number of chunks the consumer will receive before requesting more. Higher values can increase throughput but use more memory.
 |`2`
@@ -1285,6 +1289,53 @@ include::{test-examples}/ConsumerUsage.cs[tag=sac-consumer-update-listener]
 <1> Set the `Reference` name (mandatory to enable single active consumer)
 <2> Enable single active consumer
 <3> Handle `ConsumerUpdateListener` callback
+
+[[consumer-subscription-listener]]
+===== Subscription Listener
+
+`ConsumerConfig#SubscriptionListener` is called right before the consumer subscribes to a stream.
+It is called for the first subscription and for every recovery (reconnection after a disconnection or a metadata update).
+The listener can override the offset the consumer starts consuming from, for example to read it from an external store.
+Unlike the <<consumer-update-listener,`ConsumerUpdateListener`>>, it does not require single active consumer.
+
+The `SubscriptionContext` parameter exposes:
+
+[%header,cols=2*]
+|===
+|Property
+|Description
+
+|`Stream`
+|The stream the consumer is subscribing to (the partition name for a super stream).
+
+|`Reference`
+|The consumer reference (name), can be `null`.
+
+|`OffsetSpec`
+|The offset the consumer is about to use. Set it to override the offset.
+On the first subscription it is `ConsumerConfig#OffsetSpec`; on recovery it is the offset computed by the library (last consumed offset + 1).
+|===
+
+[source,c#,indent=0]
+--------
+var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+{
+    Reference = "my-consumer",
+    SubscriptionListener = async ctx =>
+    {
+        // e.g. load the offset from an external store
+        var offset = await myStore.LoadOffset(ctx.Stream, ctx.Reference);
+        ctx.OffsetSpec = new OffsetTypeOffset(offset);
+    },
+    MessageHandler = (stream, consumer, context, message) => Task.CompletedTask
+});
+--------
+
+For super stream consumers the listener is called once for each partition, and on recovery of a single partition only for that partition.
+If the listener throws an exception, the error is logged and the offset is left unchanged.
+If `SubscriptionListener` is `null`, the default behavior applies.
+
+A full example can be found https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ConsumerSubscriptionListener[here].
 
 [[entity-status]]
 ==== Producer/Consumer change status callback

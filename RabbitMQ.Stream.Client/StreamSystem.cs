@@ -241,6 +241,10 @@ namespace RabbitMQ.Stream.Client
         }
 
         private readonly SemaphoreSlim _semClientProvidedName = new(1);
+        // Serializes the consumer creation. It is separate from _semClientProvidedName (locator reconnection)
+        // because the SubscriptionListener runs during creation and can call QueryOffset/TryQueryOffset,
+        // which need the locator semaphore: sharing it would deadlock.
+        private readonly SemaphoreSlim _semCreateConsumer = new(1);
 
         /// <summary>
         /// MayBeReconnectLocator tries to reconnect the locator client if the connection is closed.
@@ -452,7 +456,7 @@ namespace RabbitMQ.Stream.Client
                 streamInfos[partitionsStream] = await StreamInfo(partitionsStream).ConfigureAwait(false);
             }
 
-            await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
+            await _semCreateConsumer.WaitAsync().ConfigureAwait(false);
             try
             {
                 var s = RawSuperStreamConsumer.Create(rawSuperStreamConsumerConfig,
@@ -466,7 +470,7 @@ namespace RabbitMQ.Stream.Client
             }
             finally
             {
-                _semClientProvidedName.Release();
+                _semCreateConsumer.Release();
             }
         }
 
@@ -768,14 +772,14 @@ namespace RabbitMQ.Stream.Client
 
             try
             {
-                await _semClientProvidedName.WaitAsync().ConfigureAwait(false);
+                await _semCreateConsumer.WaitAsync().ConfigureAwait(false);
                 rawConsumerConfig.Pool = PoolConsumers;
                 var s = _clientParameters with { ClientProvidedName = rawConsumerConfig.ClientProvidedName };
                 return await RawConsumer.Create(s, rawConsumerConfig, metaStreamInfo, logger).ConfigureAwait(false);
             }
             finally
             {
-                _semClientProvidedName.Release();
+                _semCreateConsumer.Release();
             }
         }
 

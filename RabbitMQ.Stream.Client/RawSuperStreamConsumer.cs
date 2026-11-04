@@ -71,6 +71,7 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
             SuperStream = _config.SuperStream,
             IsSingleActiveConsumer = _config.IsSingleActiveConsumer,
             ConsumerUpdateListener = _config.ConsumerUpdateListener,
+            SubscriptionListener = _config.SubscriptionListener,
             ConsumerFilter = _config.ConsumerFilter,
             Pool = _config.Pool,
             Crc32 = _config.Crc32,
@@ -108,7 +109,12 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
                 // in the message handler we need to add also the source stream
                 // since there could be multiple streams (one per partition)
                 // it is useful client side to know from which stream the message is coming from
-                _config.OffsetSpec[stream] = new OffsetTypeOffset(context.Offset);
+                // Without a SubscriptionListener the last consumed offset is kept (existing behavior).
+                // With a listener, the context exposes the next offset to consume (last consumed + 1),
+                // like the standard consumer, so a recovery doesn't replay the last message.
+                _config.OffsetSpec[stream] = new OffsetTypeOffset(_config.SubscriptionListener != null
+                    ? context.Offset + 1
+                    : context.Offset);
                 if (_config.MessageHandler != null)
                 {
                     await _config.MessageHandler(stream, consumer, context, message).ConfigureAwait(false);

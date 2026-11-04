@@ -682,6 +682,25 @@ namespace RabbitMQ.Stream.Client
                 }
             }
 
+            if (_config.SubscriptionListener != null)
+            {
+                var ctx = new SubscriptionContext(_config.Stream, _config.Reference, _config.OffsetSpec);
+                try
+                {
+                    await _config.SubscriptionListener(ctx).ConfigureAwait(false);
+                    if (ctx.OffsetSpec != null)
+                    {
+                        _config.OffsetSpec = ctx.OffsetSpec;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger?.LogError(e,
+                        "Error while calling the SubscriptionListener. The offset won't be changed. {EntityInfo}",
+                        DumpEntityConfiguration());
+                }
+            }
+
             var chunkConsumed = 0;
             // this the default value for the consumer.
             _config.StoredOffsetSpec = _config.OffsetSpec;
