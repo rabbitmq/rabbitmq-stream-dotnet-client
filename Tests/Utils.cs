@@ -88,10 +88,6 @@ namespace Tests
 
     public static class SystemUtils
     {
-        public const string InvoicesExchange = "invoices";
-        public const string InvoicesStream0 = "invoices-0";
-        public const string InvoicesStream1 = "invoices-1";
-        public const string InvoicesStream2 = "invoices-2";
 
         // Waits for 10 seconds total by default
         public static async Task WaitUntilAsync(Func<bool> func, ushort retries = 40)
@@ -425,24 +421,6 @@ namespace Tests
             var fileTask = File.ReadAllBytesAsync(filename);
             fileTask.Wait(TimeSpan.FromSeconds(1));
             return fileTask.Result;
-        }
-
-        public static async Task ResetSuperStreams()
-        {
-            var system = await StreamSystem.Create(new StreamSystemConfig());
-            try
-            {
-                await system.DeleteSuperStream(InvoicesExchange);
-            }
-            catch (Exception)
-            {
-                // ignore if the stream does not exist
-            }
-
-            await WaitAsync();
-            var spec = new PartitionsSuperStreamSpec(InvoicesExchange);
-            await system.CreateSuperStream(spec);
-            await system.Close();
         }
     }
 }
