@@ -28,6 +28,9 @@ public record ConsumerConfig : ReliableConfig
     /// <summary>
     /// Callback function where the consumer receives the messages.
     /// The callback runs in a different Task respect to the socket thread.
+    /// The code should be safe in the callback, any exception will be propagated to
+    /// the library. the library catches the error and goes ahead with normal messages flow.
+    /// Handle the error is the right way use the message handler 
     /// Parameters that will be received by this function:
     /// <list type="bullet">
     /// <item>

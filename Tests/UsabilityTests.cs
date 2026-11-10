@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,6 +24,8 @@ public class UsabilityTests
 
         var streamSystemConfig = new StreamSystemConfig();
         var system = await StreamSystem.Create(streamSystemConfig);
+        var superStreamName = $"AssignLogger_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         const string StreamName = "logger-test-stream";
         await system.CreateStream(new StreamSpec(StreamName));
 
@@ -38,14 +41,13 @@ public class UsabilityTests
         var rawProducerLogger = factory.CreateLogger<RawProducer>();
         var rawProducer = await system.CreateRawProducer(new RawProducerConfig(StreamName), rawProducerLogger);
 
-        await SystemUtils.ResetSuperStreams();
         var rawSuperProducerLogger = factory.CreateLogger<RawSuperStreamProducer>();
         var rawSuperConsumerLogger = factory.CreateLogger<RawSuperStreamConsumer>();
         var rawSuperProducer = await system.CreateRawSuperStreamProducer(
-            new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange) { Routing = message => "1" },
+            new RawSuperStreamProducerConfig(superStreamName) { Routing = message => "1" },
             rawSuperProducerLogger);
         var rawSuperConsumer =
-            await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(SystemUtils.InvoicesExchange),
+            await system.CreateSuperStreamConsumer(new RawSuperStreamConsumerConfig(superStreamName),
                 rawSuperConsumerLogger);
 
         await producer.Close();
@@ -54,5 +56,7 @@ public class UsabilityTests
         await rawProducer.Close();
         await rawSuperProducer.Close();
         await rawSuperConsumer.Close();
+        await system.DeleteSuperStream(superStreamName);
+        await system.Close();
     }
 }

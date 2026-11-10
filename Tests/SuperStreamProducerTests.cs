@@ -50,14 +50,16 @@ public class SuperStreamProducerTests
     [Fact]
     public async Task ValidateRoutingKeyProducer()
     {
-        await SystemUtils.ResetSuperStreams();
         // RoutingKeyExtractor must be set else the traffic won't be routed
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"ValidateRoutingKeyProducer_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         await Assert.ThrowsAsync<CreateProducerException>(() =>
-            system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = null
             }));
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
@@ -166,13 +168,14 @@ public class SuperStreamProducerTests
     [Fact]
     public async Task SendMessageToSuperStream()
     {
-        await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
         // We should not have any errors and according to the routing strategy
         // the message should be routed to the correct stream
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SendMessageToSuperStream_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference",
@@ -195,9 +198,9 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4);
         Assert.Equal((ulong)10, await streamProducer.GetLastPublishingId());
 
         Assert.True(streamProducer.MessagesSent == 20);
@@ -205,6 +208,7 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitUntilAsync(() => streamProducer.PublishCommandsSent > 0);
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
@@ -213,12 +217,13 @@ public class SuperStreamProducerTests
     [Fact]
     public async Task SendMessageToSuperStreamWithKeyStrategy()
     {
-        await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
 
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SendMessageToSuperStreamWithKeyStrategy_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference",
@@ -252,9 +257,9 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 6);
 
         Assert.True(streamProducer.MessagesSent == 20);
         await SystemUtils.WaitUntilAsync(() => streamProducer.ConfirmFrames > 0);
@@ -272,9 +277,9 @@ public class SuperStreamProducerTests
 
         // Total messages must be 20 * 2
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 2);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 2);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 7 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 6 * 2);
 
         Assert.True(streamProducer.MessagesSent == 20 * 2);
 
@@ -285,27 +290,29 @@ public class SuperStreamProducerTests
 
         // Total messages must be 20 * 3
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 3);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 6 * 3);
 
         await Assert.ThrowsAsync<RouteNotFoundException>(async () =>
             await streamProducer.Send(++id,
                 new List<Message>() { messageNotRouted }, CompressionType.Gzip));
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task SendMessageWithProducerToSuperStreamWithKeyStrategy()
     {
-        await SystemUtils.ResetSuperStreams();
         // Simple send message to super stream
 
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SendMessageWithProducerToSuperStreamWithKeyStrategy_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var producer =
-            await Producer.Create(new ProducerConfig(system, SystemUtils.InvoicesExchange)
+            await Producer.Create(new ProducerConfig(system, superStreamName)
             {
                 SuperStreamConfig = new SuperStreamConfig()
                 {
@@ -336,9 +343,9 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 6);
 
         var messageNotRouted = new Message(Encoding.Default.GetBytes("hello"))
         {
@@ -352,9 +359,9 @@ public class SuperStreamProducerTests
 
         // Total messages must be 20 * 2
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 2);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 2);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 7 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7 * 2);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 6 * 2);
 
         await Assert.ThrowsAsync<RouteNotFoundException>(async () => await producer.Send(
             new List<Message>() { messageNotRouted }));
@@ -363,14 +370,15 @@ public class SuperStreamProducerTests
 
         // Total messages must be 20 * 3
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 7 * 3);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 6 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 6 * 3);
 
         await Assert.ThrowsAsync<RouteNotFoundException>(async () =>
             await producer.Send(
                 new List<Message>() { messageNotRouted }, CompressionType.Gzip));
         await producer.Close();
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
@@ -423,12 +431,13 @@ public class SuperStreamProducerTests
     [Fact]
     public async Task SendBachToSuperStream()
     {
-        await SystemUtils.ResetSuperStreams();
         // Here we are sending a batch of messages to the super stream
         // The number of the messages per queue _must_ be the same as SendMessageToSuperStream test
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SendBachToSuperStream_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference"
@@ -449,24 +458,26 @@ public class SuperStreamProducerTests
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4);
         await SystemUtils.WaitAsync();
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task SendSubEntryToSuperStream()
     {
-        await SystemUtils.ResetSuperStreams();
         // Here we are sending a subentry messages to the super stream
         // The number of the messages per queue _must_ be the same as SendMessageToSuperStream test
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SendSubEntryToSuperStream_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "ref1"
@@ -487,26 +498,28 @@ public class SuperStreamProducerTests
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // We _must_ have the same number of messages per queue as in the SendMessageToSuperStream test
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4);
         Assert.Equal((ulong)1, await streamProducer.GetLastPublishingId());
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task SendMessageToSuperStreamRecreateConnectionsIfKilled()
     {
-        await SystemUtils.ResetSuperStreams();
         // This test validates that the super stream producer is able to recreate the connection
         // if the connection is killed
         // we use the connection closed handler to recreate the connection
         // the method ReconnectPartition is used to reconnect the partition
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SendMessageToSuperStreamRecreateConnectionsIfKilled_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var clientName = Guid.NewGuid().ToString();
 
-        var c = new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+        var c = new RawSuperStreamProducerConfig(superStreamName)
         {
             Routing = message1 => message1.Properties.MessageId.ToString(),
             ClientProvidedName = clientName,
@@ -546,25 +559,27 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitAsync();
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
-        Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4);
+        Assert.Equal(ResponseCode.Ok, await streamProducer.Close());
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task HandleConfirmationToSuperStream()
     {
-        await SystemUtils.ResetSuperStreams();
         // This test is for the confirmation mechanism
         // We send 20 messages and we should have confirmation messages == stream messages count
         // total count must be 20 divided by 3 streams (not in equals way..)
         var testPassed = new TaskCompletionSource<bool>();
         var confirmedList = new ConcurrentBag<(string, Confirmation)>();
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"HandleConfirmationToSuperStream_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 ConfirmHandler = conf =>
@@ -591,25 +606,27 @@ public class SuperStreamProducerTests
 
         await SystemUtils.WaitAsync();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        Assert.Equal(9, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream0));
-        Assert.Equal(7, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream1));
-        Assert.Equal(4, confirmedList.Count(x => x.Item1 == "invoices-2"));
+        Assert.Equal(9, confirmedList.Count(x => x.Item1 == $"{superStreamName}-0"));
+        Assert.Equal(7, confirmedList.Count(x => x.Item1 == $"{superStreamName}-1"));
+        Assert.Equal(4, confirmedList.Count(x => x.Item1 == $"{superStreamName}-2"));
 
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task HandleMetaUpdateRemoveSteamShouldContinueToWork()
     {
-        await SystemUtils.ResetSuperStreams();
         // In this test we are going to remove a stream from the super stream
         // and we are going to check that the producer is still able to send messages
         var confirmed = 0;
         var testPassed = new TaskCompletionSource<bool>();
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"HandleMetaUpdateRemoveSteamShouldContinueToWork_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 ConfirmHandler = conf =>
@@ -640,7 +657,7 @@ public class SuperStreamProducerTests
                 // We just decide to remove the stream
                 // The metadata update should be propagated to the producer
                 // and remove the producer from the producer list
-                SystemUtils.HttpDeleteQueue(SystemUtils.InvoicesStream0);
+                SystemUtils.HttpDeleteQueue($"{superStreamName}-0");
             }
 
             Thread.Sleep(200);
@@ -657,24 +674,26 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitAsync();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // even we removed a stream the producer should be able to send messages and maintain the hash routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4);
         Assert.True(await streamProducer.Close() == ResponseCode.Ok);
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task SendMessagesInDifferentWaysShouldAppendToTheStreams()
     {
-        await SystemUtils.ResetSuperStreams();
         // In this test we are going to send 20 messages with the same message id
         // without reference so the messages in the stream must be appended
         // so the total count must be 20 * 3 (standard send,batch send, subentry send)
         // se also: SuperStreamDeduplicationDifferentWaysShouldGiveSameResults 
         // same scenario but with deduplication
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SendMessagesInDifferentWaysShouldAppendToTheStreams_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
             });
@@ -702,25 +721,27 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitAsync();
         // Total messages must be 20 * 3
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9 * 3);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 9 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4 * 3);
         await streamProducer.Close();
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task SuperStreamDeduplicationDifferentWaysShouldGiveSameResults()
     {
-        await SystemUtils.ResetSuperStreams();
         // In this test we are going to send 20 messages with the same message id
         // and the same REFERENCE, in this way we enable the deduplication
         // so the result messages in the streams but always the same for the first
         // insert. 
 
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SuperStreamDeduplicationDifferentWaysShouldGiveSameResults_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streamProducer =
-            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+            await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
             {
                 Routing = message1 => message1.Properties.MessageId.ToString(),
                 Reference = "reference"
@@ -752,10 +773,11 @@ public class SuperStreamProducerTests
         // Total messages must be 20
         // according to the routing strategy hello{i} that must be the correct routing
         // Deduplication in action
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4);
         await streamProducer.Close();
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
@@ -763,9 +785,10 @@ public class SuperStreamProducerTests
     [Fact]
     public async Task ReliableProducerSuperStreamSendMessagesDifferentWays()
     {
-        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        var streamProducer = await Producer.Create(new ProducerConfig(system, SystemUtils.InvoicesExchange)
+        var superStreamName = $"ReliableProducerSuperStreamSendMessagesDifferentWays_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
+        var streamProducer = await Producer.Create(new ProducerConfig(system, superStreamName)
         {
             SuperStreamConfig = new SuperStreamConfig()
             {
@@ -792,24 +815,26 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitAsync();
         // Total messages must be 20 * 3 (standard send,batch send, subentry send)
         // according to the routing strategy hello{i} that must be the correct routing
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9 * 3);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7 * 3);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") == 9 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7 * 3);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4 * 3);
         await streamProducer.Close();
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task ReliableProducerHandleConfirmation()
     {
-        await SystemUtils.ResetSuperStreams();
         // This test is for the confirmation mechanism
         // We send 20 messages and we should have confirmation messages == stream messages count
         // total count must be 20 divided by 3 streams (not in equals way..)
         var testPassed = new TaskCompletionSource<bool>();
         var confirmedList = new ConcurrentBag<(string, Message)>();
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        var config = new ProducerConfig(system, SystemUtils.InvoicesExchange)
+        var superStreamName = $"ReliableProducerHandleConfirmation_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
+        var config = new ProducerConfig(system, superStreamName)
         {
             Identifier = "my_super_producer_908",
             SuperStreamConfig =
@@ -845,9 +870,9 @@ public class SuperStreamProducerTests
 
         await SystemUtils.WaitAsync();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
-        Assert.Equal(9, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream0));
-        Assert.Equal(7, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream1));
-        Assert.Equal(4, confirmedList.Count(x => x.Item1 == SystemUtils.InvoicesStream2));
+        Assert.Equal(9, confirmedList.Count(x => x.Item1 == $"{superStreamName}-0"));
+        Assert.Equal(7, confirmedList.Count(x => x.Item1 == $"{superStreamName}-1"));
+        Assert.Equal(4, confirmedList.Count(x => x.Item1 == $"{superStreamName}-2"));
         await streamProducer.Close();
         Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
@@ -857,26 +882,28 @@ public class SuperStreamProducerTests
         Assert.Equal("my_super_producer_908", statusInfoReceived[0].Identifier);
         Assert.Equal("my_super_producer_908", statusInfoReceived[1].Identifier);
 
-        Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[0].Stream);
-        Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
+        Assert.Equal(superStreamName, statusInfoReceived[0].Stream);
+        Assert.Equal(superStreamName, statusInfoReceived[1].Stream);
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task ReliableProducerSendMessageConnectionsIfKilled()
     {
-        await SystemUtils.ResetSuperStreams();
         // This test validates that the Reliable super stream producer is able to recreate the connection
         // if the connection is killed
         // It is NOT meant to test the availability of the super stream producer
         // just the reconnect mechanism
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"ReliableProducerSendMessageConnectionsIfKilled_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var clientName = Guid.NewGuid().ToString();
         var testPassed = new TaskCompletionSource<bool>() { };
         var statusCompleted = new TaskCompletionSource<bool>() { };
         var received = 0;
         var error = 0;
-        var config = new ProducerConfig(system, SystemUtils.InvoicesExchange)
+        var config = new ProducerConfig(system, superStreamName)
         {
             SuperStreamConfig =
                 new SuperStreamConfig() { Routing = message1 => message1.Properties.MessageId.ToString() },
@@ -930,29 +957,29 @@ public class SuperStreamProducerTests
         await SystemUtils.WaitAsync();
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         // killed the connection for the InvoicesStream0. So received + error must be 9
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) + error == 9);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-0") + error == 9);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-1") == 7);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount($"{superStreamName}-2") == 4);
 
         new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(statusCompleted);
 
         Assert.Equal(ReliableEntityStatus.Initialization, statusInfoReceived[0].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[0].To);
         //  statusInfoReceived[0].Partitions
-        Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[0].Partitions);
-        Assert.Contains(SystemUtils.InvoicesStream1, statusInfoReceived[0].Partitions);
-        Assert.Contains(SystemUtils.InvoicesStream2, statusInfoReceived[0].Partitions);
+        Assert.Contains($"{superStreamName}-0", statusInfoReceived[0].Partitions);
+        Assert.Contains($"{superStreamName}-1", statusInfoReceived[0].Partitions);
+        Assert.Contains($"{superStreamName}-2", statusInfoReceived[0].Partitions);
 
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[1].From);
         Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[1].To);
         Assert.Equal(ChangeStatusReason.UnexpectedlyDisconnected, statusInfoReceived[1].Reason);
-        Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions);
+        Assert.Contains($"{superStreamName}-0", statusInfoReceived[1].Partitions);
 
-        Assert.Equal(SystemUtils.InvoicesExchange, statusInfoReceived[1].Stream);
-        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
+        Assert.Equal(superStreamName, statusInfoReceived[1].Stream);
+        Assert.Equal($"{superStreamName}-0", statusInfoReceived[1].Partitions[0]);
         ;
-        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
-        Assert.Equal(SystemUtils.InvoicesStream0, statusInfoReceived[1].Partitions[0]);
+        Assert.Equal($"{superStreamName}-0", statusInfoReceived[1].Partitions[0]);
+        Assert.Equal($"{superStreamName}-0", statusInfoReceived[1].Partitions[0]);
 
         Assert.Equal(ReliableEntityStatus.Reconnection, statusInfoReceived[2].From);
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[2].To);
@@ -963,31 +990,35 @@ public class SuperStreamProducerTests
         Assert.Equal(ReliableEntityStatus.Open, statusInfoReceived[3].From);
         Assert.Equal(ReliableEntityStatus.Closed, statusInfoReceived[3].To);
         Assert.Equal(ChangeStatusReason.ClosedByUser, statusInfoReceived[3].Reason);
-        Assert.Contains(SystemUtils.InvoicesStream0, statusInfoReceived[3].Partitions);
-        Assert.Contains(SystemUtils.InvoicesStream1, statusInfoReceived[3].Partitions);
-        Assert.Contains(SystemUtils.InvoicesStream2, statusInfoReceived[3].Partitions);
+        Assert.Contains($"{superStreamName}-0", statusInfoReceived[3].Partitions);
+        Assert.Contains($"{superStreamName}-1", statusInfoReceived[3].Partitions);
+        Assert.Contains($"{superStreamName}-2", statusInfoReceived[3].Partitions);
 
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
     [Fact]
     public async Task ReliableProducerSuperStreamInfoShouldBeTheSame()
     {
-        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
-        var producerConfig = new ProducerConfig(system, SystemUtils.InvoicesExchange)
+        var superStreamName = $"ReliableProducerSuperStreamInfoShouldBeTheSame_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
+        var producerConfig = new ProducerConfig(system, superStreamName)
         {
             SuperStreamConfig =
                 new SuperStreamConfig() { Routing = message1 => message1.Properties.MessageId.ToString() },
         };
         var producer = await Producer.Create(producerConfig);
-        Assert.Equal(SystemUtils.InvoicesExchange, producer.Info.Stream);
-        Assert.Contains(SystemUtils.InvoicesStream0, producer.Info.Partitions);
-        Assert.Contains(SystemUtils.InvoicesStream1, producer.Info.Partitions);
-        Assert.Contains(SystemUtils.InvoicesStream2, producer.Info.Partitions);
+        Assert.Equal(superStreamName, producer.Info.Stream);
+        Assert.Contains($"{superStreamName}-0", producer.Info.Partitions);
+        Assert.Contains($"{superStreamName}-1", producer.Info.Partitions);
+        Assert.Contains($"{superStreamName}-2", producer.Info.Partitions);
         Assert.Equal(
-            $"ProducerInfo(Stream={SystemUtils.InvoicesExchange}, Reference=, Identifier=, Partitions={SystemUtils.InvoicesStream0},{SystemUtils.InvoicesStream1},{SystemUtils.InvoicesStream2})",
+            $"ProducerInfo(Stream={superStreamName}, Reference=, Identifier=, Partitions={superStreamName}-0,{superStreamName}-1,{superStreamName}-2)",
             producer.Info.ToString());
         await producer.Close();
+        await system.DeleteSuperStream(superStreamName);
+        await system.Close();
     }
 }

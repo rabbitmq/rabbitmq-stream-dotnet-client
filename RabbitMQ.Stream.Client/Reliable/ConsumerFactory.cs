@@ -38,10 +38,12 @@ public abstract class ConsumerFactory : ReliableBase
     {
         var offsetSpec = _consumerConfig.OffsetSpec;
         // if is not the boot time and at least one message was consumed
-        // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume from the next)
+        // it can restart consuming from the last consumer offset
         if (!boot && _consumedFirstTime)
         {
-            offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_consumerConfig.Stream] + 1);
+            // most likely in this message will be reprocessed
+            // 
+            offsetSpec = new OffsetTypeOffset(_lastOffsetConsumed[_consumerConfig.Stream]);
         }
 
         // before creating a new consumer, the old one is disposed
@@ -123,12 +125,12 @@ public abstract class ConsumerFactory : ReliableBase
     {
         ConcurrentDictionary<string, IOffsetType> offsetSpecs = new();
         // if is not the boot time and at least one message was consumed
-        // it can restart consuming from the last consumer offset + 1 (+1 since we need to consume from the next)
+        // it can restart consuming from the last consumer offset
         if (!boot && _consumedFirstTime)
         {
             foreach (var (streamOff, offset) in _lastOffsetConsumed)
             {
-                offsetSpecs[streamOff] = new OffsetTypeOffset(offset + 1);
+                offsetSpecs[streamOff] = new OffsetTypeOffset(offset);
             }
         }
         else

@@ -136,13 +136,14 @@ public class DeduplicationProducerTests
         // We send the same messages again with the same publishing id
         // to see the deduplication in action
         // the second loop will be skipped due to the deduplication
-        await SystemUtils.ResetSuperStreams();
+        var superStreamName = $"DeduplicationInActionSuperStream_super_stream_{Guid.NewGuid()}";
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var testPassed = new TaskCompletionSource<int>();
         const int TotalMessages = 20;
         var confirmed = 0;
         var deduplicatingProducer = await DeduplicatingProducer.Create(
-            new DeduplicatingProducerConfig(system, SystemUtils.InvoicesExchange, "my_producer_reference")
+            new DeduplicatingProducerConfig(system, superStreamName, "my_producer_reference")
             {
                 SuperStreamConfig = new SuperStreamConfig()
                 {
@@ -171,13 +172,15 @@ public class DeduplicationProducerTests
             }
 
             // so even if there are two sends the messages count won't change
-            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream0) == 9);
-            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream1) == 7);
-            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(SystemUtils.InvoicesStream2) == 4);
+            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(superStreamName + "-0") == 9);
+            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(superStreamName + "-1") == 7);
+            await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpGetQMsgCount(superStreamName + "-2") == 4);
         }
 
         new Utils<int>(_testOutputHelper).WaitUntilTaskCompletes(testPassed);
         Assert.Equal(TotalMessages, await testPassed.Task);
         await deduplicatingProducer.Close();
+        await system.DeleteSuperStream(superStreamName);
+        await system.Close();
     }
 }

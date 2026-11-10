@@ -390,14 +390,16 @@ namespace Tests
         [Fact]
         public async Task NumberOfPartitionsShouldBeAsDefinition()
         {
-            await SystemUtils.ResetSuperStreams();
             var system = await StreamSystem.Create(new StreamSystemConfig());
-            var partitions = await system.QueryPartition(SystemUtils.InvoicesExchange);
+            var superStreamName = $"NumberOfPartitionsShouldBeAsDefinition_super_stream_{Guid.NewGuid()}";
+            await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
+            var partitions = await system.QueryPartition(superStreamName);
             Assert.True(partitions.Length == 3);
-            Assert.Contains(SystemUtils.InvoicesStream0, partitions);
-            Assert.Contains(SystemUtils.InvoicesStream1, partitions);
-            Assert.Contains(SystemUtils.InvoicesStream2, partitions);
-            Assert.DoesNotContain(SystemUtils.InvoicesExchange, partitions);
+            Assert.Contains($"{superStreamName}-0", partitions);
+            Assert.Contains($"{superStreamName}-1", partitions);
+            Assert.Contains($"{superStreamName}-2", partitions);
+            Assert.DoesNotContain(superStreamName, partitions);
+            await system.DeleteSuperStream(superStreamName);
             await system.Close();
         }
 
