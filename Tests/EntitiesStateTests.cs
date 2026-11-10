@@ -2,6 +2,7 @@
 // 2.0, and the Mozilla Public License, version 2.0.
 // Copyright (c) 2017-2023 Broadcom. All Rights Reserved. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -48,13 +49,14 @@ namespace Tests
         [Fact]
         public async Task RawSuperStreamProducersShouldRaiseErrorWhenClosed()
         {
-            await SystemUtils.ResetSuperStreams();
             // Simple send message to super stream
             // We should not have any errors and according to the routing strategy
             // the message should be routed to the correct stream
             var system = await StreamSystem.Create(new StreamSystemConfig());
+            var superStreamName = $"RawSuperStreamProducersShouldRaiseErrorWhenClosed_super_stream_{Guid.NewGuid()}";
+            await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
             var rawSuperStreamProducer =
-                await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(SystemUtils.InvoicesExchange)
+                await system.CreateRawSuperStreamProducer(new RawSuperStreamProducerConfig(superStreamName)
                 {
                     Routing = message1 => message1.Properties.MessageId.ToString(),
                 });
@@ -77,7 +79,7 @@ namespace Tests
             await Assert.ThrowsAsync<AlreadyClosedException>(async () =>
                 await rawSuperStreamProducer.Send(1, new List<Message>(), CompressionType.Gzip));
 
-            var producer = await Producer.Create(new ProducerConfig(system, SystemUtils.InvoicesExchange)
+            var producer = await Producer.Create(new ProducerConfig(system, superStreamName)
             {
                 SuperStreamConfig = new SuperStreamConfig()
                 {
@@ -103,6 +105,7 @@ namespace Tests
             await Assert.ThrowsAsync<AlreadyClosedException>(async () =>
                 await producer.Send(new List<Message>(), CompressionType.Gzip));
 
+            await system.DeleteSuperStream(superStreamName);
             await system.Close();
         }
     }

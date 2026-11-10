@@ -52,6 +52,9 @@ var rClient = BestPracticesClient.Start(new BestPracticesClient.Config()
     EnableResending = GetEnvBool("ENABLE_RESENDING", false),
     
     DeleteStreamsOnStart = GetEnvBool("DELETE_STREAMS_ON_START", true),
+
+    // The number of last message ids kept in memory by each consumer to detect duplicates.
+    DuplicateWindowSize = GetEnvInt("DUPLICATE_WINDOW_SIZE", 100_000),
 });
 
 await rClient.ConfigureAwait(false);

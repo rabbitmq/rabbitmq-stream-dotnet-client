@@ -90,8 +90,8 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
         await SystemUtils.WaitUntilAsync(() => System.Threading.Volatile.Read(ref consumed) == 10);
         await SystemUtils.HttpKillConnections(clientName);
         await SystemUtils.WaitUntilAsync(() => offsets.Count == 2);
-        // 10 messages consumed => recovery starts from offset 10
-        Assert.Equal(10UL, Assert.IsType<OffsetTypeOffset>(offsets.Last()).OffsetValue);
+        // 10 messages consumed => recovery starts from offset 9 (starting form 0)
+        Assert.Equal(9UL, Assert.IsType<OffsetTypeOffset>(offsets.Last()).OffsetValue);
         await consumer.Close();
         await SystemUtils.CleanUpStreamSystem(system, stream);
     }
@@ -120,10 +120,11 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task SuperStreamListenerIsCalledForEachPartition()
     {
-        await SystemUtils.ResetSuperStreams();
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        var superStreamName = $"SuperStreamListenerIsCalledForEachPartition_super_stream_{Guid.NewGuid()}";
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var streams = new ConcurrentBag<string>();
-        var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        var consumer = await Consumer.Create(new ConsumerConfig(system, superStreamName)
         {
             IsSuperStream = true,
             OffsetSpec = new OffsetTypeNext(),
@@ -138,8 +139,9 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
 
         await SystemUtils.WaitUntilAsync(() => streams.Count == 3);
         Assert.Equal(3, streams.Distinct().Count());
-        Assert.All(streams, s => Assert.StartsWith(SystemUtils.InvoicesExchange, s));
+        Assert.All(streams, s => Assert.StartsWith(superStreamName, s));
         await consumer.Close();
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
@@ -170,10 +172,11 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
     [Fact]
     public async Task SuperStreamListenerCanQueryTheOffset()
     {
-        await SystemUtils.ResetSuperStreams();
+        var superStreamName = $"SuperStreamListenerCanQueryTheOffset_super_stream_{Guid.NewGuid()}";
         var system = await StreamSystem.Create(new StreamSystemConfig());
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
         var called = 0;
-        var consumer = await Consumer.Create(new ConsumerConfig(system, SystemUtils.InvoicesExchange)
+        var consumer = await Consumer.Create(new ConsumerConfig(system, superStreamName)
         {
             Reference = "sub-listener-query",
             IsSuperStream = true,
@@ -187,6 +190,7 @@ public class SubscriptionListenerTests(ITestOutputHelper testOutputHelper)
 
         Assert.Equal(3, called);
         await consumer.Close();
+        await system.DeleteSuperStream(superStreamName);
         await system.Close();
     }
 
