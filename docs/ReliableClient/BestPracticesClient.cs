@@ -43,6 +43,49 @@ public class BestPracticesClient
         public bool EnableResending { get; set; } = false;
 
         public bool DeleteStreamsOnStart { get; set; } = true;
+
+        // The number of the last message ids kept in memory (per consumer) to detect duplicates.
+        public int DuplicateWindowSize { get; set; } = 500_000;
+    }
+
+    private const string MessageGuidKey = "guid";
+
+    // Keeps the last N ids in memory. When the window is full the oldest id is evicted.
+    // After a restart/reconnection some messages can be delivered again: that is normal
+    // and with at-least-once delivery the application must be able to deal with it.
+    private sealed class DuplicateDetector
+    {
+        private readonly int _size;
+        private readonly HashSet<string> _seen;
+        private readonly Queue<string> _order;
+        private readonly object _lock = new();
+
+        public DuplicateDetector(int size)
+        {
+            _size = Math.Max(1, size);
+            _seen = new HashSet<string>(_size);
+            _order = new Queue<string>(_size);
+        }
+
+        // returns true if the id was already seen in the window
+        public bool IsDuplicated(string id)
+        {
+            lock (_lock)
+            {
+                if (!_seen.Add(id))
+                {
+                    return true;
+                }
+
+                _order.Enqueue(id);
+                if (_order.Count > _size)
+                {
+                    _seen.Remove(_order.Dequeue());
+                }
+
+                return false;
+            }
+        }
     }
 
     public static async Task Start(Config config)
@@ -149,6 +192,7 @@ public class BestPracticesClient
             var totalError = 0;
             var totalConsumed = 0;
             var totalSent = 0;
+            var totalDuplicated = 0;
             var isRunning = true;
 
             _ = Task.Run(() =>
@@ -163,7 +207,8 @@ public class BestPracticesClient
                         $"Error: {totalError:#,##0.00}, " +
                         $"Total: {(totalConfirmed + totalError):#,##0.00}, " +
                         $"Consumed all: {totalConsumed:#,##0.00}, " +
-                        $"Consumed / Consumers : {totalConsumed / config.Consumers:#,##0.00}");
+                        $"Consumed / Consumers : {totalConsumed / config.Consumers:#,##0.00}, " +
+                        $"Duplicated: {totalDuplicated:#,##0.00}");
                     Thread.Sleep(5000);
                 }
             });
@@ -205,6 +250,8 @@ public class BestPracticesClient
 
                 for (var z = 0; z < config.Consumers; z++)
                 {
+                    // Each consumer reads all the messages, so each one needs its own window.
+                    var detector = new DuplicateDetector(config.DuplicateWindowSize);
                     var conf = new ConsumerConfig(system, stream)
                     {
                         OffsetSpec = new OffsetTypeLast(),
@@ -214,8 +261,16 @@ public class BestPracticesClient
                         // can help to identify the consumer on the logs and RabbitMQ Management
                         Identifier = $"my_consumer_{z}",
                         InitialCredits = 2,
-                        MessageHandler = (source, consumer, ctx, _) =>
+                        MessageHandler = (source, consumer, ctx, message) =>
                         {
+                            if (message.ApplicationProperties != null &&
+                                message.ApplicationProperties.TryGetValue(MessageGuidKey, out var guid) &&
+                                guid is string id &&
+                                detector.IsDuplicated(id))
+                            {
+                                Interlocked.Increment(ref totalDuplicated);
+                            }
+
                             // if (totalConsumed % 10_000 == 0)
                             // {
                             //     // don't store the offset every time, it could be a performance issue
@@ -352,7 +407,13 @@ public class BestPracticesClient
 
                             var message = new Message(Encoding.Default.GetBytes("hello"))
                             {
-                                Properties = new Properties() { MessageId = $"hello{i}" }
+                                Properties = new Properties() { MessageId = $"hello{i}" },
+                                // unique id used by the consumers to detect the duplicates.
+                                // Resent messages keep the same guid.
+                                ApplicationProperties = new ApplicationProperties()
+                                {
+                                    [MessageGuidKey] = Guid.NewGuid().ToString()
+                                }
                             };
                             await MaybeSend(producer, message, publishEvent).ConfigureAwait(false);
                             // You don't need this it is only for the example

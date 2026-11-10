@@ -229,6 +229,189 @@ public class SuperStreamConsumerTests
         await system.Close();
     }
 
+    /// <summary>
+    /// The MessageHandler of the RawSuperStreamConsumer stores the last consumed offset per stream in the OffsetSpec.
+    /// When ReconnectPartition is called the partition must restart from that offset
+    /// and not from the initial one (OffsetTypeFirst in this test).
+    /// </summary>
+    [Fact]
+    public async Task ReconnectPartitionShouldRestartFromTheLastConsumedOffset()
+    {
+        var superStreamName =
+            $"ReconnectPartitionShouldRestartFromTheLastConsumedOffset_super_stream_{Guid.NewGuid()}";
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
+        const int NumberOfMessages = 20;
+        var publishTask = SystemUtils.PublishMessagesSuperStream(system, superStreamName, NumberOfMessages,
+            "", _testOutputHelper);
+        if (await Task.WhenAny(publishTask, Task.Delay(10000)) != publishTask)
+        {
+            Assert.Fail("timed out awaiting to publish messages to super stream");
+        }
+
+        await publishTask;
+
+        var partition0 = superStreamName + "-0";
+        var clientProvidedName = Guid.NewGuid().ToString();
+        var consumed = new ConcurrentQueue<(string Stream, ulong Offset)>();
+        var allConsumed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reconnected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var configuration = new RawSuperStreamConsumerConfig(superStreamName)
+        {
+            ClientProvidedName = clientProvidedName,
+            OffsetSpec =
+                await SystemUtils.OffsetsForSuperStreamConsumer(system, superStreamName, new OffsetTypeFirst()),
+            MessageHandler = (stream, _, context, _) =>
+            {
+                consumed.Enqueue((stream, context.Offset));
+                if (consumed.Count == NumberOfMessages)
+                {
+                    allConsumed.TrySetResult(true);
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+
+        var consumer = await system.CreateSuperStreamConsumer(configuration);
+        configuration.ConnectionClosedHandler = async (reason, stream) =>
+        {
+            if (reason == ConnectionClosedReason.Unexpected)
+            {
+                await SystemUtils.WaitAsync();
+                await consumer.ReconnectPartition(await system.StreamInfo(stream).ConfigureAwait(false));
+                reconnected.TrySetResult(true);
+            }
+        };
+
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(allConsumed);
+        // Partition 0 receives 9 messages: offsets 0..8
+        var beforeReconnect = consumed.Where(c => c.Stream == partition0).Select(c => c.Offset).ToList();
+        Assert.Equal(9, beforeReconnect.Count);
+        var lastOffset = beforeReconnect.Max();
+
+        await SystemUtils.WaitUntilAsync(() =>
+            SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections($"{clientProvidedName}_0").Result == 1);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(reconnected);
+        await SystemUtils.WaitUntilAsync(() =>
+            SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 1);
+
+        // After the reconnection the partition restarts from the last stored offset (inclusive),
+        // so only the last message is delivered again, not the whole partition from the first offset.
+        await SystemUtils.WaitUntilAsync(() => consumed.Count(c => c.Stream == partition0) >= 10);
+        await SystemUtils.WaitAsync();
+        var afterReconnect = consumed.Where(c => c.Stream == partition0).Select(c => c.Offset).Skip(9).ToList();
+        Assert.Equal(new[] { lastOffset }, afterReconnect);
+
+        Assert.Equal(ResponseCode.Ok, await consumer.Close());
+        await system.DeleteSuperStream(superStreamName);
+        await system.Close();
+    }
+
+    /// <summary>
+    /// The offsets are restored from an external store (simulated with fixed values)
+    /// using the SubscriptionListener. The listener is invoked on the first subscription
+    /// and on every reconnection, so the partition always restarts from the stored offset.
+    /// With 20 messages the partitions contain 9, 7 and 4 messages.
+    /// </summary>
+    [Fact]
+    public async Task SingleConsumerReconnectRestoringOffsetFromExternalStoreWithSubscriptionListener()
+    {
+        var superStreamName =
+            $"SingleConsumerReconnectRestoringOffsetFromExternalStore_super_stream_{Guid.NewGuid()}";
+        var system = await StreamSystem.Create(new StreamSystemConfig());
+        await system.CreateSuperStream(new PartitionsSuperStreamSpec(superStreamName, 3));
+        const int NumberOfMessages = 20;
+        var publishTask = SystemUtils.PublishMessagesSuperStream(system, superStreamName, NumberOfMessages,
+            "", _testOutputHelper);
+        if (await Task.WhenAny(publishTask, Task.Delay(10000)) != publishTask)
+        {
+            Assert.Fail("timed out awaiting to publish messages to super stream");
+        }
+
+        await publishTask;
+
+        var partition0 = superStreamName + "-0";
+        var partition1 = superStreamName + "-1";
+        var partition2 = superStreamName + "-2";
+
+        // Simulates an external offset store.
+        // The third partition has only 4 messages (offsets 0..3), so the stored offset must be inside that range.
+        var externalStore = new Dictionary<string, ulong>
+        {
+            { partition0, 3 }, { partition1, 4 }, { partition2, 2 }
+        };
+
+        var clientProvidedName = Guid.NewGuid().ToString();
+        var consumed = new ConcurrentQueue<(string Stream, ulong Offset)>();
+        var subscriptions = new ConcurrentQueue<string>();
+        var reconnected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var configuration = new RawSuperStreamConsumerConfig(superStreamName)
+        {
+            ClientProvidedName = clientProvidedName,
+            // the initial offset is ignored: the SubscriptionListener overrides it
+            OffsetSpec =
+                await SystemUtils.OffsetsForSuperStreamConsumer(system, superStreamName, new OffsetTypeFirst()),
+            SubscriptionListener = ctx =>
+            {
+                subscriptions.Enqueue(ctx.Stream);
+                ctx.OffsetSpec = new OffsetTypeOffset(externalStore[ctx.Stream]);
+                return Task.CompletedTask;
+            },
+            MessageHandler = (stream, _, context, _) =>
+            {
+                consumed.Enqueue((stream, context.Offset));
+                return Task.CompletedTask;
+            }
+        };
+
+        var consumer = await system.CreateSuperStreamConsumer(configuration);
+        configuration.ConnectionClosedHandler = async (reason, stream) =>
+        {
+            if (reason == ConnectionClosedReason.Unexpected)
+            {
+                await SystemUtils.WaitAsync();
+                await consumer.ReconnectPartition(await system.StreamInfo(stream).ConfigureAwait(false));
+                reconnected.TrySetResult(true);
+            }
+        };
+
+        List<ulong> OffsetsOf(string stream) =>
+            consumed.Where(c => c.Stream == stream).Select(c => c.Offset).ToList();
+
+        // 9 - 3 = 6, 7 - 4 = 3, 4 - 2 = 2 messages
+        await SystemUtils.WaitUntilAsync(() => OffsetsOf(partition0).Count == 6);
+        await SystemUtils.WaitUntilAsync(() => OffsetsOf(partition1).Count == 3);
+        await SystemUtils.WaitUntilAsync(() => OffsetsOf(partition2).Count == 2);
+        Assert.Equal(new ulong[] { 3, 4, 5, 6, 7, 8 }, OffsetsOf(partition0));
+        Assert.Equal(new ulong[] { 4, 5, 6 }, OffsetsOf(partition1));
+        Assert.Equal(new ulong[] { 2, 3 }, OffsetsOf(partition2));
+        Assert.Equal(3, subscriptions.Count);
+
+        await SystemUtils.WaitUntilAsync(() =>
+            SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 1);
+        await SystemUtils.WaitUntilAsync(() => SystemUtils.HttpKillConnections($"{clientProvidedName}_0").Result == 1);
+        new Utils<bool>(_testOutputHelper).WaitUntilTaskCompletes(reconnected);
+        await SystemUtils.WaitUntilAsync(() =>
+            SystemUtils.ConnectionsCountByName($"{clientProvidedName}_0").Result == 1);
+
+        // The listener is called again for the reconnected partition only,
+        // and the partition restarts from the offset of the external store.
+        await SystemUtils.WaitUntilAsync(() => OffsetsOf(partition0).Count == 12);
+        Assert.Equal(new ulong[] { 3, 4, 5, 6, 7, 8, 3, 4, 5, 6, 7, 8 }, OffsetsOf(partition0));
+        Assert.Equal(4, subscriptions.Count);
+        Assert.Equal(partition0, subscriptions.Last());
+        Assert.Equal(3, OffsetsOf(partition1).Count);
+        Assert.Equal(2, OffsetsOf(partition2).Count);
+
+        Assert.Equal(ResponseCode.Ok, await consumer.Close());
+        await system.DeleteSuperStream(superStreamName);
+        await system.Close();
+    }
+
     [Fact]
     public async Task ValidateSuperStreamConsumer()
     {

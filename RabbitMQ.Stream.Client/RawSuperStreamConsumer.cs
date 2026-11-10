@@ -106,10 +106,11 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
             },
             MessageHandler = async (consumer, context, message) =>
             {
+
+                _config.OffsetSpec[stream] = new OffsetTypeOffset(context.Offset);
                 // in the message handler we need to add also the source stream
                 // since there could be multiple streams (one per partition)
                 // it is useful client side to know from which stream the message is coming from
-                _config.OffsetSpec[stream] = new OffsetTypeOffset(context.Offset);
                 if (_config.MessageHandler != null)
                 {
                     await _config.MessageHandler(stream, consumer, context, message).ConfigureAwait(false);
