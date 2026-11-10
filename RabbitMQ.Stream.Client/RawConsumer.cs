@@ -546,6 +546,24 @@ namespace RabbitMQ.Stream.Client
                                     Logger?.LogWarning(
                                         "The chunk {ChunkId} will be skipped for {EntityInfo}",
                                         chunk.ChunkId, DumpEntityConfiguration());
+                                    // With CreditsAfterParseChunk the credit is requested after the parsing:
+                                    // a skipped chunk is never parsed, so the credit must be returned here,
+                                    // otherwise each skipped chunk leaks one credit and the consumer stalls.
+                                    if (_config.FlowControl.Strategy == ConsumerFlowStrategy.CreditsAfterParseChunk)
+                                    {
+                                        try
+                                        {
+                                            await _client.Credit(EntityId, 1).ConfigureAwait(false);
+                                        }
+                                        catch (InvalidOperationException)
+                                        {
+                                            Logger?.LogDebug(
+                                                "Can't send the credit {EntityInfo}: The TCP client has been closed",
+                                                DumpEntityConfiguration());
+                                            return;
+                                        }
+                                    }
+
                                     continue; // skip the chunk
                                 case ChunkAction.TryToProcess:
                                     // That's what happens most of the time, and this is the default action
@@ -853,8 +871,23 @@ namespace RabbitMQ.Stream.Client
                 // we call the Close to re-enter to the standard behavior
                 // ignoreIfClosed is an optimization to avoid sending the unsubscribe
                 _config.Pool.RemoveConsumerEntityFromStream(_client.ClientId, EntityId, _config.Stream);
-                await Shutdown(_config, true).ConfigureAwait(false);
-                _config.MetadataHandler?.Invoke(metaDataUpdate);
+                try
+                {
+                    await Shutdown(_config, true).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    // the MetadataHandler must be always invoked: it starts the recovery
+                    // of the reliable consumer. Without it the consumer would never reconnect.
+                    Logger?.LogError(e,
+                        "Error while closing the consumer after a metadata update. {EntityInfo}",
+                        DumpEntityConfiguration());
+                }
+
+                if (_config.MetadataHandler != null)
+                {
+                    await _config.MetadataHandler(metaDataUpdate).ConfigureAwait(false);
+                }
             };
 
         private Client.ConnectionCloseHandler OnConnectionClosed() =>

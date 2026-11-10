@@ -98,6 +98,43 @@ public class Crc32Tests(ITestOutputHelper testOutputHelper)
     }
 
     /// <summary>
+    /// With CreditsAfterParseChunk the credit is requested after the chunk is parsed.
+    /// A skipped chunk is never parsed, so the consumer must return the credit anyway:
+    /// with InitialCredits = 1 a leaked credit would stall the consumer forever
+    /// and the second chunk would never be received.
+    /// </summary>
+    [Theory]
+    [InlineData(ConsumerFlowStrategy.CreditsAfterParseChunk)]
+    [InlineData(ConsumerFlowStrategy.CreditsBeforeParseChunk)]
+    public async Task Crc32SkippedChunkShouldNotLeakTheCredit(ConsumerFlowStrategy strategy)
+    {
+        SystemUtils.InitStreamSystemWithRandomStream(out var system, out var stream);
+        var completionSource = new TaskCompletionSource<MessageContext>();
+        var consumerConfig = new ConsumerConfig(system, stream)
+        {
+            Crc32 = new FirstCrc32IsWrong() { FailAction = (_) => ChunkAction.Skip },
+            FlowControl = new FlowControl() { Strategy = strategy },
+            InitialCredits = 1,
+            MessageHandler = (_, _, messageContext, _) =>
+            {
+                completionSource.TrySetResult(messageContext);
+                return Task.CompletedTask;
+            }
+        };
+        var consumer = await Consumer.Create(consumerConfig);
+        await SystemUtils.PublishMessages(system, stream, 3, "1", testOutputHelper);
+        await SystemUtils.WaitAsync(TimeSpan.FromMilliseconds(700));
+        await SystemUtils.PublishMessages(system, stream, 5, "2", testOutputHelper);
+
+        var completed = await Task.WhenAny(completionSource.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        Assert.Same(completionSource.Task, completed);
+        Assert.NotEqual(0UL, (await completionSource.Task).ChunkId);
+
+        await consumer.Close();
+        await SystemUtils.CleanUpStreamSystem(system, stream);
+    }
+
+    /// <summary>
     /// Tests the Crc32 functionality of the consumer.
     /// Simulate a CRC32 failure on the first chunk,
     /// and add a custom action to close the consumer.
