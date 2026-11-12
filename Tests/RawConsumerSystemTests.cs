@@ -655,6 +655,70 @@ namespace Tests
             await system.Close();
         }
 
+        // Logger that throws when Shutdown logs "<entity> is closed" (the last step of AbstractEntity.Shutdown).
+        // It is the way to make Shutdown fail with the real code, without changing the production code.
+        private sealed class ThrowOnShutdownLogger : Microsoft.Extensions.Logging.ILogger
+        {
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+            public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel,
+                Microsoft.Extensions.Logging.EventId eventId, TState state, Exception exception,
+                Func<TState, Exception, string> formatter)
+            {
+                if (logLevel == Microsoft.Extensions.Logging.LogLevel.Debug &&
+                    formatter(state, exception).EndsWith(" is closed", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("Forced Shutdown failure");
+                }
+            }
+        }
+
+        /// <summary>
+        /// If the Shutdown fails during a metadata update, the MetadataHandler must still be invoked
+        /// (exactly once). The MetadataHandler starts the recovery of the reliable consumer:
+        /// without it the consumer would never reconnect.
+        /// </summary>
+        [Fact]
+        public async Task ConsumerMetadataHandlerIsInvokedEvenIfShutdownFails()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            await system.CreateStream(new StreamSpec(stream));
+            var handlerCalls = 0;
+            var handlerInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var rawConsumer = await system.CreateRawConsumer(
+                new RawConsumerConfig(stream)
+                {
+                    Reference = "consumer",
+                    MetadataHandler = update =>
+                    {
+                        if (update.Stream == stream)
+                        {
+                            Interlocked.Increment(ref handlerCalls);
+                            handlerInvoked.TrySetResult(true);
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                }, new ThrowOnShutdownLogger());
+
+            await SystemUtils.WaitAsync();
+            // the metadata update is raised by the server when the stream is deleted
+            await system.DeleteStream(stream);
+
+            var completed = await Task.WhenAny(handlerInvoked.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+            Assert.Same(handlerInvoked.Task, completed);
+            // give time to a (wrong) second invocation to show up
+            await SystemUtils.WaitAsync(TimeSpan.FromMilliseconds(500));
+            Assert.Equal(1, Volatile.Read(ref handlerCalls));
+            Assert.False(((RawConsumer)rawConsumer).IsOpen());
+
+            await system.Close();
+        }
+
         [Fact]
         public async Task ValidateInitialCredits()
         {
