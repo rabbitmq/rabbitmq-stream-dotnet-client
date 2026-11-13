@@ -170,12 +170,14 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with { Endpoint = endPoint }, logger)
+                    // Keep the connected endpoint so later broker DNS honors its address family.
+                    var connectedParams = clientParams with { Endpoint = endPoint };
+                    var client = await Client.Create(connectedParams, logger)
                         .ConfigureAwait(false);
                     if (!client.IsClosed)
                     {
                         logger?.LogDebug("Client connected to {@EndPoint}", endPoint);
-                        return new StreamSystem(clientParams, client, config.ConnectionPoolConfig,
+                        return new StreamSystem(connectedParams, client, config.ConnectionPoolConfig,
                             logger);
                     }
                 }
