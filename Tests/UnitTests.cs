@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -162,6 +163,48 @@ namespace Tests
             await Assert.ThrowsAsync<AggregateException>(() =>
                 RoutingHelper<Routing>.LookupLeaderOrRandomReplicasConnection(clientParameters, metaDataInfo,
                     new ConnectionsPool(1, 1, new ConnectionCloseConfig())));
+        }
+
+        // DNS for a dual-stack name can list ::1 before 127.0.0.1. The endpoint address
+        // family has to win, or an IPv4-only broker (Podman without IPv6) is never reached.
+        [Fact]
+        public void SelectCompatibleAddressUsesIpv4WhenItIsNotFirst()
+        {
+            var addresses = new[] { IPAddress.IPv6Loopback, IPAddress.Loopback };
+
+            var selected = RoutingHelper<Routing>.SelectCompatibleAddress(addresses, AddressFamily.InterNetwork);
+
+            Assert.Equal(IPAddress.Loopback, selected);
+        }
+
+        [Fact]
+        public void SelectCompatibleAddressUsesIpv6WhenItIsNotFirst()
+        {
+            var addresses = new[] { IPAddress.Loopback, IPAddress.IPv6Loopback };
+
+            var selected = RoutingHelper<Routing>.SelectCompatibleAddress(addresses, AddressFamily.InterNetworkV6);
+
+            Assert.Equal(IPAddress.IPv6Loopback, selected);
+        }
+
+        [Fact]
+        public void SelectCompatibleAddressKeepsFirstAddressWhenFamilyIsUnspecified()
+        {
+            var addresses = new[] { IPAddress.IPv6Loopback, IPAddress.Loopback };
+
+            var selected = RoutingHelper<Routing>.SelectCompatibleAddress(addresses, AddressFamily.Unspecified);
+
+            Assert.Equal(IPAddress.IPv6Loopback, selected);
+        }
+
+        [Fact]
+        public void SelectCompatibleAddressKeepsFirstAddressWhenRequestedFamilyIsMissing()
+        {
+            var addresses = new[] { IPAddress.IPv6Loopback };
+
+            var selected = RoutingHelper<Routing>.SelectCompatibleAddress(addresses, AddressFamily.InterNetwork);
+
+            Assert.Equal(IPAddress.IPv6Loopback, selected);
         }
 
         [Fact]
