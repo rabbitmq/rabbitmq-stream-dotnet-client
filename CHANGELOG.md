@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.13.0]
+### 1.13.0 - 2026-16-11
+- [Release notes 1.13.0](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.13.0)
+### Breaking Changes
+- Change the offset restart during the reconnection by @Gsantomaggio in [#493](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/493)
+
+### Enhancements
+- Bump GitHub Actions to Node 24 compatible versions by @Gsantomaggio in [#483](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/483)
+- Using PipeWriter.GetMemory instead of allocate new array by @SoftStoneDevelop in [#488](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/488)
+- Add SubscriptionListener to ConsumerConfig by @Gsantomaggio in [#491](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/491)
+- Fix consumer credit leak on skipped chunks and always notify metadata handler by @Gsantomaggio in [#494](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/494)
+- Update nuget deploy to Trusted Publishing by @Gsantomaggio in [#496](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/496)
+- Excessive blocking in calls has been removed by @SoftStoneDevelop in [#486](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/486)
+
+### Bug Fix
+- Fix the number of open/closed connections being calculated incorrectly by @SoftStoneDevelop in [#487](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/pull/487)
+
 ## [1.12.2]
 ### 1.12.2 - 2026-19-10
 - [Release notes 1.12.2](https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/releases/tag/v1.12.2)
