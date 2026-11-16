@@ -1,9 +1,7 @@
 name: Publish RabbitMQ Stream Client to NuGet
 
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
+  workflow_call:
 
 permissions:
   contents: read
