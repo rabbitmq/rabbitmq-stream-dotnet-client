@@ -571,6 +571,11 @@ namespace RabbitMQ.Stream.Client
         public async Task CreateStream(StreamSpec spec)
         {
             await MayBeReconnectLocator().ConfigureAwait(false);
+            if (spec.Args.ContainsKey("stream-initial-offset") && !AvailableFeaturesSingleton.Instance.Is44OrMore)
+            {
+                throw new UnsupportedOperationException(Consts.StreamInitialOffsetNotSupported);
+            }
+
             var response = await _client.CreateStream(spec.Name, spec.Args).ConfigureAwait(false);
             if (response.ResponseCode is ResponseCode.Ok or ResponseCode.StreamAlreadyExists)
             {

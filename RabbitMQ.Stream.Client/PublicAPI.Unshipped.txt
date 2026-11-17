@@ -465,3 +465,5 @@ RabbitMQ.Stream.Client.IConsumerConfig.SubscriptionListener.get -> System.Func<R
 RabbitMQ.Stream.Client.IConsumerConfig.SubscriptionListener.set -> void
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.SubscriptionListener.get -> System.Func<RabbitMQ.Stream.Client.SubscriptionContext, System.Threading.Tasks.Task>
 RabbitMQ.Stream.Client.Reliable.ConsumerConfig.SubscriptionListener.set -> void
+RabbitMQ.Stream.Client.StreamSpec.InitialOffset.set -> void
+const RabbitMQ.Stream.Client.StreamSpec.MaxInitialOffset = 4611686018427387903 -> ulong

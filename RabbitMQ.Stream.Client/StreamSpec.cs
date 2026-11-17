@@ -35,6 +35,30 @@ namespace RabbitMQ.Stream.Client
             set => Args["stream-max-segment-size-bytes"] = $"{value}";
         }
 
+        /// <summary>
+        /// Max value accepted by the broker for the initial offset: 2^62 - 1.
+        /// </summary>
+        public const ulong MaxInitialOffset = (1UL << 62) - 1;
+
+        /// <summary>
+        /// Set the offset of the first message of the stream (stream-initial-offset argument).
+        /// Valid values are between 0 and <see cref="MaxInitialOffset"/>.
+        /// Requires RabbitMQ 4.4.0 or more.
+        /// </summary>
+        public ulong InitialOffset
+        {
+            set
+            {
+                if (value > MaxInitialOffset)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(InitialOffset), value,
+                        $"Initial offset must be between 0 and {MaxInitialOffset}, given: {value}");
+                }
+
+                Args["stream-initial-offset"] = $"{value}";
+            }
+        }
+
         public IDictionary<string, string> Args => args;
     }
 

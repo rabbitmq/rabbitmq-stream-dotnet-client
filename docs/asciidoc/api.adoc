@@ -417,6 +417,32 @@ include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-time-based-ret
 <1> Set the maximum age to 6 hours
 <2> Set the segment size to 500 MB
 
+[[stream-initial-offset]]
+==== Setting the initial offset of a stream
+
+By default, the first message of a stream has offset 0.
+It is possible to make a stream start at a different offset with the `InitialOffset` property of `StreamSpec`.
+This is useful, for example, to keep a continuous sequence of offsets when moving data from another system.
+
+.Setting the initial offset when creating a stream
+[source,c#,indent=0]
+--------
+include::{test-examples}/StreamSystemUsage.cs[tag=stream-creation-initial-offset]
+--------
+
+<1> The first message published to the stream will have offset 1,000,000
+
+The initial offset must be between 0 and `StreamSpec.MaxInitialOffset` (2^62 - 1, the same limit as the broker).
+An `ArgumentOutOfRangeException` is thrown when the value is out of range.
+
+[NOTE]
+====
+This feature requires RabbitMQ 4.4.0 or more.
+It sets the `stream-initial-offset` stream argument; older brokers do not support it.
+====
+
+A complete, runnable example is available in the https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/InitialOffset[InitialOffset] project.
+
 [[creating-a-producer]]
 ==== Producer
 

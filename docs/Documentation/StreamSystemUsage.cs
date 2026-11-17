@@ -239,5 +239,22 @@ public class StreamSystemUsage
         await streamSystem.Close().ConfigureAwait(false); 
     }
     // end::stream-creation-time-based-retention[]
-    
+
+    // tag::stream-creation-initial-offset[]
+    private static async Task CreateStreamInitialOffset()
+    {
+        var streamSystem = await StreamSystem.Create(
+            new StreamSystemConfig()
+        ).ConfigureAwait(false);
+
+        await streamSystem.CreateStream(
+            new StreamSpec("my-stream")
+            {
+                InitialOffset = 1_000_000 // <1>
+            }
+        ).ConfigureAwait(false);
+        await streamSystem.Close().ConfigureAwait(false);
+    }
+    // end::stream-creation-initial-offset[]
+
 }
