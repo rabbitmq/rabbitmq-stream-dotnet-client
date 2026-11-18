@@ -65,7 +65,7 @@ function start_rabbitmq
         --volume "$GITHUB_WORKSPACE/.ci/ubuntu/enabled_plugins:/etc/rabbitmq/enabled_plugins" \
         --volume "$GITHUB_WORKSPACE/.ci/ubuntu/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro" \
         --volume "$GITHUB_WORKSPACE/.ci/ubuntu/log:/var/log/rabbitmq" \
-        rabbitmq:management
+        rabbitmq:4.4-management
 }
 
 function wait_rabbitmq
