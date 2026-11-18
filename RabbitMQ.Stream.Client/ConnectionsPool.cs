@@ -134,14 +134,22 @@ public class ConnectionsPool : IDisposable
     private static readonly object s_lock = new();
     private bool _isRunning = false;
 
-    internal static byte FindNextValidId(List<byte> ids, byte nextId = 0)
+    internal static byte FindNextValidId(ReadOnlySpan<byte> ids, byte nextId = 0)
     {
         lock (s_lock)
         {
-            var sortedIds = ids.ToList();
-            sortedIds.Sort();
-            var idsAtOrAboveNext = sortedIds.Where(b => b >= nextId).ToList();
-            if (idsAtOrAboveNext.Count == 0)
+            byte maxAtOrAboveNext = 0;
+            var atOrAboveNextCount = 0;
+            for (var i = 0; i < ids.Length; i++)
+            {
+                if (ids[i] >= nextId)
+                {
+                    maxAtOrAboveNext = Math.Max(maxAtOrAboveNext, ids[i]);
+                    atOrAboveNextCount++;
+                }
+            }
+
+            if (atOrAboveNextCount == 0)
             {
                 // not necessary to start from 0 because the ids are recycled
                 // nextid is passed as parameter to avoid to start from 0
@@ -149,13 +157,18 @@ public class ConnectionsPool : IDisposable
                 return nextId;
             }
 
-            if (idsAtOrAboveNext[^1] != byte.MaxValue)
+            if (maxAtOrAboveNext != byte.MaxValue)
             {
-                return (byte)(idsAtOrAboveNext[^1] + 1);
+                return (byte)(maxAtOrAboveNext + 1);
             }
 
             // let's try to find a free id in the list
-            var idSet = ids.ToHashSet();
+            var idSet = new HashSet<byte>(ids.Length);
+            for (var i = 0; i < ids.Length; i++)
+            {
+                idSet.Add(ids[i]);
+            }
+
             for (byte i = 0; i < byte.MaxValue; i++)
             {
                 if (!idSet.Contains(i))

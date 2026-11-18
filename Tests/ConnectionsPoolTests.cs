@@ -1036,7 +1036,7 @@ namespace Tests
         [Fact]
         public void FindNextValidIdShouldReturnZeroGivenEmptyList()
         {
-            var ids = new List<byte>();
+            var ids = Array.Empty<byte>();
             var missing = ConnectionsPool.FindNextValidId(ids);
             Assert.Equal(0, missing);
         }
@@ -1044,7 +1044,7 @@ namespace Tests
         [Fact]
         public void FindNextValidIdShouldReturnTheSameIdGivenEmptyList()
         {
-            var ids = new List<byte>();
+            var ids = Array.Empty<byte>();
             var missing = ConnectionsPool.FindNextValidId(ids, 5);
             Assert.Equal(5, missing);
         }
@@ -1053,19 +1053,19 @@ namespace Tests
         public void FindNextValidIdShouldReturnTheNextGivenAStartId()
         {
             var ids = new List<byte>();
-            var id = ConnectionsPool.FindNextValidId(ids, 255);
+            var id = ConnectionsPool.FindNextValidId(ids.ToArray(), 255);
             ids.Add(id);
             Assert.Equal(255, id);
-            var next = ConnectionsPool.FindNextValidId(ids);
+            var next = ConnectionsPool.FindNextValidId(ids.ToArray());
             ids.Add(next);
             Assert.Equal(0, next);
-            Assert.Equal(1, ConnectionsPool.FindNextValidId(ids));
+            Assert.Equal(1, ConnectionsPool.FindNextValidId(ids.ToArray()));
         }
 
         [Fact]
         public void FindNextValidIdShouldReturnOne()
         {
-            var ids = new List<byte>() { 0 };
+            var ids = new byte[] { 0 };
             var missing = ConnectionsPool.FindNextValidId(ids);
             Assert.Equal(1, missing);
         }
@@ -1084,10 +1084,10 @@ namespace Tests
                 8,
                 9
             };
-            var nextValidId = ConnectionsPool.FindNextValidId(ids);
+            var nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray());
             Assert.Equal(10, nextValidId);
             ids.Add(10);
-            nextValidId = ConnectionsPool.FindNextValidId(ids);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray());
             Assert.Equal(11, nextValidId);
             ids.Add(11);
         }
@@ -1115,19 +1115,19 @@ namespace Tests
                 ids.Add(i);
             }
 
-            var nextValidId = ConnectionsPool.FindNextValidId(ids);
+            var nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray());
             Assert.Equal(255, nextValidId);
             ids.Add(255);
 
-            nextValidId = ConnectionsPool.FindNextValidId(ids);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray());
             Assert.Equal(3, nextValidId);
             ids.Add(3);
 
-            nextValidId = ConnectionsPool.FindNextValidId(ids);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray());
             Assert.Equal(5, nextValidId);
             ids.Add(5);
 
-            nextValidId = ConnectionsPool.FindNextValidId(ids);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray());
             Assert.Equal(7, nextValidId);
             ids.Add(7);
         }
@@ -1150,31 +1150,31 @@ namespace Tests
                 9
             };
             // even there are missing ids the next valid id is the next one
-            var nextValidId = ConnectionsPool.FindNextValidId(ids, 200);
+            var nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray(), 200);
             Assert.Equal(200, nextValidId);
 
             // even we start from 3 the next valid id is 10, since we start from the end
-            nextValidId = ConnectionsPool.FindNextValidId(ids, 3);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray(), 3);
             ids.Add(nextValidId);
             Assert.Equal(10, nextValidId);
 
-            nextValidId = ConnectionsPool.FindNextValidId(ids, 255);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray(), 255);
             ids.Add(nextValidId);
             Assert.Equal(255, nextValidId);
 
-            nextValidId = ConnectionsPool.FindNextValidId(ids, 0);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray(), 0);
             ids.Add(nextValidId);
             Assert.Equal(3, nextValidId);
 
-            nextValidId = ConnectionsPool.FindNextValidId(ids, 3);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray(), 3);
             ids.Add(nextValidId);
             Assert.Equal(5, nextValidId);
 
-            nextValidId = ConnectionsPool.FindNextValidId(ids, 5);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray(), 5);
             ids.Add(nextValidId);
             Assert.Equal(7, nextValidId);
 
-            nextValidId = ConnectionsPool.FindNextValidId(ids, 0);
+            nextValidId = ConnectionsPool.FindNextValidId(ids.ToArray(), 0);
             ids.Add(nextValidId);
             Assert.Equal(11, nextValidId);
         }
@@ -1182,7 +1182,7 @@ namespace Tests
         [Fact]
         public void FindNextValidIdWithAMaxValue()
         {
-            var ids = new List<byte> { 0, 1, 2, 3, 255 };
+            var ids = new byte[] { 0, 1, 2, 3, 255 };
             var v = ConnectionsPool.FindNextValidId(ids, 254);
             Assert.Equal(4, v);
         }
@@ -1197,7 +1197,7 @@ namespace Tests
             }
 
             ids.Add(255);
-            Assert.Throws<InvalidOperationException>(() => ConnectionsPool.FindNextValidId(ids));
+            Assert.Throws<InvalidOperationException>(() => ConnectionsPool.FindNextValidId(ids.ToArray()));
         }
 
         [Fact]
