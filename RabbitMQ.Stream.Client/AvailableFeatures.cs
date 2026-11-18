@@ -17,6 +17,7 @@ internal class AvailableFeatures
 
     public bool Is311OrMore { get; private set; }
     public bool Is313OrMore { get; private set; }
+    public bool Is44OrMore { get; private set; }
 
     public string BrokerVersion { get; private set; }
 
@@ -35,6 +36,7 @@ internal class AvailableFeatures
         BrokerVersion = ExtractVersion(brokerVersion);
         Is311OrMore = new System.Version(BrokerVersion) >= new System.Version("3.11.0");
         Is313OrMore = new System.Version(BrokerVersion) >= new System.Version("3.13.0");
+        Is44OrMore = new System.Version(BrokerVersion) >= new System.Version("4.4.0");
     }
 
     public void ParseCommandVersions(List<ICommandVersions> commands)

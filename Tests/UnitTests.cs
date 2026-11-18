@@ -452,6 +452,20 @@ namespace Tests
             AvailableFeaturesSingleton.Instance.SetServerVersion("3.0.1-beta.111");
             Assert.False(AvailableFeaturesSingleton.Instance.Is311OrMore);
             Assert.False(AvailableFeaturesSingleton.Instance.Is313OrMore);
+            Assert.False(AvailableFeaturesSingleton.Instance.Is44OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("4.3.6");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is313OrMore);
+            Assert.False(AvailableFeaturesSingleton.Instance.Is44OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("4.4.0-alpha.1");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is44OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("4.4.0");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is44OrMore);
+
+            AvailableFeaturesSingleton.Instance.SetServerVersion("4.5.1");
+            Assert.True(AvailableFeaturesSingleton.Instance.Is44OrMore);
 
             AvailableFeaturesSingleton.Instance.ParseCommandVersions(new List<ICommandVersions>()
             {

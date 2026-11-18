@@ -55,5 +55,27 @@ namespace Tests
 
             Assert.Equal(ulong.MaxValue.ToString(), $"{spec.Args["max-length-bytes"]}");
         }
+
+        [Theory]
+        [InlineData(0UL)]
+        [InlineData(1UL)]
+        [InlineData(1_000_000UL)]
+        [InlineData(StreamSpec.MaxInitialOffset)]
+        public void InitialOffsetIsStoredAsStreamArgument(ulong offset)
+        {
+            var spec = new StreamSpec("theStreamName") { InitialOffset = offset };
+            Assert.Equal(offset.ToString(), spec.Args["stream-initial-offset"]);
+        }
+
+        [Theory]
+        [InlineData(StreamSpec.MaxInitialOffset + 1)]
+        [InlineData(ulong.MaxValue)]
+        public void InitialOffsetOutOfRangeIsRejected(ulong offset)
+        {
+            var spec = new StreamSpec("theStreamName");
+            var ex = Assert.Throws<ArgumentOutOfRangeException>(() => spec.InitialOffset = offset);
+            Assert.Contains($"Initial offset must be between 0 and {StreamSpec.MaxInitialOffset}", ex.Message);
+            Assert.False(spec.Args.ContainsKey("stream-initial-offset"));
+        }
     }
 }

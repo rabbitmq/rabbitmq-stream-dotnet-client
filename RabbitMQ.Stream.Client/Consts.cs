@@ -24,6 +24,9 @@ namespace RabbitMQ.Stream.Client
         internal const string FilterNotSupported = "Filtering is not supported by the broker "
                                                    + "(requires RabbitMQ 3.13+ and stream_filtering feature flag activated)";
 
+        internal const string StreamInitialOffsetNotSupported = "stream-initial-offset not supported by the broker "
+                                                        + "(requires RabbitMQ 4.4+)";
+
         internal const string SuperStreamCreationNotSupported = "SuperStreams creation / deleting not supported by the broker "
                                                         + "(requires RabbitMQ 3.13+. It is possible to use the command line tool to create superstreams)";
 

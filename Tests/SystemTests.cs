@@ -10,6 +10,7 @@ using System.Net.Security;
 using System.Text;
 using System.Threading.Tasks;
 using RabbitMQ.Stream.Client;
+using RabbitMQ.Stream.Client.Reliable;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -132,6 +133,63 @@ namespace Tests
             await system.CreateStream(spec);
             await system.DeleteStream(stream);
             await system.Close();
+        }
+
+        [SkippableFact]
+        public async Task Create_Stream_With_Initial_Offset()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            Skip.IfNot(AvailableFeaturesSingleton.Instance.Is44OrMore,
+                "broker does not support stream-initial-offset");
+
+            try
+            {
+                const ulong InitialOffset = 1_000_000;
+                await system.CreateStream(new StreamSpec(stream) { InitialOffset = InitialOffset });
+
+                var producer = await Producer.Create(new ProducerConfig(system, stream));
+                await producer.Send(new Message(Encoding.UTF8.GetBytes("hello")));
+
+                var firstOffset = new TaskCompletionSource<ulong>();
+                var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+                {
+                    OffsetSpec = new OffsetTypeFirst(),
+                    MessageHandler = (_, _, ctx, _) =>
+                    {
+                        firstOffset.TrySetResult(ctx.Offset);
+                        return Task.CompletedTask;
+                    }
+                });
+
+                Assert.Equal(InitialOffset, await firstOffset.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+                await consumer.Close();
+                await producer.Close();
+            }
+            finally
+            {
+                await system.DeleteStream(stream);
+                await system.Close();
+            }
+        }
+
+        [SkippableFact]
+        public async Task Create_Stream_With_Initial_Offset_Not_Supported_Before_4_4()
+        {
+            var stream = Guid.NewGuid().ToString();
+            var system = await StreamSystem.Create(new StreamSystemConfig());
+            try
+            {
+                Skip.If(AvailableFeaturesSingleton.Instance.Is44OrMore,
+                    "broker supports stream-initial-offset");
+
+                await Assert.ThrowsAsync<UnsupportedOperationException>(() =>
+                    system.CreateStream(new StreamSpec(stream) { InitialOffset = 10 }));
+            }
+            finally
+            {
+                await system.Close();
+            }
         }
 
         [Fact]
