@@ -208,6 +208,17 @@ namespace Tests
         }
 
         [Fact]
+        public void SyncConnectedEndpointUpdatesSharedParametersAfterLocatorReconnect()
+        {
+            var shared = new ClientParameters { Endpoint = new IPEndPoint(IPAddress.IPv6Loopback, 5552) };
+            var reconnected = shared with { Endpoint = new IPEndPoint(IPAddress.Loopback, 5552) };
+
+            StreamSystem.SyncConnectedEndpoint(shared, reconnected);
+
+            Assert.Equal(new IPEndPoint(IPAddress.Loopback, 5552), shared.Endpoint);
+        }
+
+        [Fact]
         public async Task AddressResolverShouldRaiseAnExceptionIfAdvIsNull()
         {
             var addressResolver = new AddressResolver(new IPEndPoint(IPAddress.Loopback, 5552));
