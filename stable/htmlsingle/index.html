@@ -553,6 +553,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#_managing_streams">Managing Streams</a></li>
 </ul>
 </li>
+<li><a href="#stream-initial-offset">Setting the initial offset of a stream</a></li>
 <li><a href="#creating-a-producer">Producer</a>
 <ul class="sectlevel4">
 <li><a href="#_creating_a_producer">Creating a Producer</a></li>
@@ -587,6 +588,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <li><a href="#consumer-update-listener">Reacting to Consumer State Change</a></li>
 </ul>
 </li>
+<li><a href="#consumer-subscription-listener">Subscription Listener</a></li>
 </ul>
 </li>
 <li><a href="#entity-status">Producer/Consumer change status callback</a></li>
@@ -1913,18 +1915,40 @@ private static async Task CreateStreamRetentionAge()
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>        await streamSystem.CreateStream( 
-            new StreamSpec("my-stream")
-            {
-                MaxAge = TimeSpan.FromHours(6),  // <b class="conum">(1)</b>
-                MaxSegmentSizeBytes = 524_288_000 // <b class="conum">(2)</b>
-            }
-        ).ConfigureAwait(false);
-        await streamSystem.Close().ConfigureAwait(false); 
-    }
-    
+<pre>    await streamSystem.CreateStream( 
+        new StreamSpec("my-stream")
+        {
+            MaxAge = TimeSpan.FromHours(6),  // <b class="conum">(1)</b>
+            MaxSegmentSizeBytes = 524_288_000 // <b class="conum">(2)</b>
+        }
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false); 
 }</pre>
 </div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>private static async Task CreateStreamInitialOffset()
+{
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>    await streamSystem.CreateStream(
+        new StreamSpec("my-stream")
+        {
+            InitialOffset = 1_000_000 // <b class="conum">(1)</b>
+        }
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false);
+}</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>}</p>
 </div>
 <div class="colist arabic">
 <ol>
@@ -2153,6 +2177,62 @@ The following snippet illustrates how to set the time-based retention policy:</p
 </li>
 </ol>
 </div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="stream-initial-offset">Setting the initial offset of a stream</h4>
+<div class="paragraph">
+<p>By default, the first message of a stream has offset 0.
+It is possible to make a stream start at a different offset with the <code>InitialOffset</code> property of <code>StreamSpec</code>.
+This is useful, for example, to keep a continuous sequence of offsets when moving data from another system.</p>
+</div>
+<div class="listingblock">
+<div class="title">Setting the initial offset when creating a stream</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">private static async Task CreateStreamInitialOffset()
+{
+    var streamSystem = await StreamSystem.Create(
+        new StreamSystemConfig()
+    ).ConfigureAwait(false);
+
+    await streamSystem.CreateStream(
+        new StreamSpec(&quot;my-stream&quot;)
+        {
+            InitialOffset = 1_000_000 // <b class="conum">(1)</b>
+        }
+    ).ConfigureAwait(false);
+    await streamSystem.Close().ConfigureAwait(false);
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>The first message published to the stream will have offset 1,000,000</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The initial offset must be between 0 and <code>StreamSpec.MaxInitialOffset</code> (2^62 - 1, the same limit as the broker).
+An <code>ArgumentOutOfRangeException</code> is thrown when the value is out of range.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This feature requires RabbitMQ 4.4.0 or more.
+It sets the <code>stream-initial-offset</code> stream argument; older brokers do not support it.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A complete, runnable example is available in the <a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/InitialOffset">InitialOffset</a> project.</p>
 </div>
 </div>
 <div class="sect3">
@@ -3161,6 +3241,11 @@ await streamSystem.Close().ConfigureAwait(false);</code></pre>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SubscriptionListener</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Callback invoked before each subscription (first subscription and every recovery). Lets the consumer override the offset to start from. Works for standard and super stream consumers. See <a href="#consumer-subscription-listener">Subscription Listener</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>null</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>InitialCredits</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Initial number of chunks the consumer will receive before requesting more. Higher values can increase throughput but use more memory.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>2</code></p></td>
@@ -3773,6 +3858,68 @@ var consumer = await Consumer.Create(
 </li>
 </ol>
 </div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="consumer-subscription-listener">Subscription Listener</h5>
+<div class="paragraph">
+<p><code>ConsumerConfig#SubscriptionListener</code> is called right before the consumer subscribes to a stream.
+It is called for the first subscription and for every recovery (reconnection after a disconnection or a metadata update).
+The listener can override the offset the consumer starts consuming from, for example to read it from an external store.
+Unlike the <a href="#consumer-update-listener"><code>ConsumerUpdateListener</code></a>, it does not require single active consumer.</p>
+</div>
+<div class="paragraph">
+<p>The <code>SubscriptionContext</code> parameter exposes:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Stream</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The stream the consumer is subscribing to (the partition name for a super stream).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Reference</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The consumer reference (name), can be <code>null</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OffsetSpec</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The offset the consumer is about to use. Set it to override the offset.
+On the first subscription it is <code>ConsumerConfig#OffsetSpec</code>; on recovery it is the offset computed by the library (last consumed offset + 1).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="c#">var consumer = await Consumer.Create(new ConsumerConfig(system, stream)
+{
+    Reference = &quot;my-consumer&quot;,
+    SubscriptionListener = async ctx =&gt;
+    {
+        // e.g. load the offset from an external store
+        var offset = await myStore.LoadOffset(ctx.Stream, ctx.Reference);
+        ctx.OffsetSpec = new OffsetTypeOffset(offset);
+    },
+    MessageHandler = (stream, consumer, context, message) =&gt; Task.CompletedTask
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For super stream consumers the listener is called once for each partition, and on recovery of a single partition only for that partition.
+If the listener throws an exception, the error is logged and the offset is left unchanged.
+If <code>SubscriptionListener</code> is <code>null</code>, the default behavior applies.</p>
+</div>
+<div class="paragraph">
+<p>A full example can be found <a href="https://github.com/rabbitmq/rabbitmq-stream-dotnet-client/tree/main/docs/ConsumerSubscriptionListener">here</a>.</p>
 </div>
 </div>
 </div>
@@ -5268,7 +5415,7 @@ using var meterProvider = Sdk.CreateMeterProviderBuilder()
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-03-23 10:02:29 UTC
+Last updated 2026-06-15 13:12:28 UTC
 </div>
 </div>
 </body>
