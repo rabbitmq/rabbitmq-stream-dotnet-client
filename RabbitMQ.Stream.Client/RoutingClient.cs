@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -60,7 +61,8 @@ namespace RabbitMQ.Stream.Client
                 // it should not change.
                 if (routing.ValidateDns)
                 {
-                    endPointNoLb = await GetEndPoint(broker).ConfigureAwait(false);
+                    var addressFamily = clientParameters.Endpoint?.AddressFamily ?? AddressFamily.Unspecified;
+                    endPointNoLb = await GetEndPoint(broker, addressFamily).ConfigureAwait(false);
                 }
 
                 // In this case we just return the node (leader for producer, random for consumer)
@@ -133,14 +135,33 @@ namespace RabbitMQ.Stream.Client
             return client;
         }
 
-        internal static async Task<EndPoint> GetEndPoint(Broker broker)
+        internal static IPAddress SelectCompatibleAddress(IReadOnlyList<IPAddress> addresses,
+            AddressFamily addressFamily)
+        {
+            if (addressFamily is AddressFamily.InterNetwork or AddressFamily.InterNetworkV6)
+            {
+                foreach (var address in addresses)
+                {
+                    if (address.AddressFamily == addressFamily)
+                    {
+                        return address;
+                    }
+                }
+            }
+
+            return addresses.First();
+        }
+
+        internal static async Task<EndPoint> GetEndPoint(Broker broker,
+            AddressFamily addressFamily = AddressFamily.Unspecified)
         {
             switch (Uri.CheckHostName(broker.Host))
             {
                 case UriHostNameType.Basic:
                 case UriHostNameType.Dns:
                     var hostEntry = await Dns.GetHostEntryAsync(broker.Host).ConfigureAwait(false);
-                    var endPointNoLb = new IPEndPoint(hostEntry.AddressList.First(), (int)broker.Port);
+                    var selected = SelectCompatibleAddress(hostEntry.AddressList, addressFamily);
+                    var endPointNoLb = new IPEndPoint(selected, (int)broker.Port);
                     return endPointNoLb;
                 case UriHostNameType.IPv4:
                 case UriHostNameType.IPv6:
