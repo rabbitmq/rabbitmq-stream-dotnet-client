@@ -170,12 +170,14 @@ namespace RabbitMQ.Stream.Client
             {
                 try
                 {
-                    var client = await Client.Create(clientParams with { Endpoint = endPoint }, logger)
+                    // Keep the connected endpoint so later broker DNS honors its address family.
+                    var connectedParams = clientParams with { Endpoint = endPoint };
+                    var client = await Client.Create(connectedParams, logger)
                         .ConfigureAwait(false);
                     if (!client.IsClosed)
                     {
                         logger?.LogDebug("Client connected to {@EndPoint}", endPoint);
-                        return new StreamSystem(clientParams, client, config.ConnectionPoolConfig,
+                        return new StreamSystem(connectedParams, client, config.ConnectionPoolConfig,
                             logger);
                     }
                 }
@@ -246,6 +248,11 @@ namespace RabbitMQ.Stream.Client
         // which need the locator semaphore: sharing it would deadlock.
         private readonly SemaphoreSlim _semCreateConsumer = new(1);
 
+        internal static void SyncConnectedEndpoint(ClientParameters shared, ClientParameters connected)
+        {
+            shared.Endpoint = connected.Endpoint;
+        }
+
         /// <summary>
         /// MayBeReconnectLocator tries to reconnect the locator client if the connection is closed.
         /// Reconnection is needed in case of network issues or server rebooting.
@@ -277,6 +284,9 @@ namespace RabbitMQ.Stream.Client
                                 ClientProvidedName = _clientParameters.ClientProvidedName,
                                 Endpoint = _clientParameters.Endpoints[advId]
                             }).ConfigureAwait(false);
+                            // Keep the shared parameters in sync so producers/consumers created later
+                            // resolve DNS using the address family of the endpoint that actually connected.
+                            SyncConnectedEndpoint(_clientParameters, _client.Parameters);
                             _logger?.LogDebug("Locator reconnected to {@EndPoint}", _clientParameters.Endpoints[advId]);
                             break;
                         }
