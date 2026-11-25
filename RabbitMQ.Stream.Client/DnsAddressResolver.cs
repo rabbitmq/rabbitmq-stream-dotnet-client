@@ -4,6 +4,7 @@
 
 using System;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace RabbitMQ.Stream.Client
@@ -22,8 +23,19 @@ namespace RabbitMQ.Stream.Client
         public EndPoint Resolve(string address, int port) => ResolveAsync(address, port).GetAwaiter().GetResult();
         public async Task<EndPoint> ResolveAsync(string address, int port)
         {
-            var entries = await Dns.GetHostEntryAsync(((DnsEndPoint)EndPoint).Host).ConfigureAwait(false);
+            var dnsEndPoint = (DnsEndPoint)EndPoint;
+            var entries = await Dns.GetHostEntryAsync(dnsEndPoint.Host).ConfigureAwait(false);
             var addressList = entries.AddressList;
+            if (dnsEndPoint.AddressFamily != AddressFamily.Unspecified)
+            {
+                addressList = Array.FindAll(addressList, ip => ip.AddressFamily == dnsEndPoint.AddressFamily);
+            }
+
+            if (addressList.Length == 0)
+            {
+                throw new SocketException((int)SocketError.NoData);
+            }
+
             var targetIp = addressList[Random.Shared.Next(addressList.Length)];
             return new IPEndPoint(targetIp, port);
         }
