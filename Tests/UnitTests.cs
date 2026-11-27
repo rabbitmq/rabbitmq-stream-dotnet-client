@@ -7,6 +7,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -543,6 +544,21 @@ namespace Tests
             var config = new RawConsumerConfig("stream") { IsSingleActiveConsumer = true, Reference = null };
             await Assert.ThrowsAsync<ArgumentException>(() =>
                 RawConsumer.Create(new ClientParameters(), config, default));
+        }
+
+        [Fact]
+        public void SuperStreamConsumerShouldPropagateInitialCreditsToThePartitionConsumers()
+        {
+            var config = new RawSuperStreamConsumerConfig("super") { InitialCredits = 10 };
+            // No partitions: the super consumer can be created without a broker
+            var consumer = RawSuperStreamConsumer.Create(config, new Dictionary<string, StreamInfo>(),
+                new ClientParameters());
+            var fromStreamConfig = typeof(RawSuperStreamConsumer)
+                .GetMethod("FromStreamConfig", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+            var partitionConfig = (RawConsumerConfig)fromStreamConfig.Invoke(consumer, ["super-0"])!;
+
+            Assert.Equal(10, partitionConfig.InitialCredits);
         }
     }
 }

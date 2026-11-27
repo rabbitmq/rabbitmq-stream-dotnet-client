@@ -77,6 +77,7 @@ public class RawSuperStreamConsumer : ISuperStreamConsumer, IDisposable
             Crc32 = _config.Crc32,
             Identifier = _config.Identifier,
             FlowControl = _config.FlowControl,
+            InitialCredits = _config.InitialCredits,
             ConnectionClosedHandler = async (reason) =>
             {
                 _consumers.TryRemove(stream, out var consumer);
